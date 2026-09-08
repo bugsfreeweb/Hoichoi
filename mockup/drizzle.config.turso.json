@@ -1,0 +1,9 @@
+{
+  "dialect": "turso",
+  "schema": "./src/db/schema-turso.ts",
+  "dbCredentials": {
+    "url": "libsql://YOUR-DB-NAME.turso.io",
+    "authToken": "YOUR-TURSO-AUTH-TOKEN"
+  },
+  "out": "./drizzle-turso"
+}

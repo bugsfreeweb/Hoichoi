@@ -1,0 +1,325 @@
+import { getClient, mapCategory, mapSource, nowIso, withTx } from "@hoichoi/db";
+import { newResolver } from "@hoichoi/llm";
+import type {
+  CategorySlug,
+  LLMProviderRow,
+  PostStatus,
+  Source,
+} from "@hoichoi/shared-types";
+import { buildProvider } from "@hoichoi/llm";
+import { checkAndArchive } from "./archive";
+import { checkDedup } from "./dedup";
+import { isExactDuplicate } from "./dedup";
+import { scrapePage, type ScrapedPost } from "./facebook";
+import { imagePhash } from "./hash";
+import { isVideoUrl, mediaRoot, processImage, randomMediaName } from "./media";
+import { processVideo } from "./video";
+import { makeSlug, rewritePost } from "./rewrite";
+import { captureScreenshot } from "./screenshot";
+
+export interface PipelineOptions {
+  mock?: boolean;
+  maxSources?: number;
+  maxPosts?: number;
+  evidence?: boolean;
+  log?: (msg: string) => void;
+}
+
+export interface PipelineStats {
+  sources: number;
+  scraped: number;
+  rawInserted: number;
+  rewritten: number;
+  duplicatesBlocked: number;
+  published: number;
+  pendingReview: number;
+  providerUsed: string[] | null;
+  errors: string[];
+}
+
+export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineStats> {
+  const log = opts.log ?? ((s: string) => console.log(s));
+  const client = getClient();
+  const resolver = newResolver();
+  const runId = crypto.randomUUID();
+  const started = nowIso();
+  const stats: PipelineStats = {
+    sources: 0,
+    scraped: 0,
+    rawInserted: 0,
+    rewritten: 0,
+    duplicatesBlocked: 0,
+    published: 0,
+    pendingReview: 0,
+    providerUsed: [],
+    errors: [],
+  };
+
+  // Run log
+  await client.execute({
+    sql: "INSERT INTO pipeline_runs (id, started_at, status) VALUES (?, ?, 'running')",
+    args: [runId, started],
+  });
+
+  // Settings
+  const catRes = await client.execute("SELECT * FROM category_configs ORDER BY sort_order");
+  const cats = new Map<CategorySlug, ReturnType<typeof mapCategory>>();
+  for (const r of catRes.rows) {
+    const c = mapCategory(r as Record<string, unknown>);
+    cats.set(c.slug, c);
+  }
+  const setRes = await client.execute("SELECT * FROM settings WHERE id = 1");
+  const setRow = (setRes.rows[0] ?? {}) as Record<string, unknown>;
+
+  // Sources
+  const srcRes = await client.execute(
+    "SELECT * FROM sources WHERE is_active = 1 ORDER BY last_scraped_at IS NULL DESC, last_scraped_at ASC",
+  );
+  const sources = srcRes.rows
+    .map((r) => mapSource(r as Record<string, unknown>))
+    .slice(0, opts.maxSources ?? 30);
+
+  // Session cookie for logged-in FB scraping (optional)
+  const sessionCookie = process.env.FB_SESSION_COOKIE ?? null;
+
+  for (const source of sources) {
+    stats.sources++;
+    log(`\n[scrape] ${source.page_name} (${source.category})`);
+    let scraped: ScrapedPost[];
+    try {
+      scraped = await scrapePage(source, {
+        sessionCookie,
+        maxPosts: opts.maxPosts ?? 200,
+        mock: opts.mock,
+        requestDelayMs: 3000,
+        log,
+      });
+    } catch (err) {
+      const msg = `[scrape] ${source.page_name}: ${(err as Error).message}`;
+      log(msg);
+      stats.errors.push(msg);
+      continue;
+    }
+
+    for (const sp of scraped) {
+      stats.scraped++;
+      // STEP 1: raw insert attempt (URL-level dedup first).
+      if (await isExactDuplicate(sp.fbPostUrl)) continue;
+      const rawId = crypto.randomUUID();
+      const mediaUrls = JSON.stringify(sp.mediaUrls ?? []);
+      try {
+        await client.execute({
+          sql: `
+            INSERT INTO raw_posts (id, source_id, fb_post_id, fb_post_url, raw_text, media_urls, scraped_at, raw_meta)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (source_id, fb_post_id) DO NOTHING
+          `,
+          args: [rawId, source.id, sp.fbPostId, sp.fbPostUrl, sp.rawText, mediaUrls, nowIso(), JSON.stringify({
+            video: sp.fbMediaIsVideo,
+            author_name: sp.authorName ?? null,
+            author_url: sp.authorProfileUrl ?? null,
+          })],
+        });
+        stats.rawInserted++;
+      } catch {
+        continue; // UNIQUE conflict from concurrent run
+      }
+
+      // STEP 2: media handling (best-effort, never fatal).
+      const media: { kind: "image" | "video" | "none"; path: string | null } = { kind: "none", path: null };
+      try {
+        const firstMedia = sp.mediaUrls?.[0];
+        if (firstMedia) {
+          if (isVideoUrl(firstMedia)) {
+            const result = await processVideo({
+              inputUrl: firstMedia,
+              stampText: new Date().toLocaleString("bn-BD", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              log,
+            });
+            if (result) {
+              await client.execute({
+                sql: "UPDATE raw_posts SET raw_meta = json_set(COALESCE(raw_meta,'{}'), '$.media_path', ?) WHERE id = ?",
+                args: [result.rel, rawId],
+              });
+              media.kind = "video";
+              media.path = result.rel;
+            }
+          } else {
+            const rel = randomMediaName("img", "webp");
+            const bufRes = await fetch(firstMedia);
+            if (bufRes.ok) {
+              const buf = Buffer.from(await bufRes.arrayBuffer());
+              await processImage(buf, rel, { maxWidthPx: 1280 });
+              await client.execute({
+                sql: "UPDATE raw_posts SET raw_meta = json_set(COALESCE(raw_meta,'{}'), '$.media_path', ?) WHERE id = ?",
+                args: [rel, rawId],
+              });
+              media.kind = "image";
+              media.path = rel;
+            }
+          }
+        }
+      } catch (err) {
+        log(`[media] skip: ${(err as Error).message}`);
+      }
+
+      // STEP 3: screenshot evidence (optional, one browser per post — slow).
+      if (opts.evidence) {
+        const rel = randomMediaName("shot", "png");
+        const shot = await captureScreenshot({
+          url: sp.fbPostUrl,
+          outPath: `${mediaRoot()}/${rel}`,
+          log,
+        });
+        if (shot) {
+          await client.execute({
+            sql: "UPDATE raw_posts SET screenshot_path = ? WHERE id = ?",
+            args: [rel, rawId],
+          });
+        }
+      }
+
+      // STEP 4: pHash (IMG-1) — historical + current.
+      let phash: string | null = null;
+      try {
+        const firstMedia = sp.mediaUrls?.[0];
+        if (firstMedia && !isVideoUrl(firstMedia)) {
+          const bufRes = await fetch(firstMedia);
+          if (bufRes.ok) {
+            phash = await imagePhash(Buffer.from(await bufRes.arrayBuffer()));
+            if (phash) {
+              await client.execute({
+                sql: "UPDATE raw_posts SET phash = ? WHERE id = ?",
+                args: [phash, rawId],
+              });
+            }
+          }
+        }
+      } catch (err) {
+        log(`[hash] skip: ${(err as Error).message}`);
+      }
+
+      // STEP 5: rewrite + embedding (only when we have text).
+      if (!sp.rawText) continue;
+      try {
+        const config = cats.get(source.category)?.config;
+        if (!config) throw new Error("no category config");
+        const outcome = await rewritePost({
+          rawText: sp.rawText,
+          sourceName: source.id,
+          sourcePageName: source.page_name,
+          category: source.category,
+          categoryConfig: config,
+          originalAuthorName: sp.authorName ?? null,
+          policeHelpline: String(setRow.police_helpline ?? "999"),
+          childHelpline: String(setRow.child_helpline ?? "109"),
+          resolver,
+          log,
+        });
+
+        // STEP 6: semantic + image dedup within this run's post set.
+        const dup = await checkDedup({
+          fbPostUrl: sp.fbPostUrl,
+          rawText: sp.rawText,
+          phash,
+          vector: outcome.embedding,
+          skipExact: true, // the exact URL was just inserted as raw_post
+        });
+        if (dup.duplicate) {
+          log(`[dedup] blocked ${dup.reason} → ${dup.matchedPostId ?? dup.matchedRawId ?? "?"}`);
+          stats.duplicatesBlocked++;
+          continue;
+        }
+
+        const status: PostStatus = config.auto_pending_review ? "pending_review" : "approved";
+        const slug = makeSlug(outcome.rewritten.title_bn);
+        const now = nowIso();
+        await withTx(async (tx) => {
+          const embeddingJson = outcome.embedding ? JSON.stringify(outcome.embedding) : null;
+          await tx.execute({
+            sql: `
+              INSERT INTO posts (
+                id, raw_post_id, source_id, category, title_bn, body_bn, summary_bn,
+                media_path, media_kind, source_url, source_name, slug, status,
+                safety_flags, embedding, case_status, original_author_name,
+                published_at, created_at, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `,
+            args: [
+              crypto.randomUUID(), rawId, source.id, source.category,
+              outcome.rewritten.title_bn, outcome.rewritten.body_bn, outcome.rewritten.summary_bn,
+              media.path, media.kind,
+              sp.fbPostUrl, source.page_name, slug, status,
+              JSON.stringify(outcome.flags), embeddingJson, outcome.rewritten.case_status ?? null,
+              sp.authorName ?? null, status === "approved" ? now : null, now, now,
+            ],
+          });
+          // vec0 row (invisible for local DBs when the extension is missing → ignore).
+          if (outcome.embedding) {
+            await tx.execute({
+              sql: "INSERT INTO posts_vec (post_id, embedding) VALUES (?, ?)",
+              args: [slug, JSON.stringify(outcome.embedding)],
+            }).catch(() => {});
+          }
+        });
+        if (status === "approved") stats.published++;
+        else stats.pendingReview++;
+        stats.rewritten++;
+        const prov = outcome.provider;
+        if (!stats.providerUsed!.includes(prov)) stats.providerUsed!.push(prov);
+        log(`[post] ${status} · ${slug} · ${outcome.provider}`);
+      } catch (err) {
+        const msg = `[rewrite] ${source.page_name}: ${(err as Error).message}`;
+        log(msg);
+        stats.errors.push(msg);
+      }
+    }
+
+    // Mark source scraped.
+    await client.execute({
+      sql: "UPDATE sources SET last_scraped_at = ? WHERE id = ?",
+      args: [nowIso(), source.id],
+    });
+  }
+
+  // STEP 7: archive lifecycle (auto_rollover).
+  try {
+    await checkAndArchive(log);
+  } catch (err) {
+    log(`[archive] ${(err as Error).message}`);
+  }
+
+  const finished = nowIso();
+  const finalStatus = stats.errors.length > 0 ? "failed" : "completed";
+  await client.execute({
+    sql: `
+      UPDATE pipeline_runs
+      SET finished_at = ?, status = ?, stats = ?, provider_used = ?, error = ?
+      WHERE id = ?
+    `,
+    args: [
+      finished,
+      finalStatus,
+      JSON.stringify({
+        sources: stats.sources,
+        scraped: stats.scraped,
+        rawInserted: stats.rawInserted,
+        rewritten: stats.rewritten,
+        duplicatesBlocked: stats.duplicatesBlocked,
+        published: stats.published,
+        pendingReview: stats.pendingReview,
+      }),
+      stats.providerUsed!.join(","),
+      stats.errors.slice(0, 5).join(" | "),
+      runId,
+    ],
+  });
+
+  log(`\n[done] ${JSON.stringify(stats, null, 2)}`);
+  return stats;
+}
+
+export { buildProvider, type LLMProviderRow };

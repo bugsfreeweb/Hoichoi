@@ -1,0 +1,40 @@
+{
+  "name": "@hoichoi/scraper",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./media": "./src/media.ts",
+    "./archive": "./src/archive.ts"
+  },
+  "bin": {
+    "hoichoi-scraper": "./src/cli.ts"
+  },
+  "scripts": {
+    "build": "tsx src/cli.ts",
+    "scrape": "tsx src/cli.ts scrape",
+    "archive": "tsx src/cli.ts archive",
+    "purge": "tsx src/cli.ts purge",
+    "mock": "tsx src/cli.ts scrape --mock",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx src/__tests__/redaction.test.ts"
+  },
+  "dependencies": {
+    "@hoichoi/db": "workspace:*",
+    "@hoichoi/llm": "workspace:*",
+    "@hoichoi/shared-types": "workspace:*",
+    "commander": "^12.1.0",
+    "sharp": "^0.33.5"
+  },
+  "optionalDependencies": {
+    "ffmpeg-static": "^5.2.0",
+    "playwright": "^1.49.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

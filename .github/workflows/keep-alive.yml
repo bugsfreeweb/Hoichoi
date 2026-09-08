@@ -1,0 +1,28 @@
+name: Keep cron alive
+
+on:
+  schedule:
+    # GitHub disables scheduled workflows after 60 days of repo inactivity.
+    # Touching any file each month resets that clock.
+    - cron: "0 0 1 * *"
+
+permissions:
+  contents: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Touch keep-alive stamp
+        run: |
+          date -u +"%Y-%m-%d %H:%M UTC" > .github/keep-alive
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/keep-alive
+          if git diff --cached --quiet; then
+            echo "No change — cron already alive"
+            exit 0
+          fi
+          git commit -m "chore: keep cron alive [skip ci]"
+          git push

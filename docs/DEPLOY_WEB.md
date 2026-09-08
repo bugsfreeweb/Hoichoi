@@ -1,0 +1,74 @@
+# Deploying the Web App to Vercel (through GitHub)
+
+The **web app is `apps/web`** — a Next.js (App Router) public site + admin. The
+desktop app and scraper are deliberately **not** part of the web deploy. This
+page explains the exact, unambiguous path from push → Vercel.
+
+## What ships to Vercel (and what never does)
+
+| Ships | Excluded (`.vercelignore`) |
+|---|---|
+| `apps/web` | `apps/desktop` (native app — separate product) |
+| `packages/db`, `packages/llm`, `packages/shared-types` | `apps/scraper` (runs on the desktop/CI, not serverless) |
+| `vercel.json`, `.vercelignore`, `pnpm.*`, `tsconfig.base.json` | `mockup` (static design reference) |
+
+The web app no longer depends on `@hoichoi/scraper` — the two helpers it used
+(`purgeExpired`, `mediaRoot`) now live in `@hoichoi/db`. So a web build never
+pulls in Playwright/tsx/ffmpeg.
+
+## Database
+
+Uses **Turso (libSQL)**. Set these in Vercel (Project → Settings → Environment
+Variables) and as GitHub secrets:
+
+```
+TURSO_DATABASE_URL   libsql://...(or file: for local-only; use remote on Vercel)
+TURSO_AUTH_TOKEN     (only needed for remote libsql:// URLs)
+NEXT_PUBLIC_SITE_URL https://your-domain
+SITE_URL             https://your-domain
+ADMIN_AUTH_SECRET    openssl rand -hex 32
+ADMIN_ALLOWED_EMAILS admin@example.com
+STORAGE_ADAPTER      local | r2
+```
+
+> `file:` URLs do not work on Vercel (ephemeral filesystem) — use a Turso
+> `libsql://` database.
+
+## Option A — Deploy from GitHub Actions (recommended)
+
+1. Git push the repo.
+2. In Vercel create a project, then grab `VERCEL_TOKEN` (Account → Tokens),
+   `VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` (`vercel pull`, or read them from
+   `.vercel/project.json`).
+3. Add these repo secrets under GitHub → Settings → Secrets and variables →
+   Actions:
+   - `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
+   - `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`
+4. Push to `main` touching `apps/web/**` or `packages/**` → the
+   `.github/workflows/deploy-web.yml` workflow typechecks then runs
+   `amondnet/vercel-action` with `--prod`. Git push is the only trigger.
+
+## Option B — Vercel Git integration (no custom workflow)
+
+1. Import the repo into Vercel.
+2. Use the existing root `vercel.json`:
+   - `rootDirectory: "apps/web"` → Vercel builds only the web app.
+   - `buildCommand`: `cd ../.. && pnpm --filter @hoichoi/web build`
+   - `outputDirectory: ".next"` (+ `/media/**` and `/_next/static/**` cache headers).
+3. Add the env vars above. Vercel auto-detects Next.js.
+
+## Local pre-flight (matches CI)
+
+```bash
+pnpm install
+pnpm --filter @hoichoi/web typecheck
+pnpm --filter @hoichoi/web build
+```
+
+## Notes
+
+- The public rolling-window pages use ISR (`revalidate = 300`, matching the
+  `ARCHIVE_VISIBLE_DAYS` / ISR window from the docs), so Vercel serves cached
+  HTML and revalidates in the background.
+- Sitemap: `apps/web/src/app/sitemap.ts` lists static + category + live post
+  URLs; add a production `SITE_URL` so links are absolute.

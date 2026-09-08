@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------- মকর-স্তরের স্টাইল: mockup.html থেকে পোর্ট ---------- */
+html,
+body {
+  font-family: "Hind Siliguri", sans-serif;
+  background: #f3eee1;
+  color: #0a0c10;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.grain {
+  position: relative;
+}
+body.grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background-image:
+    radial-gradient(at 25% 30%, rgba(0, 0, 0, 0.025) 1px, transparent 1px),
+    radial-gradient(at 75% 70%, rgba(0, 0, 0, 0.025) 1px, transparent 1px);
+  background-size: 5px 5px;
+  opacity: 0.6;
+}
+
+.content > * {
+  position: relative;
+  z-index: 2;
+}
+
+.text-outline-ink {
+  color: transparent;
+  -webkit-text-stroke: 1.5px #0a0c10;
+}
+
+.photo-grade {
+  filter: contrast(1.02) saturate(0.95) brightness(0.98);
+}
+
+.frame-press {
+  transition: box-shadow 0.3s ease;
+}
+.frame-press:hover {
+  box-shadow: inset 0 0 0 1.5px #0a0c10;
+}
+
+.link-sweep {
+  background-image: linear-gradient(#0a0c10, #0a0c10);
+  background-size: 0% 1px;
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  transition: background-size 0.35s ease-out;
+  padding-bottom: 1px;
+}
+.link-sweep:hover {
+  background-size: 100% 1px;
+}
+
+.ticker-track {
+  animation: ticker-scroll 60s linear infinite;
+}
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+.ticker-wrap:hover .ticker-track {
+  animation-play-state: paused;
+}
+
+.marquee-track {
+  animation: marquee-scroll 40s linear infinite;
+}
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.diamond {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  background: #d2202c;
+  transform: rotate(45deg);
+  flex-shrink: 0;
+}
+
+.cat-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.countdown-ring {
+  transition: stroke-dashoffset 1s linear;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.line-clamp-4 {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* পাবলিক সাইট কনটেন্ট থাকবে grain-এর উপরে */
+.page-chrome {
+  position: relative;
+  z-index: 2;
+}

@@ -1,0 +1,12 @@
+# Vercel ignores: only the web app is deployed.
+# The desktop app and scraper are NOT part of the web build.
+.github/
+.turbo/
+mockup/
+apps/desktop/
+apps/scraper/
+data/
+*.db
+*.db-journal
+src-tauri/
+target/

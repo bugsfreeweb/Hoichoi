@@ -1,0 +1,31 @@
+name: Rolling archive & purge
+
+on:
+  schedule:
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+
+env:
+  TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+  TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+  ARCHIVE_VISIBLE_DAYS: ${{ vars.ARCHIVE_VISIBLE_DAYS }}
+  ARCHIVE_RETENTION_DAYS: ${{ vars.ARCHIVE_RETENTION_DAYS }}
+
+jobs:
+  archive:
+    name: Archive visible → purge expired
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.18.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Archive pass
+        run: pnpm --filter scraper archive
+      - name: Purge pass
+        run: pnpm --filter scraper purge

@@ -1,0 +1,16 @@
+import type { MetadataRoute } from "next";
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: "হইচই। — ভাইরাল বাংলা, সপ্তাহখানেক",
+    short_name: "হইচই।",
+    description: "Auto-curated Bangla news desk — Facebook ভাইরাল কনটেন্ট, সাত দিনের জানালা।",
+    start_url: "/",
+    display: "standalone",
+    background_color: "#f3eee1",
+    theme_color: "#0a0c10",
+    lang: "bn",
+    dir: "ltr",
+    icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
+  };
+}

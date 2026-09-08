@@ -1,0 +1,23 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rootDirectory": "apps/web",
+  "framework": "nextjs",
+  "buildCommand": "pnpm --filter @hoichoi/web build",
+  "installCommand": "pnpm install --no-frozen-lockfile",
+  "outputDirectory": ".next",
+  "headers": [
+    {
+      "source": "/media/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" },
+        { "key": "Vary", "value": "Accept-Encoding" }
+      ]
+    },
+    {
+      "source": "/_next/static/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ]
+}

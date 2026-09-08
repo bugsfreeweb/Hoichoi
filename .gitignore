@@ -1,0 +1,67 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.turbo/
+.next/
+out/
+dist/
+build/
+target/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Build / bundle outputs
+releases/
+
+# Environment / secrets — never commit
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+*.pem
+*.key
+*.p12
+
+# SQLite / local db
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+storage/
+media-local/
+static-uploads/
+# Local runtime state (dev db + downloaded media)
+data/
+
+# OS junk
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Rust / Tauri
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+
+# Staged self-contained pipeline runner (built locally by bundle:runner, ~250 MB)
+apps/desktop/src-tauri/resources/runner/app/cli.*js
+apps/desktop/src-tauri/resources/runner/app/migrations/
+apps/desktop/src-tauri/resources/runner/node.exe
+apps/desktop/src-tauri/resources/runner/node/
+apps/desktop/src-tauri/resources/runner/node_modules/
+apps/desktop/src-tauri/resources/runner/package*.json
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+
+# Mockup artifacts
+gitleaks.toml

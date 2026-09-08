@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: #f3eee1;
+  color: #0a0c10;
+  font-family: "Hind Siliguri", "Space Grotesk", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #e8e0cd;
+}
+::-webkit-scrollbar-thumb {
+  background: #0a0c10;
+  border-radius: 0;
+}
+
+.panel {
+  @apply border border-ink/20 bg-paper-deep p-4;
+}
+
+.panel-title {
+  @apply font-mono text-[10px] tracking-[0.24em] uppercase text-ink-soft;
+}
+
+.field {
+  @apply w-full border border-ink/25 bg-paper px-3 py-2 text-[14px] text-ink placeholder:text-ink-soft/50 focus:border-ink focus:outline-none;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 border border-ink bg-ink px-3 py-2 text-[12px] font-bold uppercase tracking-wider text-paper transition-colors hover:bg-alizarin hover:border-alizarin disabled:cursor-not-allowed disabled:opacity-40;
+}
+
+.btn-ghost {
+  @apply inline-flex items-center justify-center gap-2 border border-ink/25 bg-transparent px-3 py-2 text-[12px] font-bold uppercase tracking-wider text-ink transition-colors hover:border-ink;
+}
