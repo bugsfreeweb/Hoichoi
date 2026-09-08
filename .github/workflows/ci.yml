@@ -25,12 +25,12 @@ jobs:
       - name: Migrate CI database
         run: pnpm db:migrate
         env:
-          TURSO_DATABASE_URL: file:./data/ci-hoichoi.db
+          TURSO_DATABASE_URL: file:${{ github.workspace }}/data/ci-hoichoi.db
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
         env:
-          TURSO_DATABASE_URL: file:./data/ci-hoichoi.db
+          TURSO_DATABASE_URL: file:${{ github.workspace }}/data/ci-hoichoi.db
           NEXT_PUBLIC_SITE_URL: http://localhost:3000
           ADMIN_AUTH_SECRET: ci-only-not-a-real-secret
 
