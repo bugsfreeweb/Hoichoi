@@ -13,7 +13,7 @@
     "hoichoi-scraper": "./src/cli.ts"
   },
   "scripts": {
-    "build": "tsx src/cli.ts",
+    "build": "tsx src/cli.ts --version",
     "scrape": "tsx src/cli.ts scrape",
     "archive": "tsx src/cli.ts archive",
     "purge": "tsx src/cli.ts purge",
