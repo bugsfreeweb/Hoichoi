@@ -22,6 +22,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Migrate CI database
+        run: pnpm db:migrate
+        env:
+          TURSO_DATABASE_URL: file:./data/ci-hoichoi.db
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
