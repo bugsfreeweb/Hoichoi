@@ -8,6 +8,7 @@ export * from "./archive";
 export * from "./media";
 
 import type {
+  CaseStatus,
   CategoryMeta,
   CategorySlug,
   CurrentWindowPost,
@@ -329,4 +330,106 @@ export async function updatePostStatus(
       id,
     ],
   });
+}
+
+export const POST_STATUSES: PostStatus[] = [
+  "pending_review",
+  "approved",
+  "rejected",
+  "published",
+  "removed",
+];
+
+export const CASE_STATUSES: CaseStatus[] = [
+  "active",
+  "found",
+  "unresolved",
+  "false-alarm",
+  "unknown",
+];
+
+export const CATEGORY_SLUGS: CategorySlug[] = [
+  "child-sexual-abuse",
+  "extramarital-crime",
+  "missing-children",
+];
+
+/** All posts, newest first (content-manager list + search space). */
+export async function listPosts(limit = 300): Promise<Post[]> {
+  const client = getClient();
+  const res = await client.execute({
+    sql: "SELECT * FROM posts ORDER BY created_at DESC LIMIT ?",
+    args: [limit],
+  });
+  return res.rows.map((r) => mapPost(r as Record<string, unknown>));
+}
+
+/** Content fields that may be edited through the admin post editor. */
+export interface PostUpdateFields {
+  title_bn?: string;
+  body_bn?: string;
+  summary_bn?: string | null;
+  category?: CategorySlug;
+  case_status?: CaseStatus | null;
+  published_at?: string | null;
+}
+
+/**
+ * PATCH content fields on a post. Every key is validated/whitelisted; invalid
+ * enums throw. `summary_bn` / `case_status` / `published_at` may be set to null
+ * (clear). Status changes go through `updatePostStatus` (see API route).
+ */
+export async function updatePost(id: string, fields: PostUpdateFields): Promise<void> {
+  const client = getClient();
+  const sets: string[] = [];
+  const args: InValue[] = [];
+
+  if (typeof fields.title_bn === "string") {
+    sets.push("title_bn = ?");
+    args.push(fields.title_bn);
+  }
+  if (typeof fields.body_bn === "string") {
+    sets.push("body_bn = ?");
+    args.push(fields.body_bn);
+  }
+  if ("summary_bn" in fields && fields.summary_bn !== undefined) {
+    sets.push("summary_bn = ?");
+    args.push(fields.summary_bn ?? null);
+  }
+  if (fields.category !== undefined) {
+    if (!CATEGORY_SLUGS.includes(fields.category)) {
+      throw new Error(`invalid category: ${fields.category}`);
+    }
+    sets.push("category = ?");
+    args.push(fields.category);
+  }
+  if ("case_status" in fields && fields.case_status !== undefined) {
+    if (fields.case_status !== null && !CASE_STATUSES.includes(fields.case_status)) {
+      throw new Error(`invalid case_status: ${fields.case_status}`);
+    }
+    sets.push("case_status = ?");
+    args.push(fields.case_status ?? null);
+    if (fields.case_status) {
+      sets.push("case_updated_at = ?");
+      args.push(nowIso());
+    }
+  }
+  if ("published_at" in fields && fields.published_at !== undefined) {
+    sets.push("published_at = ?");
+    args.push(fields.published_at ?? null);
+  }
+
+  if (sets.length === 0) return;
+  sets.push("updated_at = ?");
+  args.push(nowIso(), id);
+  await client.execute({
+    sql: `UPDATE posts SET ${sets.join(", ")} WHERE id = ?`,
+    args,
+  });
+}
+
+/** Hard-delete a post (content manager); caller handles audit logging. */
+export async function deletePost(id: string): Promise<void> {
+  const client = getClient();
+  await client.execute({ sql: "DELETE FROM posts WHERE id = ?", args: [id] });
 }

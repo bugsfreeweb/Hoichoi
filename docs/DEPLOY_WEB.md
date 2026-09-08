@@ -67,6 +67,13 @@ pnpm --filter @hoichoi/web build
 
 ## Notes
 
+- **Content manager:** `/admin/posts` lets editors update any post's title, body,
+  summary, category, case status and published date/time, show/hide it
+  (`published`/`removed`), or delete it (admin only). Every change is logged in
+  `admin_actions` (target_table `posts`). Editing a title keeps the stable slug
+  (URL unchanged). Content lives in the shared Turso DB, so edits reflect on the
+  public site immediately. Note: there is no comment system in the schema, so
+  "comment" moderation is not applicable.
 - **Centralized branding:** the `settings` row (Turso) now carries the site
   identity — `site_name`, `slogan_bn`, `tagline`, `logo_url`, `favicon_url`,
   `accent_color` — edited from the web admin settings screen **or** the desktop
