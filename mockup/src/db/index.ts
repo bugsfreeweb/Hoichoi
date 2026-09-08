@@ -6,21 +6,33 @@ import * as pgSchema from "./schema";
 import * as tursoSchema from "./schema-turso";
 
 /**
- * Dual-driver bootstrap:
- *  - DB_DRIVER=turso  →  Turso (libSQL) via @libsql/client  [Vercel-ready]
- *  - default          →  local/node Postgres (sandbox, Neon)
+ * Dual-driver bootstrap — TURSO IS THE PRIMARY DATABASE.
+ *  - DB_DRIVER=turso    →  Turso (libSQL)   [default · production]
+ *  - DB_DRIVER=postgres →  plain Postgres   [local sandbox fallback only]
+ *
+ * Selection rule:
+ *  1. Explicit DB_DRIVER wins.
+ *  2. Otherwise, if a TURSO_DATABASE_URL exists → turso.
+ *  3. Otherwise, if only DATABASE_URL exists → postgres (sandbox).
+ *  4. Otherwise → turso (demo fallback; app still renders).
  *
  * IMPORTANT: this module NEVER throws when a connection string is missing.
  * The app boots in "demo fallback" mode (queries return empty arrays, pages
  * still render) — that is exactly what keeps a fresh Vercel deploy alive.
  */
 
-export const DB_DRIVER: "turso" | "postgres" =
-  (process.env.DB_DRIVER ?? "postgres").toLowerCase() === "turso"
-    ? "turso"
-    : "postgres";
+function resolveDriver(): "turso" | "postgres" {
+  const explicit = (process.env.DB_DRIVER ?? "").toLowerCase();
+  if (explicit === "turso") return "turso";
+  if (explicit === "postgres") return "postgres";
+  if (process.env.TURSO_DATABASE_URL) return "turso";
+  if (process.env.DATABASE_URL) return "postgres";
+  return "turso";
+}
 
-export const DRIVER_LABEL = DB_DRIVER === "turso" ? "TURSO" : "NEON";
+export const DB_DRIVER: "turso" | "postgres" = resolveDriver();
+
+export const DRIVER_LABEL = DB_DRIVER === "turso" ? "TURSO" : "POSTGRES";
 
 const globalForDb = globalThis as typeof globalThis & {
   __arenaNextJsPostgresqlPool?: Pool;

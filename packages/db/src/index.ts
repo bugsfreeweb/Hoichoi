@@ -139,7 +139,7 @@ export async function mostRead(limit = 5): Promise<Post[]> {
 export async function statsSnapshot(): Promise<StatsSnapshot> {
   const client = getClient();
   const today = nowIso().slice(0, 10);
-  const [collected, dupes, published, pending, byCat, lastRun] =
+  const [collected, dupes, published, pending, byCat, lastRun, avgDur] =
     await Promise.all([
       client.execute({
         sql: "SELECT count(*) AS n FROM raw_posts WHERE scraped_at LIKE ?",
@@ -158,6 +158,9 @@ export async function statsSnapshot(): Promise<StatsSnapshot> {
       ),
       client.execute(
         "SELECT status, error FROM pipeline_runs ORDER BY started_at DESC LIMIT 1",
+      ),
+      client.execute(
+        "SELECT AVG((julianday(finished_at) - julianday(started_at)) * 86400) AS avg_sec FROM pipeline_runs WHERE status = 'completed' AND finished_at IS NOT NULL",
       ),
     ]);
   const total = Number(published.rows[0]?.n ?? 0);
@@ -186,6 +189,7 @@ export async function statsSnapshot(): Promise<StatsSnapshot> {
     lastRunStatus,
     published: total,
     pendingReview: Number(pending.rows[0]?.n ?? 0),
+    avgRunDurationSec: Math.round(Number(avgDur.rows[0]?.avg_sec ?? 0)),
     byCategory,
   };
 }

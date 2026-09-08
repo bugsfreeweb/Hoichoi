@@ -21,14 +21,12 @@ export default function CommentsSection({
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
     setError("");
-    setNotice("");
     setBusy(true);
     try {
       const res = await fetch("/api/comments", {
@@ -36,29 +34,11 @@ export default function CommentsSection({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ articleId, author: author.trim(), body: body.trim() }),
       });
-      const json = (await res.json()) as {
-        ok: boolean;
-        status?: string;
-        comment?: CommentLite;
-        error?: string;
-      };
-
-      // approved → show immediately
-      if (json.ok && json.comment) {
-        setComments((c) => [json.comment!, ...c]);
-        setBody("");
-        setNotice("আপনার মন্তব্য প্রকাশিত হয়েছে ✓");
-        setTimeout(() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 60);
-        return;
-      }
-      // pending (held) → informative, keep text cleared
-      if (json.status === "pending") {
-        setBody("");
-        setNotice(json.error ?? "মন্তব্যটি পর্যালোচনার জন্য অপেক্ষমাণ।");
-        return;
-      }
-      // blocked / banned → hard error
-      throw new Error(json.error ?? "মন্তব্য পাঠানো যায়নি");
+      const json = (await res.json()) as { ok: boolean; comment?: CommentLite; error?: string };
+      if (!json.ok || !json.comment) throw new Error(json.error ?? "ব্যর্থ");
+      setComments((c) => [json.comment!, ...c]);
+      setBody("");
+      setTimeout(() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 60);
     } catch (err) {
       setError(err instanceof Error ? err.message : "মন্তব্য পাঠানো যায়নি");
     } finally {
@@ -120,13 +100,11 @@ export default function CommentsSection({
           />
         </div>
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="max-w-md text-[10.5px] leading-relaxed text-ink-soft">
+          <p className="text-[10.5px] text-ink-soft">
             {error ? (
               <span className="font-semibold text-alizarin">⚠ {error}</span>
-            ) : notice ? (
-              <span className="font-semibold text-emerald-700">✓ {notice}</span>
             ) : (
-              "স্বয়ংক্রিয় মডারেশন চালু — আপত্তিকর মন্তব্য তাৎক্ষণিক মুছে যায় ও আইপি সীমাবদ্ধ হয় (৭/৩০ দিন/স্থায়ী)।"
+              "প্রতিবেদনের সত্যতা-যাচাই নীতি অনুযায়ী আপত্তিকর মন্তব্য অপসারিত হয়।"
             )}
           </p>
           <button

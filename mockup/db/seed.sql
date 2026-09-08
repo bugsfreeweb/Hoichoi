@@ -1,5 +1,5 @@
 -- HOICHOI mockup seed — fictional, awareness-oriented demo content
-TRUNCATE TABLE articles, api_keys, pipeline_runs, sources, collector_logs, comments, ip_bans, banned_words RESTART IDENTITY;
+TRUNCATE TABLE articles, api_keys, pipeline_runs, sources, collector_logs, comments RESTART IDENTITY;
 
 -- ============================================================ ARTICLES
 INSERT INTO articles
@@ -266,7 +266,8 @@ VALUES
   ('OpenAI API কী (রিরাইট)', 'llm', 'OPENAI_API_KEY', 'sk-proj-••••••8F3d', 'sk-proj-demo4xK9rT7bMzQ8F3d', 'desktop', 'active', '৯ দিন আগে', 'মডেল: gpt-4o-mini · temp 0.3'),
   ('GitHub PAT (কনটেন্ট)', 'github', 'GITHUB_CONTENT_PAT', 'ghp_••••••9aKl', 'ghp_demo9aKlPRm2xQwe7Tn', 'desktop', 'active', '১৮ দিন আগে', 'রিপো: hoichoi-content'),
   ('Vercel API টোকেন', 'vercel', 'VERCEL_TOKEN', 'vcl_••••••Qm81', 'vcl_demoQm81Zth4Lok6xN', 'web', 'active', '২২ দিন আগে', 'ডিপ্লয় স্ট্যাটাস রিড-অনলি'),
-  ('Neon ডাটাবেস URL', 'database', 'DATABASE_URL', 'postgresql://••••@ep-demo…neon.tech', 'postgresql://demo:***@ep-demo.ap-southeast-1.aws.neon.tech/newsdb', 'both', 'active', '৪৫ দিন আগে', 'সার্ভারলেস PG · ফ্রি টিয়ার'),
+  ('Turso ডাটাবেস URL', 'database', 'TURSO_DATABASE_URL', 'libsql://••••turso.io', 'libsql://hoichoi-demo.turso.io', 'both', 'active', '৪৫ দিন আগে', 'libSQL · এজ-রিপ্লিকেটেড · ফ্রি টিয়ার'),
+  ('Turso অথ টোকেন', 'database', 'TURSO_AUTH_TOKEN', 'ey••••••••demo', 'eyJhbGciOiJFZERTQSDEMOtoken', 'both', 'active', '৪৫ দিন আগে', 'ডাটাবেস অ্যাক্সেস টোকেন'),
   ('Cloudinary (শট CDN)', 'storage', 'CLOUDINARY_URL', 'cloudinary://••••@dk2demo', 'cloudinary://demo_key:demo_secret@dk2demo', 'both', 'rotate', '৬১ দিন আগে', 'স্ক্রিনশট হোস্টিং'),
   ('ভল্ট মাস্টার কী', 'vault', 'VAULT_MASTER_KEY', '•••••••••••• (শুধু env)', 'DEMO-MASTER-32B-F8A1C4E7', 'both', 'active', '৯০ দিন আগে', 'AES-256 · ডেস্কটপ env থেকে সরবরাহ');
 
@@ -325,27 +326,3 @@ INSERT INTO comments (article_id, author, body, likes, created_at) VALUES
   (2, 'আরিফুল ইসলাম', 'ভিডিও ক্রপ না করে মূল ফাইল পুলিশে দেওয়াটা সবচেয়ে জরুরি — লাইনে নম্বর প্লেটটা স্পষ্ট ছিল।', 31, NOW() - INTERVAL '40 minutes'),
   (2, 'নাঈম শেখ', 'একটা জিনিস মনে রাখবেন: ভাইরাল হওয়া মানে বিচার নয়, বিচার আদালতে। প্রমাণ পুলিশে দিন।', 12, NOW() - INTERVAL '2 hours'),
   (3, 'ফারহানা আক্তার', 'কাউন্সেলিং নিয়ে এত কথা হয় না, আসলে একই পরিবারের মানুষগুলো অনেক উপকার পায়। ভালো উদ্যোগ।', 8, NOW() - INTERVAL '5 hours');
-
--- moderation demo rows (pending + auto-blocked)
-INSERT INTO comments (article_id, author, body, likes, status, ip, flagged, auto_moderated, created_at) VALUES
-  (1, 'অজ্ঞাত ব্যবহারকারী', 'এই খবরটা কি আসলেই সত্য? সন্দেহ হচ্ছে, বাটপার মনে হয়।', 0, 'pending', '103.24.10.5', 'বাটপার', TRUE, NOW() - INTERVAL '18 minutes'),
-  (2, 'স্প্যামার', '[স্বয়ংক্রিয়ভাবে অপসারিত — আপত্তিকর ভাষা]', 0, 'blocked', '45.88.200.14', 'গালি, শালা', TRUE, NOW() - INTERVAL '52 minutes');
-
--- ============================================================ MODERATION
-INSERT INTO banned_words (word, severity, created_at) VALUES
-  ('গালি', 2, NOW() - INTERVAL '3 days'),
-  ('শালা', 2, NOW() - INTERVAL '3 days'),
-  ('কুত্তা', 2, NOW() - INTERVAL '3 days'),
-  ('বেশ্যা', 3, NOW() - INTERVAL '3 days'),
-  ('হারামজাদা', 3, NOW() - INTERVAL '3 days'),
-  ('বাটপার', 1, NOW() - INTERVAL '3 days'),
-  ('ভন্ড', 1, NOW() - INTERVAL '3 days'),
-  ('fuck', 3, NOW() - INTERVAL '3 days'),
-  ('bitch', 3, NOW() - INTERVAL '3 days'),
-  ('idiot', 1, NOW() - INTERVAL '3 days'),
-  ('scam', 1, NOW() - INTERVAL '3 days');
-
-INSERT INTO ip_bans (ip, scope, reason, strikes, auto, created_at, expires_at) VALUES
-  ('45.88.200.14', '7d', 'আপত্তিকর শব্দ: গালি, শালা', 1, TRUE, NOW() - INTERVAL '52 minutes', NOW() + INTERVAL '7 days'),
-  ('202.4.99.30', '30d', 'পুনরাবৃত্ত লঙ্ঘন (২য় স্ট্রাইক)', 2, TRUE, NOW() - INTERVAL '2 days', NOW() + INTERVAL '28 days'),
-  ('118.67.5.201', 'permanent', 'ম্যানুয়াল · ধারাবাহিক স্প্যাম', 3, FALSE, NOW() - INTERVAL '6 days', NULL);

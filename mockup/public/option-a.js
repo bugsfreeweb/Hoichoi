@@ -63,7 +63,7 @@
       { id: 1, label: "Facebook Graph টোকেন", service: "facebook", envName: "FB_GRAPH_TOKEN", maskedValue: "EAAx••••••••X7q2", revealValue: "EAADEMOxK7q2mZq9vL0demo", scope: "desktop", status: "rotate", rotatedAt: "৩৪ দিন আগে", note: "পেজ রিড-স্কোপ" },
       { id: 2, label: "OpenAI API কী (রিরাইট)", service: "llm", envName: "OPENAI_API_KEY", maskedValue: "sk-proj-••••••8F3d", revealValue: "sk-proj-demo4xK9rT7bMzQ8F3d", scope: "desktop", status: "active", rotatedAt: "৯ দিন আগে", note: "gpt-4o-mini · temp 0.3" },
       { id: 3, label: "GitHub PAT (কনটেন্ট)", service: "github", envName: "GITHUB_CONTENT_PAT", maskedValue: "ghp_••••••9aKl", revealValue: "ghp_demo9aKlPRm2xQwe7Tn", scope: "desktop", status: "active", rotatedAt: "১৮ দিন আগে", note: "রিপো: hoichoi-content" },
-      { id: 4, label: "Neon ডাটাবেস URL", service: "database", envName: "DATABASE_URL", maskedValue: "postgresql://••••neon.tech", revealValue: "postgresql://demo@ep-demo.neon.tech/newsdb", scope: "both", status: "active", rotatedAt: "৪৫ দিন আগে", note: "সার্ভারলেস PG" },
+      { id: 4, label: "Turso ডাটাবেস URL", service: "database", envName: "TURSO_DATABASE_URL", maskedValue: "libsql://••••turso.io", revealValue: "libsql://hoichoi-demo.turso.io", scope: "both", status: "active", rotatedAt: "৪৫ দিন আগে", note: "libSQL · এজ-রিপ্লিকেটেড" },
       { id: 5, label: "ভল্ট মাস্টার কী", service: "vault", envName: "VAULT_MASTER_KEY", maskedValue: "•••••••• (শুধু env)", revealValue: "DEMO-MASTER-32B-F8A1C4E7", scope: "both", status: "active", rotatedAt: "৯০ দিন আগে", note: "AES-256" }
     ],
     sources: [

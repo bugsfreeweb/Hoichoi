@@ -15,16 +15,17 @@
 1. **GitHub-এ রিপো পুশ করুন** — এই ফোল্ডারটিই রিপো; `main` ব্রাঞ্চ।
 2. **[vercel.com](https://vercel.com) → Add New → Project → GitHub রিপো ইমপোর্ট** — Next.js অটো-ডিটেক্ট হবে (build: `next build`)।
 3. **Environment Variables সেট করুন** (Project → Settings → Environment Variables) — `.env.example` দেখুন:
-   - `DB_DRIVER=turso`
-   - `TURSO_DATABASE_URL=libsql://…turso.io` এবং `TURSO_AUTH_TOKEN=…`
+   - `TURSO_DATABASE_URL=libsql://…turso.io` এবং `TURSO_AUTH_TOKEN=…` ← **প্রধান ডাটাবেস**
    - `SETUP_KEY=<র্যান্ডম>` এবং `CRON_SECRET=<র্যান্ডম>`
-4. **ডিপ্লয়** — এরপর প্রথমবার **এক-ক্লিক সেটআপ** চালান:
+   - *(`DB_DRIVER` দেওয়ার দরকার নেই — Turso কী থাকলেই অ্যাপ অটো Turso মোডে চলে)*
+
+   **ডিপ্লয়** — এরপর প্রথমবার **এক-ক্লিক সেটআপ** চালান:
    ```
    curl -H "x-setup-key: <SETUP_KEY>" https://<আপনার-ডোমেইন>/api/setup
    ```
    ✅ টেবিল তৈরি + ডেমো কনটেন্ট সিড হয়ে যাবে (তালিকা: `/api/option-a`-তে দেখুন)।
 5. **Vercel Cron** (`vercel.json`) ইতিমধ্যে আছে — `0 */2 * * *`-এ `/api/cron/collect` চলে, একই সাথে GitHub-এ প্রতিটি পুশে অটো-ডিপ্লয়।
-6. **স্যান্ডবক্স/লোকে** — `DATABASE_URL` দিলে Postgres মোড (ডিফল্ট); Turso চাইলে `DB_DRIVER=turso` + Turso কী।
+6. **লোকাল ডেভ (ঐচ্ছিক)** — প্রোডাকশন সবসময় Turso। Turso কী ছাড়া শুধু লোকাল Postgres-এ চালাতে চাইলে `DB_DRIVER=postgres` + `DATABASE_URL` দিন।
 
 > **জরুরি:** DB-এর সংযোগ-স্ট্রিং মিসিং হলেও সাইট **কখনো ক্র্যাশ করে না** —
 > এপ স্টার্ট হয় "ডেমো ফেলব্যাক" মোডে (পেজ রেন্ডার হয়, প্রশ্ন খালি থাকে)।
@@ -32,15 +33,16 @@
 
 ---
 
-## ২) ডাটাবেস — Turso (বেছে নেওয়া) / Postgres (ব্যাকআপ)
+## ২) ডাটাবেস — Turso (প্রধান) · Postgres (লোকাল ফলব্যাক)
 
-| ড্রাইভার | স্কিমা | সেটআপ |
-|---|---|---|
-| **Turso (libSQL)** | `src/db/schema-turso.ts` | `drizzle.config.turso.json` → `npx drizzle-kit push --config=drizzle.config.turso.json` অথবা `/api/setup` |
-| **Postgres (Neon/লোকাল)** | `src/db/schema.ts` | `npx drizzle-kit push` + `psql … -f db/seed.sql` অথবা `/api/setup` |
+| ড্রাইভার | ভূমিকা | স্কিমা | সেটআপ |
+|---|---|---|---|
+| **Turso (libSQL)** | **প্রোডাকশন · ডিফল্ট** | `src/db/schema-turso.ts` | `drizzle-kit push --config=drizzle.config.turso.json` অথবা `/api/setup` |
+| **Postgres** | শুধু লোকাল ডেভ ফলব্যাক | `src/db/schema.ts` | `npx drizzle-kit push` + `psql … -f db/seed.sql` অথবা `/api/setup` |
 
 একই অ্যাপ কোড দুই ড্রাইভারেই চলে — `src/db/index.ts`-এর দ্বৈত-ড্রাইভার বুটস্ট্র্যাপ
-(`DB_DRIVER` env) এবং `/api/setup`-এর ডায়ালেক্ট-সচেতন SQL-এর জন্য।
+(Turso-অটো-ডিটেক্ট) এবং `/api/setup`-এর ডায়ালেক্ট-সচেতন SQL-এর জন্য।
+প্রোডাকশনে শুধু Turso কী দিলেই চলে; Postgres ঐচ্ছিক।
 
 ---
 
@@ -58,9 +60,15 @@
 
 ```bash
 npm install
-# Postgres মোড (স্যান্ডবক্স ডিফল্ট)
-npx drizzle-kit push
-psql postgresql://postgres:postgres@127.0.0.1:5432/app_db -f db/seed.sql
+
+# প্রোডাকশন-সদৃশ (Turso):
+#   .env-এ TURSO_DATABASE_URL + TURSO_AUTH_TOKEN দিন, তারপর:
+#   curl -H "x-setup-key: <SETUP_KEY>" http://localhost:3000/api/setup
+
+# অথবা লোকাল Postgres ফলব্যাক:
+#   DB_DRIVER=postgres npx drizzle-kit push
+#   psql postgresql://postgres:postgres@127.0.0.1:5432/app_db -f db/seed.sql
+
 npm run dev
 ```
 

@@ -98,33 +98,5 @@ export const comments = sqliteTable("comments", {
   author: text("author").notNull(),
   body: text("body").notNull(),
   likes: integer("likes").notNull().default(0),
-  status: text("status", { enum: ["approved", "pending", "blocked"] })
-    .notNull()
-    .default("approved"),
-  ip: text("ip").notNull().default(""),
-  flagged: text("flagged").notNull().default(""),
-  autoModerated: integer("auto_moderated", { mode: "boolean" })
-    .notNull()
-    .default(false),
-  createdAt: ts("created_at").notNull().$defaultFn(() => new Date()),
-});
-
-export const ipBans = sqliteTable("ip_bans", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  ip: text("ip").notNull(),
-  scope: text("scope", { enum: ["7d", "30d", "permanent"] })
-    .notNull()
-    .default("7d"),
-  reason: text("reason").notNull().default(""),
-  strikes: integer("strikes").notNull().default(1),
-  auto: integer("auto", { mode: "boolean" }).notNull().default(true),
-  createdAt: ts("created_at").notNull().$defaultFn(() => new Date()),
-  expiresAt: ts("expires_at"),
-});
-
-export const bannedWords = sqliteTable("banned_words", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  word: text("word").notNull().unique(),
-  severity: integer("severity").notNull().default(1),
   createdAt: ts("created_at").notNull().$defaultFn(() => new Date()),
 });

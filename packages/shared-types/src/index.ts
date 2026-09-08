@@ -250,5 +250,6 @@ export interface StatsSnapshot {
   lastRunStatus: "success" | "failed" | "never";
   published: number;
   pendingReview: number;
+  avgRunDurationSec: number;
   byCategory: Record<CategorySlug, number>;
 }

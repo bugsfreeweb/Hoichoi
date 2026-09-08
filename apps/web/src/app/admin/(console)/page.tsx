@@ -6,15 +6,30 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
   const stats = await statsSnapshot();
+
+  const avgSec = stats.avgRunDurationSec;
+  const durText =
+    avgSec > 0
+      ? `${Math.floor(avgSec / 60).toLocaleString("bn")} মি ${(avgSec % 60).toLocaleString("bn", { minimumIntegerDigits: 2 })} সে`
+      : "—";
+
   return (
     <div>
-      <PageHeading emoji="📊" kicker="LIVE OVERVIEW" title="ড্যাশবোর্ড" />
+      <PageHeading emoji="✳️" kicker="LIVE OVERVIEW" title="ড্যাশবোর্ড" />
       <div className="mt-6 grid gap-4 md:grid-cols-4">
-        <StatTile label="আজ সংগ্রহ" value={stats.collectedToday} accent="cat-teal" />
+        <StatTile label="আজ সংগৃহীত" value={stats.collectedToday} accent="cat-teal" />
+        <StatTile label="প্রকাশিত (লাইভ)" value={stats.published} accent="cat-blue" />
         <StatTile label="ডুপ্লিকেট ব্লকড" value={stats.duplicatesBlocked} accent="alizarin" />
-        <StatTile label="লাইভ পোস্ট" value={stats.published} accent="cat-blue" />
-        <StatTile label="পেন্ডিং রিভিউ" value={stats.pendingReview} accent="amberx" />
+        <StatTile label="গড় রান সময়" valueText={durText} accent="amberx" />
       </div>
+
+      <a
+        href="/admin/moderation"
+        className="mt-4 inline-flex items-center gap-2 rounded-lg border border-amberx/40 bg-amberx/10 px-3.5 py-2 text-[12.5px] font-semibold text-ink transition-colors hover:bg-amberx/20"
+      >
+        <span className={stats.pendingReview > 0 ? "h-2 w-2 rounded-full bg-alizarin" : "h-2 w-2 rounded-full bg-cat-teal"} />
+        পেন্ডিং রিভিউ: {stats.pendingReview.toLocaleString("bn")} — মডারেশন কিউ দেখুন →
+      </a>
 
       <div className="mt-8">
         <SectionTitle>লাইভ নিউজডেস্ক মিটার</SectionTitle>

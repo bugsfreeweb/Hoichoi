@@ -1,7 +1,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { applyMigration, getClient, databaseUrl } from "../src/client";
+import { applyMigration, getClient, databaseUrl, nowIso } from "../src/client";
+import { seedDefaults } from "../src/seed";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const migrationsDir = path.join(here, "..", "migrations");
@@ -28,6 +29,8 @@ async function main() {
   }
   const res = await client.execute("SELECT count(*) AS n FROM _migrations");
   console.log(`hoichoi:db · ${res.rows[0]?.n} migrations recorded`);
+  const seeded = await seedDefaults(client, nowIso());
+  console.log(seeded ? "hoichoi:db · seed applied" : "hoichoi:db · already seeded");
   await client.close();
 }
 

@@ -26,14 +26,6 @@ export const sourceStatus = pgEnum("source_status", [
 
 export const logLevel = pgEnum("log_level", ["info", "ok", "warn", "err"]);
 
-export const commentStatus = pgEnum("comment_status", [
-  "approved",
-  "pending",
-  "blocked",
-]);
-
-export const banScope = pgEnum("ban_scope", ["7d", "30d", "permanent"]);
-
 /**
  * Articles collected from monitored Facebook sources, screenshot-archived,
  * de-duplicated by hash, then rewritten into publish-ready Bangla stories.
@@ -124,35 +116,6 @@ export const comments = pgTable("comments", {
   author: text("author").notNull(),
   body: text("body").notNull(),
   likes: integer("likes").notNull().default(0),
-  // moderation
-  status: commentStatus("status").notNull().default("approved"),
-  ip: text("ip").notNull().default(""),
-  flagged: text("flagged").notNull().default(""), // matched banned words, comma-joined
-  autoModerated: boolean("auto_moderated").notNull().default(false),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
-
-/** Auto/manual IP bans issued by the moderation engine. */
-export const ipBans = pgTable("ip_bans", {
-  id: serial("id").primaryKey(),
-  ip: text("ip").notNull(),
-  scope: banScope("scope").notNull().default("7d"),
-  reason: text("reason").notNull().default(""),
-  strikes: integer("strikes").notNull().default(1),
-  auto: boolean("auto").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  expiresAt: timestamp("expires_at", { withTimezone: true }), // null = permanent
-});
-
-/** Moderation dictionary — offensive terms that trigger auto-block. */
-export const bannedWords = pgTable("banned_words", {
-  id: serial("id").primaryKey(),
-  word: text("word").notNull().unique(),
-  severity: integer("severity").notNull().default(1), // 1 soft .. 3 hard
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

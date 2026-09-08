@@ -22,43 +22,20 @@ import {
   Zap,
   CircleDot,
   AppWindow,
-  ShieldAlert,
 } from "lucide-react";
 import Countdown from "@/components/countdown";
 import QueueTable from "@/components/admin/queue-table";
 import KeyVault from "@/components/admin/key-vault";
-import ModerationPanel from "@/components/admin/moderation-panel";
-import {
-  getArticles,
-  getRuns,
-  getKeys,
-  getAllComments,
-  getIpBans,
-  getBannedWords,
-  commentLite,
-  ipBanLite,
-  bannedWordLite,
-  lite,
-  toBn,
-  bnTime,
-  bnDate,
-} from "@/lib/data";
+import { getArticles, getRuns, getKeys, lite, toBn, bnTime, bnDate } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
-  const [articles, runs, keys, allComments, ipBanRows, bannedWordRows] =
-    await Promise.all([
-      getArticles(),
-      getRuns(),
-      getKeys(),
-      getAllComments(),
-      getIpBans(),
-      getBannedWords(),
-    ]);
-
-  const pendingComments = allComments.filter((c) => c.status === "pending").length;
-  const blockedComments = allComments.filter((c) => c.status === "blocked").length;
+  const [articles, runs, keys] = await Promise.all([
+    getArticles(),
+    getRuns(),
+    getKeys(),
+  ]);
 
   const lastRun = runs[0] ?? null;
   const published = articles.filter((a) => a.status === "published").length;
@@ -100,23 +77,22 @@ export default async function AdminPage() {
       bar: "bg-amberx",
     },
     {
-      label: "কমেন্ট মডারেশন",
-      value: `${toBn(pendingComments)} / ${toBn(blockedComments)}`,
-      sub: "অপেক্ষমাণ / ব্লকড",
-      icon: ShieldAlert,
+      label: "গড় রান সময়",
+      value: durText,
+      sub: "কালেক্ট → কমিট → ডিপ্লয়",
+      icon: Timer,
       accent: "text-rose-300",
       bar: "bg-rose-400",
     },
   ];
 
   const NAV = [
-    { icon: LayoutDashboard, label: "ড্যাশবোর্ড", active: true, badge: 0 },
-    { icon: ListOrdered, label: "কনটেন্ট সারি", active: false, badge: 0 },
-    { icon: ShieldAlert, label: "মডারেশন", active: false, badge: pendingComments, href: "#moderation" },
-    { icon: KeyRound, label: "API ভল্ট", active: false, badge: 0 },
-    { icon: CalendarClock, label: "অটোমেশন", active: false, badge: 0 },
-    { icon: ScrollText, label: "রান লগ", active: false, badge: 0 },
-    { icon: Settings, label: "সেটিংস", active: false, badge: 0 },
+    { icon: LayoutDashboard, label: "ড্যাশবোর্ড", active: true },
+    { icon: ListOrdered, label: "কনটেন্ট সারি", active: false },
+    { icon: KeyRound, label: "API ভল্ট", active: false },
+    { icon: CalendarClock, label: "অটোমেশন", active: false },
+    { icon: ScrollText, label: "রান লগ", active: false },
+    { icon: Settings, label: "সেটিংস", active: false },
   ];
 
   return (
@@ -139,35 +115,22 @@ export default async function AdminPage() {
           </div>
 
           <nav className="mt-4 space-y-1">
-            {NAV.map((n) => {
-              const inner = (
-                <>
-                  <n.icon size={14} strokeWidth={2} />
-                  {n.label}
-                  {n.badge > 0 ? (
-                    <span className="ml-auto rounded-full bg-amberx px-1.5 py-0.5 font-mono-x text-[9px] font-bold text-night">
-                      {toBn(n.badge)}
-                    </span>
-                  ) : n.active ? (
-                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-alizarin" />
-                  ) : null}
-                </>
-              );
-              const cls = `flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[12.5px] font-medium transition-all duration-300 ${
-                n.active
-                  ? "bg-white text-night"
-                  : "text-white/55 hover:bg-white/8 hover:text-white"
-              }`;
-              return n.href ? (
-                <a key={n.label} href={n.href} className={cls}>
-                  {inner}
-                </a>
-              ) : (
-                <button key={n.label} className={cls}>
-                  {inner}
-                </button>
-              );
-            })}
+            {NAV.map((n) => (
+              <button
+                key={n.label}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[12.5px] font-medium transition-all duration-300 ${
+                  n.active
+                    ? "bg-white text-night"
+                    : "text-white/55 hover:bg-white/8 hover:text-white"
+                }`}
+              >
+                <n.icon size={14} strokeWidth={2} />
+                {n.label}
+                {n.active && (
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-alizarin" />
+                )}
+              </button>
+            ))}
           </nav>
 
           <Link
@@ -381,15 +344,6 @@ export default async function AdminPage() {
           {/* queue */}
           <div className="mt-4">
             <QueueTable rows={articles.map(lite)} />
-          </div>
-
-          {/* comment moderation */}
-          <div id="moderation" className="mt-4 scroll-mt-16">
-            <ModerationPanel
-              comments={allComments.map(commentLite)}
-              bans={ipBanRows.map(ipBanLite)}
-              words={bannedWordRows.map(bannedWordLite)}
-            />
           </div>
 
           {/* vault */}

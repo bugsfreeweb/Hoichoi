@@ -8,16 +8,15 @@ import {
   SEED_LOGS,
   SEED_COMMENTS,
 } from "@/lib/seed-data";
-import { SEED_BANNED_WORDS } from "@/lib/moderation";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /**
  * GET /api/setup  (header: x-setup-key)
- * One-click bootstrap for ANY deployment (Vercel + Turso, Vercel + Neon,
- * local sandbox): creates all tables IF NOT EXISTS, then seeds demo data
- * when the tables are empty. Guarded by SETUP_KEY env var.
+ * One-click bootstrap for ANY deployment (Vercel + Turso [primary], or a
+ * local Postgres fallback): creates all tables IF NOT EXISTS, then seeds
+ * demo data when the tables are empty. Guarded by SETUP_KEY env var.
  */
 export async function GET(req: Request) {
   const setupKey = process.env.SETUP_KEY;
@@ -99,36 +98,9 @@ export async function GET(req: Request) {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           article_id INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
           author TEXT NOT NULL, body TEXT NOT NULL,
-          likes INTEGER NOT NULL DEFAULT 0,
-          status TEXT NOT NULL DEFAULT 'approved', ip TEXT NOT NULL DEFAULT '',
-          flagged TEXT NOT NULL DEFAULT '', auto_moderated INTEGER NOT NULL DEFAULT 0,
-          created_at INTEGER NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS ip_bans (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          ip TEXT NOT NULL, scope TEXT NOT NULL DEFAULT '7d',
-          reason TEXT NOT NULL DEFAULT '', strikes INTEGER NOT NULL DEFAULT 1,
-          auto INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL, expires_at INTEGER
-        );
-        CREATE TABLE IF NOT EXISTS banned_words (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          word TEXT NOT NULL UNIQUE, severity INTEGER NOT NULL DEFAULT 1,
-          created_at INTEGER NOT NULL
+          likes INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL
         );
       `);
-      // upgrade older comments tables (ignore if columns already exist)
-      for (const col of [
-        "ALTER TABLE comments ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'",
-        "ALTER TABLE comments ADD COLUMN ip TEXT NOT NULL DEFAULT ''",
-        "ALTER TABLE comments ADD COLUMN flagged TEXT NOT NULL DEFAULT ''",
-        "ALTER TABLE comments ADD COLUMN auto_moderated INTEGER NOT NULL DEFAULT 0",
-      ]) {
-        try {
-          await raw(col + ";");
-        } catch {
-          /* column exists */
-        }
-      }
     } else {
       await runAll(`
         DO $$ BEGIN
@@ -185,40 +157,13 @@ export async function GET(req: Request) {
           ts TIMESTAMPTZ NOT NULL DEFAULT NOW(), level log_level NOT NULL DEFAULT 'info',
           stage TEXT NOT NULL, message TEXT NOT NULL
         );
-        DO $$ BEGIN
-          CREATE TYPE comment_status AS ENUM ('approved','pending','blocked');
-        EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-        DO $$ BEGIN
-          CREATE TYPE ban_scope AS ENUM ('7d','30d','permanent');
-        EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
         CREATE TABLE IF NOT EXISTS comments (
           id SERIAL PRIMARY KEY,
           article_id INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
           author TEXT NOT NULL, body TEXT NOT NULL,
-          likes INTEGER NOT NULL DEFAULT 0,
-          status comment_status NOT NULL DEFAULT 'approved', ip TEXT NOT NULL DEFAULT '',
-          flagged TEXT NOT NULL DEFAULT '', auto_moderated BOOLEAN NOT NULL DEFAULT FALSE,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          likes INTEGER NOT NULL DEFAULT 0, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
-        ALTER TABLE comments ADD COLUMN IF NOT EXISTS status comment_status NOT NULL DEFAULT 'approved';
-        ALTER TABLE comments ADD COLUMN IF NOT EXISTS ip TEXT NOT NULL DEFAULT '';
-        ALTER TABLE comments ADD COLUMN IF NOT EXISTS flagged TEXT NOT NULL DEFAULT '';
-        ALTER TABLE comments ADD COLUMN IF NOT EXISTS auto_moderated BOOLEAN NOT NULL DEFAULT FALSE;
         CREATE INDEX IF NOT EXISTS idx_comments_article ON comments(article_id);
-
-        CREATE TABLE IF NOT EXISTS ip_bans (
-          id SERIAL PRIMARY KEY,
-          ip TEXT NOT NULL, scope ban_scope NOT NULL DEFAULT '7d',
-          reason TEXT NOT NULL DEFAULT '', strikes INTEGER NOT NULL DEFAULT 1,
-          auto BOOLEAN NOT NULL DEFAULT TRUE,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), expires_at TIMESTAMPTZ
-        );
-        CREATE TABLE IF NOT EXISTS banned_words (
-          id SERIAL PRIMARY KEY,
-          word TEXT NOT NULL UNIQUE, severity INTEGER NOT NULL DEFAULT 1,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        );
       `);
     }
 
@@ -277,30 +222,10 @@ export async function GET(req: Request) {
 
       const cmtVals = SEED_COMMENTS.map(
         (c) =>
-          `(${c[0]}, ${s(c[1])}, ${s(c[2])}, ${c[3]}, ${s("approved")}, ${s("")}, ${s("")}, ${DB_DRIVER === "turso" ? 0 : "FALSE"}, ${ts(c[4])})`,
+          `(${c[0]}, ${s(c[1])}, ${s(c[2])}, ${c[3]}, ${ts(c[4])})`,
       ).join(",");
       await raw(
-        `INSERT INTO comments (article_id, author, body, likes, status, ip, flagged, auto_moderated, created_at) VALUES ${cmtVals};`,
-      );
-
-      // one held (pending) + one auto-blocked demo comment for the panel
-      await raw(
-        `INSERT INTO comments (article_id, author, body, likes, status, ip, flagged, auto_moderated, created_at) VALUES ` +
-          `(1, ${s("অজ্ঞাত ব্যবহারকারী")}, ${s("এই খবরটা কি আসলেই সত্য? সন্দেহ হচ্ছে, বাটপার মনে হয়।")}, 0, ${s("pending")}, ${s("103.24.10.5")}, ${s("বাটপার")}, ${DB_DRIVER === "turso" ? 1 : "TRUE"}, ${ts("-18 minutes")}),` +
-          `(2, ${s("স্প্যামার")}, ${s("[স্বয়ংক্রিয়ভাবে অপসারিত — আপত্তিকর ভাষা]")}, 0, ${s("blocked")}, ${s("45.88.200.14")}, ${s("গালি, শালা")}, ${DB_DRIVER === "turso" ? 1 : "TRUE"}, ${ts("-52 minutes")});`,
-      );
-
-      const wordVals = SEED_BANNED_WORDS.map(
-        (w) => `(${s(w.word)}, ${w.severity}, ${ts("-3 days")})`,
-      ).join(",");
-      await raw(
-        `INSERT INTO banned_words (word, severity, created_at) VALUES ${wordVals};`,
-      );
-
-      // one active auto-ban demo (the blocked spammer above)
-      await raw(
-        `INSERT INTO ip_bans (ip, scope, reason, strikes, auto, created_at, expires_at) VALUES ` +
-          `(${s("45.88.200.14")}, ${s("7d")}, ${s("আপত্তিকর শব্দ: গালি, শালা")}, 1, ${DB_DRIVER === "turso" ? 1 : "TRUE"}, ${ts("-52 minutes")}, ${ts("+7 days")});`,
+        `INSERT INTO comments (article_id, author, body, likes, created_at) VALUES ${cmtVals};`,
       );
 
       seeded = true;

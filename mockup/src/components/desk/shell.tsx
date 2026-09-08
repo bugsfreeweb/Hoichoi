@@ -45,7 +45,7 @@ export default function DeskShell({
   keys,
   sources,
   logs,
-  dbDriver = "NEON",
+  dbDriver = "TURSO",
 }: {
   articles: ArticleLite[];
   runs: RunLite[];

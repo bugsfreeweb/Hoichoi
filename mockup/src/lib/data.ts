@@ -6,10 +6,8 @@ import {
   sources,
   collectorLogs,
   comments,
-  ipBans,
-  bannedWords,
 } from "@/db/schema";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 
 export * from "./format";
 
@@ -19,8 +17,6 @@ export type Run = typeof pipelineRuns.$inferSelect;
 export type Source = typeof sources.$inferSelect;
 export type CollectorLog = typeof collectorLogs.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
-export type IpBan = typeof ipBans.$inferSelect;
-export type BannedWord = typeof bannedWords.$inferSelect;
 
 export type ArticleLite = Omit<Article, "collectedAt" | "publishedAt"> & {
   collectedAt: string;
@@ -63,26 +59,6 @@ export type CommentLite = Omit<Comment, "createdAt"> & { createdAt: string };
 export const commentLite = (c: Comment): CommentLite => ({
   ...c,
   createdAt: c.createdAt.toISOString(),
-});
-
-export type IpBanLite = Omit<IpBan, "createdAt" | "expiresAt"> & {
-  createdAt: string;
-  expiresAt: string | null;
-};
-
-export const ipBanLite = (b: IpBan): IpBanLite => ({
-  ...b,
-  createdAt: b.createdAt.toISOString(),
-  expiresAt: b.expiresAt ? b.expiresAt.toISOString() : null,
-});
-
-export type BannedWordLite = Omit<BannedWord, "createdAt"> & {
-  createdAt: string;
-};
-
-export const bannedWordLite = (w: BannedWord): BannedWordLite => ({
-  ...w,
-  createdAt: w.createdAt.toISOString(),
 });
 
 export async function getArticles(): Promise<Article[]> {
@@ -158,44 +134,14 @@ export async function getLogs(): Promise<CollectorLog[]> {
   }
 }
 
-/** Public view — only approved comments are shown to readers. */
 export async function getComments(articleId: number): Promise<Comment[]> {
   try {
     return await db
       .select()
       .from(comments)
-      .where(and(eq(comments.articleId, articleId), eq(comments.status, "approved")))
+      .where(eq(comments.articleId, articleId))
       .orderBy(desc(comments.createdAt))
       .limit(200);
-  } catch {
-    return [];
-  }
-}
-
-/** Admin view — every comment regardless of status, newest first. */
-export async function getAllComments(): Promise<Comment[]> {
-  try {
-    return await db
-      .select()
-      .from(comments)
-      .orderBy(desc(comments.createdAt))
-      .limit(500);
-  } catch {
-    return [];
-  }
-}
-
-export async function getIpBans(): Promise<IpBan[]> {
-  try {
-    return await db.select().from(ipBans).orderBy(desc(ipBans.createdAt)).limit(200);
-  } catch {
-    return [];
-  }
-}
-
-export async function getBannedWords(): Promise<BannedWord[]> {
-  try {
-    return await db.select().from(bannedWords).orderBy(desc(bannedWords.severity));
   } catch {
     return [];
   }

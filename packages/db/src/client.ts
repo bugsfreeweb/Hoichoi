@@ -2,6 +2,7 @@ import { createClient, type Client, type Config } from "@libsql/client";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
+import { seedDefaults } from "./seed";
 
 let cached: Client | null = null;
 let cachedUrl: string | null = null;
@@ -89,7 +90,7 @@ export async function applyMigration(
   return true;
 }
 
-/** Ensure an in-memory demo DB exists when used without a real database. */
+/** Ensure schema exists, then seed base config on a fresh database. */
 export async function ensureSchema(client: Client): Promise<void> {
   // Desktop runtime: migrations live next to the bundled console (env override).
   const override = process.env.HOICHOI_MIGRATIONS_DIR;
@@ -102,4 +103,5 @@ export async function ensureSchema(client: Client): Promise<void> {
   }
   const sqlText = fs.readFileSync(path.join(dir, "001_init.sql"), "utf-8");
   await applyMigration(client, "001_init", sqlText);
+  await seedDefaults(client, nowIso());
 }
