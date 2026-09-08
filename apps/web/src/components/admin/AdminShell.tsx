@@ -10,6 +10,7 @@ const NAV: Array<{ href: string; emoji: string; label: string }> = [
   { href: "/admin/submissions", emoji: "📥", label: "সাবমিশন" },
   { href: "/admin/removals", emoji: "⚠️", label: "রিমুভাল রিকোয়েস্ট" },
   { href: "/admin/archive", emoji: "📁", label: "আর্কাইভ" },
+  { href: "/admin/backup", emoji: "💾", label: "ব্যাকআপ ও রিসেট" },
   { href: "/admin/logs", emoji: "📜", label: "লগ" },
   { href: "/admin/settings", emoji: "⚙️", label: "সেটিংস" },
 ];

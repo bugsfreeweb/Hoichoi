@@ -4,10 +4,18 @@ import {
   storeCredential,
   removeCredential,
   getRunEnv,
+  getEnvFromVault,
   isCloudSync,
   type CredentialName,
 } from "../lib/vault";
-import { settingsGet, settingsSet } from "../lib/tauri";
+import {
+  settingsGet,
+  settingsSet,
+  backupExport,
+  backupImport,
+  resetDb,
+  syncDb,
+} from "../lib/tauri";
 import { pushGithubSecret } from "../lib/github";
 
 const FIELDS: Array<{ name: CredentialName; label: string; secret: boolean }> = [
@@ -39,6 +47,10 @@ export default function Settings({ refresh }: { refresh: () => Promise<void> }) 
   const [cloud, setCloud] = useState<boolean | null>(null);
   const [brandMsg, setBrandMsg] = useState<string | null>(null);
   const [brandErr, setBrandErr] = useState<string | null>(null);
+
+  const [bkPass, setBkPass] = useState("");
+  const [bkMsg, setBkMsg] = useState<string | null>(null);
+  const [bkErr, setBkErr] = useState<string | null>(null);
 
   const show = (m: string) => {
     setMsg(m);
@@ -108,6 +120,76 @@ export default function Settings({ refresh }: { refresh: () => Promise<void> }) 
       setBrandErr(null);
     } catch (e) {
       setBrandErr(String(e));
+    }
+  };
+
+  const needBkPass = (): string | null => {
+    if (bkPass.trim().length < 4) return "ব্যাকআপ passphrase দিতে হবে (কমপক্ষে ৪ অক্ষর)";
+    return null;
+  };
+
+  const doExport = async () => {
+    const missing = needBkPass();
+    if (missing) {
+      setBkMsg(null);
+      setBkErr(missing);
+      return;
+    }
+    try {
+      setBkMsg(null);
+      setBkErr(null);
+      const path = await backupExport(bkPass, await getEnvFromVault());
+      setBkMsg(`ব্যাকআপ লেখা হয়েছে:\n${path}`);
+    } catch (e) {
+      setBkErr(String(e));
+    }
+  };
+
+  const doImport = async () => {
+    const missing = needBkPass();
+    if (missing) {
+      setBkMsg(null);
+      setBkErr(missing);
+      return;
+    }
+    try {
+      setBkMsg(null);
+      setBkErr(null);
+      await backupImport(bkPass, await getEnvFromVault());
+      setBkMsg("ব্যাকআপ পুনরুদ্ধার হয়েছে — content ও settings এখন backup-এর মতো।");
+      await refresh();
+    } catch (e) {
+      setBkErr(String(e));
+    }
+  };
+
+  const doReset = async () => {
+    const missing = needBkPass();
+    if (missing) {
+      setBkMsg(null);
+      setBkErr(missing);
+      return;
+    }
+    if (!window.confirm("সব কন্টেন্ট মুছে যাবে এবং settings/config default-এ ফিরবে (admin রাখা হবে)। নিশ্চিত?")) return;
+    try {
+      setBkMsg(null);
+      setBkErr(null);
+      await resetDb(await getRunEnv());
+      setBkMsg("রিসেট সম্পন্ন — content wiped, settings default-এ।");
+      await refresh();
+    } catch (e) {
+      setBkErr(String(e));
+    }
+  };
+
+  const doSync = async (dir: "push" | "pull") => {
+    try {
+      setBkMsg(null);
+      setBkErr(null);
+      const res = await syncDb(dir, await getRunEnv());
+      setBkMsg(res.length > 400 ? res.slice(0, 400) : res);
+    } catch (e) {
+      setBkErr(String(e));
     }
   };
 
@@ -187,6 +269,44 @@ export default function Settings({ refresh }: { refresh: () => Promise<void> }) 
         </div>
         {brandMsg && <p className="mt-2 text-[11.5px] font-bold text-ink">✓ {brandMsg}</p>}
         {brandErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {brandErr}</p>}
+      </div>
+
+      <div className="panel mt-5">
+        <p className="panel-title">ব্যাকআপ, রিসেট ও সিঙ্ক</p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <input
+            type="password"
+            className="field min-w-56 flex-1"
+            placeholder="backup passphrase (encryption key)"
+            value={bkPass}
+            onChange={(e) => setBkPass(e.target.value)}
+          />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button className="btn" onClick={() => void doExport()}>
+            ⬇ Export backup
+          </button>
+          <button className="btn-ghost" onClick={() => void doImport()}>
+            ⬆ Restore backup
+          </button>
+          <button className="btn-ghost" onClick={() => void doReset()}>
+            ⟲ Reset content
+          </button>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button className="btn" onClick={() => void doSync("push")}>
+            ☁ Push local → cloud
+          </button>
+          <button className="btn-ghost" onClick={() => void doSync("pull")}>
+            ⬇ Pull cloud → local
+          </button>
+        </div>
+        <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+          ব্যাকআপ ফাইল AES-256-GCM দিয়ে এনক্রিপ্ট হয়; passphrase কখনো ডিস্কে লেখা হয় না। Restore
+          আগের ডেটা REPLACE করে। Push = local file DB → shared Turso; Pull = cloud → local।
+        </p>
+        {bkMsg && <p className="mt-2 whitespace-pre-line text-[11.5px] font-bold text-ink">✓ {bkMsg}</p>}
+        {bkErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {bkErr}</p>}
       </div>
 
       <div className="mt-5 space-y-3">

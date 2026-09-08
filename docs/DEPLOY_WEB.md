@@ -74,6 +74,15 @@ pnpm --filter @hoichoi/web build
   (URL unchanged). Content lives in the shared Turso DB, so edits reflect on the
   public site immediately. Note: there is no comment system in the schema, so
   "comment" moderation is not applicable.
+- **Data control:** `/admin/backup` (admin) adds a content-level export/import
+  and a full reset. **Export** downloads a plain-JSON snapshot of all content
+  tables (posts, sources, settings, configs, logs — never credentials); HTTPS is
+  the transport encryption. **Restore** uploads such a JSON file and replaces
+  the live tables row-by-row. **Reset** wipes content/logs and re-seeds
+  settings/categories/providers/blocklist defaults while keeping the admin
+  user. The desktop app offers the same operations plus credential-bearing,
+  passphrase-encrypted backups and one-click local↔Turso sync (see
+  `docs/DESKTOP.md`).
 - **Centralized branding:** the `settings` row (Turso) now carries the site
   identity — `site_name`, `slogan_bn`, `tagline`, `logo_url`, `favicon_url`,
   `accent_color` — edited from the web admin settings screen **or** the desktop

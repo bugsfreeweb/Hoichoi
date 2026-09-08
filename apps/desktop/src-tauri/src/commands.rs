@@ -270,3 +270,134 @@ pub async fn settings_set(
     run_runner(&app, &strs, &env)?;
     Ok(())
 }
+
+/// App data dir (used for local file DB + encrypted backups).
+fn data_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map_err(|e| format!("app_data_dir failed: {e}"))
+}
+
+/// Encrypted full backup → `<app_data>/hoichoi-backup-<timestamp>.json`.
+#[tauri::command]
+pub async fn backup_export(
+    app: AppHandle,
+    pass: String,
+    env: Option<HashMap<String, String>>,
+) -> Result<String, String> {
+    let mut env = env.unwrap_or_default();
+    env.insert("HOICHOI_BACKUP_PASS".to_string(), pass);
+    let stdout = run_runner(&app, &["backup", "export"], &env)?;
+    let trimmed = stdout.trim();
+    if !trimmed.starts_with("{") {
+        return Err(format!("unexpected runner output: {trimmed}"));
+    }
+    let value: serde_json::Value =
+        serde_json::from_str(trimmed).map_err(|e| format!("bad runner JSON: {e}"))?;
+    let payload = value
+        .get("payload")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "backup export returned no payload".to_string())?;
+    let key = format!("hoichoi-backup-{}.json", now_stamp());
+    let path = data_dir(&app)?.join(&key);
+    std::fs::write(
+        &path,
+        serde_json::to_string(&serde_json::json!({ "payload": payload }))
+            .map_err(|e| format!("encode failed: {e}"))?,
+    )
+    .map_err(|e| format!("write failed: {e}"))?;
+    Ok(path.display().to_string())
+}
+
+/// Restore from an encrypted backup file. `path` optional → latest backup.
+#[tauri::command]
+pub async fn backup_import(
+    app: AppHandle,
+    pass: String,
+    env: Option<HashMap<String, String>>,
+    path: Option<String>,
+) -> Result<(), String> {
+    let mut env = env.unwrap_or_default();
+    env.insert("HOICHOI_BACKUP_PASS".to_string(), pass);
+    let file = match path {
+        Some(p) if !p.trim().is_empty() => p,
+        _ => {
+            let dir = data_dir(&app)?;
+            let mut candidates: Vec<PathBuf> = std::fs::read_dir(&dir)
+                .map_err(|e| format!("list backups failed: {e}"))?
+                .filter_map(|ent| ent.ok())
+                .map(|ent| ent.path())
+                .filter(|p| {
+                    p.file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|n| n.starts_with("hoichoi-backup-") && n.ends_with(".json"))
+                        .unwrap_or(false)
+                })
+                .collect();
+            candidates.sort();
+            candidates
+                .pop()
+                .ok_or_else(|| "no backup file found — export first".to_string())?
+                .display()
+                .to_string()
+        }
+    };
+    let args = vec!["backup", "import"];
+    let mut args = args
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();
+    args.push(file);
+    let strs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+    run_runner(&app, &strs, &env)?;
+    Ok(())
+}
+
+/// Reset content to defaults (posts/actions wiped; admin + settings re-seeded).
+#[tauri::command]
+pub async fn reset_db(
+    app: AppHandle,
+    env: Option<HashMap<String, String>>,
+) -> Result<(), String> {
+    run_runner(&app, &["reset"], &env.unwrap_or_default())?;
+    Ok(())
+}
+
+/// One-click sync between the local file DB and the shared Turso cloud DB.
+#[tauri::command]
+pub async fn sync_db(
+    app: AppHandle,
+    direction: String,
+    env: Option<HashMap<String, String>>,
+) -> Result<String, String> {
+    if direction != "push" && direction != "pull" {
+        return Err("direction must be \"push\" or \"pull\"".to_string());
+    }
+    let config = env.unwrap_or_default();
+    let cloud = config
+        .get("TURSO_DATABASE_URL")
+        .cloned()
+        .ok_or_else(|| "no cloud DB configured — add Turso URL to the keychain".to_string())?;
+    if config.get("TURSO_AUTH_TOKEN").is_none() {
+        return Err("no Turso auth token configured in the keychain".to_string());
+    }
+    let local = format!("file:{}", data_dir(&app)?.join("hoichoi.db").display());
+    let args: Vec<&str> = if direction == "push" {
+        vec!["sync", "push", "--from", &local, "--to", &cloud]
+    } else {
+        vec!["sync", "pull", "--from", &cloud, "--to", &local]
+    };
+    let stdout = run_runner(&app, &args, &config)?;
+    Ok(format!(
+        "sync {direction} done — {}",
+        stdout.split_whitespace().collect::<String>()
+    ))
+}
+
+fn now_stamp() -> String {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    format!("{now}")
+}

@@ -34,3 +34,30 @@ export async function settingsSet(
 ): Promise<void> {
   await invoke("settings_set", { env, fields });
 }
+
+/** Encrypted full backup → returns the written backup file path. */
+export async function backupExport(pass: string, env: Record<string, string>): Promise<string> {
+  return await invoke<string>("backup_export", { pass, env });
+}
+
+/** Restore from a backup file path (omit path to use the latest backup). */
+export async function backupImport(
+  pass: string,
+  env: Record<string, string>,
+  path?: string,
+): Promise<void> {
+  await invoke("backup_import", { pass, env, path: path ?? null });
+}
+
+/** Wipe content + reset settings/config to defaults (admin account kept). */
+export async function resetDb(env: Record<string, string>): Promise<void> {
+  await invoke("reset_db", { env });
+}
+
+/** One-click local ↔ Turso sync; returns a short runner summary. */
+export async function syncDb(
+  direction: "push" | "pull",
+  env: Record<string, string>,
+): Promise<string> {
+  return await invoke<string>("sync_db", { direction, env });
+}

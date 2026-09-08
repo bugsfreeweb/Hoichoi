@@ -59,6 +59,34 @@ editing it once reflects immediately on web **and** desktop (no GitHub upload):
 - Backend commands: `settings_get` / `settings_set` (Rust) + `settingsGet` /
   `settingsSet` (`src/lib/tauri.ts`).
 
+## Encrypted backup, reset & one-click sync (desktop)
+
+The settings screen's *ব্যাকআপ, রিসেট ও সিঙ্ক* panel gives full data control
+through the bundled runner (new CLI subcommands: `backup export`,
+`backup import <file>`, `reset`, `sync <direction> --from <url> --to <url>`):
+
+- **Export backup** — AES-256-GCM (scrypt PBKDF2) encrypted snapshot of settings,
+  content, config **and keychain credentials** written to
+  `<app_data>/hoichoi-backup-<epoch>.json`. The passphrase is typed in the UI and
+  passed only via the `HOICHOI_BACKUP_PASS` env var (never argv/disk).
+- **Restore backup** — decrypts + replaces the current DB row-by-row (`INSERT OR
+  REPLACE`, parents first). Without a file it restores the most recent
+  `hoichoi-backup-*.json`. Passphrase required.
+- **Reset content** — wipes posts/actions/logs and resets settings + categories +
+  AI providers + blocklist to seed defaults; the admin account is kept.
+- **Push local → cloud / Pull cloud → local** — one-click table-level sync between
+  the local file DB (`<app_data>/hoichoi.db`) and the shared Turso cloud DB
+  (`TURSO_DATABASE_URL` from the keychain). Merges are `INSERT OR REPLACE` by
+  primary key; `admin_sessions` is never copied.
+- Backend commands: `backup_export` / `backup_import` / `reset_db` / `sync_db`
+  (Rust, `src-tauri/src/commands.rs`) + matching `backupExport` / `backupImport`
+  / `resetDb` / `syncDb` (`src/lib/tauri.ts`).
+- The web admin console has a parallel content-level export/import/reset page
+  (`/admin/backup`) that never includes credentials (see `docs/DEPLOY_WEB.md`).
+
+The runner **must** be rebuilt for these commands to exist in the bundled app:
+run `pnpm --filter @hoichoi/desktop bundle:runner` before `tauri build`.
+
 ## Building a standalone (bundled) desktop app
 
 Prerequisites (one-time, on your machine — this needs the desktop toolchain):

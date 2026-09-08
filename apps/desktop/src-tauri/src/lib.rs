@@ -13,6 +13,10 @@ pub fn run() {
             commands::repo_root,
             commands::settings_get,
             commands::settings_set,
+            commands::backup_export,
+            commands::backup_import,
+            commands::reset_db,
+            commands::sync_db,
         ])
         .run(tauri::generate_context!())
         .expect("error while running hoichoi desk");

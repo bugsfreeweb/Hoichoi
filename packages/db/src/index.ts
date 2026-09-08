@@ -6,6 +6,7 @@ export * from "./client";
 export * from "./rows";
 export * from "./archive";
 export * from "./media";
+export * from "./transfer";
 
 import type {
   CaseStatus,

@@ -1,7 +1,22 @@
 import { Command } from "commander";
+import { readFile } from "node:fs/promises";
 import { runPipeline, type PipelineOptions } from "./pipeline";
 import { runArchivePass } from "./archive";
-import { getClient, ensureSchema, getSettings, updateSettings } from "@hoichoi/db";
+import {
+  getClient,
+  ensureSchema,
+  getSettings,
+  updateSettings,
+  gatherExportBundle,
+  applyImportBundle,
+  encryptJson,
+  decryptJson,
+  resetContent,
+  makeSyncClients,
+  copyTables,
+  CONTENT_TABLES,
+  type ExportBundle,
+} from "@hoichoi/db";
 import type { SiteSettings } from "@hoichoi/shared-types";
 
 const program = new Command();
@@ -112,6 +127,80 @@ program
       }
       await updateSettings(fields);
       console.log(JSON.stringify({ ok: true, fields: Object.keys(fields) }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+function backupPass(): string {
+  const pass = process.env.HOICHOI_BACKUP_PASS;
+  if (!pass) throw new Error("HOICHOI_BACKUP_PASS not set");
+  return pass;
+}
+
+const backup = program.command("backup").description("AES-256 encrypted backup / restore");
+backup
+  .command("export")
+  .description("full backup (settings + content + credentials) as encrypted JSON to stdout")
+  .action(async () => {
+    try {
+      await ensureSchema(getClient());
+      const bundle = await gatherExportBundle(getClient());
+      const payload = encryptJson(bundle, backupPass());
+      console.log(JSON.stringify({ ok: true, payload }));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+backup
+  .command("import <file>")
+  .description('restore from an encrypted backup file — e.g. "backup import hb.json"')
+  .action(async (file: string) => {
+    try {
+      await ensureSchema(getClient());
+      const pass = backupPass();
+      const text = await readFile(file, "utf-8");
+      const parsed = JSON.parse(text) as { payload?: string };
+      const bundle = decryptJson(parsed.payload ?? text, pass) as ExportBundle;
+      const written = await applyImportBundle(getClient(), bundle);
+      console.log(JSON.stringify({ ok: true, written }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("reset")
+  .description("wipe content + reset settings/config to defaults (admin account kept)")
+  .action(async () => {
+    try {
+      await ensureSchema(getClient());
+      const { wiped } = await resetContent(getClient());
+      console.log(JSON.stringify({ ok: true, wiped }));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("sync <direction>")
+  .description("copy content between DBs: push = local file DB → Turso, pull = Turso → local file DB")
+  .requiredOption("--from <url>", "source URL (file: or libsql://)")
+  .requiredOption("--to <url>", "target URL (file: or libsql://)")
+  .action(async (direction: string, opts: { from: string; to: string }) => {
+    try {
+      if (direction !== "push" && direction !== "pull") {
+        throw new Error("direction must be push or pull");
+      }
+      const { from, to } = makeSyncClients(opts.from, opts.to);
+      await ensureSchema(to);
+      const written = await copyTables(from, to, CONTENT_TABLES);
+      console.log(JSON.stringify({ ok: true, direction, written }, null, 2));
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
