@@ -90,6 +90,30 @@ export async function applyMigration(
   return true;
 }
 
+/** Branding columns added in the centralized-settings pass; idempotent on existing DBs. */
+const BRANDING_COLUMNS: Array<[name: string, ddl: string]> = [
+  ["slogan_bn", "TEXT NOT NULL DEFAULT 'ভাইরাল বাংলা, সপ্তাহখানেক'"],
+  ["tagline", "TEXT NOT NULL DEFAULT 'ফেসবুকের হইচই — এখন বাংলায়, সাত দিন পর উবে যায়'"],
+  ["logo_url", "TEXT"],
+  ["favicon_url", "TEXT"],
+  ["accent_color", "TEXT NOT NULL DEFAULT '#d64541'"],
+];
+
+/**
+ * Upgrade helper: adds the branding columns to an already-existing `settings`
+ * table (SQLite auto-backfills rows with the column DEFAULTs). Safe on fresh
+ * databases where CREATE TABLE already includes them.
+ */
+export async function ensureBrandingColumns(client: Client): Promise<void> {
+  const info = await client.execute("PRAGMA table_info(settings)");
+  const existing = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));
+  for (const [name, ddl] of BRANDING_COLUMNS) {
+    if (!existing.has(name)) {
+      await client.execute(`ALTER TABLE settings ADD COLUMN ${name} ${ddl}`);
+    }
+  }
+}
+
 /** Ensure schema exists, then seed base config on a fresh database. */
 export async function ensureSchema(client: Client): Promise<void> {
   // Desktop runtime: migrations live next to the bundled console (env override).
@@ -103,5 +127,6 @@ export async function ensureSchema(client: Client): Promise<void> {
   }
   const sqlText = fs.readFileSync(path.join(dir, "001_init.sql"), "utf-8");
   await applyMigration(client, "001_init", sqlText);
+  await ensureBrandingColumns(client);
   await seedDefaults(client, nowIso());
 }

@@ -1,13 +1,15 @@
 import Link from "next/link";
+import type { SiteSettings } from "@hoichoi/shared-types";
 
-export function Footer() {
+export function Footer({ settings }: { settings: SiteSettings }) {
   return (
     <footer className="page-chrome border-t-2 border-ink">
       <div className="mx-auto max-w-site px-4 py-12 md:px-8">
         <div className="grid gap-10 md:grid-cols-12">
           <div className="md:col-span-5">
             <p className="font-serif-bn text-[34px] font-black leading-none">
-              হইচই<span className="text-alizarin">।</span>
+              {settings.site_name}
+              <span className="text-alizarin">।</span>
             </p>
             <p className="mt-3 max-w-xs text-[12.5px] leading-relaxed text-ink-soft">
               স্বয়ংক্রিয় সংবাদ কিউরেশন ডেস্ক — ডেস্কটপ কালেক্টর, পুনর্লিখন ইঞ্জিন, GitHub-ভিত্তিক প্রকাশনা ও Vercel ডিপ্লয়লাইনের পূর্ণ প্রবাহ এখানে দৃশ্যমান।
@@ -37,7 +39,7 @@ export function Footer() {
           </div>
         </div>
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-ink/15 pt-6 font-mono-x text-[10px] tracking-[0.16em] text-ink-soft uppercase">
-          <span>© 2026 HOICHOI DESK</span>
+          <span>© 2026 {settings.site_name} DESK</span>
           <span className="flex items-center gap-4">
             <Link href="/about">সম্পর্কে</Link>
             <Link href="/privacy">গোপনীয়তা</Link>

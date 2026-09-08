@@ -241,6 +241,16 @@ export interface SiteSettings {
   child_helpline: string;
   archive_visible_days: number;
   archive_retention_days: number;
+  /** Branding — the masthead slogan under the site name. */
+  slogan_bn: string;
+  /** Branding — the fine-print tagline under the slogan. */
+  tagline: string;
+  /** Branding — optional logo image URL (falls back to the site_name wordmark). */
+  logo_url: string | null;
+  /** Branding — favicon/icon URL used by the web app. */
+  favicon_url: string | null;
+  /** Branding — accent color (hex) for masthead/footer brand elements. */
+  accent_color: string;
 }
 
 export interface StatsSnapshot {

@@ -1,7 +1,8 @@
 import { Command } from "commander";
 import { runPipeline, type PipelineOptions } from "./pipeline";
 import { runArchivePass } from "./archive";
-import { getClient, ensureSchema } from "@hoichoi/db";
+import { getClient, ensureSchema, getSettings, updateSettings } from "@hoichoi/db";
+import type { SiteSettings } from "@hoichoi/shared-types";
 
 const program = new Command();
 
@@ -56,6 +57,61 @@ program
       const { purgeExpired } = await import("./archive");
       const report = await purgeExpired((m) => console.log(m));
       console.log(JSON.stringify(report, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("settings")
+  .description("print the current site settings (branding + cadence) as JSON")
+  .action(async () => {
+    try {
+      await ensureSchema(getClient());
+      console.log(JSON.stringify({ settings: await getSettings() }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+const SETTING_KEYS: Array<keyof SiteSettings> = [
+  "pipeline_hours",
+  "site_name",
+  "contact_email",
+  "police_helpline",
+  "child_helpline",
+  "archive_visible_days",
+  "archive_retention_days",
+  "slogan_bn",
+  "tagline",
+  "logo_url",
+  "favicon_url",
+  "accent_color",
+];
+
+program
+  .command("settings:set <assign...>")
+  .description('update site settings — e.g. settings:set "site_name=হইচই" "slogan_bn=..." "accent_color=#d64541"')
+  .action(async (assigns: string[]) => {
+    try {
+      await ensureSchema(getClient());
+      const fields: Partial<SiteSettings> = {};
+      for (const a of assigns) {
+        const eq = a.indexOf("=");
+        if (eq <= 0) throw new Error(`expected field=value, got: ${a}`);
+        const k = a.slice(0, eq) as keyof SiteSettings;
+        const v = a.slice(eq + 1);
+        if (!SETTING_KEYS.includes(k)) throw new Error(`unknown settings field: ${k}`);
+        if (k === "pipeline_hours" || k === "archive_visible_days" || k === "archive_retention_days") {
+          (fields as Record<string, number>)[k] = Number(v);
+        } else {
+          (fields as Record<string, string>)[k] = v;
+        }
+      }
+      await updateSettings(fields);
+      console.log(JSON.stringify({ ok: true, fields: Object.keys(fields) }, null, 2));
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;

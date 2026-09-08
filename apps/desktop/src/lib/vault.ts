@@ -16,22 +16,64 @@ export const CREDENTIAL_NAMES = [
   "OLLAMA_BASE_URL",
   "fb_session_cookie",
   "fb_cookie_expires",
+  "use_cloud",
 ] as const;
 
 export type CredentialName = (typeof CREDENTIAL_NAMES)[number];
 
-/** Fetch every stored credential into an env map (skips empties). */
+/** Vault key → actual env var name read by the runner. */
+const ENV_MAP: Partial<Record<CredentialName, string>> = {
+  turso_url: "TURSO_DATABASE_URL",
+  turso_token: "TURSO_AUTH_TOKEN",
+  fb_session_cookie: "FB_SESSION_COOKIE",
+};
+
+/** Vault keys that are NOT pipeline envs (GitHub mirroring / metadata only). */
+const SKIP_ENV: CredentialName[] = ["github_pat", "github_repo", "fb_cookie_expires", "use_cloud"];
+
+/** Cloud-sync mode lives in the vault; default on so desktop → web is shared. */
+export function cloudSyncDefault(): boolean {
+  return true;
+}
+
+/**
+ * Fetch every stored credential into a runner-ready env map (skips empties and
+ * non-env keys). The mapping fixes the old gap where `turso_url`/`turso_token`
+ * were stored but never read as `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN`.
+ */
 export async function getEnvFromVault(): Promise<Record<string, string>> {
   const out: Record<string, string> = {};
   for (const name of CREDENTIAL_NAMES) {
+    if (SKIP_ENV.includes(name)) continue;
     try {
       const v = await getCredential(name);
-      if (v) out[name] = v;
+      if (v) out[ENV_MAP[name] ?? name] = v;
     } catch {
       /* ignore vault errors per-key */
     }
   }
   return out;
+}
+
+/**
+ * Runner env honoring the cloud-sync toggle: when `use_cloud` is off the Turso
+ * credentials are stripped so the run targets the local file DB (manual resync
+ * mode). Defaults to cloud (toggle key absent → cloud).
+ */
+export async function getRunEnv(): Promise<Record<string, string>> {
+  const env = await getEnvFromVault();
+  const cloud = (await getCredential("use_cloud")) !== "0";
+  if (!cloud) {
+    delete env.TURSO_DATABASE_URL;
+    delete env.TURSO_AUTH_TOKEN;
+  }
+  return env;
+}
+
+/** True when the desktop writes to the shared cloud DB (Turso) on pipeline runs. */
+export async function isCloudSync(): Promise<boolean> {
+  const env = await getEnvFromVault();
+  return Boolean(env.TURSO_DATABASE_URL) && (await getCredential("use_cloud")) !== "0";
 }
 
 type Vault = { stronghold: Stronghold; client: Client; store: ReturnType<Client["getStore"]> };

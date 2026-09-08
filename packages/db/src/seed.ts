@@ -108,8 +108,10 @@ export async function seedDefaults(
   await client.execute({
     sql: `INSERT OR IGNORE INTO settings
       (id, pipeline_hours, site_name, contact_email, police_helpline, child_helpline,
-       archive_visible_days, archive_retention_days, updated_at)
-      VALUES (1, 2, 'হইচই', 'contact@hoichoi.local', '999', '109', 7, 30, ?)`,
+       archive_visible_days, archive_retention_days,
+       slogan_bn, tagline, accent_color, updated_at)
+      VALUES (1, 2, 'হইচই', 'contact@hoichoi.local', '999', '109', 7, 30,
+       'ভাইরাল বাংলা, সপ্তাহখানেক', 'ফেসবুকের হইচই — এখন বাংলায়, সাত দিন পর উবে যায়', '#d64541', ?)`,
     args: [now],
   });
 

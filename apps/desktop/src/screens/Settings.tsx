@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { getCredential, storeCredential, removeCredential, type CredentialName } from "../lib/vault";
+import {
+  getCredential,
+  storeCredential,
+  removeCredential,
+  getRunEnv,
+  isCloudSync,
+  type CredentialName,
+} from "../lib/vault";
+import { settingsGet, settingsSet } from "../lib/tauri";
 import { pushGithubSecret } from "../lib/github";
 
 const FIELDS: Array<{ name: CredentialName; label: string; secret: boolean }> = [
@@ -13,10 +21,33 @@ const FIELDS: Array<{ name: CredentialName; label: string; secret: boolean }> = 
   { name: "OLLAMA_BASE_URL", label: "Ollama base URL", secret: false },
 ];
 
+const BRAND_FIELDS: Array<{ key: string; label: string; secret?: boolean }> = [
+  { key: "site_name", label: "সাইট নাম / App name" },
+  { key: "slogan_bn", label: "স্লোগান (slogan)" },
+  { key: "tagline", label: "ট্যাগলাইন (tagline)" },
+  { key: "logo_url", label: "Logo URL (empty = text)" },
+  { key: "favicon_url", label: "Favicon URL (empty = default)" },
+  { key: "accent_color", label: "Accent color (hex)" },
+];
+
 export default function Settings({ refresh }: { refresh: () => Promise<void> }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  const [brand, setBrand] = useState<Record<string, string>>({});
+  const [cloud, setCloud] = useState<boolean | null>(null);
+  const [brandMsg, setBrandMsg] = useState<string | null>(null);
+  const [brandErr, setBrandErr] = useState<string | null>(null);
+
+  const show = (m: string) => {
+    setMsg(m);
+    setErr(null);
+  };
+  const fail = (e: unknown) => {
+    setErr(String(e));
+    setMsg(null);
+  };
 
   const save = async (f: (typeof FIELDS)[number]) => {
     const v = values[f.name];
@@ -28,19 +59,56 @@ export default function Settings({ refresh }: { refresh: () => Promise<void> }) 
       } else {
         await storeCredential(f.name, v.trim());
       }
-      setMsg(`${f.label} saved`);
-      setErr(null);
+      show(`${f.label} saved`);
       setValues((prev) => ({ ...prev, [f.name]: "" }));
       await refresh();
     } catch (e) {
-      setErr(String(e));
+      fail(e);
     }
   };
 
   const clear = async (f: (typeof FIELDS)[number]) => {
     await removeCredential(f.name);
-    setMsg(`${f.label} removed`);
+    show(`${f.label} removed`);
     await refresh();
+  };
+
+  const refreshMode = async () => {
+    setCloud(await isCloudSync());
+  };
+
+  const toggleCloud = async (on: boolean) => {
+    await storeCredential("use_cloud", on ? "1" : "0");
+    setCloud(on);
+    show(on ? "Cloud sync ON — desktop writes to the shared Turso DB" : "Local mode — desktop uses its own file DB");
+    await refresh();
+    await loadBrand();
+  };
+
+  const loadBrand = async () => {
+    try {
+      const s = await settingsGet(await getRunEnv());
+      const rec: Record<string, string> = {};
+      for (const f of BRAND_FIELDS) rec[f.key] = s[f.key] == null ? "" : String(s[f.key]);
+      setBrand(rec);
+      setBrandMsg("loaded");
+      setBrandErr(null);
+    } catch (e) {
+      setBrandErr(String(e));
+    }
+  };
+
+  const saveBrand = async () => {
+    try {
+      const fields: Record<string, string> = {};
+      for (const f of BRAND_FIELDS) if ((brand[f.key] ?? "").trim() !== "") fields[f.key] = brand[f.key].trim();
+      if (Object.keys(fields).length === 0) return;
+      await settingsSet(await getRunEnv(), fields);
+      setBrandMsg("সংরক্ষিত — web ও desktop-এ সঙ্গে সঙ্গে কার্যকর");
+      setBrandErr(null);
+    } catch (e) {
+      setBrandErr(String(e));
+    }
   };
 
   const Show = ({ name }: { name: CredentialName }) => {
@@ -63,7 +131,7 @@ export default function Settings({ refresh }: { refresh: () => Promise<void> }) 
   };
 
   return (
-    <div className="mx-auto max-w-2xl p-8">
+    <div className="mx-auto max-w-3xl p-8">
       <p className="panel-title">Settings</p>
       <h2 className="mt-1 font-serif-bn text-[30px] font-black">সেটিংস</h2>
       <p className="mt-1 text-[12.5px] text-ink-soft">
@@ -72,6 +140,54 @@ export default function Settings({ refresh }: { refresh: () => Promise<void> }) 
 
       {msg && <p className="mt-3 bg-lime px-3 py-2 text-[12px] font-bold">✓ {msg}</p>}
       {err && <p className="mt-3 bg-alizarin px-3 py-2 text-[12px] font-bold text-paper">✕ {err}</p>}
+
+      <div className="panel mt-5">
+        <p className="panel-title">Database sync · cloud ↔ local</p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button className={cloud !== false ? "btn bg-lime" : "btn-ghost"} onClick={() => void toggleCloud(true)}>
+            ☁ Cloud sync (default)
+          </button>
+          <button className={cloud === false ? "btn bg-lime" : "btn-ghost"} onClick={() => void toggleCloud(false)}>
+            ◌ Local only
+          </button>
+          <button className="btn-ghost" onClick={() => void refreshMode()}>
+            ↻ refresh
+          </button>
+        </div>
+        <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+          {cloud === null
+            ? "Cloud সিঙ্ক: desktop পাইপলাইন সরাসরি shared Turso DB-তে লেখে → web অ্যাডমিন তাৎক্ষণিক দেখে। GitHub-এ কিছুই আপলোড লাগে না।"
+            : cloud
+              ? "বর্তমান: ☁ Cloud sync — runs + settings shared Turso DB (web)-এ যায়।"
+              : "বর্তমান: ◌ Local only — desktop নিজের file DB-তে চলে; ম্যানুয়াল resync হবে।"}
+        </p>
+      </div>
+
+      <div className="panel mt-5">
+        <p className="panel-title">Site branding · web & desktop</p>
+        <div className="mt-3 grid gap-3">
+          {BRAND_FIELDS.map((f) => (
+            <label key={f.key} className="flex items-center gap-3">
+              <span className="w-48 shrink-0 text-[11px] font-bold uppercase tracking-wide text-ink-soft">{f.label}</span>
+              <input
+                className="field flex-1"
+                value={brand[f.key] ?? ""}
+                onChange={(e) => setBrand((prev) => ({ ...prev, [f.key]: e.target.value }))}
+              />
+            </label>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button className="btn" onClick={() => void saveBrand()}>
+            💾 Save branding
+          </button>
+          <button className="btn-ghost" onClick={() => void loadBrand()}>
+            Load current
+          </button>
+        </div>
+        {brandMsg && <p className="mt-2 text-[11.5px] font-bold text-ink">✓ {brandMsg}</p>}
+        {brandErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {brandErr}</p>}
+      </div>
 
       <div className="mt-5 space-y-3">
         {FIELDS.map((f) => (

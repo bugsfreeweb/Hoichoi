@@ -1,6 +1,6 @@
 import type { View } from "../App";
 import { startPipeline } from "../lib/tauri";
-import { getEnvFromVault, type CredentialName } from "../lib/vault";
+import { getRunEnv, type CredentialName } from "../lib/vault";
 
 const NAV: Array<{ id: View; label: string; en: string }> = [
   { id: "dashboard", label: "ড্যাশবোর্ড", en: "DASHBOARD" },
@@ -20,6 +20,7 @@ const KEY_LABELS: Record<CredentialName, string> = {
   OLLAMA_BASE_URL: "Ollama URL",
   fb_session_cookie: "FB session cookie",
   fb_cookie_expires: "FB cookie expiry",
+  use_cloud: "Cloud sync",
 };
 
 export default function Sidebar(props: {
@@ -37,7 +38,7 @@ export default function Sidebar(props: {
     setRunning(true);
     onLog(`[desk] pipeline starting @ ${new Date().toLocaleTimeString("bn-BD")}`);
     try {
-      const env = await getEnvFromVault();
+      const env = await getRunEnv();
       await startPipeline(env);
     } catch (err) {
       onLog(`[desk] failed to start: ${String(err)}`);

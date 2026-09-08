@@ -67,6 +67,12 @@ pnpm --filter @hoichoi/web build
 
 ## Notes
 
+- **Centralized branding:** the `settings` row (Turso) now carries the site
+  identity — `site_name`, `slogan_bn`, `tagline`, `logo_url`, `favicon_url`,
+  `accent_color` — edited from the web admin settings screen **or** the desktop
+  (cloud sync), one shared source for web metadata, masthead and footer. Always
+  run `pnpm --filter db migrate` (or the app's first boot) against the Turso DB
+  once so the new branding columns are added to an existing `settings` table.
 - The public rolling-window pages use ISR (`revalidate = 300`, matching the
   `ARCHIVE_VISIBLE_DAYS` / ISR window from the docs), so Vercel serves cached
   HTML and revalidates in the background.

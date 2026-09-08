@@ -159,3 +159,114 @@ pub fn open_admin(url: String) -> Result<(), String> {
     }
     Ok(())
 }
+
+/// Run the bundled (or dev) runner CLI with `args` + `env`, capturing stdout.
+/// Used by settings get/set — same spawning + portable-env rules as run_pipeline.
+fn run_runner(
+    app: &AppHandle,
+    args: &[&str],
+    env: &HashMap<String, String>,
+) -> Result<String, String> {
+    let data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("app_data_dir failed: {e}"))?;
+
+    let mut cmd = if let Some((node, cli)) = bundled_runner(app) {
+        let mut c = Command::new(node);
+        c.arg(cli);
+        c.args(args);
+        c
+    } else {
+        // Dev fallback: pnpm exec tsx on the scraper CLI.
+        let quoted: Vec<String> = args
+            .iter()
+            .map(|a| format!("\"{}\"", a.replace('"', "")))
+            .collect();
+        #[cfg(windows)]
+        let mut c = {
+            let mut c = Command::new("cmd");
+            c.current_dir(repo_root_dir()).args([
+                "/C",
+                &format!(
+                    "pnpm --filter @hoichoi/scraper exec tsx src/cli.ts {}",
+                    quoted.join(" ")
+                ),
+            ]);
+            c
+        };
+        #[cfg(not(windows))]
+        let mut c = {
+            let mut c = Command::new("pnpm");
+            c.current_dir(repo_root_dir())
+                .arg("--filter")
+                .arg("@hoichoi/scraper")
+                .args(["exec", "tsx", "src/cli.ts"])
+                .args(args);
+            c
+        };
+        c
+    };
+
+    for (k, v) in env {
+        cmd.env(k, v);
+    }
+
+    // Portable runtime paths + system Edge + local-DB fallback, like run_pipeline.
+    if let Some((_, cli)) = bundled_runner(app) {
+        let app_dir = cli
+            .parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_default();
+        cmd.env("HOICHOI_MIGRATIONS_DIR", app_dir.join("migrations"));
+        cmd.env("HOICHOI_USE_SYSTEM_BROWSER", "1");
+        if !env.contains_key("TURSO_DATABASE_URL") && !env.contains_key("DATABASE_URL") {
+            cmd.env(
+                "TURSO_DATABASE_URL",
+                format!("file:{}", data_dir.join("hoichoi.db").display()),
+            );
+        }
+    }
+
+    let out = cmd
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| format!("spawn failed: {e}"))?;
+    let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+    if out.status.success() {
+        return Ok(stdout);
+    }
+    let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+    Err(format!(
+        "runner failed: {}",
+        if stderr.is_empty() { "see pipeline log" } else { &stderr }
+    ))
+}
+
+/// Read site settings through the runner (JSON output from `settings get`).
+#[tauri::command]
+pub async fn settings_get(
+    app: AppHandle,
+    env: Option<HashMap<String, String>>,
+) -> Result<String, String> {
+    let env = env.unwrap_or_default();
+    run_runner(&app, &["settings"], &env)
+}
+
+/// Update site settings through the runner (`settings:set k=v k=...`).
+#[tauri::command]
+pub async fn settings_set(
+    app: AppHandle,
+    env: Option<HashMap<String, String>>,
+    fields: HashMap<String, String>,
+) -> Result<(), String> {
+    let env = env.unwrap_or_default();
+    let mut args = vec!["settings:set".to_string()];
+    for (k, v) in &fields {
+        args.push(format!("{k}={v}"));
+    }
+    let strs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+    run_runner(&app, &strs, &env)?;
+    Ok(())
+}

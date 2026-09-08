@@ -19,3 +19,18 @@ export async function startPipeline(env: Record<string, string>): Promise<void> 
 export async function openAdmin(url: string): Promise<void> {
   await invoke("open_admin", { url });
 }
+
+/** Read site settings through the bundled runner (branding + cadence). */
+export async function settingsGet(env: Record<string, string>) {
+  const raw = await invoke<string>("settings_get", { env });
+  const parsed = JSON.parse(raw) as { settings?: Record<string, unknown> };
+  return (parsed.settings ?? parsed) as Record<string, unknown>;
+}
+
+/** Update site settings through the bundled runner. */
+export async function settingsSet(
+  env: Record<string, string>,
+  fields: Record<string, string | number>,
+): Promise<void> {
+  await invoke("settings_set", { env, fields });
+}

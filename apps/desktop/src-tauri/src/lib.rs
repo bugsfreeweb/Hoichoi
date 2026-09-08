@@ -11,6 +11,8 @@ pub fn run() {
             commands::run_pipeline,
             commands::open_admin,
             commands::repo_root,
+            commands::settings_get,
+            commands::settings_set,
         ])
         .run(tauri::generate_context!())
         .expect("error while running hoichoi desk");

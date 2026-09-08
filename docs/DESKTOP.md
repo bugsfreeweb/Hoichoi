@@ -23,6 +23,42 @@ monorepo checkout, no `pnpm`, no Playwright browser download) because it ships a
    `TURSO_DATABASE_URL=file:<app_data_dir>/hoichoi.db` unless the user configured
    a Turso remote in the keychain.
 
+### Keychain → runner env mapping
+
+The Stronghold keychain stores human-friendly names; `src/lib/vault.ts`
+translates them to the env vars the runner actually reads:
+
+| Keychain name        | Runner env var        | Notes                         |
+| -------------------- | --------------------- | ----------------------------- |
+| `turso_url`          | `TURSO_DATABASE_URL`  | cloud DB when sync ON         |
+| `turso_token`        | `TURSO_AUTH_TOKEN`    | cloud DB when sync ON         |
+| `fb_session_cookie`  | `FB_SESSION_COOKIE`   | Facebook session for scraping |
+| `GOOGLE_API_KEY`     | `GOOGLE_API_KEY`      | LLM                           |
+| `GROQ_API_KEY`       | `GROQ_API_KEY`        | LLM                           |
+| `OPENROUTER_API_KEY` | `OPENROUTER_API_KEY`  | LLM                           |
+| `OLLAMA_BASE_URL`    | `OLLAMA_BASE_URL`     | LLM                           |
+| `github_pat`         | — (not an env)        | pushed to GitHub Actions secret |
+| `github_repo`        | — (not an env)        | Actions deploy repo           |
+| `fb_cookie_expires`  | — (not an env)        | cookie expiry hint            |
+| `use_cloud`          | — (toggle)            | `"1"` = cloud, `"0"` = local  |
+
+## Centralized site settings & branding (web + desktop)
+
+Site branding lives in the **same Turso `settings` row** the web app renders, so
+editing it once reflects immediately on web **and** desktop (no GitHub upload):
+
+- **Cloud sync toggle (default ON):** settings screen → *Database sync*.
+  ON = the runner writes to the shared Turso DB the web app reads; OFF = the
+  runner writes to the local file DB (manual/resync mode). Toggling just
+  enables/disables `TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN` in the run env.
+- **Branding editor:** settings screen → *Site branding* — `site_name`, `slogan`,
+  `tagline`, `logo_url`, `favicon_url`, `accent_color` (hex). Saved through the
+  runner (`settings:set`), so the web masthead/footer/metadata update immediately.
+- New runner CLI: `settings` (JSON dump) and `settings:set k=v …` (whitelisted
+  keys, `key=` clears nullable `logo_url`/`favicon_url`).
+- Backend commands: `settings_get` / `settings_set` (Rust) + `settingsGet` /
+  `settingsSet` (`src/lib/tauri.ts`).
+
 ## Building a standalone (bundled) desktop app
 
 Prerequisites (one-time, on your machine — this needs the desktop toolchain):
@@ -62,7 +98,10 @@ pnpm --filter @hoichoi/desktop tauri dev  # Tauri windows shell
 
 In dev the pipeline button runs the repo scraper; configure keys via the
 Stronghold keychain (Setup Wizard) and the Turso DB URL (default
-`file:<repo>/data/hoichoi.db`, override with `TURSO_DATABASE_URL`).
+`file:<repo>/data/hoichoi.db`, override with `TURSO_DATABASE_URL`). The vault
+mapping table above still applies — older installs that entered `turso_url` /
+`turso_token` under the old names now sync correctly to
+`TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN`.
 
 ## Layout
 

@@ -190,6 +190,11 @@ CREATE TABLE IF NOT EXISTS settings (
   child_helpline TEXT NOT NULL DEFAULT '109',
   archive_visible_days INTEGER NOT NULL DEFAULT 7,
   archive_retention_days INTEGER NOT NULL DEFAULT 30,
+  slogan_bn TEXT NOT NULL DEFAULT 'ভাইরাল বাংলা, সপ্তাহখানেক',
+  tagline TEXT NOT NULL DEFAULT 'ফেসবুকের হইচই — এখন বাংলায়, সাত দিন পর উবে যায়',
+  logo_url TEXT,
+  favicon_url TEXT,
+  accent_color TEXT NOT NULL DEFAULT '#d64541',
   updated_at TEXT NOT NULL
 );
 

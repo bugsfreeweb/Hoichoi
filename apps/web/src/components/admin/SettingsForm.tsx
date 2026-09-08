@@ -12,6 +12,11 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
     pipeline_hours: initial.pipeline_hours,
     archive_visible_days: initial.archive_visible_days,
     archive_retention_days: initial.archive_retention_days,
+    slogan_bn: initial.slogan_bn,
+    tagline: initial.tagline,
+    logo_url: initial.logo_url ?? "",
+    favicon_url: initial.favicon_url ?? "",
+    accent_color: initial.accent_color,
   });
   const [status, setStatus] = useState<null | "ok" | "err" | "denied">(null);
 
@@ -39,9 +44,31 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
     <form onSubmit={onSubmit} className="grid gap-5 border border-ink/20 bg-paper-deep p-6">
       <h3 className="font-sans-bn text-[15px] font-bold text-ink">সাইট / সিস্টেম সেটিংস</h3>
       <div className="grid gap-4">
-        <Field label="সাইট নাম">
+        <Field label="সাইট নাম (web + desktop title)">
           <input required className={field} value={form.site_name} onChange={(e) => setForm({ ...form, site_name: e.target.value })} />
         </Field>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="স্লোগান (slogan)">
+            <input className={field} value={form.slogan_bn} onChange={(e) => setForm({ ...form, slogan_bn: e.target.value })} />
+          </Field>
+          <Field label="ট্যাগলাইন (tagline)">
+            <input className={field} value={form.tagline} onChange={(e) => setForm({ ...form, tagline: e.target.value })} />
+          </Field>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <Field label="Logo URL (empty = text wordmark)">
+            <input className={field} value={form.logo_url} onChange={(e) => setForm({ ...form, logo_url: e.target.value })} />
+          </Field>
+          <Field label="Favicon URL (empty = default)">
+            <input className={field} value={form.favicon_url} onChange={(e) => setForm({ ...form, favicon_url: e.target.value })} />
+          </Field>
+          <Field label="Accent color">
+            <div className="mt-1 flex items-center gap-2">
+              <input type="color" className="h-9 w-12 border border-ink/30 bg-paper" value={form.accent_color} onChange={(e) => setForm({ ...form, accent_color: e.target.value })} />
+              <input className={field} value={form.accent_color} onChange={(e) => setForm({ ...form, accent_color: e.target.value })} />
+            </div>
+          </Field>
+        </div>
         <Field label="Contact email">
           <input type="email" className={field} value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} />
         </Field>

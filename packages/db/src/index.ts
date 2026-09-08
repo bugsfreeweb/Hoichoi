@@ -13,10 +13,90 @@ import type {
   CurrentWindowPost,
   Post,
   PostStatus,
+  SiteSettings,
   StatsSnapshot,
 } from "@hoichoi/shared-types";
+import type { InValue } from "@libsql/client";
 import { getClient, nowIso } from "./client";
 import { mapCategory, mapPost, parseJson } from "./rows";
+
+/** Fallback branding used when no settings row exists / columns are absent. */
+export const DEFAULT_SETTINGS: SiteSettings = {
+  id: 1,
+  pipeline_hours: 2,
+  site_name: "হইচই",
+  contact_email: "contact@hoichoi.local",
+  police_helpline: "999",
+  child_helpline: "109",
+  archive_visible_days: 7,
+  archive_retention_days: 30,
+  slogan_bn: "ভাইরাল বাংলা, সপ্তাহখানেক",
+  tagline: "ফেসবুকের হইচই — এখন বাংলায়, সাত দিন পর উবে যায়",
+  logo_url: null,
+  favicon_url: null,
+  accent_color: "#d64541",
+};
+
+export function mapSettings(row: Record<string, unknown>): SiteSettings {
+  const str = (v: unknown, fallback = "") => String(v ?? fallback);
+  return {
+    id: 1,
+    pipeline_hours: Number(row.pipeline_hours ?? DEFAULT_SETTINGS.pipeline_hours),
+    site_name: str(row.site_name, DEFAULT_SETTINGS.site_name),
+    contact_email: str(row.contact_email),
+    police_helpline: str(row.police_helpline, DEFAULT_SETTINGS.police_helpline),
+    child_helpline: str(row.child_helpline, DEFAULT_SETTINGS.child_helpline),
+    archive_visible_days: Number(row.archive_visible_days ?? DEFAULT_SETTINGS.archive_visible_days),
+    archive_retention_days: Number(row.archive_retention_days ?? DEFAULT_SETTINGS.archive_retention_days),
+    slogan_bn: str(row.slogan_bn, DEFAULT_SETTINGS.slogan_bn),
+    tagline: str(row.tagline, DEFAULT_SETTINGS.tagline),
+    logo_url: (row.logo_url as string | null) ?? null,
+    favicon_url: (row.favicon_url as string | null) ?? null,
+    accent_color: str(row.accent_color, DEFAULT_SETTINGS.accent_color),
+  };
+}
+
+/** Single source of truth for site settings (branding + pipeline cadence). */
+export async function getSettings(): Promise<SiteSettings> {
+  const client = getClient();
+  const res = await client.execute("SELECT * FROM settings WHERE id = 1");
+  if (res.rows.length === 0) return DEFAULT_SETTINGS;
+  return mapSettings(res.rows[0] as Record<string, unknown>);
+}
+
+/** Whitelisted, idempotent settings update (skips unknown keys). */
+export async function updateSettings(fields: Partial<SiteSettings>): Promise<void> {
+  const client = getClient();
+  const allowed: Array<keyof SiteSettings> = [
+    "pipeline_hours",
+    "site_name",
+    "contact_email",
+    "police_helpline",
+    "child_helpline",
+    "archive_visible_days",
+    "archive_retention_days",
+    "slogan_bn",
+    "tagline",
+    "logo_url",
+    "favicon_url",
+    "accent_color",
+  ];
+  if (fields.logo_url === "") fields.logo_url = null;
+  if (fields.favicon_url === "") fields.favicon_url = null;
+  const sets: string[] = [];
+  const args: InValue[] = [];
+  for (const k of allowed) {
+    const v = fields[k];
+    if (v === undefined) continue;
+    if (v === null && k !== "logo_url" && k !== "favicon_url") continue;
+    sets.push(`${k} = ?`);
+    args.push(v as InValue);
+  }
+  if (sets.length === 0) return;
+  sets.push("updated_at = ?");
+  args.push(nowIso());
+  await client.execute({ sql: `UPDATE settings SET ${sets.join(", ")} WHERE id = 1`, args });
+}
 
 export async function listCategories(): Promise<CategoryMeta[]> {
   const client = getClient();

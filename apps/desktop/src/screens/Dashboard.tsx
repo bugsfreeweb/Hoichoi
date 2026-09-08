@@ -1,5 +1,5 @@
 import { startPipeline, openAdmin } from "../lib/tauri";
-import { getEnvFromVault, type CredentialName } from "../lib/vault";
+import { getRunEnv, type CredentialName } from "../lib/vault";
 
 export default function Dashboard({
   configured,
@@ -12,7 +12,7 @@ export default function Dashboard({
   const total = Object.keys(configured).length;
 
   const runNow = async () => {
-    await startPipeline(await getEnvFromVault());
+    await startPipeline(await getRunEnv());
     await refresh();
   };
 
