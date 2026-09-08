@@ -127,7 +127,7 @@ export default function SetupWizard({ onDone }: { onDone: () => Promise<void> })
           হইচই<span className="text-alizarin">।</span> ডেস্ক
         </p>
         <p className="mt-1 font-mono text-[10px] tracking-[0.26em] text-ink-soft uppercase">
-          First-run setup · credentials live in Stronghold
+          First-run setup · credentials encrypted locally (AES-256-GCM)
         </p>
 
         <div className="mt-5 flex items-center gap-1 border-b border-ink/15 pb-2">
@@ -155,7 +155,17 @@ export default function SetupWizard({ onDone }: { onDone: () => Promise<void> })
                 <input className="field mt-1" type="password" placeholder="eyJ…" value={tursoToken} onChange={(e) => setTursoToken(e.target.value)} />
               </label>
               {error && <p className="text-[12px] text-alizarin">{error}</p>}
-              <div className="flex justify-end">
+              <div className="flex justify-between">
+                <button
+                  className="btn-ghost"
+                  onClick={() => void (async () => {
+                    try { await storeCredential("use_cloud", "0"); } catch { /* keep going */ }
+                    next();
+                  })()}
+                  disabled={busy}
+                >
+                  Skip — set up later →
+                </button>
                 <button className="btn" onClick={() => void saveStep1()} disabled={busy || !tursoUrl.trim() || !tursoToken.trim()}>
                   Save & next →
                 </button>

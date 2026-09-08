@@ -1,9 +1,4 @@
-import { Stronghold, type Client } from "@tauri-apps/plugin-stronghold";
-import { appDataDir } from "@tauri-apps/api/path";
-
-const VAULT_KEY = "hoichoi-desk-vault-key-v1";
-const CLIENT_NAME = "hoichoi";
-const VAULT_FILE = "vault.hold";
+import { invoke } from "./tauri";
 
 export const CREDENTIAL_NAMES = [
   "turso_url",
@@ -76,40 +71,29 @@ export async function isCloudSync(): Promise<boolean> {
   return Boolean(env.TURSO_DATABASE_URL) && (await getCredential("use_cloud")) !== "0";
 }
 
-type Vault = { stronghold: Stronghold; client: Client; store: ReturnType<Client["getStore"]> };
+let opening: Promise<void> | null = null;
 
-let cached: Vault | null = null;
-
-let loading: Promise<Vault> | null = null;
-
-async function open(): Promise<Vault> {
-  const vaultPath = `${await appDataDir()}/${VAULT_FILE}`;
-  const stronghold = await Stronghold.load(vaultPath, VAULT_KEY);
-  let client: Client;
-  try {
-    client = await stronghold.loadClient(CLIENT_NAME);
-  } catch {
-    client = await stronghold.createClient(CLIENT_NAME);
-  }
-  return { stronghold, client, store: client.getStore() };
+/** Smoke-test the Rust vault once per session (surfaces real errors early). */
+async function ensureOpen(): Promise<void> {
+  opening ??= (async () => {
+    await invoke("vault_names");
+  })().catch((e) => {
+    opening = null;
+    throw e;
+  });
+  await opening;
 }
 
-function getStore(): Promise<Vault> {
-  if (cached) return Promise.resolve(cached);
-  loading ??= open().then((v) => (cached = v));
-  return loading;
-}
-
-/** decode the byte array the plugin returns (number[] or Uint8Array). */
-function decode(raw: number[] | Uint8Array): string {
-  return new TextDecoder().decode(new Uint8Array(raw));
+/** True when running inside the Tauri webview. */
+function hasTauri(): boolean {
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
 
 export async function getCredential(name: CredentialName): Promise<string | null> {
+  if (!hasTauri()) return null;
   try {
-    const { store } = await getStore();
-    const data = await store.get(name);
-    return data ? decode(data) : null;
+    await ensureOpen();
+    return await invoke<string | null>("vault_get", { name });
   } catch {
     return null;
   }
@@ -120,22 +104,23 @@ export async function hasCredential(name: CredentialName): Promise<boolean> {
 }
 
 export async function storeCredential(name: CredentialName, value: string): Promise<void> {
-  const { store, stronghold } = await getStore();
-  await store.insert(name, Array.from(new TextEncoder().encode(value)));
-  await stronghold.save();
+  await ensureOpen();
+  await invoke("vault_set", { name, value });
 }
 
 export async function removeCredential(name: CredentialName): Promise<void> {
-  const { store, stronghold } = await getStore();
+  await ensureOpen();
   try {
-    await store.remove(name);
+    await invoke("vault_delete", { name });
   } catch {
     /* key not present */
   }
-  await stronghold.save();
 }
 
 export async function listConfigured(): Promise<Record<CredentialName, boolean>> {
+  if (!hasTauri()) {
+    return {} as Record<CredentialName, boolean>;
+  }
   const out = {} as Record<CredentialName, boolean>;
   for (const name of CREDENTIAL_NAMES) {
     out[name] = await hasCredential(name);
