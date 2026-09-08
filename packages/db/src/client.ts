@@ -1,7 +1,7 @@
 import { createClient, type Client, type Config } from "@libsql/client";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { seedDefaults } from "./seed";
 
 let cached: Client | null = null;
@@ -25,8 +25,17 @@ export function findRepoRoot(start = process.cwd()): string {
 
 export function resolveDatabaseUrl(): string {
   const fromEnv = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL;
-  if (fromEnv) return fromEnv;
-  return `file:${path.join(findRepoRoot(), "data", "hoichoi.db")}`;
+  if (fromEnv) {
+    // Relative `file:` URLs (e.g. `file:./data/ci-hoichoi.db`) must be resolved
+    // against the repo root — fileURLToPath() would treat them as absolute
+    // paths from the filesystem root (`/data/...` → EACCES in CI).
+    if (fromEnv.startsWith("file:") && !fromEnv.startsWith("file:/")) {
+      const abs = path.join(findRepoRoot(), fromEnv.slice("file:".length));
+      return pathToFileURL(abs).href;
+    }
+    return fromEnv;
+  }
+  return pathToFileURL(path.join(findRepoRoot(), "data", "hoichoi.db")).href;
 }
 
 export function databaseUrl(): string {
