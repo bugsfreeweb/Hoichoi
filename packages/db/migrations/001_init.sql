@@ -217,3 +217,19 @@ WHERE p.status = 'published'
     OR
     strftime('%s', p.published_at) >= strftime('%s', 'now') - s.archive_visible_days * 86400
   );
+-- ============================================================
+-- Reader comments (added for comments-moderation feature)
+-- Every new comment lands in the moderation queue (status = pending)
+-- and only approved comments are shown on the public post page.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS comments (
+  id TEXT PRIMARY KEY,
+  post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  author TEXT NOT NULL,
+  body TEXT NOT NULL,
+  likes INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','blocked')),
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);
+CREATE INDEX IF NOT EXISTS idx_comments_status ON comments(status);

@@ -1,0 +1,135 @@
+import { NextRequest, NextResponse } from "next/server";
+import {
+  getPostComments,
+  getAllComments,
+  createComment,
+  setCommentStatus,
+  deleteComment,
+  getPostById,
+} from "@hoichoi/db";
+import { requireApiUser, unauthorized } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
+
+function bad(msg = "Bad request"): NextResponse {
+  return NextResponse.json({ ok: false, error: msg }, { status: 400 });
+}
+
+/**
+ * GET /api/comments?postId=<slug|id>  → approved comments (public)
+ * GET /api/comments                    → every comment + post (admin/moderation)
+ */
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const ref = searchParams.get("postId")?.trim();
+
+  if (ref) {
+    const rows = await getPostComments(ref);
+    return NextResponse.json({ ok: true, comments: rows });
+  }
+
+  // No postId → admin moderation queue.
+  const user = await requireApiUser();
+  if (!user) return unauthorized();
+  const comments = await getAllComments();
+  return NextResponse.json({ ok: true, comments });
+}
+
+/**
+ * POST /api/comments  { postId, author, body }
+ * Public — a new comment always lands in the moderation queue (status = pending).
+ */
+export async function POST(req: Request) {
+  let payload: unknown;
+  try {
+    payload = await req.json();
+  } catch {
+    return bad();
+  }
+  const { postId, author, body } = (payload ?? {}) as {
+    postId?: unknown;
+    author?: unknown;
+    body?: unknown;
+  };
+  const ref = typeof postId === "string" ? postId.trim() : "";
+  const authorStr = typeof author === "string" ? author.trim() : "";
+  const bodyStr = typeof body === "string" ? body.trim() : "";
+
+  if (!ref || authorStr.length < 2 || authorStr.length > 60 || bodyStr.length < 2 || bodyStr.length > 1200) {
+    return bad("নাম/মন্তব্য খুব ছোট বা খুব দীর্ঘ");
+  }
+
+  const post = await getPostById(ref);
+  if (!post) {
+    return NextResponse.json({ ok: false, error: "প্রতিবেদন পাওয়া যায়নি" }, { status: 404 });
+  }
+
+  try {
+    const comment = await createComment({ postId: post.id, author: authorStr, body: bodyStr });
+    return NextResponse.json({ ok: true, comment }, { status: 201 });
+  } catch (e) {
+    return NextResponse.json(
+      { ok: false, error: e instanceof Error ? e.message : "Insert failed" },
+      { status: 500 },
+    );
+  }
+}
+
+/**
+ * PATCH /api/comments  { id, action: "approve" | "block" }
+ * Admin/moderation — used by the web admin console and the desktop desk view.
+ */
+export async function PATCH(req: Request) {
+  const user = await requireApiUser();
+  if (!user) return unauthorized();
+
+  let payload: unknown;
+  try {
+    payload = await req.json();
+  } catch {
+    return bad();
+  }
+  const { id, action } = (payload ?? {}) as { id?: unknown; action?: unknown };
+  const nid = typeof id === "string" ? id.trim() : "";
+  const status = action === "approve" ? "approved" : action === "block" ? "blocked" : null;
+
+  if (!nid || !status) return bad();
+  try {
+    await setCommentStatus(nid, status);
+  } catch (e) {
+    return NextResponse.json(
+      { ok: false, error: e instanceof Error ? e.message : "Update failed" },
+      { status: 500 },
+    );
+  }
+  return NextResponse.json({ ok: true, id: nid, status });
+}
+
+/**
+ * DELETE /api/comments  { id }
+ * Admin/moderation — hard-removes a comment.
+ */
+export async function DELETE(req: Request) {
+  const user = await requireApiUser();
+  if (!user) return unauthorized();
+
+  let payload: unknown;
+  try {
+    payload = await req.json();
+  } catch {
+    return bad();
+  }
+  const id = typeof (payload as { id?: unknown } | null)?.id === "string"
+    ? (payload as { id: string }).id.trim()
+    : "";
+  if (!id) return bad();
+  try {
+    await deleteComment(id);
+  } catch (e) {
+    return NextResponse.json(
+      { ok: false, error: e instanceof Error ? e.message : "Delete failed" },
+      { status: 500 },
+    );
+  }
+  return NextResponse.json({ ok: true, id });
+}

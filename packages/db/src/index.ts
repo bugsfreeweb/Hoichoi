@@ -12,6 +12,9 @@ import type {
   CaseStatus,
   CategoryMeta,
   CategorySlug,
+  Comment,
+  CommentStatus,
+  CommentWithPost,
   CurrentWindowPost,
   Post,
   PostStatus,
@@ -433,4 +436,91 @@ export async function updatePost(id: string, fields: PostUpdateFields): Promise<
 export async function deletePost(id: string): Promise<void> {
   const client = getClient();
   await client.execute({ sql: "DELETE FROM posts WHERE id = ?", args: [id] });
+}
+
+/* ------------------------------------------------------------------ *
+ * Reader comments + moderation queue
+ * ------------------------------------------------------------------ */
+
+function mapComment(row: Record<string, unknown>): Comment {
+  return {
+    id: String(row.id),
+    post_id: String(row.post_id),
+    author: String(row.author),
+    body: String(row.body),
+    likes: Number(row.likes ?? 0),
+    status: (String(row.status ?? "pending") as CommentStatus),
+    created_at: String(row.created_at),
+  };
+}
+
+/** Public — only approved comments for one post, newest first. */
+export async function getPostComments(postId: string): Promise<Comment[]> {
+  const client = getClient();
+  const res = await client.execute({
+    sql: "SELECT * FROM comments WHERE post_id = ? AND status = 'approved' ORDER BY created_at DESC LIMIT 200",
+    args: [postId],
+  });
+  return res.rows.map((r) => mapComment(r as Record<string, unknown>));
+}
+
+/** Admin/moderation — every comment joined with its parent post title/category. */
+export async function getAllComments(limit = 400): Promise<CommentWithPost[]> {
+  const client = getClient();
+  const res = await client.execute({
+    sql: `SELECT c.*, p.title_bn AS postTitle, p.category AS postCategory
+          FROM comments c LEFT JOIN posts p ON p.id = c.post_id
+          ORDER BY c.created_at DESC LIMIT ?`,
+    args: [limit],
+  });
+  return res.rows.map((r) => {
+    const row = r as Record<string, unknown>;
+    return {
+      ...mapComment(row),
+      postTitle: (row.postTitle as string | null) ?? null,
+      postCategory: (row.postCategory as string | null) ?? null,
+    };
+  });
+}
+
+/** New comment always lands in the moderation queue (status = pending). */
+export async function createComment(input: {
+  postId: string;
+  author: string;
+  body: string;
+}): Promise<Comment> {
+  const client = getClient();
+  const id = crypto.randomUUID();
+  const created = nowIso();
+  await client.execute({
+    sql: "INSERT INTO comments (id, post_id, author, body, likes, status, created_at) VALUES (?, ?, ?, ?, 0, 'pending', ?)",
+    args: [id, input.postId, input.author.trim(), input.body.trim(), created],
+  });
+  return {
+    id,
+    post_id: input.postId,
+    author: input.author.trim(),
+    body: input.body.trim(),
+    likes: 0,
+    status: "pending",
+    created_at: created,
+  };
+}
+
+/** Moderation action: approve → approved, block → blocked. */
+export async function setCommentStatus(
+  id: string,
+  status: "approved" | "blocked",
+): Promise<void> {
+  const client = getClient();
+  await client.execute({
+    sql: "UPDATE comments SET status = ? WHERE id = ?",
+    args: [status, id],
+  });
+}
+
+/** Hard-delete a comment (moderation). */
+export async function deleteComment(id: string): Promise<void> {
+  const client = getClient();
+  await client.execute({ sql: "DELETE FROM comments WHERE id = ?", args: [id] });
 }

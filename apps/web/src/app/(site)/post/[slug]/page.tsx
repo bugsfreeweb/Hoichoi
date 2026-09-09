@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublicPostBySlug, relatedPosts } from "@hoichoi/db";
+import { getPostComments } from "@hoichoi/db";
 import { getCategories, findCategory } from "@/lib/categories-server";
 import { relativeBn, readMinutesBn, shortId } from "@/lib/bn";
 import { mediaUrl } from "@/lib/media";
@@ -10,6 +11,7 @@ import { CaseStatusBadge } from "@/components/CaseStatusBadge";
 import { ContentWarningGate } from "@/components/ContentWarningGate";
 import { ReportButton } from "@/components/ReportButton";
 import { PostCard } from "@/components/PostCard";
+import { CommentsSection } from "@/components/CommentsSection";
 import { getSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
@@ -42,10 +44,11 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   const post = await getPublicPostBySlug(slug);
   if (!post) notFound();
 
-  const [cats, settings, related] = await Promise.all([
+  const [cats, settings, related, initialComments] = await Promise.all([
     getCategories(),
     getSettings(),
     relatedPosts(post, 3),
+    getPostComments(post.id),
   ]);
   const cat = await findCategory(post.category);
   const isCsa = post.category === "child-sexual-abuse";
@@ -76,6 +79,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
             isMissingActive={isMissingActive}
             showHelplines={showHelplines}
             related={related}
+            initialComments={initialComments}
             settings={settings}
           />
         </ContentWarningGate>
@@ -88,6 +92,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           isMissingActive={isMissingActive}
           showHelplines={showHelplines}
           related={related}
+          initialComments={initialComments}
           settings={settings}
         />
       )}
@@ -103,6 +108,7 @@ function PostContent({
   isMissingActive,
   showHelplines,
   related,
+  initialComments,
   settings,
 }: {
   post: Awaited<ReturnType<typeof getPublicPostBySlug>> & {};
@@ -112,6 +118,7 @@ function PostContent({
   isMissingActive: boolean;
   showHelplines: boolean;
   related: Awaited<ReturnType<typeof relatedPosts>>;
+  initialComments: Awaited<ReturnType<typeof getPostComments>>;
   settings: Awaited<ReturnType<typeof getSettings>>;
 }) {
   return (
@@ -174,6 +181,7 @@ function PostContent({
       </div>
 
       <ReportButton slug={post!.slug} />
+      <CommentsSection postId={post!.id} initial={initialComments} />
 
       {showHelplines && (
         <div className="mt-8 border border-ink/15 bg-paper-deep p-4">

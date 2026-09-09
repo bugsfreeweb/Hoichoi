@@ -1,11 +1,16 @@
 ﻿import { statsSnapshot, recentPipelineRuns } from "@hoichoi/db";
 import { LiveDeskMonitor } from "@/components/LiveDeskMonitor";
+import { getAllComments } from "@hoichoi/db";
+import { ModerationTable } from "@/components/admin/ModerationTable";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
-  const stats = await statsSnapshot();
-  const runs = await recentPipelineRuns(8);
+  const [stats, runs, comments] = await Promise.all([
+    statsSnapshot(),
+    recentPipelineRuns(8),
+    getAllComments(),
+  ]);
 
   const avgSec = stats.avgRunDurationSec;
   const durText =
@@ -113,6 +118,12 @@ export default async function AdminDashboardPage() {
               <p className="p-6 text-center text-[12.5px] text-white/40">এখনো কোনো রান রেকর্ড নেই।</p>
             )}
           </div>
+        </div>
+      </section>
+<section>
+        <SectionTitle>মন্তব্য মডারেশন</SectionTitle>
+        <div className="mt-3">
+          <ModerationTable rows={comments} />
         </div>
       </section>
     </div>

@@ -263,3 +263,21 @@ export interface StatsSnapshot {
   avgRunDurationSec: number;
   byCategory: Record<CategorySlug, number>;
 }
+
+export type CommentStatus = "pending" | "approved" | "blocked";
+
+export interface Comment {
+  id: string;
+  post_id: string;
+  author: string;
+  body: string;
+  likes: number;
+  status: CommentStatus;
+  created_at: string;
+}
+
+/** A comment joined with its parent post (used by the moderation queue). */
+export interface CommentWithPost extends Comment {
+  postTitle: string | null;
+  postCategory: string | null;
+}

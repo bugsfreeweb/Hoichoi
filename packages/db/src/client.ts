@@ -137,5 +137,27 @@ export async function ensureSchema(client: Client): Promise<void> {
   const sqlText = fs.readFileSync(path.join(dir, "001_init.sql"), "utf-8");
   await applyMigration(client, "001_init", sqlText);
   await ensureBrandingColumns(client);
+  await ensureCommentsTable(client);
   await seedDefaults(client, nowIso());
+}
+
+/**
+ * Upgrade helper: creates the `comments` table on databases that were
+ * created before the comments-moderation feature. Idempotent — safe on fresh
+ * databases where `001_init.sql` already includes the table.
+ */
+export async function ensureCommentsTable(client: Client): Promise<void> {
+  await client.executeMultiple(`
+CREATE TABLE IF NOT EXISTS comments (
+  id TEXT PRIMARY KEY,
+  post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  author TEXT NOT NULL,
+  body TEXT NOT NULL,
+  likes INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','blocked')),
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);
+CREATE INDEX IF NOT EXISTS idx_comments_status ON comments(status);
+  `);
 }
