@@ -3,7 +3,7 @@
   "framework": "nextjs",
   "rootDirectory": "apps/web",
   "installCommand": "cd ../.. && pnpm install --no-frozen-lockfile",
-  "buildCommand": "cd ../.. && pnpm --filter @hoichoi/web build",
+  "buildCommand": "cd ../.. && pnpm db:migrate && pnpm --filter @hoichoi/web build",
   "headers": [
     {
       "source": "/media/(.*)",
