@@ -22,14 +22,16 @@ export default function Dashboard({
   const count = Object.values(configured).filter(Boolean).length;
   const total = Object.keys(configured).length;
 
-  // live 2h-sync countdown (matches mockup "পরবর্তী সিঙ্ক · 0 */2 * * *")
+// live 2h-sync countdown (matches mockup "পরবর্তী সিঙ্ক · 0 */2 * * *")
   const [next, setNext] = useState("");
+  const [frac, setFrac] = useState(1);
   useEffect(() => {
+    const period = 2 * 60 * 60 * 1000;
     const tick = () => {
       const now = Date.now();
-      const period = 2 * 60 * 60 * 1000;
       const target = Math.ceil(now / period) * period;
       const diff = Math.max(0, target - now);
+      setFrac(diff / period);
       const bn = (n: number) => n.toLocaleString("bn-BD", { minimumIntegerDigits: 2 });
       setNext(
         `${bn(Math.floor(diff / 3600000))}:${bn(Math.floor((diff % 3600000) / 60000))}:${bn(Math.floor((diff % 60000) / 1000))}`,
@@ -88,9 +90,27 @@ export default function Dashboard({
           <p className="font-mono-x text-[9.5px] tracking-[0.22em] text-lime uppercase">
             পরবর্তী সিঙ্ক · 0 */2 * * *
           </p>
-          <div className="mt-4 flex items-center gap-4">
-            <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-lime/40">
-              <span className="font-mono-x text-[19px] font-bold text-white tabular-nums">{next}</span>
+<div className="mt-4 flex items-center gap-4">
+            <div className="relative" style={{ width: 92, height: 92 }}>
+              <svg width="92" height="92" className="-rotate-90">
+                <circle cx="46" cy="46" r="41" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3" />
+                <circle
+                  cx="46"
+                  cy="46"
+                  r="41"
+                  fill="none"
+                  stroke="#c8f65d"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeDasharray="257.61"
+                  strokeDashoffset={257.61 * (1 - frac)}
+                  className="countdown-ring"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="font-mono-x text-[16px] leading-none font-bold text-white tabular-nums">{next}</span>
+                <span className="mt-1 font-mono-x text-[8px] tracking-[0.22em] text-white/40 uppercase">NEXT SYNC</span>
+              </div>
             </div>
             <div className="space-y-1 text-[10.5px] leading-relaxed text-white/50">
               <p>🔔 শেষ রান → commit → deploy</p>

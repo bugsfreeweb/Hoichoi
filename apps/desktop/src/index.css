@@ -83,6 +83,10 @@ body {
   color: #7cc3ff;
 }
 
+.countdown-ring {
+  transition: stroke-dashoffset 1s linear;
+}
+
 .scroll-slim::-webkit-scrollbar {
   width: 8px;
   height: 8px;

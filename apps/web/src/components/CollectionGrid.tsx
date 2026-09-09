@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import type { CategoryMeta, CategorySlug, Post } from "@hoichoi/shared-types";
 import { bnNum } from "@/lib/bn";
 import { PostCard } from "./PostCard";
+import { AdSlot } from "./AdSlot";
 
 export function CollectionGrid({
   posts,
@@ -46,8 +47,11 @@ export function CollectionGrid({
       </div>
 
       <div className="mt-10 grid gap-x-8 gap-y-14 sm:grid-cols-2 xl:grid-cols-3">
-        {filtered.map((post) => (
-          <PostCard key={post.id} post={post} cats={cats} />
+        {filtered.map((post, i) => (
+          <Fragment key={post.id}>
+            <PostCard post={post} cats={cats} />
+            {(i + 1) % 4 === 0 && <AdSlot key={`ad-${post.id}`} variant="infeed" />}
+          </Fragment>
         ))}
       </div>
 

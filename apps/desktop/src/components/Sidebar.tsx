@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { View } from "../App";
 import { startPipeline } from "../lib/tauri";
 import { getRunEnv, type CredentialName } from "../lib/vault";
@@ -19,6 +20,16 @@ export default function Sidebar(props: {
   onLog: (line: string) => void;
 }) {
   const { view, setView, configured, running, setRunning, onLog } = props;
+
+  // mockup statusbar's live Dhaka clock
+  const [clock, setClock] = useState("");
+  useEffect(() => {
+    const t = setInterval(
+      () => setClock(new Date().toLocaleTimeString("bn-BD", { timeZone: "Asia/Dhaka", hour12: false })),
+      1000,
+    );
+    return () => clearInterval(t);
+  }, []);
 
   const run = async () => {
     if (running) return;
@@ -80,6 +91,10 @@ export default function Sidebar(props: {
         <p className="font-mono-x text-[9px] tracking-[0.18em] text-lime uppercase">
           ● CONTROLLER ONLINE
         </p>
+        <div className="mt-1.5 flex items-center justify-between font-mono-x text-[10.5px] text-white/40">
+          <span>ঢাকা · LIVE</span>
+          <span className="tabular-nums text-white/70">{clock || "· · : · ·"}</span>
+        </div>
         <p className="mt-1 text-[10.5px] text-white/40">
           {watching} কী কনফিগারড
         </p>

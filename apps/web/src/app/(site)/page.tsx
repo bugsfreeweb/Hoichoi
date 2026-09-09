@@ -6,6 +6,10 @@ import { MostReadList } from "@/components/MostReadList";
 import { CategoryMarquee } from "@/components/CategoryMarquee";
 import { CollectionGrid } from "@/components/CollectionGrid";
 import { PipelineDiagram } from "@/components/PipelineDiagram";
+import { ScrollProgress } from "@/components/ScrollProgress";
+import { RewriteComparator } from "@/components/RewriteComparator";
+import { AdSlot } from "@/components/AdSlot";
+import Link from "next/link";
 
 export const revalidate = 300;
 
@@ -15,6 +19,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <ScrollProgress />
       <section className="mx-auto max-w-site px-4 md:px-8">
         <div className="grid gap-10 border-y-2 border-ink py-8 lg:grid-cols-12 lg:py-10">
           {lead ? (
@@ -35,7 +40,27 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section className="mx-auto max-w-site px-4 pt-12 md:px-8">
+        <AdSlot variant="leaderboard" />
+      </section>
+
       <CategoryMarquee />
+
+      {lead && (
+        <section className="mx-auto max-w-site px-4 py-14 md:px-8 md:py-18">
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="font-mono-x text-[10.5px] tracking-[0.26em] text-alizarin uppercase">▚ RAW FEED → BENGALI EDITORIAL · দেখুন পার্থক্য</p>
+              <h2 className="mt-2 font-serif-bn text-[34px] font-black text-ink md:text-[44px]">একই ঘটনা — দুই জগত</h2>
+            </div>
+            <p className="max-w-sm text-[12.5px] leading-relaxed text-ink-soft">
+              বামে ফেসবুকে সোর্স-পোস্ট যেমন করে পড়ে আসছিল, ডানে সেই একই ঘটনা হইচইয়ের
+              সম্পাদকীয় শৈলীতে — বানান ঠিক, নাম গোপন, শিরোনামে শুধু ঘটনা।
+            </p>
+          </div>
+          <RewriteComparator post={lead} />
+        </section>
+      )}
 
       <section className="mx-auto max-w-site px-4 py-14 md:px-8 md:py-18">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
@@ -51,6 +76,36 @@ export default async function HomePage() {
       </section>
 
       <PipelineDiagram />
+
+      <section className="mx-auto max-w-site px-4 py-14 md:px-8">
+        <div className="flex flex-col items-center justify-between gap-6 border-[1.5px] border-ink bg-paper-deep/40 px-6 py-8 md:flex-row md:px-10">
+          <div className="flex items-center gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-alizarin font-serif-bn text-[22px] font-black text-paper">
+              হ
+            </span>
+            <div>
+              <p className="font-serif-bn text-[22px] font-black text-ink">হইচই কন্ট্রোল খুলুন</p>
+              <p className="mt-1 font-mono-x text-[9.5px] tracking-[0.2em] text-ink-soft uppercase md:text-[10.5px]">
+                WEB TWIN · LIVE CONSOLE · সোর্স, মডারেশন, ব্যাকআপ জানালা
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin"
+            className="group flex shrink-0 items-center gap-2 bg-alizarin px-6 py-3 text-[13px] font-bold text-paper shadow-[0_8px_24px_rgba(210,32,44,0.25)] transition-all hover:bg-alizarin-deep"
+          >
+            ওয়েব কন্ট্রোল
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:translate-x-1">
+              <path d="M18 8 22 12 18 16" />
+              <path d="M2 12H22" />
+            </svg>
+          </Link>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-site px-4 pb-14 md:px-8">
+        <AdSlot variant="strip" />
+      </section>
     </>
   );
 }

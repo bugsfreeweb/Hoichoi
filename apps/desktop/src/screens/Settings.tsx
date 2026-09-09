@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   getCredential,
   storeCredential,
@@ -38,7 +38,13 @@ const BRAND_FIELDS: Array<{ key: string; label: string; secret?: boolean }> = [
   { key: "accent_color", label: "Accent color (hex)" },
 ];
 
-export default function Settings({ refresh }: { refresh: () => Promise<void> }) {
+export default function Settings({
+  refresh,
+  refreshBrand,
+}: {
+  refresh: () => Promise<void>;
+  refreshBrand: () => Promise<void>;
+}) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -89,6 +95,20 @@ export default function Settings({ refresh }: { refresh: () => Promise<void> }) 
     setCloud(await isCloudSync());
   };
 
+  const loadBrand = async () => {
+    try {
+      const s = await settingsGet(await getRunEnv());
+      const rec: Record<string, string> = {};
+      for (const f of BRAND_FIELDS) {
+        const v = s[f.key];
+        if (typeof v === "string") rec[f.key] = v;
+      }
+      setBrand(rec);
+    } catch {
+      /* ব্যান্ডিং লোড ব্যর্থ — ফিল্ড খালি থাকবে */
+    }
+  };
+
   const toggleCloud = async (on: boolean) => {
     await storeCredential("use_cloud", on ? "1" : "0");
     setCloud(on);
@@ -97,18 +117,11 @@ export default function Settings({ refresh }: { refresh: () => Promise<void> }) 
     await loadBrand();
   };
 
-  const loadBrand = async () => {
-    try {
-      const s = await settingsGet(await getRunEnv());
-      const rec: Record<string, string> = {};
-      for (const f of BRAND_FIELDS) rec[f.key] = s[f.key] == null ? "" : String(s[f.key]);
-      setBrand(rec);
-      setBrandMsg("loaded");
-      setBrandErr(null);
-    } catch (e) {
-      setBrandErr(String(e));
-    }
-  };
+  // Auto-load branding on mount so the fields are populated immediately
+  // (not only after the user clicks "Load current").
+  useEffect(() => {
+    void loadBrand();
+  }, []);
 
   const saveBrand = async () => {
     try {
@@ -118,6 +131,9 @@ export default function Settings({ refresh }: { refresh: () => Promise<void> }) 
       await settingsSet(await getRunEnv(), fields);
       setBrandMsg("সংরক্ষিত — web ও desktop-এ সঙ্গে সঙ্গে কার্যকর");
       setBrandErr(null);
+      // Tell the parent (App) to re-load branding so the sidebar + other screens
+      // pick up the new site_name / slogan immediately.
+      await refreshBrand();
     } catch (e) {
       setBrandErr(String(e));
     }

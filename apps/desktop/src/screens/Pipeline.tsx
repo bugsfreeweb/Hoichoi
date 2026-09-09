@@ -3,6 +3,15 @@ import { Radio, ScrollText } from "lucide-react";
 
 const STAGE = /^(\[[A-Z]+\]|\[desk\])?\s*/;
 
+/** mockup log-level tinting (.log-ok / .log-warn / .log-err / .log-info). */
+function levelClass(line: string): string {
+  const lo = line.toLowerCase();
+  if (/(?:error|failed|ব্যর্থ|✗|exception|refus)/.test(lo) && !/exit code 0/.test(lo)) return "log-err";
+  if (/(?:warn|⚠|skip=|duplicate|দ্বন্দ্ব)/.test(lo)) return "log-warn";
+  if (/(?:✓|done|success|প্রকাশিত|exit code 0|commit|push|ok\b|saved)/.test(lo)) return "log-ok";
+  return "log-info";
+}
+
 export default function Pipeline({ logs }: { logs: string[] }) {
   const box = useRef<HTMLDivElement>(null);
 
@@ -41,7 +50,7 @@ export default function Pipeline({ logs }: { logs: string[] }) {
                 <li key={i} className="flex gap-3">
                   <span className="w-[56px] shrink-0 text-white/30">{String(i).padStart(3, "0")}</span>
                   <span className="w-16 shrink-0 text-sky-300">{stage.replace(/[[\]]/g, "") || "•"}</span>
-                  <span className="min-w-0 flex-1 break-words text-white/75">{rest}</span>
+                  <span className={`min-w-0 flex-1 break-words ${levelClass(l)}`}>{rest}</span>
                 </li>
               );
             })}

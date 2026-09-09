@@ -27,8 +27,20 @@ export default function App() {
     }
   }, []);
 
+  // Sidebar টেক্সটে ব্র্যান্ড প্রিন্ট করা হয় না — saveBrand-এর পরে নোটিফিকেশন হিসেবে empty refresh।
+  const refreshBrand = useCallback(async () => {}, []);
+
   useEffect(() => {
     void refresh();
+    const NAV_ORDER: View[] = ["dashboard", "pipeline", "desk", "settings"];
+    const onKey = (e: KeyboardEvent) => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+      const i = ["1", "2", "3", "4"].indexOf(e.key);
+      if (i >= 0) setView(NAV_ORDER[i]);
+    };
+    window.addEventListener("keydown", onKey);
     const unlog = listen<string>("pipeline://log", (e) => {
       setLogs((prev) => [...prev.slice(-399), e.payload]);
     });
@@ -37,6 +49,7 @@ export default function App() {
       setLogs((prev) => [...prev, `── exit code ${e.payload} ──`]);
     });
     return () => {
+      window.removeEventListener("keydown", onKey);
       void unlog.then((f) => f());
       void undone.then((f) => f());
     };
@@ -68,7 +81,7 @@ export default function App() {
         )}
         {view === "pipeline" && <Pipeline logs={logs} />}
         {view === "desk" && <Desk />}
-        {view === "settings" && <Settings refresh={refresh} />}
+        {view === "settings" && <Settings refresh={refresh} refreshBrand={refreshBrand} />}
       </main>
     </div>
   );

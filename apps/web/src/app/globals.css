@@ -108,6 +108,28 @@ body.grain::before {
   transition: stroke-dashoffset 1s linear;
 }
 
+.tape {
+  position: relative;
+  transform: rotate(-0.6deg);
+}
+.tape::before {
+  content: "";
+  position: absolute;
+  top: -12px;
+  left: 24%;
+  width: 92px;
+  height: 24px;
+  transform: rotate(-3deg);
+  background: rgba(255, 180, 84, 0.55);
+  mix-blend-mode: multiply;
+}
+
+.grip {
+  cursor: ew-resize;
+  touch-action: none;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
 .line-clamp-3 {
   display: -webkit-box;
   -webkit-line-clamp: 3;
