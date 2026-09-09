@@ -34,6 +34,14 @@ STORAGE_ADAPTER      local | r2
 > `file:` URLs do not work on Vercel (ephemeral filesystem) — use a Turso
 > `libsql://` database.
 
+Every Vercel build now runs **`pnpm db:migrate` first** (a `prebuild` hook in
+`apps/web/package.json`, mirrored in both `vercel.json` files) so the DB is
+never missing — the very first deploy crashed prerendering `/about` with
+`SQLITE_ERROR: no such table: settings` because the build box had an empty
+ephemeral DB. With the migrate step the build always succeeds; **but set the
+Turso env vars above or the live site shows seeded defaults and no real
+posts** (runtime reads still need the remote DB).
+
 ## Option A — Deploy from GitHub Actions (recommended)
 
 > **In place now.** `.github/workflows/deploy-web.yml` is committed. It runs on
@@ -60,9 +68,11 @@ Live site: `https://hoichoifeed.vercel.app`.
 ## Option B — Vercel Git integration (no custom workflow)
 
 1. Import the repo into Vercel.
-2. Use the existing root `vercel.json`:
-   - `rootDirectory: "apps/web"` → Vercel builds only the web app.
-   - `buildCommand`: `cd ../.. && pnpm --filter @hoichoi/web build`
+2. Use the existing `vercel.json`:
+   - Set **Root Directory = `apps/web`** → Vercel builds only the web app
+     (build runs `prebuild` migrate, then `next build`).
+   - Or use the root `vercel.json` (`rootDirectory: apps/web`,
+     buildCommand `cd ../.. && pnpm db:migrate && pnpm --filter @hoichoi/web build`).
    - `outputDirectory: ".next"` (+ `/media/**` and `/_next/static/**` cache headers).
 3. Add the env vars above. Vercel auto-detects Next.js.
 
