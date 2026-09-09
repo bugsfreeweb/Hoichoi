@@ -76,7 +76,10 @@ body.grain::before {
 }
 
 .marquee-track {
+  display: flex;
+  width: max-content;
   animation: marquee-scroll 40s linear infinite;
+  will-change: transform;
 }
 @keyframes marquee-scroll {
   0% {
