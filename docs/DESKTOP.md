@@ -150,3 +150,33 @@ apps/desktop/
   `@hoichoi/shared-types`.
 - Vercel ignores `apps/desktop/` and `apps/scraper/` via `.vercelignore` and
   builds only `apps/web` (see `docs/DEPLOY_WEB.md`).
+
+## Mockup parity (desk)
+
+The desktop UI mirrors the `mockup/` desk controller:
+
+- **Sidebar** — monitor / collector / web desk / settings nav with keyboard
+  shortcuts **1–4**, live **Dhaka clock**, "controller online" indicator and
+  the run-pipeline button (`src/components/Sidebar.tsx`).
+- **Dashboard** — 4 stat tiles + an SVG **next-sync countdown ring** (`2h`
+  schedule, `0 */2 * * *`) matching the mockup's `Countdown` component
+  (`src/screens/Dashboard.tsx`).
+- **Collector** — live stdout log with mockup **log-level colors** (`log-ok`,
+  `log-warn`, `log-err`, `log-info` in `src/index.css`; parsed out of each
+  line in `src/screens/Pipeline.tsx`).
+- **Settings** — saved as Stronghold-style encrypted credentials in the AES-GCM
+  vault; branding (site_name / slogan / tagline / logo / accent) is read from
+  the shared Turso `settings` row via the bundled runner (`src/screens/Settings.tsx`).
+
+## Rebuilding the installer
+
+```bash
+pnpm --filter @hoichoi/desktop build          # tsc + vite
+pnpm --filter @hoichoi/desktop bundle:runner  # stage self-contained runner → resources/runner
+pnpm --filter @hoichoi/desktop tauri build    # NSIS + MSI into src-tauri/target/release/bundle
+```
+
+Copy the three artifacts from `src-tauri/target/release/` into `releases/`
+(`Hoichoi Desk.exe`, `..._x64-setup.exe`, `..._x64_en-US.msi`). The installer
+now bundles the runner (≈225 MB) and needs **no** `SODIUM_DIST_DIR` — libsodium
+is no longer a dependency since the AES-256-GCM vault replaced Stronghold.

@@ -36,6 +36,14 @@ STORAGE_ADAPTER      local | r2
 
 ## Option A — Deploy from GitHub Actions (recommended)
 
+> **In place now.** `.github/workflows/deploy-web.yml` is committed. It runs on
+> every push to `main` touching `apps/web/**`, `packages/**`, `pnpm-lock.yaml`
+> or `vercel.json` — typechecks the web app, then `amondnet/vercel-action`
+> deploys **production**. The job **skips itself** (never fails) until the
+> Vercel secrets exist.
+
+Live site: `https://hoichoifeed.vercel.app`.
+
 1. Git push the repo.
 2. In Vercel create a project, then grab `VERCEL_TOKEN` (Account → Tokens),
    `VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` (`vercel pull`, or read them from
@@ -47,6 +55,7 @@ STORAGE_ADAPTER      local | r2
 4. Push to `main` touching `apps/web/**` or `packages/**` → the
    `.github/workflows/deploy-web.yml` workflow typechecks then runs
    `amondnet/vercel-action` with `--prod`. Git push is the only trigger.
+   The root `vercel.json` (`rootDirectory: "apps/web"`) drives the build.
 
 ## Option B — Vercel Git integration (no custom workflow)
 
