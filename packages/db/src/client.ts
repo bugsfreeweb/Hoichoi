@@ -26,12 +26,22 @@ export function findRepoRoot(start = process.cwd()): string {
 export function resolveDatabaseUrl(): string {
   const fromEnv = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL;
   if (fromEnv) {
-    // Relative `file:` URLs (e.g. `file:./data/ci-hoichoi.db`) must be resolved
-    // against the repo root — fileURLToPath() would treat them as absolute
-    // paths from the filesystem root (`/data/...` → EACCES in CI).
-    if (fromEnv.startsWith("file:") && !fromEnv.startsWith("file:/")) {
-      const abs = path.join(findRepoRoot(), fromEnv.slice("file:".length));
-      return pathToFileURL(abs).href;
+    if (fromEnv.startsWith("file:")) {
+      const p = fromEnv.slice("file:".length);
+      // Absolute POSIX (`file:/...`), absolute Windows (`file:C:\...`,
+      // `file:\\server\share`) or a URL the libsql client can handle itself.
+      const isAbsolute =
+        p.startsWith("/") ||
+        p.startsWith("\\") ||
+        /^[A-Za-z]:[\\/]/.test(p);
+      if (isAbsolute) {
+        // fileURLToPath() would read `file:C:/...` as a host name, so normalise
+        // absolute Windows paths explicitly before handing them to the client.
+        return pathToFileURL(path.resolve(p)).href;
+      }
+      // Relative `file:./data/ci-hoichoi.db` must resolve against the repo
+      // root — fileURLToPath() would otherwise read it from the filesystem root.
+      return pathToFileURL(path.join(findRepoRoot(), p)).href;
     }
     return fromEnv;
   }
