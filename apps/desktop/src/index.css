@@ -9,8 +9,8 @@ body,
 }
 
 body {
-  background: #f3eee1;
-  color: #0a0c10;
+  background: #0c1017;
+  color: #e9e6da;
   font-family: "Hind Siliguri", "Space Grotesk", sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
@@ -21,29 +21,73 @@ body {
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #e8e0cd;
+  background: #0a0d12;
 }
 ::-webkit-scrollbar-thumb {
-  background: #0a0c10;
+  background: #2a3040;
   border-radius: 0;
 }
+::-webkit-scrollbar-thumb:hover {
+  background: #3a4256;
+}
 
+/* ---------- dark "desk console" building blocks (from mockup desk) ---------- */
 .panel {
-  @apply border border-ink/20 bg-paper-deep p-4;
+  @apply rounded-xl border border-white/10 bg-panel p-4;
 }
 
 .panel-title {
-  @apply font-mono text-[10px] tracking-[0.24em] uppercase text-ink-soft;
+  @apply font-mono-x text-[10px] tracking-[0.24em] uppercase text-white/40;
 }
 
 .field {
-  @apply w-full border border-ink/25 bg-paper px-3 py-2 text-[14px] text-ink placeholder:text-ink-soft/50 focus:border-ink focus:outline-none;
+  @apply w-full rounded-lg border border-white/12 bg-[#0a0d12] px-3 py-2 text-[14px] text-white placeholder:text-white/40 focus:border-lime/60 focus:outline-none;
 }
 
 .btn {
-  @apply inline-flex items-center justify-center gap-2 border border-ink bg-ink px-3 py-2 text-[12px] font-bold uppercase tracking-wider text-paper transition-colors hover:bg-alizarin hover:border-alizarin disabled:cursor-not-allowed disabled:opacity-40;
+  @apply inline-flex items-center justify-center gap-2 rounded-lg bg-lime px-3 py-2 text-[12px] font-bold uppercase tracking-wider text-night transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40;
 }
 
 .btn-ghost {
-  @apply inline-flex items-center justify-center gap-2 border border-ink/25 bg-transparent px-3 py-2 text-[12px] font-bold uppercase tracking-wider text-ink transition-colors hover:border-ink;
+  @apply inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-transparent px-3 py-2 text-[12px] font-bold uppercase tracking-wider text-white/75 transition-colors hover:border-white/40 hover:text-white;
+}
+
+/* keep the rest of the app (Settings/SetupWizard/Desk) legible on dark */
+.text-ink {
+  color: #e9e6da !important;
+}
+.text-ink-soft {
+  color: #9aa1a8 !important;
+}
+.text-alizarin {
+  color: #ff7070 !important;
+}
+.bg-ink {
+  background-color: #0a0d12 !important;
+}
+.bg-paper {
+  background-color: #f3eee1;
+}
+
+/* mockup log level colors + slim scrollbar helper */
+.log-ok {
+  color: #c8f65d;
+}
+.log-warn {
+  color: #f5b800;
+}
+.log-err {
+  color: #ff6b6b;
+}
+.log-info {
+  color: #7cc3ff;
+}
+
+.scroll-slim::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-slim::-webkit-scrollbar-thumb {
+  background: #2a3040;
+  border-radius: 8px;
 }

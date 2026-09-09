@@ -126,3 +126,43 @@ body.grain::before {
   position: relative;
   z-index: 2;
 }
+
+/* ================= ADMIN CONSOLE (dark "night" mockup theme) ============== */
+.admin-console {
+  min-height: 100dvh;
+  background: #0c1017;
+  color: #e9e6da;
+}
+.admin-console,
+.admin-console * {
+  scrollbar-width: thin;
+  scrollbar-color: #2a3040 #0a0d12;
+}
+.admin-console ::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.admin-console ::-webkit-scrollbar-thumb {
+  background: #2a3040;
+  border-radius: 8px;
+}
+
+/* remap the legacy light tokens inside the admin console so the whole
+   console reads as dark without rewriting every child page component. */
+.admin-console .text-ink { color: #e9e6da; }
+.admin-console .text-ink\/40 { color: rgba(233, 230, 218, 0.4); }
+.admin-console .text-ink\/70 { color: rgba(233, 230, 218, 0.72); }
+.admin-console .text-ink\/85 { color: rgba(233, 230, 218, 0.85); }
+.admin-console .text-ink-soft { color: #8b929c; }
+.admin-console .text-alizarin { color: #f36b6b; }
+.admin-console .bg-ink { background-color: #0a0d12; }
+.admin-console .bg-ink\/25 { background-color: rgba(10, 13, 18, 0.35); }
+.admin-console .bg-ink\/80 { background-color: rgba(10, 13, 18, 0.85); }
+.admin-console .bg-paper { background-color: #151a24; }
+.admin-console .bg-paper-deep { background-color: #0f141c; }
+.admin-console .border-ink { border-color: rgba(255, 255, 255, 0.14); }
+.admin-console .border-ink\/15 { border-color: rgba(255, 255, 255, 0.12); }
+.admin-console .border-ink\/20 { border-color: rgba(255, 255, 255, 0.16); }
+.admin-console .border-ink\/25 { border-color: rgba(255, 255, 255, 0.2); }
+.admin-console .border-ink\/30 { border-color: rgba(255, 255, 255, 0.24); }
+.admin-console .border-ink\/40 { border-color: rgba(255, 255, 255, 0.3); }

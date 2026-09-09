@@ -1,10 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rootDirectory": "apps/web",
   "framework": "nextjs",
-  "buildCommand": "pnpm --filter @hoichoi/web build",
-  "installCommand": "pnpm install --no-frozen-lockfile",
-  "outputDirectory": ".next",
+  "rootDirectory": "apps/web",
+  "installCommand": "cd ../.. && pnpm install --no-frozen-lockfile",
+  "buildCommand": "cd ../.. && pnpm --filter @hoichoi/web build",
   "headers": [
     {
       "source": "/media/(.*)",

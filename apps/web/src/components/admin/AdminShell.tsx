@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { AdminUser } from "@hoichoi/shared-types";
+import { adminLogout } from "@/lib/auth-actions";
 
 const NAV: Array<{ href: string; emoji: string; label: string }> = [
   { href: "/admin", emoji: "📊", label: "ড্যাশবোর্ড" },
@@ -16,18 +20,23 @@ const NAV: Array<{ href: string; emoji: string; label: string }> = [
 ];
 
 export function AdminShell({ user, children }: { user: AdminUser; children: React.ReactNode }) {
+  const path = usePathname();
+
   return (
-    <div className="page-chrome">
-      <header className="sticky top-0 z-[60] flex h-11 items-center justify-between border-b border-white/10 bg-ink px-4 text-paper/85">
+    <div className="admin-console min-h-dvh">
+      <header className="sticky top-0 z-[60] flex h-12 items-center justify-between border-b border-white/10 bg-[#0a0d12] px-5 text-paper/85">
         <div className="flex items-center gap-2.5 font-mono-x text-[10px] tracking-[0.22em] uppercase">
-          <span className="relative flex h-1.5 w-1.5">
+          <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-alizarin opacity-75"></span>
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-alizarin"></span>
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-alizarin"></span>
           </span>
           HOICHOI · ADMIN CONSOLE
         </div>
-        <nav className="flex items-center gap-1">
-          <Link href="/" className="rounded-full px-3 py-1 text-[11.5px] font-medium text-white/55 hover:bg-white/10">
+        <nav className="flex items-center gap-2">
+          <Link
+            href="/"
+            className="rounded-full px-3 py-1 text-[11.5px] font-medium text-white/55 hover:bg-white/10 hover:text-white"
+          >
             পাবলিক সাইট
           </Link>
           <span className="hidden items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] font-medium text-white/70 sm:flex">
@@ -37,23 +46,47 @@ export function AdminShell({ user, children }: { user: AdminUser; children: Reac
         </nav>
       </header>
 
-      <div className="flex min-h-screen">
-        <aside className="w-[200px] shrink-0 border-r border-ink/15 bg-paper-deep py-6">
-          <p className="px-5 font-mono-x text-[10px] tracking-[0.24em] text-ink-soft uppercase">ADMIN</p>
-          <ul className="mt-4 font-sans-bn text-[13.5px] font-medium">
-            {NAV.map((n) => (
-              <li key={n.href}>
-                <Link
-                  href={n.href}
-                  className="flex items-center gap-2 px-5 py-2.5 text-ink-soft transition-colors hover:bg-paper hover:text-ink"
-                >
-                  <span>{n.emoji}</span>
-                  {n.label}
-                </Link>
-              </li>
-            ))}
+      <div className="flex min-h-[calc(100dvh-3rem)]">
+        <aside className="w-[218px] shrink-0 border-r border-white/10 bg-[#0a0d12] py-6">
+          <div className="px-5">
+            <p className="font-mono-x text-[9.5px] tracking-[0.24em] text-white/35 uppercase">ADMIN</p>
+            <div className="mt-3 flex items-center gap-3 border-b border-white/10 pb-4">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-alizarin font-serif-bn text-[17px] font-black text-white">
+                হ
+              </span>
+              <div>
+                <p className="text-[13px] leading-tight font-bold text-white">হইচই কন্ট্রো</p>
+                <p className="font-mono-x text-[8.5px] tracking-[0.16em] text-white/35 uppercase">LIVE CONSOLE</p>
+              </div>
+            </div>
+          </div>
+          <ul className="mt-4 space-y-0.5 px-3 font-sans-bn text-[13px] font-medium">
+            {NAV.map((n) => {
+              const active = path === n.href || path.startsWith(`${n.href}/`);
+              return (
+                <li key={n.href}>
+                  <Link
+                    href={n.href}
+                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 transition-colors ${
+                      active
+                        ? "bg-white text-night"
+                        : "text-white/55 hover:bg-white/8 hover:text-white"
+                    }`}
+                  >
+                    <span className="text-[14px]">{n.emoji}</span>
+                    <span className="flex-1">{n.label}</span>
+                    {active && <span className="h-1.5 w-1.5 rounded-full bg-lime" />}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
+          <div className="mt-6 border-t border-white/10 px-5 pt-4">
+            <p className="font-mono-x text-[8.5px] tracking-[0.18em] text-lime uppercase">● CONTROLLER ONLINE</p>
+            <p className="mt-1 text-[10px] text-white/35">TURSO · VERCEL · EDGE</p>
+          </div>
         </aside>
+
         <main className="flex-1 px-8 py-6 pb-24">{children}</main>
       </div>
     </div>
@@ -62,16 +95,8 @@ export function AdminShell({ user, children }: { user: AdminUser; children: Reac
 
 function LogoutButton() {
   return (
-    <form
-      action={async () => {
-        "use server";
-        const { destroySession } = await import("@/lib/auth");
-        await destroySession();
-        const { redirect } = await import("next/navigation");
-        redirect("/admin/login");
-      }}
-    >
-      <button className="rounded-full px-3 py-1 text-[11.5px] font-medium text-white/55 transition-colors hover:bg-alizarin hover:text-paper">
+    <form action={adminLogout}>
+      <button className="rounded-full px-3 py-1 text-[11.5px] font-medium text-white/55 transition-colors hover:bg-alizarin hover:text-white">
         লগআউট
       </button>
     </form>
