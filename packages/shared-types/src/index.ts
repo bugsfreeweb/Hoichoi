@@ -1,12 +1,16 @@
 /**
  * Shared domain types for হৈচৈ (Hoichoi).
  * These map 1:1 to the Turso/libSQL schema (see packages/db/migrations/).
+ * Categories are now dynamic (stored in category_configs table).
  */
 
-export type CategorySlug =
-  | "child-sexual-abuse"
-  | "extramarital-crime"
-  | "missing-children";
+export type CategorySlug = string; // Dynamic - managed via category_configs table
+
+export const DEFAULT_CATEGORIES: CategorySlug[] = [
+  "child-sexual-abuse",
+  "extramarital-crime",
+  "missing-children",
+];
 
 export type PostStatus =
   | "pending_review"
@@ -65,16 +69,23 @@ export interface CategoryMeta {
   displayNameEn: string;
   descriptionBn: string;
   descriptionEn: string;
+  isActive: boolean;
+  sortOrder: number;
   /** Tailwind-friendly rgb used across the UI + watermark color. */
   dot: string;
   config: CategoryConfig;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Source {
   id: string;
   page_url: string;
   page_name: string;
+  /** @deprecated Use categories array instead. Kept for backward compatibility. */
   category: CategorySlug;
+  /** Array of category slugs this source belongs to (many-to-many via source_categories). */
+  categories: CategorySlug[];
   is_verified: boolean;
   is_active: boolean;
   last_scraped_at: string | null;

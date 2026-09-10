@@ -1,5 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
-import { Wifi, Database, GitBranch } from "lucide-react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   listen,
   openAdmin,
@@ -19,10 +18,8 @@ import {
   type CredentialName,
 } from "./lib/vault";
 import { SITE_URL } from "./lib/site";
-import { bnClock } from "./lib/format";
+import { bnClock, toBn } from "./lib/format";
 import SetupWizard from "./components/SetupWizard";
-import TitleBar from "./components/TitleBar";
-import Sidebar from "./components/Sidebar";
 import Dashboard from "./screens/Dashboard";
 import Watchlist from "./screens/Watchlist";
 import Queue from "./screens/Queue";
@@ -30,6 +27,7 @@ import Collector from "./screens/Collector";
 import Vault from "./screens/Vault";
 import Settings from "./screens/Settings";
 import Moderation from "./screens/Moderation";
+import ThemeToggle from "./components/ThemeToggle";
 
 export type View =
   | "dashboard"
@@ -51,16 +49,80 @@ const VIEW_ORDER: View[] = [
   "moderation",
 ];
 
+const TAB_LABELS: Record<View, { icon: string; label: string }> = {
+  dashboard: { icon: "dash", label: "মনিটর" },
+  watchlist: { icon: "radio", label: "ওয়াচলিস্ট" },
+  queue: { icon: "list", label: "কনটেন্ট সারি" },
+  collector: { icon: "term", label: "কালেক্টর" },
+  vault: { icon: "key", label: "API ভল্ট" },
+  settings: { icon: "gear", label: "সেটিংস" },
+  moderation: { icon: "shield", label: "মন্তব্য মডারেশন" },
+};
+
 function StatusClock() {
   const [clock, setClock] = useState("");
   useEffect(() => {
     const t = setInterval(() => setClock(bnClock(true)), 1000);
     return () => clearInterval(t);
   }, []);
+  return <span className="ml-auto">{clock || "· · : · · : · ·"} · ঢাকা</span>;
+}
+
+function TabButton({ id, icon, label, active, onClick, shortcut }: {
+  id: View;
+  icon: string;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  shortcut: string;
+}) {
+  const icons: Record<string, React.ReactNode> = {
+    dash: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>,
+    radio: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>,
+    list: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor" stroke="none"/></svg>,
+    term: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></svg>,
+    key: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="15" r="4.5"/><path d="M11.5 11.5L21 2M16.5 6.5l3 3M13.5 9.5l2.5 2.5"/></svg>,
+    gear: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 7h9M19 7h1M4 17h3M13 17h7"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/><path d="M4 12h16"/><circle cx="9" cy="12" r="2.2"/></svg>,
+    shield: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8 3v6c0 5-3.5 9.5-8 11-4.5-1.5-8-6-8-11V5z"/><path d="M9 12l2 2 4-4"/></svg>,
+  };
+
   return (
-    <span className="ml-auto">
-      {clock || "· · : · · : · ·"} · ঢাকা
-    </span>
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-10 w-full px-8 py-8 rounded-8 font-medium text-[12.5px] font-weight-500 transition-colors ${
+        active
+          ? "bg-white text-night"
+          : "text-white/55 hover:bg-white/8 hover:text-white"
+      }`}
+      data-tab={id}
+    >
+      <span>{icons[icon]}</span>
+      <span className="flex-1 text-left">{label}</span>
+      <kbd className={`font-mono-x text-[9px] ${active ? "text-night/40" : "text-white/25"}`}>
+        {shortcut}
+      </kbd>
+    </button>
+  );
+}
+
+function MTabsButton({ id, label, active, onClick }: {
+  id: View;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-none rounded-full px-4 py-2 text-[11px] transition-colors ${
+        active
+          ? "bg-white text-night"
+          : "text-white/50 hover:bg-white/8 hover:text-white"
+      }`}
+      data-tab={id}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -74,6 +136,9 @@ export default function App() {
   const [queueRows, setQueueRows] = useState<DeskQueueRow[]>([]);
   const [statsData, setStatsData] = useState<DeskStats | null>(null);
   const [hours, setHours] = useState(2);
+  const [winMaximized, setWinMaximized] = useState(false);
+  const [winMinimized, setWinMinimized] = useState(false);
+  const winRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -153,64 +218,130 @@ export default function App() {
   }
 
   const dbDriver = configured.turso_url ? "TURSO" : "LOCAL";
+  const watchingCount = sources.filter((s) => s.is_active).length;
 
   const jump = (v: View) => setView(v);
 
   return (
-    <div className="desk-scene flex h-full items-center justify-center overflow-hidden p-3">
-      <div className="tauri-win flex h-full w-full flex-col overflow-hidden rounded-xl">
-        <TitleBar />
+    <div className="desk-scene">
+      <button
+        id="dockRestore"
+        className="dock-restore"
+        hidden={!winMinimized}
+        onClick={() => setWinMinimized(false)}
+      >
+        <img src="/images/hoichoi-mark.png" alt="" />
+        <span className="dock-txt">
+          <strong>হইচই ডেস্ক</strong>
+          <small>CLICK TO RESTORE · PURE</small>
+        </span>
+      </button>
 
-        {/* menubar */}
-        <div className="flex h-8 shrink-0 items-center gap-1 border-b border-white/8 bg-[#0e1219] px-2 text-[11.5px] text-white/55">
-          <button
-            onClick={() => void openAdmin(SITE_URL)}
-            className="rounded px-2.5 py-1 hover:bg-white/8 hover:text-white"
-          >
-            ফাইল
-          </button>
-          <button
-            onClick={() => jump("watchlist")}
-            className="rounded px-2.5 py-1 hover:bg-white/8 hover:text-white"
-          >
-            সোর্স
-          </button>
-          <button
-            onClick={() => jump("collector")}
-            className="rounded px-2.5 py-1 hover:bg-white/8 hover:text-white"
-          >
-            রান
-          </button>
-          <button
-            onClick={() => jump("vault")}
-            className="rounded px-2.5 py-1 hover:bg-white/8 hover:text-white"
-          >
-            ভল্ট
-          </button>
-          <button
-            onClick={() => void openAdmin(`${SITE_URL}/system`)}
-            className="rounded px-2.5 py-1 hover:bg-white/8 hover:text-white"
-          >
-            সাহায্য
-          </button>
-          <span className="ml-auto hidden pr-2 font-mono-x text-[9.5px] tracking-[0.16em] text-white/25 uppercase sm:inline">
-            1–7 TABS
-          </span>
+      <div
+        ref={winRef}
+        id="win"
+        className={`win ${winMaximized ? "max" : ""}`}
+        hidden={winMinimized}
+      >
+        <div className="titlebar">
+          <div className="traffic">
+            <button
+              className="dot red"
+              id="btnClose"
+              title="বন্ধ · সাইটে ফিরুন"
+              onClick={() => void openAdmin(SITE_URL)}
+            />
+            <button
+              className="dot yellow"
+              id="btnMin"
+              title="মিনিমাইজ"
+              onClick={() => setWinMinimized(true)}
+            />
+            <button
+              className="dot green"
+              id="btnMax"
+              title="ম্যাক্সিমাইজ"
+              onClick={() => setWinMaximized(!winMaximized)}
+            />
+          </div>
+          <div className="wintitle">
+            <img src="/images/hoichoi-mark.png" alt="" />
+            <span>হইচই ডেস্ক</span>
+            <em>PURE HTML · CSS · JS</em>
+          </div>
+          <div className="winctl">
+            <ThemeToggle />
+            <button
+              id="btnMin2"
+              title="মিনিমাইজ"
+              onClick={() => setWinMinimized(true)}
+            >
+              <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M5 12h14"/></svg>
+            </button>
+            <button
+              id="btnMax2"
+              title="ম্যাক্সিমাইজ / পুনরুদ্ধার"
+              onClick={() => setWinMaximized(!winMaximized)}
+            >
+              <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
+            </button>
+            <a
+              href="/"
+              title="বন্ধ · সাইটে ফিরুন"
+              onClick={(e) => { e.preventDefault(); void openAdmin(SITE_URL); }}
+            >
+              <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </a>
+          </div>
         </div>
 
-        <div className="flex min-h-0 flex-1">
-          <Sidebar
-            view={view}
-            setView={setView}
-            configured={configured}
-            running={running}
-            onRun={runNow}
-            watching={sources.filter((s) => s.is_active).length}
-          />
+        <div className="menubar">
+          <a href="/" onClick={(e) => { e.preventDefault(); void openAdmin(SITE_URL); }}>ফাইল</a>
+          <button onClick={() => jump("watchlist")}>সোর্স</button>
+          <button onClick={() => jump("collector")}>রান</button>
+          <button onClick={() => jump("vault")}>ভল্ট</button>
+          <a href="/system" onClick={(e) => { e.preventDefault(); void openAdmin(`${SITE_URL}/system`); }}>সাহায্য</a>
+          <span className="pure-badge">100% NO-FRAMEWORK</span>
+          <span className="kbd-hint">1–7 TABS</span>
+        </div>
 
-          <div className="flex min-w-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 bg-[#0c1017]">
-              {view === "dashboard" && (
+        <div className="winbody">
+          <aside className="side">
+            <nav className="sidenav" id="sideNav">
+              {VIEW_ORDER.map((v, i) => (
+                <TabButton
+                  key={v}
+                  id={v}
+                  icon={TAB_LABELS[v].icon}
+                  label={TAB_LABELS[v].label}
+                  active={view === v}
+                  onClick={() => jump(v)}
+                  shortcut={String(i + 1)}
+                />
+              ))}
+            </nav>
+            <div className="side-foot">
+              <p className="online"><span className="pulse-dot"></span>CONTROLLER ONLINE</p>
+              <p className="watching" id="sideWatch">{toBn(watchingCount)} সোর্স সক্রিয়</p>
+              <p className="datasrc" id="dataSrc">ডেটা: সংযোগ…</p>
+            </div>
+          </aside>
+
+          <div className="maincol">
+            <div className="mtabs" id="mTabs">
+              {VIEW_ORDER.map((v) => (
+                <MTabsButton
+                  key={v}
+                  id={v}
+                  label={TAB_LABELS[v].label}
+                  active={view === v}
+                  onClick={() => jump(v)}
+                />
+              ))}
+            </div>
+
+            <main className="stage">
+              <section className="pane" id="pane-dashboard" hidden={view !== "dashboard"}>
                 <Dashboard
                   sources={sources}
                   queueRows={queueRows}
@@ -219,30 +350,39 @@ export default function App() {
                   onOpen={jump}
                   hours={hours}
                 />
-              )}
-              {view === "watchlist" && <Watchlist sources={sources} refresh={refresh} />}
-              {view === "queue" && <Queue rows={queueRows} refresh={refresh} />}
-              {view === "collector" && (
+              </section>
+
+              <section className="pane col" id="pane-watchlist" hidden={view !== "watchlist"}>
+                <Watchlist sources={sources} refresh={refresh} />
+              </section>
+
+              <section className="pane col" id="pane-queue" hidden={view !== "queue"}>
+                <Queue rows={queueRows} refresh={refresh} />
+              </section>
+
+              <section className="pane col" id="pane-collector" hidden={view !== "collector"}>
                 <Collector logs={logs} running={running} onStart={() => void runNow()} onStop={() => void stopNow()} />
-              )}
-              {view === "vault" && <Vault configured={configured} />}
-              {view === "settings" && <Settings refresh={refresh} refreshBrand={async () => {}} />}
-              {view === "moderation" && <Moderation />}
-            </div>
+              </section>
+
+              <section className="pane col" id="pane-vault" hidden={view !== "vault"}>
+                <Vault configured={configured} />
+              </section>
+
+              <section className="pane" id="pane-settings" hidden={view !== "settings"}>
+                <Settings refresh={refresh} refreshBrand={async () => {}} />
+              </section>
+
+              <section className="pane" id="pane-moderation" hidden={view !== "moderation"}>
+                <Moderation />
+              </section>
+            </main>
           </div>
         </div>
 
-        {/* statusbar */}
-        <footer className="flex h-7 shrink-0 items-center gap-4 border-t border-white/8 bg-[#0a0d12] px-3 font-mono-x text-[9.5px] tracking-[0.12em] text-white/40 uppercase">
-          <span className="flex items-center gap-1.5 text-lime">
-            <Wifi size={10} /> TAURI 2.1
-          </span>
-          <span className="flex items-center gap-1.5 text-lime">
-            <Database size={10} /> {dbDriver} · CONNECTED
-          </span>
-          <span className="flex items-center gap-1.5">
-            <GitBranch size={10} /> HOICHOI-CONTENT
-          </span>
+        <footer className="statusbar">
+          <span className="sb lime"><svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2.5 9a15 15 0 0 1 19 0M5.5 12.5a10 10 0 0 1 13 0M8.6 16a5 5 0 0 1 6.8 0"/><circle cx="12" cy="19" r="1.2" fill="currentColor" stroke="none"/></svg>PURE · NO BUILD</span>
+          <span className="sb" id="dbState"><svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>{dbDriver} · CONNECTED</span>
+          <span className="sb"><svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M6 8.5v7M18 12H8.5"/></svg>HOICHOI-CONTENT</span>
           <StatusClock />
         </footer>
       </div>

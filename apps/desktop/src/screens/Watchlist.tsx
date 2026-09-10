@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Pause, Play, Plus, Radio, Search, Trash2 } from "lucide-react";
 import { agoBn, toBn } from "../lib/format";
 import {
   deskAddSource,
   deskRemoveSource,
   deskToggleSource,
+  deskCategories,
   type DeskSource,
 } from "../lib/tauri";
 import { getRunEnv } from "../lib/vault";
@@ -31,10 +32,23 @@ export default function Watchlist({
 }) {
   const [q, setQ] = useState("");
   const [kind, setKind] = useState<"all" | "page" | "group">("all");
-  const [form, setForm] = useState({ name: "", fbId: "", kind: "page" as "page" | "group" });
+  const [form, setForm] = useState({ name: "", fbId: "", kind: "page" as "page" | "group", categories: [] as string[] });
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Array<{ slug: string; displayNameBn: string; displayNameEn: string }>>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const env = await getRunEnv();
+        const cats = await deskCategories(env);
+        setCategories(cats);
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, []);
 
   const shown = useMemo(
     () =>
@@ -84,10 +98,11 @@ export default function Watchlist({
         pageUrl: fbUrl(form.fbId),
         pageName: form.name.trim(),
         kind: form.kind,
+        categories: form.categories,
         fbId: form.fbId.trim(),
         topics: "নতুন",
       });
-      setForm({ name: "", fbId: "", kind: "page" });
+      setForm({ name: "", fbId: "", kind: "page", categories: [] });
       setOpen(false);
       await refresh();
     } catch (e) {
@@ -123,6 +138,22 @@ export default function Watchlist({
               {k === "all" ? "সব" : KIND_BN[k]}
             </button>
           ))}
+          <div className="relative">
+            <div className="relative">
+            <select
+              onChange={(e) => {
+                const selected = Array.from(e.target.selectedOptions).map(o => o.value);
+                setForm({ ...form, categories: selected });
+              }}
+              className="rounded-lg border border-white/10 bg-night-grid px-3 py-2 text-[11px] text-white outline-none appearance-none pr-8 cursor-pointer"
+              multiple
+            >
+              {categories.map((c) => (
+                <option key={c.slug} value={c.slug} selected={form.categories.includes(c.slug)}>{c.displayNameBn}</option>
+              ))}
+            </select>
+            <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
           <button
             onClick={() => setOpen((v) => !v)}
             className="flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 text-[11.5px] font-bold text-night"
@@ -253,6 +284,7 @@ export default function Watchlist({
           </tbody>
         </table>
       </div>
+    </div>
     </div>
   );
 }

@@ -39,6 +39,7 @@ export function mapSource(row: Record<string, unknown>): Source {
     page_url: String(row.page_url),
     page_name: String(row.page_name),
     category: row.category as CategorySlug,
+    categories: [], // Will be populated via source_categories join
     is_verified: yesNo(row.is_verified),
     is_active: yesNo(row.is_active),
     last_scraped_at: (row.last_scraped_at as string | null) ?? null,
@@ -161,6 +162,8 @@ export const CATEGORY_SEED: CategoryMeta[] = [
       "মাদ্রাসা, মসজিদ ও বেসরকারি পরিবেশে শিশু (পুত্র ও কন্যা) যৌন নির্যাতনের শিকারদের সংবাদ।",
     descriptionEn:
       "News about child sexual abuse victims in madrasas, mosques, and private settings (male and female).",
+    isActive: true,
+    sortOrder: 1,
     dot: "2563eb",
     config: {
       requires_double_approval: true,
@@ -172,6 +175,8 @@ export const CATEGORY_SEED: CategoryMeta[] = [
       allow_identifying_details: false,
       publish_age_gate: false,
     },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
   {
     slug: "extramarital-crime",
@@ -181,6 +186,8 @@ export const CATEGORY_SEED: CategoryMeta[] = [
       "পরকীয়া সম্পর্কজনিত চাঁদাবাজি, হুমকি, ব্ল্যাকমেইল ও সংশ্লিষ্ট অপরাধের সংবাদ।",
     descriptionEn:
       "News about blackmail, extortion, and criminal acts arising from extramarital affairs.",
+    isActive: true,
+    sortOrder: 2,
     dot: "d2202c",
     config: {
       requires_double_approval: false,
@@ -190,6 +197,8 @@ export const CATEGORY_SEED: CategoryMeta[] = [
       allow_identifying_details: true,
       use_allegation_language: true,
     },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
   {
     slug: "missing-children",
@@ -199,6 +208,8 @@ export const CATEGORY_SEED: CategoryMeta[] = [
       "নিখোঁজ শিশুদের সংবাদ, উদ্ধার ও সচেতনতা এবং অপহরণ-সংক্রান্ত গুজব-সতর্কতা।",
     descriptionEn:
       "News and awareness about missing children and abduction-safety incidents.",
+    isActive: true,
+    sortOrder: 3,
     dot: "0d9488",
     config: {
       requires_double_approval: false,
@@ -210,6 +221,8 @@ export const CATEGORY_SEED: CategoryMeta[] = [
       share_widely_cta: true,
       include_helpline_numbers: true,
     },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
 ];
 
@@ -221,10 +234,14 @@ export function mapCategory(row: Record<string, unknown>): CategoryMeta {
     displayNameEn: String(row.display_name_en),
     descriptionBn: (row.description_bn as string) ?? "",
     descriptionEn: (row.description_en as string) ?? "",
+    isActive: Boolean(row.is_active),
+    sortOrder: Number(row.sort_order ?? 0),
     dot: base?.dot ?? "4a4a4a",
     config: parseJson<CategoryConfig>(
       row.config as string,
       base?.config ?? ({} as CategoryConfig),
     ),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
   };
 }

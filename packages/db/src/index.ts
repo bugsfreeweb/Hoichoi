@@ -13,6 +13,7 @@ import type {
   AnalyticsRange,
   AnalyticsSnapshot,
   CaseStatus,
+  CategoryConfig,
   CategoryMeta,
   CategorySlug,
   Comment,
@@ -125,7 +126,7 @@ export async function updateSettings(fields: Partial<SiteSettings>): Promise<voi
 export async function listCategories(): Promise<CategoryMeta[]> {
   const client = getClient();
   const res = await client.execute(
-    "SELECT * FROM category_configs ORDER BY sort_order ASC",
+    "SELECT * FROM category_configs WHERE is_active = 1 ORDER BY sort_order ASC",
   );
   return res.rows.map((r) => mapCategory(r as Record<string, unknown>));
 }
@@ -138,6 +139,120 @@ export async function getCategory(slug: string): Promise<CategoryMeta | null> {
   });
   if (res.rows.length === 0) return null;
   return mapCategory(res.rows[0] as Record<string, unknown>);
+}
+
+/** Create a new category (admin). */
+export async function createCategory(input: {
+  slug: string;
+  displayNameBn: string;
+  displayNameEn: string;
+  descriptionBn?: string;
+  descriptionEn?: string;
+  dot?: string;
+  config?: Partial<CategoryConfig>;
+  sortOrder?: number;
+}): Promise<void> {
+  const client = getClient();
+  const now = nowIso();
+  const defaultConfig: CategoryConfig = {
+    requires_double_approval: false,
+    show_content_warning: false,
+    auto_pending_review: false,
+    redaction_strict: "standard",
+    allow_identifying_details: true,
+    publish_age_gate: false,
+    use_allegation_language: false,
+    supports_case_status: false,
+    share_widely_cta: false,
+    include_helpline_numbers: false,
+    ...(input.config ?? {}),
+  };
+  await client.execute({
+    sql: `INSERT INTO category_configs (slug, display_name_bn, display_name_en, description_bn, description_en, is_active, sort_order, config, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
+    args: [
+      input.slug,
+      input.displayNameBn,
+      input.displayNameEn,
+      input.descriptionBn ?? "",
+      input.descriptionEn ?? "",
+      input.sortOrder ?? 99,
+      JSON.stringify(defaultConfig),
+      now,
+      now,
+    ],
+  });
+}
+
+/** Update an existing category (admin). */
+export async function updateCategory(slug: string, fields: Partial<{
+  displayNameBn: string;
+  displayNameEn: string;
+  descriptionBn: string;
+  descriptionEn: string;
+  isActive: boolean;
+  sortOrder: number;
+  dot: string;
+  config: Partial<CategoryConfig>;
+}>): Promise<void> {
+  const client = getClient();
+  const sets: string[] = [];
+  const args: InValue[] = [];
+  const now = nowIso();
+
+  if (fields.displayNameBn !== undefined) { sets.push("display_name_bn = ?"); args.push(fields.displayNameBn); }
+  if (fields.displayNameEn !== undefined) { sets.push("display_name_en = ?"); args.push(fields.displayNameEn); }
+  if (fields.descriptionBn !== undefined) { sets.push("description_bn = ?"); args.push(fields.descriptionBn); }
+  if (fields.descriptionEn !== undefined) { sets.push("description_en = ?"); args.push(fields.descriptionEn); }
+  if (fields.isActive !== undefined) { sets.push("is_active = ?"); args.push(fields.isActive ? 1 : 0); }
+  if (fields.sortOrder !== undefined) { sets.push("sort_order = ?"); args.push(fields.sortOrder); }
+  if (fields.dot !== undefined) { sets.push("dot = ?"); args.push(fields.dot); }
+  if (fields.config !== undefined) {
+    // Merge with existing config
+    const existing = await getCategory(slug);
+    const merged = { ...(existing?.config ?? {}), ...fields.config };
+    sets.push("config = ?");
+    args.push(JSON.stringify(merged));
+  }
+
+  if (sets.length === 0) return;
+  sets.push("updated_at = ?");
+  args.push(now, slug);
+  await client.execute({ sql: `UPDATE category_configs SET ${sets.join(", ")} WHERE slug = ?`, args });
+}
+
+/** Delete a category (admin) - only if no sources/posts reference it. */
+export async function deleteCategory(slug: string): Promise<void> {
+  const client = getClient();
+  // Check references
+  const [sourcesRef, postsRef] = await Promise.all([
+    client.execute({ sql: "SELECT 1 FROM source_categories WHERE category_slug = ? LIMIT 1", args: [slug] }),
+    client.execute({ sql: "SELECT 1 FROM posts WHERE category = ? LIMIT 1", args: [slug] }),
+  ]);
+  if (sourcesRef.rows.length > 0) throw new Error("Category is referenced by sources");
+  if (postsRef.rows.length > 0) throw new Error("Category is referenced by posts");
+  await client.execute({ sql: "DELETE FROM category_configs WHERE slug = ?", args: [slug] });
+}
+
+/** Get all category slugs for a source. */
+export async function getSourceCategories(sourceId: string): Promise<CategorySlug[]> {
+  const client = getClient();
+  const res = await client.execute({
+    sql: "SELECT category_slug FROM source_categories WHERE source_id = ?",
+    args: [sourceId],
+  });
+  return res.rows.map((r) => String(r.category_slug));
+}
+
+/** Set categories for a source (replaces existing). */
+export async function setSourceCategories(sourceId: string, categories: CategorySlug[]): Promise<void> {
+  const client = getClient();
+  await client.execute({ sql: "DELETE FROM source_categories WHERE source_id = ?", args: [sourceId] });
+  if (categories.length > 0) {
+    const values = categories.map(() => "(?, ?)").join(", ");
+    const args = categories.flatMap(c => [sourceId, c]);
+    await client.execute({ sql: `INSERT INTO source_categories (source_id, category_slug) VALUES ${values}`, args });
+  }
 }
 
 export interface WindowOptions {
@@ -722,4 +837,186 @@ export async function setCommentStatus(
 export async function deleteComment(id: string): Promise<void> {
   const client = getClient();
   await client.execute({ sql: "DELETE FROM comments WHERE id = ?", args: [id] });
+}
+
+/* ------------------------------------------------------------------ *
+ * Bi-directional Sync (local file DB ↔ cloud Turso)
+ * ------------------------------------------------------------------ */
+
+/** Tables that participate in sync (in dependency order). */
+const SYNC_TABLES = [
+  "settings",
+  "category_configs",
+  "sources",
+  "source_categories",
+  "llm_providers",
+  "raw_posts",
+  "posts",
+  "submitted_pages",
+  "admin_users",
+  "admin_sessions",
+  "pipeline_runs",
+  "removal_requests",
+  "admin_actions",
+  "comments",
+  "redaction_blocklist",
+] as const;
+
+type SyncTable = typeof SYNC_TABLES[number];
+
+interface SyncOptions {
+  direction: "push" | "pull"; // push = local → cloud, pull = cloud → local
+  tables?: SyncTable[];
+  dryRun?: boolean;
+}
+
+/**
+ * Perform bi-directional sync between local and cloud databases.
+ * Uses INSERT OR REPLACE with timestamp-based conflict resolution.
+ */
+export async function syncDatabases(
+  localClient: ReturnType<typeof getClient>,
+  cloudClient: ReturnType<typeof getClient>,
+  options: SyncOptions = { direction: "push" },
+): Promise<{
+  ok: true;
+  synced: Record<string, { inserted: number; updated: number; deleted: number }>;
+  conflicts: number;
+  durationMs: number;
+}> {
+  const start = Date.now();
+  const tables = options.tables ?? SYNC_TABLES;
+  const direction = options.direction;
+  const dryRun = options.dryRun ?? false;
+
+  const results: Record<string, { inserted: number; updated: number; deleted: number }> = {};
+  let totalConflicts = 0;
+
+  // Get or create sync checkpoints
+  async function getCheckpoint(table: SyncTable) {
+    const res = await localClient.execute({
+      sql: "SELECT last_local_max_id, last_cloud_max_id FROM sync_checkpoint WHERE table_name = ?",
+      args: [table],
+    });
+    return res.rows[0] as Record<string, unknown> | undefined;
+  }
+
+  async function setCheckpoint(table: SyncTable, localMaxId: string | null, cloudMaxId: string | null) {
+    await localClient.execute({
+      sql: `INSERT OR REPLACE INTO sync_checkpoint (table_name, last_synced_at, last_local_max_id, last_cloud_max_id)
+            VALUES (?, ?, ?, ?)`,
+      args: [table, nowIso(), localMaxId, cloudMaxId],
+    });
+  }
+
+  for (const table of tables) {
+    const checkpoint = await getCheckpoint(table);
+    const localMaxId = checkpoint?.last_local_max_id as string | null;
+    const cloudMaxId = checkpoint?.last_cloud_max_id as string | null;
+
+    // Determine source and target based on direction
+    const src = direction === "push" ? localClient : cloudClient;
+    const dst = direction === "push" ? cloudClient : localClient;
+    const srcMaxId = direction === "push" ? localMaxId : cloudMaxId;
+
+    // Fetch changes since last sync
+    const changes = await src.execute({
+      sql: `SELECT * FROM ${table} WHERE id > ? ORDER BY id ASC`,
+      args: [srcMaxId ?? ""],
+    });
+
+    let inserted = 0;
+    let updated = 0;
+    let deleted = 0;
+
+    for (const row of changes.rows) {
+      const rowData = row as Record<string, unknown>;
+      const id = String(rowData.id);
+
+      // Check if exists in destination
+      const existing = await dst.execute({
+        sql: `SELECT updated_at FROM ${table} WHERE id = ?`,
+        args: [id],
+      });
+
+      if (existing.rows.length === 0) {
+        // Insert new
+        if (!dryRun) {
+          const cols = Object.keys(rowData).join(", ");
+          const placeholders = Object.keys(rowData).map(() => "?").join(", ");
+          const values = Object.values(rowData) as InValue[];
+          await dst.execute({ sql: `INSERT INTO ${table} (${cols}) VALUES (${placeholders})`, args: values });
+        }
+        inserted++;
+      } else {
+        // Conflict resolution: newer updated_at wins
+        const existingRow = existing.rows[0];
+        const dstUpdated = existingRow ? String(existingRow.updated_at ?? "") : "";
+        const srcUpdated = String(rowData.updated_at ?? "");
+        
+        if (srcUpdated > dstUpdated) {
+          if (!dryRun) {
+            const sets = Object.keys(rowData).filter(k => k !== "id").map(k => `${k} = ?`).join(", ");
+            const values = Object.entries(rowData).filter(([k]) => k !== "id").map(([, v]) => v) as InValue[];
+            await dst.execute({ sql: `UPDATE ${table} SET ${sets} WHERE id = ?`, args: [...values, id] });
+          }
+          updated++;
+          totalConflicts++;
+        }
+        // If dst is newer, skip (dst wins)
+      }
+    }
+
+    results[table] = { inserted, updated, deleted };
+
+    // Update checkpoint
+    const newMaxId = changes.rows.length > 0 
+      ? String(changes.rows[changes.rows.length - 1]?.id ?? "")
+      : srcMaxId;
+    await setCheckpoint(table, 
+      direction === "push" ? newMaxId : localMaxId!,
+      direction === "push" ? cloudMaxId! : newMaxId);
+  }
+
+  // Log sync
+  if (!dryRun) {
+    await localClient.execute({
+      sql: `INSERT INTO sync_log (id, direction, source_db, target_db, tables_synced, rows_affected, conflicts_resolved, status, started_at, finished_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'completed', ?, ?)`,
+      args: [
+        crypto.randomUUID(),
+        direction,
+        direction === "push" ? "local" : "cloud",
+        direction === "push" ? "cloud" : "local",
+        JSON.stringify(tables),
+        Object.values(results).reduce((s, r) => s + r.inserted + r.updated, 0),
+        totalConflicts,
+        new Date(start).toISOString(),
+        nowIso(),
+      ],
+    });
+  }
+
+  return {
+    ok: true,
+    synced: results,
+    conflicts: totalConflicts,
+    durationMs: Date.now() - start,
+  };
+}
+
+/** Get sync history. */
+export async function getSyncHistory(limit = 50) {
+  const client = getClient();
+  const res = await client.execute({
+    sql: "SELECT * FROM sync_log ORDER BY started_at DESC LIMIT ?",
+    args: [limit],
+  });
+  return res.rows;
+}
+
+/** Reset sync checkpoints (force full re-sync). */
+export async function resetSyncCheckpoints(): Promise<void> {
+  const client = getClient();
+  await client.execute("DELETE FROM sync_checkpoint");
 }

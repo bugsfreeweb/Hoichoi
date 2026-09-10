@@ -1,95 +1,58 @@
-import { useEffect, useState } from "react";
-import type { View } from "../App";
-import { type CredentialName } from "../lib/vault";
-import {
-  LayoutDashboard,
-  Radio,
-  ListOrdered,
-  ScrollText,
-  KeyRound,
-  Settings,
-  ShieldCheck,
-  SquarePlay,
-} from "lucide-react";
-import { toBn, bnClock } from "../lib/format";
+import { toBn } from "../lib/format";
 
-const NAV: Array<{ id: View; label: string; icon: typeof LayoutDashboard; k: string }> = [
-  { id: "dashboard", label: "মনিটর", icon: LayoutDashboard, k: "1" },
-  { id: "watchlist", label: "ওয়াচলিস্ট", icon: Radio, k: "2" },
-  { id: "queue", label: "কনটেন্ট সারি", icon: ListOrdered, k: "3" },
-  { id: "collector", label: "কালেক্টর", icon: ScrollText, k: "4" },
-  { id: "vault", label: "API ভল্ট", icon: KeyRound, k: "5" },
-  { id: "settings", label: "সেটিংস", icon: Settings, k: "6" },
-  { id: "moderation", label: "মন্তব্য মডারেশন", icon: ShieldCheck, k: "7" },
+interface SidebarProps {
+  view: "dashboard" | "watchlist" | "queue" | "collector" | "vault" | "settings" | "moderation";
+  setView: (v: "dashboard" | "watchlist" | "queue" | "collector" | "vault" | "settings" | "moderation") => void;
+  watching: number;
+}
+
+const NAV = [
+  { id: "dashboard" as const, label: "মনিটর", icon: "dash" },
+  { id: "watchlist" as const, label: "ওয়াচলিস্ট", icon: "radio" },
+  { id: "queue" as const, label: "কনটেন্ট সারি", icon: "list" },
+  { id: "collector" as const, label: "কালেক্টর", icon: "term" },
+  { id: "vault" as const, label: "API ভল্ট", icon: "key" },
+  { id: "settings" as const, label: "সেটিংস", icon: "gear" },
+  { id: "moderation" as const, label: "মন্তব্য মডারেশন", icon: "shield" },
 ];
 
-export default function Sidebar(props: {
-  view: View;
-  setView: (v: View) => void;
-  configured: Partial<Record<CredentialName, boolean>>;
-  running: boolean;
-  onRun: () => void;
-  watching: number;
-}) {
-  const { view, setView, configured, running, onRun, watching } = props;
+const ICONS: Record<string, () => React.ReactNode> = {
+  dash: () => <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>,
+  radio: () => <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>,
+  list: () => <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor" stroke="none"/></svg>,
+  term: () => <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></svg>,
+  key: () => <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="15" r="4.5"/><path d="M11.5 11.5L21 2M16.5 6.5l3 3M13.5 9.5l2.5 2.5"/></svg>,
+  gear: () => <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 7h9M19 7h1M4 17h3M13 17h7"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/><path d="M4 12h16"/><circle cx="9" cy="12" r="2.2"/></svg>,
+  shield: () => <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8 3v6c0 5-3.5 9.5-8 11-4.5-1.5-8-6-8-11V5z"/><path d="M9 12l2 2 4-4"/></svg>,
+};
 
-  const [clock, setClock] = useState("");
-  useEffect(() => {
-    const t = setInterval(() => setClock(bnClock(true)), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  const keys = Object.entries(configured) as Array<[CredentialName, boolean]>;
-  const configuredCount = keys.filter(([, ok]) => ok).length;
-
+export default function Sidebar({ view, setView, watching }: SidebarProps) {
   return (
-    <aside className="flex w-[236px] shrink-0 flex-col border-r border-white/8 bg-[#0e1219]">
-      <nav className="flex-1 space-y-0.5 p-2">
-        <p className="px-2.5 pt-2 pb-1 font-mono-x text-[9px] tracking-[0.2em] text-white/30 uppercase">
-          মেনু
-        </p>
-        {NAV.map((n) => {
-          const active = view === n.id;
-          return (
-            <button
-              key={n.id}
-              onClick={() => setView(n.id)}
-              className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[12.5px] font-medium transition-colors ${
-                active ? "bg-white text-night" : "text-white/55 hover:bg-white/8 hover:text-white"
-              }`}
-            >
-              <n.icon size={14} />
-              <span className="flex-1">{n.label}</span>
-              <span className={`font-mono-x text-[9px] ${active ? "text-night/40" : "text-white/25"}`}>
-                {n.k}
-              </span>
-            </button>
-          );
-        })}
+    <aside className="side">
+      <nav className="sidenav" id="sideNav">
+        {NAV.map((n, i) => (
+          <button
+            key={n.id}
+            onClick={() => setView(n.id)}
+            data-tab={n.id}
+            className={`flex items-center gap-10 w-full px-8 py-8 rounded-8 font-medium text-[12.5px] font-weight-500 transition-colors ${
+              view === n.id
+                ? "bg-white text-night"
+                : "text-white/55 hover:bg-white/8 hover:text-white"
+            }`}
+          >
+            <span>{ICONS[n.icon]()}</span>
+            <span className="flex-1 text-left">{n.label}</span>
+            <kbd className={`font-mono-x text-[9px] ${view === n.id ? "text-night/40" : "text-white/25"}`}>
+              {String(i + 1)}
+            </kbd>
+          </button>
+        ))}
       </nav>
-
-      <div className="border-t border-white/8 px-3 py-3">
-        <p className="font-mono-x text-[9px] tracking-[0.18em] text-lime uppercase">
-          ● CONTROLLER ONLINE
-        </p>
-        <div className="mt-1.5 flex items-center justify-between font-mono-x text-[10.5px] text-white/40">
-          <span>ঢাকা · LIVE</span>
-          <span className="tabular-nums text-white/70">{clock || "· · : · ·"}</span>
-        </div>
-        <p className="mt-1 text-[10.5px] text-white/40">
-          {toBn(watching)} সোর্স সক্রিয় · {toBn(configuredCount)} কী
-        </p>
-      </div>
-
-      <div className="border-t border-white/8 p-3">
-        <button
-          onClick={onRun}
-          disabled={running}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-lime px-3 py-2 text-[12px] font-bold uppercase tracking-wider text-night transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <SquarePlay size={13} />
-          {running ? "· চলছে …" : "Run pipeline"}
-        </button>
+      <div className="side-foot">
+        <p className="online"><span className="pulse-dot"></span>CONTROLLER ONLINE</p>
+        <p className="watching" id="sideWatch">{toBn(watching)} সোর্স সক্রিয়</p>
+        <p className="datasrc" id="dataSrc">ডেটা: সংযোগ…</p>
       </div>
     </aside>
   );

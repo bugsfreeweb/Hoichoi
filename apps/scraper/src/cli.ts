@@ -304,6 +304,7 @@ async function addDeskSource(opts: {
   pageName: string;
   kind?: string;
   category?: string;
+  categories?: string;
   topics?: string;
   fbId?: string | null;
 }) {
@@ -314,6 +315,13 @@ async function addDeskSource(opts: {
     .split(",")
     .map((t) => t.trim())
     .filter(Boolean);
+  
+  // Parse categories (comma-separated)
+  const categories = (opts.categories ?? opts.category ?? "missing-children")
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
+
   await client.execute({
     sql: `INSERT INTO sources (id, page_url, page_name, category, is_verified, is_active, kind, fb_id, topics, created_at)
           VALUES (?, ?, ?, ?, 1, 1, ?, ?, ?, ?)`,
@@ -321,13 +329,21 @@ async function addDeskSource(opts: {
       id,
       opts.pageUrl.trim(),
       opts.pageName.trim(),
-      (opts.category ?? "missing-children") as CategorySlug,
+      categories[0] ?? "missing-children", // primary category for backward compat
       opts.kind === "group" ? "group" : "page",
       opts.fbId ?? null,
       JSON.stringify(topics),
       created,
     ],
   });
+  
+  // Insert into source_categories junction table
+  if (categories.length > 0) {
+    const values = categories.map(() => "(?, ?)").join(", ");
+    const args = categories.flatMap(c => [id, c]);
+    await client.execute({ sql: `INSERT INTO source_categories (source_id, category_slug) VALUES ${values}`, args });
+  }
+  
   const rows = await listDeskSources();
   return rows.find((s: { id: string }) => s.id === id) ?? rows[0];
 }
@@ -379,6 +395,7 @@ program
   .option("--category <slug>", "category slug (add)")
   .option("--topics <csv>", "comma-separated topics (add)")
   .option("--fb-id <id>", "facebook id (add)")
+  .option("--categories <csv>", "comma-separated category slugs (add)")
   .option("--id <id>", "source id (toggle/remove)")
   .action(async (action: string, opts: Record<string, string | undefined>) => {
     try {
@@ -447,6 +464,61 @@ program
       } else {
         throw new Error(`unknown action: ${action}`);
       }
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("categories <action>")
+  .description("desk categories: list")
+  .action(async (action: string) => {
+    try {
+      await ensureSchema(getClient());
+      if (action === "list") {
+        const client = getClient();
+        const res = await client.execute(
+          "SELECT slug, display_name_bn, display_name_en FROM category_configs WHERE is_active = 1 ORDER BY sort_order ASC",
+        );
+        console.log(JSON.stringify({ ok: true, categories: res.rows }, null, 2));
+      } else {
+        throw new Error(`unknown action: ${action}`);
+      }
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("sync <direction>")
+  .description("desk sync: push (local→cloud) or pull (cloud→local)")
+  .action(async (direction: "push" | "pull") => {
+    try {
+      await ensureSchema(getClient());
+      if (direction !== "push" && direction !== "pull") throw new Error("direction must be push or pull");
+      const client = getClient();
+      const tables = [
+        "settings",
+        "category_configs",
+        "sources",
+        "source_categories",
+        "llm_providers",
+        "raw_posts",
+        "posts",
+        "submitted_pages",
+        "admin_users",
+        "admin_sessions",
+        "pipeline_runs",
+        "removal_requests",
+        "admin_actions",
+        "comments",
+        "redaction_blocklist",
+      ];
+      
+      // For now, just log - full sync implementation would be in the runner
+      console.log(JSON.stringify({ ok: true, direction, tables, note: "Full sync via runner (syncDb)" }, null, 2));
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;

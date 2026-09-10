@@ -59,12 +59,12 @@ export async function resetDb(env: Record<string, string>): Promise<void> {
   await invoke("reset_db", { env });
 }
 
-/** One-click local ↔ Turso sync; returns a short runner summary. */
+/** One-click local ↔ Turso sync; returns structured result. */
 export async function syncDb(
   direction: "push" | "pull",
   env: Record<string, string>,
-): Promise<string> {
-  return await invoke<string>("sync_db", { direction, env });
+): Promise<{ ok: true; syncedTables: number; tablesSynced: number; rowsAffected: number; conflicts: number }> {
+  return await invoke<{ ok: true; syncedTables: number; tablesSynced: number; rowsAffected: number; conflicts: number }>("sync_db", { direction, env });
 }
 
 export interface AdminLoginCode {
@@ -194,11 +194,12 @@ export async function deskSources(env: Record<string, string>): Promise<DeskSour
 
 export async function deskAddSource(
   env: Record<string, string>,
-  input: { pageUrl: string; pageName: string; kind?: string; category?: string; topics?: string; fbId?: string | null },
+  input: { pageUrl: string; pageName: string; kind?: string; category?: string; categories?: string[]; topics?: string; fbId?: string | null },
 ): Promise<DeskSource> {
   const args = ["sources", "add", "--page-url", input.pageUrl, "--page-name", input.pageName];
   if (input.kind) args.push("--kind", input.kind);
   if (input.category) args.push("--category", input.category);
+  if (input.categories && input.categories.length > 0) args.push("--categories", input.categories.join(","));
   if (input.topics) args.push("--topics", input.topics);
   if (input.fbId) args.push("--fb-id", input.fbId);
   const res = await deskCall(args, env);
@@ -211,6 +212,11 @@ export async function deskToggleSource(env: Record<string, string>, id: string):
 
 export async function deskRemoveSource(env: Record<string, string>, id: string): Promise<void> {
   await deskCall(["sources", "remove", "--id", id], env);
+}
+
+export async function deskCategories(env: Record<string, string>): Promise<Array<{ slug: string; displayNameBn: string; displayNameEn: string }>> {
+  const res = await deskCall(["categories", "list"], env);
+  return (res.categories as Array<{ slug: string; displayNameBn: string; displayNameEn: string }>) ?? [];
 }
 
 export async function deskQueue(env: Record<string, string>, status?: string | null): Promise<DeskQueueRow[]> {
@@ -241,4 +247,12 @@ export async function deskModerationSet(
   status: "approved" | "blocked",
 ): Promise<void> {
   await deskCall(["moderation", "set", id, status], env);
+}
+
+export async function deskSync(
+  env: Record<string, string>,
+  direction: "push" | "pull",
+): Promise<{ ok: true; syncedTables: number; tablesSynced: number; rowsAffected: number; conflicts: number }> {
+  const res = await deskCall(["sync", direction], env);
+  return res as { ok: true; syncedTables: number; tablesSynced: number; rowsAffected: number; conflicts: number };
 }

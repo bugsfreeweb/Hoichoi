@@ -43,6 +43,13 @@ const BRAND_FIELDS: Array<{ key: string; label: string; secret?: boolean }> = [
   { key: "accent_color", label: "Accent color (hex)" },
 ];
 
+const AD_SLOTS: Array<{ key: string; label: string; placeholder: string }> = [
+  { key: "ad_leaderboard_html", label: "Leaderboard (হোমপেজ শীর্ষ)", placeholder: "<!-- AdSense / Adsterra leaderboard code -->" },
+  { key: "ad_rect_html", label: "Rectangle 300×250 (পোস্ট পেজ)", placeholder: "<!-- AdSense / Adsterra rectangle code -->" },
+  { key: "ad_infeed_html", label: "In-feed (গ্রিড প্রতি ৪য়)", placeholder: "<!-- In-feed ad code -->" },
+  { key: "ad_strip_html", label: "Strip (হোমপেজ নিচে)", placeholder: "<!-- Strip ad code -->" },
+];
+
 const PREF_DEFAULTS = {
   cron: "0 */2 * * *",
   model: "gemini-2.0-flash",
@@ -94,6 +101,13 @@ export default function Settings({
   const [newCode, setNewCode] = useState<string | null>(null);
   const [admMsg, setAdmMsg] = useState<string | null>(null);
   const [admErr, setAdmErr] = useState<string | null>(null);
+
+  const [adSlots, setAdSlots] = useState<Record<string, string>>({});
+  const [adSlotsMsg, setAdSlotsMsg] = useState<string | null>(null);
+  const [adSlotsErr, setAdSlotsErr] = useState<string | null>(null);
+
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
+  const [syncErr, setSyncErr] = useState<string | null>(null);
 
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
   const updatePref = <K extends keyof Prefs>(k: K, v: Prefs[K]) => {
@@ -185,11 +199,54 @@ export default function Settings({
     await loadBrand();
   };
 
-  // Auto-load branding on mount so the fields are populated immediately
-  // (not only after the user clicks "Load current").
+  const loadAdSlots = async () => {
+    try {
+      const s = await settingsGet(await getRunEnv());
+      const rec: Record<string, string> = {};
+      for (const f of AD_SLOTS) {
+        const v = s[f.key];
+        if (typeof v === "string") rec[f.key] = v;
+      }
+      setAdSlots(rec);
+      setAdSlotsErr(null);
+    } catch {
+      setAdSlotsErr("Ad slots লোড ব্যর্থ");
+    }
+  };
+
+  const saveAdSlots = async () => {
+    try {
+      const fields: Record<string, string> = {};
+      for (const f of AD_SLOTS) if ((adSlots[f.key] ?? "").trim() !== "") fields[f.key] = adSlots[f.key].trim();
+      if (Object.keys(fields).length === 0) return;
+      await settingsSet(await getRunEnv(), fields);
+      setAdSlotsMsg("সংরক্ষিত — web ও desktop-এ তাৎক্ষণিক কার্যকর");
+      setAdSlotsErr(null);
+      await refreshBrand();
+    } catch (e) {
+      setAdSlotsErr(String(e));
+    }
+  };
+
+  const doSync = async (direction: "push" | "pull") => {
+    try {
+      setSyncMsg(null);
+      setSyncErr(null);
+      const res = await syncDb(direction, await getRunEnv());
+      setSyncMsg(`${direction === "push" ? "Push" : "Pull"} সম্পন্ন — ${res.syncedTables ?? res.tablesSynced ?? 0} টেবিল সিঙ্ক, ${res.rowsAffected ?? 0} রো, ${res.conflicts ?? 0} конфликт সমাধান`);
+      setSyncErr(null);
+      await refresh();
+      await loadBrand();
+    } catch (e) {
+      setSyncErr(String(e));
+    }
+  };
+
+  // Auto-load branding and ad slots on mount
   useEffect(() => {
     void loadBrand();
     void loadAdminCodes();
+    void loadAdSlots();
   }, []);
 
   const loadAdminCodes = async () => {
@@ -301,17 +358,6 @@ export default function Settings({
       await resetDb(await getRunEnv());
       setBkMsg("রিসেট সম্পন্ন — content wiped, settings default-এ।");
       await refresh();
-    } catch (e) {
-      setBkErr(String(e));
-    }
-  };
-
-  const doSync = async (dir: "push" | "pull") => {
-    try {
-      setBkMsg(null);
-      setBkErr(null);
-      const res = await syncDb(dir, await getRunEnv());
-      setBkMsg(res.length > 400 ? res.slice(0, 400) : res);
     } catch (e) {
       setBkErr(String(e));
     }
@@ -514,6 +560,61 @@ export default function Settings({
         </div>
         {brandMsg && <p className="mt-2 text-[11.5px] font-bold text-ink">✓ {brandMsg}</p>}
         {brandErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {brandErr}</p>}
+      </div>
+
+      {/* === Ad Slots Management === */}
+      <div className="panel mt-5">
+        <p className="panel-title">বিজ্ঞাপন স্লট (Ad Slots) · Web & Desktop</p>
+        <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+          প্রতিটি স্লটে আপনার অ্যাড নেটওয়ার্কের (AdSense, Adsterra ইত্যাদি) HTML/JS কোড পেস্ট করুন। খালি থাকলে ডিফল্ট স্পন্সর কার্ড দেখাবে।
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {AD_SLOTS.map((s) => (
+            <label key={s.key} className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-bold text-ink-soft uppercase tracking-wide">{s.label}</span>
+              <textarea
+                className="field h-20 resize-none font-mono text-[10px]"
+                placeholder={s.placeholder}
+                value={adSlots[s.key] ?? ""}
+                onChange={(e) => setAdSlots((prev) => ({ ...prev, [s.key]: e.target.value }))}
+              />
+            </label>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button className="btn" onClick={() => void saveAdSlots()}>
+            💾 Save ad slots
+          </button>
+          <button className="btn-ghost" onClick={() => void loadAdSlots()}>
+            Load current
+          </button>
+        </div>
+        {adSlotsMsg && <p className="mt-2 text-[11.5px] font-bold text-ink">✓ {adSlotsMsg}</p>}
+        {adSlotsErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {adSlotsErr}</p>}
+      </div>
+
+      {/* === One-Click Sync === */}
+      <div className="panel mt-5">
+        <p className="panel-title">One-Click Sync · Web ↔ Desktop</p>
+        <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+          Shared Turso DB-এ两边の পরিবর্তন merge করুন। Conflict সমাধান: updated_at time-based (newer wins)।
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button className="btn" onClick={() => void doSync("push")}>
+            ☁ Push Local → Cloud
+          </button>
+          <button className="btn-ghost" onClick={() => void doSync("pull")}>
+            ⬇ Pull Cloud → Local
+          </button>
+          <button className="btn-ghost" onClick={() => void doSync("push")}>
+            ↻ Full Sync (Push then Pull)
+          </button>
+        </div>
+        <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+          Push = এই ডেস্কটপের file DB → Shared Turso (web দেখে)। Pull = Turso → এই ডেস্কটপের file DB।
+        </p>
+        {syncMsg && <p className="mt-2 whitespace-pre-line text-[11.5px] font-bold text-ink">✓ {syncMsg}</p>}
+        {syncErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {syncErr}</p>}
       </div>
 
       <div className="panel mt-5">
