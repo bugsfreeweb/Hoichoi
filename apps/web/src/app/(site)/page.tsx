@@ -9,6 +9,8 @@ import { PipelineDiagram } from "@/components/PipelineDiagram";
 import { ScrollProgress } from "@/components/ScrollProgress";
 import { RewriteComparator } from "@/components/RewriteComparator";
 import { AdSlot } from "@/components/AdSlot";
+import { HomeLiveProvider } from "@/components/home/live-data";
+import LiveAnalytics from "@/components/home/live-analytics";
 import { getSettings } from "@/lib/settings";
 import Link from "next/link";
 
@@ -44,6 +46,10 @@ export default async function HomePage() {
           </aside>
         </div>
       </section>
+
+      <HomeLiveProvider>
+        <LiveAnalytics />
+      </HomeLiveProvider>
 
       <section className="mx-auto max-w-site px-4 pt-12 md:px-8">
         <AdSlot variant="leaderboard" html={settings.ad_leaderboard_html} />

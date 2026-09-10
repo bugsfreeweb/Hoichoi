@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 /* ---------- মকর-স্তরের স্টাইল: mockup.html থেকে পোর্ট ---------- */
+:root {
+  --font-jb: var(--font-mono, "JetBrains Mono", monospace);
+  --font-noto-bn: var(--font-serif-bn, "Noto Serif Bengali", serif);
+}
+
 html,
 body {
   font-family: "Hind Siliguri", sans-serif;

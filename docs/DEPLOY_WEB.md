@@ -124,6 +124,15 @@ pnpm --filter @hoichoi/web build
   pasted code live on the homepage leaderboard/strip/infeed and the article
   page's 300×250 rect. Admin-pasted `<script>` tags are re-injected client-side
   so AdSense/Adsterra-style units execute after hydration.
+- **Live home graph** — the homepage renders the mockup *"হইচই চলছে। দেখুন
+  সংখ্যায়।"* analytics section. Endpoint `GET /api/stats?range=24h|7d|all`
+  (this project's `/api/stats` route) recomputes an `AnalyticsSnapshot` from the
+  database on every call (`packages/db::analyticsSnapshot`: collected/published
+  trend series, content donut, per-category bars, collector status from the latest
+  pipeline run, DB latency). The client provider (`components/home/live-data.tsx`)
+  polls it every 10 s with pause / range / refresh controls. Because the page has
+  `revalidate = 300`, users see a stale-safe snapshot instantly on load, then the
+  graph goes live after hydration.
 - The public rolling-window pages use ISR (`revalidate = 300`, matching the
   `ARCHIVE_VISIBLE_DAYS` / ISR window from the docs), so Vercel serves cached
   HTML and revalidates in the background.

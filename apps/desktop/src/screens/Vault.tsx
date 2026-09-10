@@ -147,7 +147,8 @@ export default function Vault({
   const total = ORDER.length;
 
   return (
-    <div className="flex h-full flex-col p-4">
+    <div className="scroll-slim h-full overflow-auto p-4">
+      <div className="flex flex-col">
       <div className="panel overflow-hidden rounded-2xl">
         <div className="flex flex-wrap items-center gap-3 border-b border-white/8 px-5 py-4">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-alizarin/15 text-alizarin">
@@ -271,6 +272,7 @@ export default function Vault({
       <p className="mt-3 font-mono-x text-[10px] tracking-[0.14em] text-white/30 uppercase">
         মান Stronghold-এ এনক্রিপ্ট করা; রিভিল করলে UI-তে সাময়িক দেখায়, স্থায়ীভাবে নয়।
       </p>
+      </div>
     </div>
   );
 }

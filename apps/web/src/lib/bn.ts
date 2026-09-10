@@ -54,6 +54,34 @@ export function readMinutesBn(body: string): string {
   return bnNum(Math.max(1, Math.round(words / 200)));
 }
 
+/** ISO → "২:৪৫ অপরাহ্ণ" (Dhaka) — live graph axis/tooltip */
+export function timeBn(iso: string | null): string {
+  if (!iso) return "—";
+  const t = new Date(iso);
+  if (Number.isNaN(t.getTime())) return "—";
+  return new Intl.DateTimeFormat("bn-BD", {
+    timeZone: "Asia/Dhaka",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(t);
+}
+
+/** ISO → "সেপ্টেম্বর ১০, ৩:২০ অপরাহ্ণ" (Dhaka) — long tooltip label */
+export function fullTimeBn(iso: string | null): string {
+  if (!iso) return "—";
+  const t = new Date(iso);
+  if (Number.isNaN(t.getTime())) return "—";
+  return new Intl.DateTimeFormat("bn-BD", {
+    timeZone: "Asia/Dhaka",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(t);
+}
+
 export function initials(name: string): string {
   return name.slice(0, 8);
 }

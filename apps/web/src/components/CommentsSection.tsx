@@ -52,8 +52,9 @@ export function CommentsSection({
 return (
     <section className="mt-12 border-t-2 border-ink pt-6" aria-label="মন্তব্য">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-serif-bn text-[22px] font-extrabold text-ink">
-          মন্তব্য <span className="ml-1 rounded-full bg-ink px-2 py-0.5 align-middle font-mono-x text-[11px] text-paper">{bn(comments.length)}</span>
+        <h2 className="flex items-center gap-3 font-serif-bn text-[26px] font-black text-ink">
+          <svg xmlns="http://www.w3.org/2000/svg" width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-alizarin" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+          পাঠকের কথায় <span className="font-mono-x text-sm font-normal text-ink-soft">({bn(comments.length)})</span>
         </h2>
         <span className="flex items-center gap-1.5 rounded-full border border-ink/20 px-3 py-1 text-[10.5px] font-semibold text-ink-soft">
           🛡 মন্তব্য অনুমোদনের পর দৃশ্যমান

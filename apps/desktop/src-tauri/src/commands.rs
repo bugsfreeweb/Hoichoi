@@ -6,6 +6,17 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use tauri::{AppHandle, Emitter, Manager};
 
+/// Prevent a spawned console tool (node/pnpm/cmd/taskkill) from flashing a
+/// separate cmd window: a GUI (windows-subsystem) app that spawns a console
+/// child gets a new console unless `CREATE_NO_WINDOW` is set.
+#[cfg(windows)]
+fn hide_console(c: &mut Command) {
+    use std::os::windows::process::CommandExt;
+    c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+}
+#[cfg(not(windows))]
+fn hide_console(_c: &mut Command) {}
+
 /// PID of the currently running pipeline child (0 = none). Used by
 /// `stop_pipeline` to let the user abort a collector run from the UI.
 static PIPELINE_PID: AtomicU32 = AtomicU32::new(0);
@@ -108,6 +119,7 @@ pub async fn run_pipeline(
     }
 
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    hide_console(&mut cmd);
 
     let mut child = cmd.spawn().map_err(|e| format!("spawn failed: {e}"))?;
     PIPELINE_PID.store(child.id(), Ordering::SeqCst);
@@ -155,7 +167,9 @@ pub async fn stop_pipeline(app: AppHandle) -> Result<(), String> {
     let spawned = {
         #[cfg(windows)]
         {
-            Command::new("taskkill").args(["/F", "/T", "/PID"]).arg(&pid_str).spawn()
+            let mut c = Command::new("taskkill");
+            hide_console(&mut c);
+            c.args(["/F", "/T", "/PID"]).arg(&pid_str).spawn()
         }
         #[cfg(not(windows))]
         {
@@ -171,11 +185,9 @@ pub async fn stop_pipeline(app: AppHandle) -> Result<(), String> {
 pub fn open_admin(url: String) -> Result<(), String> {
     #[cfg(windows)]
     {
-        Command::new("cmd")
-            .args(["/C", "start", ""])
-            .arg(&url)
-            .spawn()
-            .map_err(|e| format!("open failed: {e}"))?;
+        let mut c = Command::new("cmd");
+        hide_console(&mut c);
+        c.args(["/C", "start", ""]).arg(&url).spawn().map_err(|e| format!("open failed: {e}"))?;
     }
     #[cfg(target_os = "macos")]
     {
@@ -218,7 +230,7 @@ fn run_runner(
             .map(|a| format!("\"{}\"", a.replace('"', "")))
             .collect();
         #[cfg(windows)]
-        let mut c = {
+        let c = {
             let mut c = Command::new("cmd");
             c.current_dir(repo_root_dir()).args([
                 "/C",
@@ -230,7 +242,7 @@ fn run_runner(
             c
         };
         #[cfg(not(windows))]
-        let mut c = {
+        let c = {
             let mut c = Command::new("pnpm");
             c.current_dir(repo_root_dir())
                 .arg("--filter")
@@ -262,6 +274,7 @@ fn run_runner(
         }
     }
 
+    hide_console(&mut cmd);
     let out = cmd
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

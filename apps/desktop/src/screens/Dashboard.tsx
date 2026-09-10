@@ -9,6 +9,7 @@
   Camera,
   Sparkles,
   GitBranch,
+  BarChart3,
 } from "lucide-react";
 import Countdown from "../components/Countdown";
 import { toBn, bnTime, CATEGORY_LABEL } from "../lib/format";
@@ -236,6 +237,47 @@ export default function Dashboard({
           </ul>
         </div>
       </div>
+
+      {(() => {
+        const chartRuns = (statsData?.runs ?? []).slice(0, 8).reverse();
+        const values = chartRuns.map((r) => Number((r.stats as Record<string, unknown> | null)?.published) || 0);
+        const maxPub = Math.max(1, ...values);
+        return (
+          <div className="panel overflow-hidden rounded-xl">
+            <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
+              <p className="flex items-center gap-2 font-mono-x text-[9.5px] tracking-[0.2em] text-white/40 uppercase">
+                <BarChart3 size={11} className="text-lime" /> সাম্প্রতিক প্রকাশ · ACTIVITY TREND
+              </p>
+              <span className="font-mono-x text-[9.5px] text-white/35">LAST {toBn(chartRuns.length)} RUNS</span>
+            </div>
+            {chartRuns.length === 0 ? (
+              <p className="px-4 py-10 text-center text-[12px] text-white/35">
+                এখনো কোনো রান হয়নি — "Run pipeline" চালু করুন।
+              </p>
+            ) : (
+              <div className="flex items-end gap-2 px-4 py-5">
+                {chartRuns.map((r, i) => {
+                  const published = values[i] ?? 0;
+                  const h = Math.round((published / maxPub) * 100);
+                  return (
+                    <div key={r.id} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+                      <span className="font-mono-x text-[9px] text-lime">{published > 0 ? toBn(published) : ""}</span>
+                      <div className="flex h-16 w-full max-w-[34px] items-end">
+                        <div
+                          className="w-full rounded-t bg-lime/60 transition-all duration-500 hover:bg-lime"
+                          style={{ height: `${Math.max(published > 0 ? 8 : 2, h)}%` }}
+                          title={`${bnTime(r.started_at)} · ${toBn(published)} প্রকাশিত`}
+                        />
+                      </div>
+                      <span className="truncate font-mono-x text-[9px] text-white/35">{bnTime(r.started_at)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

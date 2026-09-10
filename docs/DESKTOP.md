@@ -187,13 +187,20 @@ The desktop UI mirrors the `mockup/` desk controller exactly:
 - **Frameless window** — `decorations: false` + custom `TitleBar` (traffic lights:
   minimize / maximize / close; drag region only on the center strip), min width
   1100. `tauri.conf.json`, `capabilities/default.json` (window permissions).
+  Dragging is implemented via the Tauri `startDragging` API (double-click the strip
+  toggles maximize); there are no child console windows — every runner/spawn
+  (pipeline, taskkill, admin link, `cmd` dev fallback) uses `CREATE_NO_WINDOW`
+  (`commands.rs::hide_console`).
 - **7-tab console** — Monitor / Watchlist / Queue / Collector / Vault / Settings /
   Moderation with keyboard shortcuts **1–7**, inline menubar (ফাইল/সোর্স/রান/ভল্ট/
   সাহায্য) and a statusbar (TAURI 2.1 · `TURSO`/`LOCAL` DB badge · Hoichoi clock).
   Shell: `src/App.tsx`, `components/{TitleBar,Sidebar,Countdown}.tsx`.
 - **Monitor** — 4 stat tiles (আজ সংগৃহীত / লাইভ প্রকাশিত / ডুপ্লিকেট ব্লকড / গড় রান)
   + the mockup **countdown ring**, pipeline-health and source-health panels, latest
-  collector logs and the recent content queue (`screens/Dashboard.tsx`).
+  collector logs and the recent content queue (`screens/Dashboard.tsx`). A barley
+  **activity-trend chart** (last 8 runs' published counts) sits below the queue.
+- **Scroll** — every tab scrolls independently (all roots are `scroll-slim
+  overflow-auto`); Vault and Settings got root scroll containers too.
 - **Watchlist** — real source CRUD against the runner
   (`sources list|add|toggle|remove`), search + kind filter + add form, health bars,
   watching/paused states (`screens/Watchlist.tsx`).

@@ -1,7 +1,13 @@
 import { Minus, Square, X } from "lucide-react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import { isTauri } from "../lib/tauri";
 
-let w: null | { minimize: () => Promise<void>; toggleMaximize: () => Promise<void>; close: () => Promise<void> } = null;
+let w: null | {
+  minimize: () => Promise<void>;
+  toggleMaximize: () => Promise<void>;
+  close: () => Promise<void>;
+  startDragging: () => Promise<void>;
+} = null;
 
 /** Lazy-import the Tauri window API only when inside the webview. */
 async function win(): Promise<typeof w> {
@@ -17,6 +23,15 @@ export default function TitleBar() {
   const min = () => void win().then((x) => x?.minimize());
   const max = () => void win().then((x) => x?.toggleMaximize());
   const close = () => void win().then((x) => x?.close());
+
+  const onDragDown = (e: ReactMouseEvent) => {
+    if (e.button !== 0) return;
+    void win().then((x) => x?.startDragging());
+  };
+  const onDragDbl = (e: ReactMouseEvent) => {
+    e.preventDefault();
+    void max();
+  };
 
   return (
     <div className="titlebar flex h-10 shrink-0 items-center border-b border-white/8 bg-[#12161e] px-3">
@@ -42,8 +57,9 @@ export default function TitleBar() {
       </div>
 
       <div
-        data-tauri-drag-region
-        className="flex h-full flex-1 items-center justify-center gap-2"
+        onMouseDown={onDragDown}
+        onDoubleClick={onDragDbl}
+        className="flex h-full flex-1 cursor-grab items-center justify-center gap-2 active:cursor-grabbing"
       >
         <span className="flex h-4 w-4 items-center justify-center rounded-full bg-alizarin font-serif-bn text-[9px] leading-none font-black text-white">
           হ

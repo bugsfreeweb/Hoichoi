@@ -10,6 +10,8 @@ export * from "./transfer";
 export * from "./admin-auth";
 
 import type {
+  AnalyticsRange,
+  AnalyticsSnapshot,
   CaseStatus,
   CategoryMeta,
   CategorySlug,
@@ -293,6 +295,186 @@ export async function statsSnapshot(): Promise<StatsSnapshot> {
     pendingReview: Number(pending.rows[0]?.n ?? 0),
     avgRunDurationSec: Math.round(Number(avgDur.rows[0]?.avg_sec ?? 0)),
     byCategory,
+  };
+}
+
+/**
+ * Public "newsroom in numbers" snapshot for the home live graph (mockup
+ * `live-analytics` parity). Mirrors GET /api/stats in the mockup: totals,
+ * trend series, category distribution, activity and pipeline state — all
+ * computed from real DB rows, nothing invented.
+ */
+export async function analyticsSnapshot(
+  range: AnalyticsRange = "all",
+): Promise<AnalyticsSnapshot> {
+  const start = performance.now();
+  const client = getClient();
+  const [posts, rawPosts, commentRows, sourceRows, runRows, published] =
+    await Promise.all([
+      client.execute(
+        "SELECT id, status, category, created_at, published_at FROM posts",
+      ),
+      client.execute("SELECT phash, scraped_at FROM raw_posts"),
+      client.execute(
+        "SELECT created_at, reviewed_at FROM comments WHERE status = 'approved'",
+      ),
+      client.execute("SELECT is_active FROM sources"),
+      client.execute(
+        "SELECT started_at, finished_at, status FROM pipeline_runs ORDER BY started_at DESC LIMIT 500",
+      ),
+      client.execute(
+        "SELECT id, slug, title_bn, published_at FROM posts_current_window ORDER BY published_at DESC LIMIT 6",
+      ),
+    ]);
+  const latencyMs = Math.max(1, Math.round(performance.now() - start));
+
+  const pt = (v: unknown) => {
+    const t = Date.parse(String(v ?? ""));
+    return Number.isFinite(t) ? t : 0;
+  };
+  const now = Date.now();
+  const day = 86_400_000;
+
+  const all: Array<Record<string, unknown>> = posts.rows as unknown as Array<Record<string, unknown>>;
+  const raws: Array<Record<string, unknown>> = rawPosts.rows as unknown as Array<Record<string, unknown>>;
+  const comments = commentRows.rows as unknown as Array<Record<string, unknown>>;
+  const sources = sourceRows.rows as unknown as Array<Record<string, unknown>>;
+  const runs = runRows.rows as unknown as Array<Record<string, unknown>>;
+  const topPublished = published.rows as unknown as Array<Record<string, unknown>>;
+
+  const collectedTimes = raws.map((r) => pt(r.scraped_at)).filter(Boolean);
+  const publishedTimes = all
+    .filter((p) => p.published_at && String(p.status) === "published")
+    .map((p) => pt(p.published_at))
+    .filter(Boolean);
+  const earliest = Math.min(
+    collectedTimes.length ? Math.min(...collectedTimes) : now,
+    publishedTimes.length ? Math.min(...publishedTimes) : now,
+  );
+  const from =
+    range === "24h"
+      ? now - day
+      : range === "7d"
+        ? now - 7 * day
+        : Math.min(earliest - 3_600_000, now - day);
+  const bins = range === "7d" ? 7 : 12;
+  const step = (now - from) / bins;
+  const series = Array.from({ length: bins }, (_, i) => ({
+    at: new Date(from + i * step).toISOString(),
+    collected: 0,
+    published: 0,
+  }));
+  const inside = (t: number) => t >= from && t <= now;
+  const index = (t: number) =>
+    Math.min(bins - 1, Math.max(0, Math.floor((t - from) / step)));
+
+  // duplicate detection across the whole intake (a phash seen twice is a dup)
+  const phashCount = new Map<string, number>();
+  for (const r of raws) {
+    if (r.phash) phashCount.set(String(r.phash), (phashCount.get(String(r.phash)) ?? 0) + 1);
+  }
+  const isDup = (r: Record<string, unknown>) =>
+    !!r.phash && (phashCount.get(String(r.phash)) ?? 0) > 1;
+
+  const totals = { collected: 0, published: 0, duplicates: 0, approvedComments: 0, pendingArticles: 0 };
+  const allArticles = { published: 0, pending: 0, duplicate: 0 };
+  const categoryCounts: Record<string, number> = {};
+
+  for (const r of raws) {
+    const t = pt(r.scraped_at);
+    if (!inside(t)) continue;
+    totals.collected++;
+    const bin = series[index(t)];
+    if (bin) bin.collected++;
+    if (isDup(r)) totals.duplicates++;
+  }
+  for (const p of all) {
+    const st = String(p.status);
+    if (st === "published") allArticles.published++;
+    else if (st === "pending_review") allArticles.pending++;
+    else if (st === "duplicate") allArticles.duplicate++;
+    const publishedAt = pt(p.published_at);
+    if (st === "published" && inside(publishedAt)) {
+      totals.published++;
+      const bin = series[index(publishedAt)];
+      if (bin) bin.published++;
+    }
+    if (st === "pending_review" && inside(pt(p.created_at))) totals.pendingArticles++;
+    const key = String(p.category);
+    if (st === "published" && key) {
+      categoryCounts[key] = (categoryCounts[key] ?? 0) + 1;
+    }
+  }
+
+  for (const c of comments) {
+    const at = pt(c.reviewed_at ?? c.created_at);
+    if (inside(at)) totals.approvedComments++;
+  }
+
+  const sourceStates = { watching: 0, paused: 0, error: 0, total: sources.length };
+  for (const s of sources) {
+    sourceStates[String(s.is_active) === "1" ? "watching" : "paused"]++;
+  }
+
+  const r0 = runs[0] as Record<string, unknown> | undefined;
+  let collectorStatus: AnalyticsSnapshot["collector"]["status"] = "not_connected";
+  if (r0) {
+    const st = String(r0.status);
+    const finished = pt(r0.finished_at ?? r0.started_at);
+    collectorStatus =
+      st === "running"
+        ? "working"
+        : now - finished < 90_000
+          ? "ready"
+          : "offline";
+  }
+
+  const selected = runs
+    .filter((r) => inside(pt(r.started_at)))
+    .map((r) => {
+      const s = pt(r.started_at);
+      const f = pt(r.finished_at);
+      return { durationSec: s && f ? Math.round((f - s) / 1000) : 0 };
+    });
+  const activities = topPublished
+    .filter((p) => p.published_at)
+    .map((p) => ({
+      id: `a${String(p.id)}`,
+      kind: "article" as const,
+      text: String(p.title_bn),
+      at: String(p.published_at),
+      href: `/post/${String(p.slug)}`,
+    }));
+
+  const url = (process.env.TURSO_DATABASE_URL ?? process.env.DATABASE_URL ?? "").trim();
+  const driver = /^https?:/.test(url) ? "TURSO" : url.startsWith("file:") ? "LOCAL" : "TURSO";
+  const mode: "local" | "cloud" = /^https?:/.test(url) ? "cloud" : "local";
+
+  return {
+    ok: true,
+    generatedAt: new Date(now).toISOString(),
+    range,
+    from: new Date(from).toISOString(),
+    to: new Date(now).toISOString(),
+    database: { driver, mode, latencyMs },
+    totals,
+    allArticles,
+    categories: Object.entries(categoryCounts).map(([key, count]) => ({ key, count })),
+    series,
+    sources: sourceStates,
+    collector: {
+      status: collectorStatus,
+      lastSeenAt: r0 ? String(r0.started_at) : null,
+    },
+    latestPublication: topPublished[0]?.published_at ? String(topPublished[0].published_at) : null,
+    activity: activities,
+    runSummary: {
+      count: selected.length,
+      durationSec: selected.length
+        ? Math.round(selected.reduce((s, r) => s + r.durationSec, 0) / selected.length)
+        : null,
+      lastAt: r0 ? String(r0.started_at) : null,
+    },
   };
 }
 

@@ -337,7 +337,8 @@ export default function Settings({
   };
 
   return (
-    <div className="mx-auto max-w-3xl p-8">
+    <div className="scroll-slim h-full overflow-auto">
+      <div className="mx-auto max-w-3xl p-8">
       <p className="font-mono-x text-[9.5px] tracking-[0.26em] text-lime uppercase">
         DESKTOP CONTROLLER · LOCAL PREFERENCES
       </p>
@@ -680,6 +681,7 @@ export default function Settings({
             </div>
           </div>
         ))}
+      </div>
       </div>
     </div>
   );
