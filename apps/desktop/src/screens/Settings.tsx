@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Camera, GitBranch, ShieldCheck, Sparkles, Timer } from "lucide-react";
 import {
   getCredential,
   storeCredential,
@@ -42,6 +43,31 @@ const BRAND_FIELDS: Array<{ key: string; label: string; secret?: boolean }> = [
   { key: "accent_color", label: "Accent color (hex)" },
 ];
 
+const PREF_DEFAULTS = {
+  cron: "0 */2 * * *",
+  model: "gemini-2.0-flash",
+  temp: 0.3,
+  gate: 90,
+  shot: true,
+  headless: true,
+  commit: true,
+  deploy: true,
+  fact: true,
+};
+type Prefs = typeof PREF_DEFAULTS;
+
+const PREF_DB_KEY = "hoichoi.desk.prefs.v1";
+
+function loadPrefs(): Prefs {
+  try {
+    const raw = localStorage.getItem(PREF_DB_KEY);
+    if (raw) return { ...PREF_DEFAULTS, ...(JSON.parse(raw) as Partial<Prefs>) };
+  } catch {
+    /* ignore */
+  }
+  return PREF_DEFAULTS;
+}
+
 export default function Settings({
   refresh,
   refreshBrand,
@@ -68,6 +94,35 @@ export default function Settings({
   const [newCode, setNewCode] = useState<string | null>(null);
   const [admMsg, setAdmMsg] = useState<string | null>(null);
   const [admErr, setAdmErr] = useState<string | null>(null);
+
+  const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
+  const updatePref = <K extends keyof Prefs>(k: K, v: Prefs[K]) => {
+    setPrefs((prev) => {
+      const next = { ...prev, [k]: v };
+      try {
+        localStorage.setItem(PREF_DB_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+
+  const saveCron = async () => {
+    const m = prefs.cron.match(/^(?:0|\*)\s+\*\/(\d{1,2})\s+\*\s+\*\s+\*$/);
+    if (!m) {
+      fail("cron ফরম্যাট হবে: 0 */N * * * — যেখানে N ঘণ্টার ব্যবধান (যেমন */2)");
+      return;
+    }
+    try {
+      await settingsSet(await getRunEnv(), { pipeline_hours: Number(m[1]) });
+      show(`শিডিউল সংরক্ষিত — pipeline_hours = ${m[1]} (${prefs.cron})`);
+      setErr(null);
+      await loadBrand();
+    } catch (e) {
+      fail(e);
+    }
+  };
 
   const show = (m: string) => {
     setMsg(m);
@@ -115,6 +170,8 @@ export default function Settings({
         if (typeof v === "string") rec[f.key] = v;
       }
       setBrand(rec);
+      const hours = Number(s.pipeline_hours ?? 2);
+      if (hours > 0) updatePref("cron", `0 */${hours} * * *`);
     } catch {
       /* ব্যান্ডিং লোড ব্যর্থ — ফিল্ড খালি থাকবে */
     }
@@ -281,14 +338,134 @@ export default function Settings({
 
   return (
     <div className="mx-auto max-w-3xl p-8">
-      <p className="panel-title">Settings</p>
-      <h2 className="mt-1 font-serif-bn text-[30px] font-black">সেটিংস</h2>
-      <p className="mt-1 text-[12.5px] text-ink-soft">
-        মানগুলো Stronghold-এ এনক্রিপ্টেড; UI-তে কখনো প্লেইনটেক্সট দেখানো হয় না।
+      <p className="font-mono-x text-[9.5px] tracking-[0.26em] text-lime uppercase">
+        DESKTOP CONTROLLER · LOCAL PREFERENCES
+      </p>
+      <h2 className="mt-1 font-serif-bn text-[30px] font-black text-white">সেটিংস</h2>
+      <p className="mt-1 text-[12.5px] text-white/50">
+        মানগুলো Stronghold-এ এনক্রিপ্টেড; UI-তে কখনো প্লেইনটেক্সট দেখানো হয় না। নিচের
+        প্রেফারেন্সগুলো এই মেশিনে localStorage-এ থাকে।
       </p>
 
       {msg && <p className="mt-3 bg-lime px-3 py-2 text-[12px] font-bold">✓ {msg}</p>}
       {err && <p className="mt-3 bg-alizarin px-3 py-2 text-[12px] font-bold text-paper">✕ {err}</p>}
+
+      {/* mockup desk preference panels (local prefs, saved on change) */}
+      <div className="panel mt-5">
+        <p className="panel-title">ডেস্ক প্রেফারেন্স · local</p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+            <p className="flex items-center gap-2 text-[13px] font-bold text-white">
+              <Timer size={14} className="text-amberx" /> শিডিউল
+            </p>
+            <label className="mt-4 block text-[11px] text-white/45">Cron (Asia/Dhaka)</label>
+            <input
+              value={prefs.cron}
+              onChange={(e) => updatePref("cron", e.target.value)}
+              className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 font-mono-x text-[16px] text-white outline-none focus:border-lime/60"
+            />
+            <button
+              onClick={() => void saveCron()}
+              className="mt-2 flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 text-[11px] font-bold text-night hover:brightness-110"
+            >
+              pipeline_hours আপডেট
+            </button>
+            <p className="mt-2 text-[11.5px] text-white/40">
+              প্রতি দুই ঘণ্টায় স্বয়ংক্রিয় রান। খালি রাখলে শুধু ম্যানুয়াল।
+            </p>
+          </section>
+
+          <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+            <p className="flex items-center gap-2 text-[13px] font-bold text-white">
+              <Sparkles size={14} className="text-rose-300" /> রিরাইট মডেল
+            </p>
+            <label className="mt-4 block text-[11px] text-white/45">LLM</label>
+            <select
+              value={prefs.model}
+              onChange={(e) => updatePref("model", e.target.value)}
+              className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 text-[13px] text-white outline-none"
+            >
+              <option value="gemini-2.0-flash">gemini-2.0-flash · সাশ্রয়ী</option>
+              <option value="gemini-2.5-pro">gemini-2.5-pro · উচ্চ গুণমান</option>
+              <option value="groq-llama-3.3-70b">groq llama · দ্রুত</option>
+              <option value="openrouter-free">openrouter · বিকল্প</option>
+              <option value="ollama-local">ollama · লোকাল</option>
+            </select>
+            <label className="mt-4 flex items-center justify-between text-[11px] text-white/45">
+              Temperature <span className="font-mono-x text-white/70">{prefs.temp.toFixed(2)}</span>
+            </label>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={prefs.temp}
+              onChange={(e) => updatePref("temp", Number(e.target.value))}
+              className="mt-1 w-full accent-[#c8f65d]"
+            />
+          </section>
+
+          <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+            <p className="flex items-center gap-2 text-[13px] font-bold text-white">
+              <ShieldCheck size={14} className="text-lime" /> ফ্যাক্ট-গেট
+            </p>
+            <label className="mt-4 flex items-center justify-between text-[11px] text-white/45">
+              থ্রেশহোল্ড{" "}
+              <span className="font-mono-x text-lime">০.{String(prefs.gate).padStart(2, "০")}</span>
+            </label>
+            <input
+              type="range"
+              min={70}
+              max={99}
+              value={prefs.gate}
+              onChange={(e) => updatePref("gate", Number(e.target.value))}
+              className="mt-1 w-full accent-[#c8f65d]"
+            />
+            <p className="mt-3 text-[12px] leading-relaxed text-white/45">
+              স্কোর এর নিচে গেলে আইটেম <span className="text-amberx">pending</span> সারিতে
+              যায় — লাইভে নয়। সংবেদনশীল অপরাধ/শিশু কনটেন্টে ০.৯০+ রাখুন।
+            </p>
+          </section>
+
+          <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+            <p className="flex items-center gap-2 text-[13px] font-bold text-white">
+              <Camera size={14} className="text-sky-300" /> পাইপলাইন টগল
+            </p>
+            <ul className="mt-4 space-y-3">
+              {(
+                [
+                  ["shot", "স্ক্রিনশট আর্কাইভ"],
+                  ["headless", "Playwright headless"],
+                  ["fact", "ফ্যাক্ট-গেট বাধ্যতামূলক"],
+                  ["commit", "অটো-কমিট GitHub"],
+                  ["deploy", "Vercel অটো-ডিপ্লয়"],
+                ] as const
+              ).map(([k, label]) => (
+                <li key={k} className="flex items-center justify-between text-[12.5px]">
+                  <span className="text-white/70">{label}</span>
+                  <button
+                    onClick={() => updatePref(k as keyof Prefs, !prefs[k as keyof Prefs])}
+                    className={`relative h-5 w-9 rounded-full transition-colors ${
+                      prefs[k as keyof Prefs] ? "bg-lime" : "bg-white/15"
+                    }`}
+                  >
+                    <span
+                      className="absolute top-0.5 h-4 w-4 rounded-full bg-night transition-all"
+                      style={{ left: prefs[k as keyof Prefs] ? 18 : 2 }}
+                    />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 flex items-center gap-2 font-mono-x text-[10px] text-white/35">
+              <GitBranch size={11} /> repo: hoichoi-content · branch: main
+            </p>
+          </section>
+        </div>
+        <p className="mt-3 font-mono-x text-[10px] tracking-[0.14em] text-white/30 uppercase">
+          এই প্রেফারেন্স শুধু এই মেশিনে থাকবে (localStorage) — অ্যাকচুয়াল কী ও সেটিংস ভল্ট + settings দিয়ে চলে।
+        </p>
+      </div>
 
       <div className="panel mt-5">
         <p className="panel-title">Database sync · cloud ↔ local</p>

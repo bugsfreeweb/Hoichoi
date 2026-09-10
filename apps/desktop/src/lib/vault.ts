@@ -127,3 +127,27 @@ export async function listConfigured(): Promise<Record<CredentialName, boolean>>
   }
   return out;
 }
+
+/** Env var name a stored credential is exposed as (null = metadata-only). */
+export function envNameFor(name: CredentialName): string | null {
+  if (SKIP_ENV.includes(name)) return null;
+  return ENV_MAP[name] ?? name;
+}
+
+/** Every stored secret with its real env name + value (used by the vault view). */
+export async function envPayload(): Promise<
+  Array<{ name: CredentialName; envName: string; value: string }>
+> {
+  const out: Array<{ name: CredentialName; envName: string; value: string }> = [];
+  for (const name of CREDENTIAL_NAMES) {
+    const envName = envNameFor(name);
+    if (!envName) continue;
+    try {
+      const v = await getCredential(name);
+      if (v) out.push({ name, envName, value: v });
+    } catch {
+      /* skip vault errors per key */
+    }
+  }
+  return out;
+}

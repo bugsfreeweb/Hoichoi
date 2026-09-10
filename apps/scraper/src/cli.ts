@@ -17,10 +17,14 @@ import {
   createAdminLoginCode,
   listAdminLoginCodes,
   revokeAdminLoginCode,
+  statsSnapshot,
+  recentPipelineRuns,
+  getAllComments,
+  setCommentStatus,
   CONTENT_TABLES,
   type ExportBundle,
 } from "@hoichoi/db";
-import type { SiteSettings } from "@hoichoi/shared-types";
+import type { CategorySlug, SiteSettings } from "@hoichoi/shared-types";
 
 const program = new Command();
 
@@ -231,6 +235,214 @@ program
       await ensureSchema(to);
       const written = await copyTables(from, to, CONTENT_TABLES);
       console.log(JSON.stringify({ ok: true, direction, written }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("stats")
+  .description("desk monitor — live stats + recent pipeline runs as JSON")
+  .action(async () => {
+    try {
+      await ensureSchema(getClient());
+      console.log(JSON.stringify({ ok: true, stats: await statsSnapshot(), runs: await recentPipelineRuns(8) }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+/* ------------------------------------------------------------------ *
+ * Desk watchlist / queue / moderation (desktop console reads these)   *
+ * ------------------------------------------------------------------ */
+
+function deskSourceRow(row: Record<string, unknown>) {
+  const topics = (() => {
+    try {
+      const v = JSON.parse(String(row.topics ?? "[]"));
+      return Array.isArray(v) ? v.map(String) : [];
+    } catch {
+      return [];
+    }
+  })();
+  return {
+    id: String(row.id),
+    page_url: String(row.page_url),
+    page_name: String(row.page_name),
+    kind: String(row.kind) === "group" ? "group" : "page",
+    fb_id: (row.fb_id as string | null) ?? null,
+    topics,
+    category: row.category as CategorySlug,
+    is_active: Boolean(row.is_active),
+    last_scraped_at: (row.last_scraped_at as string | null) ?? null,
+    posts_today: Number(row.posts_today ?? 0),
+    health: Number(row.health ?? 100),
+    created_at: String(row.created_at),
+  };
+}
+
+async function listDeskSources() {
+  const client = getClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const res = await client.execute({
+    sql: `SELECT s.*,
+            (SELECT count(*) FROM raw_posts rp WHERE rp.source_id = s.id AND rp.scraped_at LIKE ?) AS posts_today
+          FROM sources s ORDER BY s.is_active DESC, s.created_at DESC`,
+    args: [`${today}%`],
+  });
+  return res.rows.map((r) => deskSourceRow(r as Record<string, unknown>));
+}
+
+async function addDeskSource(opts: {
+  pageUrl: string;
+  pageName: string;
+  kind?: string;
+  category?: string;
+  topics?: string;
+  fbId?: string | null;
+}) {
+  const client = getClient();
+  const id = crypto.randomUUID();
+  const created = new Date().toISOString();
+  const topics = (opts.topics ?? "")
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+  await client.execute({
+    sql: `INSERT INTO sources (id, page_url, page_name, category, is_verified, is_active, kind, fb_id, topics, created_at)
+          VALUES (?, ?, ?, ?, 1, 1, ?, ?, ?, ?)`,
+    args: [
+      id,
+      opts.pageUrl.trim(),
+      opts.pageName.trim(),
+      (opts.category ?? "missing-children") as CategorySlug,
+      opts.kind === "group" ? "group" : "page",
+      opts.fbId ?? null,
+      JSON.stringify(topics),
+      created,
+    ],
+  });
+  const rows = await listDeskSources();
+  return rows.find((s: { id: string }) => s.id === id) ?? rows[0];
+}
+
+async function toggleDeskSource(id: string) {
+  const client = getClient();
+  await client.execute({
+    sql: "UPDATE sources SET is_active = CASE is_active WHEN 1 THEN 0 ELSE 1 END WHERE id = ?",
+    args: [id],
+  });
+}
+
+async function removeDeskSource(id: string) {
+  const client = getClient();
+  await client.execute({ sql: "DELETE FROM sources WHERE id = ?", args: [id] });
+}
+
+function deskQueueRow(row: Record<string, unknown>) {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    title_bn: String(row.title_bn),
+    source_name: String(row.source_name),
+    category: row.category as CategorySlug,
+    status: String(row.status),
+    created_at: String(row.created_at),
+  };
+}
+
+async function listDeskQueue(status?: string) {
+  const client = getClient();
+  const res = status
+    ? await client.execute({
+        sql: "SELECT id, slug, title_bn, source_name, category, status, created_at FROM posts WHERE status = ? ORDER BY created_at DESC LIMIT 80",
+        args: [status],
+      })
+    : await client.execute(
+        "SELECT id, slug, title_bn, source_name, category, status, created_at FROM posts ORDER BY created_at DESC LIMIT 80",
+      );
+  return res.rows.map((r) => deskQueueRow(r as Record<string, unknown>));
+}
+
+program
+  .command("sources <action>")
+  .description("desk watchlist: list / add / toggle / remove")
+  .option("--page-url <url>", "page URL (add)")
+  .option("--page-name <name>", "page name (add)")
+  .option("--kind <kind>", "page | group (add)")
+  .option("--category <slug>", "category slug (add)")
+  .option("--topics <csv>", "comma-separated topics (add)")
+  .option("--fb-id <id>", "facebook id (add)")
+  .option("--id <id>", "source id (toggle/remove)")
+  .action(async (action: string, opts: Record<string, string | undefined>) => {
+    try {
+      await ensureSchema(getClient());
+      if (action === "list") {
+        console.log(JSON.stringify({ ok: true, sources: await listDeskSources() }, null, 2));
+      } else if (action === "add") {
+        if (!opts.pageUrl || !opts.pageName) throw new Error("--page-url and --page-name required");
+        const source = await addDeskSource({
+          pageUrl: opts.pageUrl,
+          pageName: opts.pageName,
+          kind: opts.kind,
+          category: opts.category,
+          topics: opts.topics,
+          fbId: opts.fbId,
+        });
+        console.log(JSON.stringify({ ok: true, source }, null, 2));
+      } else if (action === "toggle") {
+        if (!opts.id) throw new Error("--id required");
+        await toggleDeskSource(opts.id);
+        console.log(JSON.stringify({ ok: true }));
+      } else if (action === "remove") {
+        if (!opts.id) throw new Error("--id required");
+        await removeDeskSource(opts.id);
+        console.log(JSON.stringify({ ok: true }));
+      } else {
+        throw new Error(`unknown action: ${action}`);
+      }
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("queue <action>")
+  .description("desk content queue: list")
+  .option("--status <s>", "filter by post status")
+  .action(async (action: string, opts: { status?: string }) => {
+    try {
+      await ensureSchema(getClient());
+      if (action !== "list") throw new Error(`unknown action: ${action}`);
+      console.log(JSON.stringify({ ok: true, rows: await listDeskQueue(opts.status) }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("moderation <action> [id] [status]")
+  .description("desk moderation: list [--status s] / set <id> <approved|blocked>")
+  .option("--status <s>", "filter list by status")
+  .action(async (action: string, id: string | undefined, status: string | undefined, opts: { status?: string }) => {
+    try {
+      await ensureSchema(getClient());
+      if (action === "list") {
+        const all = await getAllComments(300);
+        const filtered = opts.status ? all.filter((c) => c.status === opts.status) : all;
+        console.log(JSON.stringify({ ok: true, comments: filtered }, null, 2));
+      } else if (action === "set") {
+        if (!id || !status) throw new Error("id and status required (approved|blocked)");
+        if (status !== "approved" && status !== "blocked") throw new Error("status must be approved|blocked");
+        await setCommentStatus(id, status);
+        console.log(JSON.stringify({ ok: true }));
+      } else {
+        throw new Error(`unknown action: ${action}`);
+      }
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;

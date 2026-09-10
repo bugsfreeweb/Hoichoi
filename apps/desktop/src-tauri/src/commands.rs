@@ -2,8 +2,13 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use tauri::{AppHandle, Emitter, Manager};
+
+/// PID of the currently running pipeline child (0 = none). Used by
+/// `stop_pipeline` to let the user abort a collector run from the UI.
+static PIPELINE_PID: AtomicU32 = AtomicU32::new(0);
 
 /// Repo root = three levels above src-tauri: apps/desktop/src-tauri -> repo.
 fn repo_root_dir() -> PathBuf {
@@ -105,6 +110,7 @@ pub async fn run_pipeline(
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
 
     let mut child = cmd.spawn().map_err(|e| format!("spawn failed: {e}"))?;
+    PIPELINE_PID.store(child.id(), Ordering::SeqCst);
 
     let stdout = child.stdout.take().ok_or("no stdout")?;
     let stderr = child.stderr.take().ok_or("no stderr")?;
@@ -123,12 +129,40 @@ pub async fn run_pipeline(
         }
     });
 
+    let pid = child.id();
     let a = app.clone();
     let _h3 = std::thread::spawn(move || {
         let code = child.wait().map(|s| s.code().unwrap_or(-1)).unwrap_or(-1);
+        if PIPELINE_PID.load(Ordering::SeqCst) == pid {
+            PIPELINE_PID.store(0, Ordering::SeqCst);
+        }
         let _ = a.emit("pipeline://done", code);
     });
 
+    Ok(())
+}
+
+/// Abort the running collector pipeline (SIGTERM-equivalent on Windows via
+/// taskkill /F /T, plain `kill` elsewhere). No-op when nothing is running.
+#[tauri::command]
+pub async fn stop_pipeline(app: AppHandle) -> Result<(), String> {
+    let pid = PIPELINE_PID.load(Ordering::SeqCst);
+    if pid == 0 {
+        return Ok(());
+    }
+    let _ = app.emit("pipeline://log", "[desk] stop requested — terminating collector");
+    let pid_str = pid.to_string();
+    let spawned = {
+        #[cfg(windows)]
+        {
+            Command::new("taskkill").args(["/F", "/T", "/PID"]).arg(&pid_str).spawn()
+        }
+        #[cfg(not(windows))]
+        {
+            Command::new("kill").arg(&pid_str).spawn()
+        }
+    };
+    spawned.map_err(|e| format!("kill failed: {e}"))?;
     Ok(())
 }
 
@@ -427,4 +461,17 @@ fn now_stamp() -> String {
         .unwrap_or_default()
         .as_secs();
     format!("{now}")
+}
+
+/// Generic runner passthrough for the desk console (watchlist, queue,
+/// moderation, stats). `args` are the full runner CLI tokens; stdout JSON is
+/// returned verbatim so the frontend keeps one thin wrapper.
+#[tauri::command]
+pub async fn desk_call(
+    app: AppHandle,
+    args: Vec<String>,
+    env: Option<HashMap<String, String>>,
+) -> Result<String, String> {
+    let strs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+    run_runner(&app, &strs, &env.unwrap_or_default())
 }

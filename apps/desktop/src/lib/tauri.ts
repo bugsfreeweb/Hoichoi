@@ -16,6 +16,11 @@ export async function startPipeline(env: Record<string, string>): Promise<void> 
   await invoke("run_pipeline", { env });
 }
 
+/** Abort the running collector pipeline from the desk UI. */
+export async function stopPipeline(): Promise<void> {
+  await invoke("stop_pipeline");
+}
+
 export async function openAdmin(url: string): Promise<void> {
   await invoke("open_admin", { url });
 }
@@ -99,4 +104,141 @@ export async function adminCodes(
     env,
   });
   return JSON.parse(raw);
+}
+
+/* ------------------------------------------------------------------ *
+ * Desk console — watchlist / queue / moderation / stats (runner JSON) *
+ * ------------------------------------------------------------------ */
+
+export interface DeskSource {
+  id: string;
+  page_url: string;
+  page_name: string;
+  kind: "page" | "group";
+  fb_id: string | null;
+  topics: string[];
+  category: string;
+  is_active: boolean;
+  last_scraped_at: string | null;
+  posts_today: number;
+  health: number;
+  created_at: string;
+}
+
+export interface DeskQueueRow {
+  id: string;
+  slug: string;
+  title_bn: string;
+  source_name: string;
+  category: string;
+  status: string;
+  created_at: string;
+}
+
+export interface DeskComment {
+  id: string;
+  post_id: string;
+  author: string;
+  body: string;
+  likes: number;
+  status: "pending" | "approved" | "blocked";
+  created_at: string;
+  postTitle: string | null;
+  postCategory: string | null;
+}
+
+export interface DeskRunLite {
+  id: string;
+  started_at: string;
+  finished_at: string | null;
+  status: string;
+  stats: Record<string, unknown> | null;
+  provider_used: string | null;
+  error: string | null;
+}
+
+export interface DeskStats {
+  stats: {
+    collectedToday: number;
+    duplicatesBlocked: number;
+    dedupRate: number;
+    lastRunStatus: "never" | "success" | "failed" | string;
+    published: number;
+    pendingReview: number;
+    avgRunDurationSec: number;
+    byCategory: Record<string, number>;
+  };
+  runs: DeskRunLite[];
+}
+
+/**
+ * Run a desk-console runner subcommand and parse its JSON stdout. `args` are
+ * the raw CLI tokens — e.g. ["sources", "list"] or ["queue", "list"].
+ */
+export async function deskCall(
+  args: string[],
+  env: Record<string, string>,
+): Promise<Record<string, unknown>> {
+  const raw = await invoke<string>("desk_call", { args, env });
+  const parsed = JSON.parse(raw) as Record<string, unknown>;
+  if (parsed && typeof parsed === "object" && "ok" in parsed && parsed.ok === false) {
+    throw new Error(String(parsed.error ?? "runner error"));
+  }
+  return parsed;
+}
+
+export async function deskSources(env: Record<string, string>): Promise<DeskSource[]> {
+  const res = await deskCall(["sources", "list"], env);
+  return (res.sources as DeskSource[]) ?? [];
+}
+
+export async function deskAddSource(
+  env: Record<string, string>,
+  input: { pageUrl: string; pageName: string; kind?: string; category?: string; topics?: string; fbId?: string | null },
+): Promise<DeskSource> {
+  const args = ["sources", "add", "--page-url", input.pageUrl, "--page-name", input.pageName];
+  if (input.kind) args.push("--kind", input.kind);
+  if (input.category) args.push("--category", input.category);
+  if (input.topics) args.push("--topics", input.topics);
+  if (input.fbId) args.push("--fb-id", input.fbId);
+  const res = await deskCall(args, env);
+  return res.source as DeskSource;
+}
+
+export async function deskToggleSource(env: Record<string, string>, id: string): Promise<void> {
+  await deskCall(["sources", "toggle", "--id", id], env);
+}
+
+export async function deskRemoveSource(env: Record<string, string>, id: string): Promise<void> {
+  await deskCall(["sources", "remove", "--id", id], env);
+}
+
+export async function deskQueue(env: Record<string, string>, status?: string | null): Promise<DeskQueueRow[]> {
+  const args = ["queue", "list"];
+  if (status) args.push("--status", status);
+  const res = await deskCall(args, env);
+  return (res.rows as DeskQueueRow[]) ?? [];
+}
+
+export async function deskStats(env: Record<string, string>): Promise<DeskStats> {
+  const res = await deskCall(["stats"], env);
+  return res as unknown as DeskStats;
+}
+
+export async function deskModeration(
+  env: Record<string, string>,
+  status?: string | null,
+): Promise<DeskComment[]> {
+  const args = ["moderation", "list"];
+  if (status) args.push("--status", status);
+  const res = await deskCall(args, env);
+  return (res.comments as DeskComment[]) ?? [];
+}
+
+export async function deskModerationSet(
+  env: Record<string, string>,
+  id: string,
+  status: "approved" | "blocked",
+): Promise<void> {
+  await deskCall(["moderation", "set", id, status], env);
 }

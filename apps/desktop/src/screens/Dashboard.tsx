@@ -1,57 +1,50 @@
-﻿import { useEffect, useState } from "react";
-import { startPipeline, openAdmin } from "../lib/tauri";
-import { getRunEnv, type CredentialName } from "../lib/vault";
-import {
-  KeyRound,
+﻿import {
+  Inbox,
+  Newspaper,
+  Fingerprint,
   Timer,
+  Radio,
   Activity,
   Cpu,
-  SquarePlay,
-  Globe,
-  Wifi,
+  Camera,
+  Sparkles,
   GitBranch,
 } from "lucide-react";
+import Countdown from "../components/Countdown";
+import { toBn, bnTime, CATEGORY_LABEL } from "../lib/format";
+import { parseLogLine } from "../lib/logs";
+import type { DeskQueueRow, DeskSource, DeskStats } from "../lib/tauri";
+import type { View } from "../App";
 
 export default function Dashboard({
-  configured,
-  refresh,
+  sources,
+  queueRows,
+  statsData,
+  logs,
+  onOpen,
+  hours = 2,
 }: {
-  configured: Partial<Record<CredentialName, boolean>>;
-  refresh: () => Promise<void>;
+  sources: DeskSource[];
+  queueRows: DeskQueueRow[];
+  statsData: DeskStats | null;
+  logs: string[];
+  onOpen: (tab: View) => void;
+  hours?: number;
 }) {
-  const count = Object.values(configured).filter(Boolean).length;
-  const total = Object.keys(configured).length;
-
-// live 2h-sync countdown (matches mockup "পরবর্তী সিঙ্ক · 0 */2 * * *")
-  const [next, setNext] = useState("");
-  const [frac, setFrac] = useState(1);
-  useEffect(() => {
-    const period = 2 * 60 * 60 * 1000;
-    const tick = () => {
-      const now = Date.now();
-      const target = Math.ceil(now / period) * period;
-      const diff = Math.max(0, target - now);
-      setFrac(diff / period);
-      const bn = (n: number) => n.toLocaleString("bn-BD", { minimumIntegerDigits: 2 });
-      setNext(
-        `${bn(Math.floor(diff / 3600000))}:${bn(Math.floor((diff % 3600000) / 60000))}:${bn(Math.floor((diff % 60000) / 1000))}`,
-      );
-    };
-    tick();
-    const t = setInterval(tick, 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  const runNow = async () => {
-    await startPipeline(await getRunEnv());
-    await refresh();
-  };
+  const last = statsData?.runs?.[0] ?? null;
+  const st = statsData?.stats;
+  const watching = sources.filter((s) => s.is_active).length;
 
   const stats = [
-    { label: "কনফিগারড কী", value: `${count}`, sub: `/${total} total`, icon: KeyRound, color: "text-lime" },
-    { label: "স্বয়ংক্রিয় রান", value: "2h", sub: "GitHub Actions cron", icon: Activity, color: "text-sky-300" },
-    { label: "রিটেনশন উইন্ডো", value: "7d", sub: "public + 30d archive", icon: Timer, color: "text-rose-300" },
-    { label: "রিফ্রেশ", value: "LIVE", sub: "vault → env transpile", icon: Cpu, color: "text-amberx" },
+    { label: "আজ সংগৃহীত", value: toBn(st?.collectedToday ?? 0), icon: Inbox, color: "text-lime" },
+    { label: "লাইভ প্রকাশিত", value: toBn(st?.published ?? 0), icon: Newspaper, color: "text-sky-300" },
+    { label: "ডুপ্লিকেট ব্লক", value: toBn(st?.duplicatesBlocked ?? 0), icon: Fingerprint, color: "text-amberx" },
+    {
+      label: "গড় রান",
+      value: `${toBn(Math.floor((st?.avgRunDurationSec ?? 0) / 60))}ম ${toBn(String((st?.avgRunDurationSec ?? 0) % 60).padStart(2, "0"))}সে`,
+      icon: Timer,
+      color: "text-rose-300",
+    },
   ];
 
   return (
@@ -59,15 +52,15 @@ export default function Dashboard({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="font-mono-x text-[9.5px] tracking-[0.26em] text-lime uppercase">
-            TAURI CONTROLLER · HOICHOI DESK · LIVE
+            TAURI CONTROLLER · OPTION A · LIVE
           </p>
           <h2 className="mt-1 font-serif-bn text-[26px] font-black text-white">ডেস্ক মনিটর</h2>
         </div>
         <button
-          onClick={() => void runNow()}
+          onClick={() => onOpen("collector")}
           className="flex items-center gap-2 rounded-lg bg-lime px-4 py-2 text-[12px] font-bold text-night transition-all hover:brightness-110"
         >
-          <SquarePlay size={13} /> কালেক্টর খুলুন
+          <Radio size={13} /> কালেক্টর খুলুন
         </button>
       </div>
 
@@ -78,102 +71,169 @@ export default function Dashboard({
               {s.label}
               <s.icon size={14} className={s.color} />
             </div>
-            <p className="mt-2 font-serif-bn text-[26px] leading-none font-black text-white">{s.value}</p>
-            <p className="mt-1.5 font-mono-x text-[9.5px] text-white/35 uppercase">{s.sub}</p>
+            <p className="mt-2 font-serif-bn text-[26px] leading-none font-black text-white">
+              {s.value}
+            </p>
           </div>
         ))}
       </div>
 
       <div className="grid gap-3 lg:grid-cols-12">
-        {/* next sync / countdown */}
         <div className="panel relative overflow-hidden rounded-xl p-5 lg:col-span-4">
           <p className="font-mono-x text-[9.5px] tracking-[0.22em] text-lime uppercase">
-            পরবর্তী সিঙ্ক · 0 */2 * * *
+            পরবর্তী সিঙ্ক · 0 */{toBn(hours)} * * *
           </p>
-<div className="mt-4 flex items-center gap-4">
-            <div className="relative" style={{ width: 92, height: 92 }}>
-              <svg width="92" height="92" className="-rotate-90">
-                <circle cx="46" cy="46" r="41" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3" />
-                <circle
-                  cx="46"
-                  cy="46"
-                  r="41"
-                  fill="none"
-                  stroke="#c8f65d"
-                  strokeWidth="3.5"
-                  strokeLinecap="round"
-                  strokeDasharray="257.61"
-                  strokeDashoffset={257.61 * (1 - frac)}
-                  className="countdown-ring"
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="font-mono-x text-[16px] leading-none font-bold text-white tabular-nums">{next}</span>
-                <span className="mt-1 font-mono-x text-[8px] tracking-[0.22em] text-white/40 uppercase">NEXT SYNC</span>
-              </div>
-            </div>
-            <div className="space-y-1 text-[10.5px] leading-relaxed text-white/50">
-              <p>🔔 শেষ রান → commit → deploy</p>
-              <p>🤖 LLM rewrites → fact-gate</p>
-              <p>🌐 Vercel ISR · revalidate 300s</p>
-            </div>
+          <div className="mt-4">
+            <Countdown lastRunIso={last?.started_at ?? null} hours={hours} size={108} />
           </div>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <button
-              onClick={() => void runNow()}
-              className="flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 text-[11.5px] font-bold text-night"
-            >
-              <SquarePlay size={11} /> এখনই রান করুন
-            </button>
-            <button
-              onClick={() => void openAdmin("http://localhost:3070/admin")}
-              className="flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-[11.5px] font-bold text-white/75 hover:border-white/40"
-            >
-              <Globe size={11} /> ওয়েব ডেস্ক
-            </button>
+          <div className="mt-5 space-y-2 border-t border-white/8 pt-4 font-mono-x text-[10.5px] text-white/45">
+            <div className="flex justify-between">
+              <span>LAST RUN</span>
+              <span className="text-white/80">{last ? bnTime(last.started_at) : "—"}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>RESULT</span>
+              <span className={last?.status === "completed" ? "text-lime" : "text-amberx"}>
+                {last ? String(last.status) : "—"}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>WATCHING</span>
+              <span>
+                {toBn(watching)}/{toBn(sources.length)} সোর্স
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* keychain / source health */}
         <div className="panel rounded-xl p-5 lg:col-span-4">
-          <div className="flex items-center justify-between">
-            <p className="font-mono-x text-[9.5px] tracking-[0.2em] text-white/40 uppercase">কিচেন স্বাস্থ্য</p>
-            <span className="flex items-center gap-1.5 font-mono-x text-[9px] tracking-[0.14em] text-lime uppercase">
-              <Wifi size={10} /> ENCRYPTED
-            </span>
-          </div>
-          <ul className="mt-4 space-y-2.5">
-            {Object.entries(configured).slice(0, 8).map(([name, ok]) => (
-              <li key={name} className="flex items-center gap-3">
-                <span className={`h-1.5 w-1.5 rounded-full ${ok ? "bg-lime" : "bg-white/30"}`} />
-                <span className="min-w-0 flex-1 truncate font-mono-x text-[11.5px] text-white/80">{name}</span>
-                <span className="font-mono-x text-[9px] text-white/35">{ok ? "READY" : "—"}</span>
+          <p className="flex items-center gap-2 font-mono-x text-[9.5px] tracking-[0.22em] text-white/40 uppercase">
+            <Cpu size={11} className="text-amberx" /> পাইপলাইন স্বাস্থ্য
+          </p>
+          <ul className="mt-4 space-y-3">
+            {[
+              { icon: Camera, t: "Playwright শট", s: "1440×900 · headless", ok: true },
+              { icon: Fingerprint, t: "Dedup গেট", s: "SHA-256 + SimHash 0.87", ok: true },
+              { icon: Sparkles, t: "LLM ফ্যাক্ট-গেট", s: "থ্রেশহোল্ড ০.৯০", ok: true },
+              { icon: GitBranch, t: "GitHub → Vercel", s: "hoichoi-content · READY", ok: true },
+            ].map((n) => (
+              <li key={n.t} className="flex items-center gap-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-lime">
+                  <n.icon size={13} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12.5px] font-semibold text-white/90">{n.t}</p>
+                  <p className="font-mono-x text-[9.5px] text-white/35">{n.s}</p>
+                </div>
+                <span className="h-1.5 w-1.5 rounded-full bg-lime" />
               </li>
             ))}
           </ul>
         </div>
 
-        {/* system map */}
         <div className="panel rounded-xl p-5 lg:col-span-4">
-          <p className="font-mono-x text-[9.5px] tracking-[0.2em] text-white/40 uppercase">সিস্টেম মানচিত্র</p>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="flex items-center justify-between">
+            <p className="flex items-center gap-2 font-mono-x text-[9.5px] tracking-[0.22em] text-white/40 uppercase">
+              <Radio size={11} className="text-sky-300" /> সোর্স হেলথ
+            </p>
             <button
-              onClick={() => void openAdmin("http://localhost:3070/admin")}
-              className="flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-[11px] font-bold text-white/75 hover:border-white/40"
+              onClick={() => onOpen("watchlist")}
+              className="text-[11px] font-semibold text-lime hover:underline"
             >
-              <Globe size={11} /> অ্যাডমিন কনসোল →
-            </button>
-            <button
-              onClick={() => void openAdmin("http://localhost:3070/system")}
-              className="flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-[11px] font-bold text-white/75 hover:border-white/40"
-            >
-              <GitBranch size={11} /> সিস্টেম ব্লুপ্রিন্ট →
+              সব →
             </button>
           </div>
-          <p className="mt-4 text-[10.5px] leading-relaxed text-white/45">
-            সোর্স ম্যানেজমেন্ট, মডারেশন কিউ, সাবমিশন, আর্কাইভ — সব অ্যাডমিন কাজ
-            ওয়েব ডেস্কে হয়। Desktop → Turso → Vercel একই shared ডেটাবেজে চলে।
-          </p>
+          <ul className="mt-4 space-y-2.5">
+            {sources.length === 0 && (
+              <li className="py-6 text-center text-[12px] text-white/35">
+                কোনো সোর্স নেই — ওয়াচলিস্টে যোগ করুন।
+              </li>
+            )}
+            {sources.slice(0, 6).map((s) => (
+              <li key={s.id} className="flex items-center gap-3">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${s.is_active ? "bg-lime" : "bg-white/30"}`}
+                />
+                <span className="min-w-0 flex-1 truncate text-[12.5px] text-white/80">
+                  {s.page_name}
+                </span>
+                <span className="font-mono-x text-[9.5px] text-white/35">{toBn(s.health)}%</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div className="panel overflow-hidden rounded-xl">
+          <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
+            <p className="flex items-center gap-2 font-mono-x text-[9.5px] tracking-[0.2em] text-white/40 uppercase">
+              <Activity size={11} /> সর্বশেষ কালেক্টর
+            </p>
+            <button
+              onClick={() => onOpen("collector")}
+              className="text-[11px] font-semibold text-lime"
+            >
+              লাইভ লগ →
+            </button>
+          </div>
+          <ul className="divide-y divide-white/6 font-mono-x text-[11px]">
+            {logs.length === 0 && (
+              <li className="px-4 py-6 text-center text-[12px] text-white/35">
+                এখনো কোনো রান হয়নি — "Run pipeline" চালু করুন।
+              </li>
+            )}
+            {logs
+              .slice(-6)
+              .reverse()
+              .map((raw, i) => {
+                const l = parseLogLine(raw);
+                return (
+                  <li key={logs.length - i} className="flex items-start gap-3 px-4 py-2.5">
+                    <span className="shrink-0 text-white/30">{bnTime(l.ts)}</span>
+                    <span className={`w-14 shrink-0 ${`log-${l.level}`}`}>{l.stage}</span>
+                    <span className="min-w-0 truncate text-white/70">{l.message}</span>
+                  </li>
+                );
+              })}
+          </ul>
+        </div>
+
+        <div className="panel overflow-hidden rounded-xl">
+          <div className="border-b border-white/8 px-4 py-3 font-mono-x text-[9.5px] tracking-[0.2em] text-white/40 uppercase">
+            সাম্প্রতিক কিউ
+          </div>
+          <ul className="divide-y divide-white/6">
+            {queueRows.length === 0 && (
+              <li className="px-4 py-6 text-center text-[12px] text-white/35">
+                এখনো কোনো কনটেন্ট নেই।
+              </li>
+            )}
+            {queueRows.slice(0, 5).map((a) => (
+              <li key={a.id} className="flex items-center gap-3 px-4 py-2.5">
+                <span className="font-mono-x text-[10px] text-white/30">
+                  {toBn(a.id.slice(0, 4).toUpperCase())}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[12.5px] text-white/85">
+                  {a.title_bn}
+                </span>
+                <span className="hidden text-[10.5px] text-white/40 sm:inline">
+                  {CATEGORY_LABEL[a.category] ?? a.category}
+                </span>
+                <span
+                  className={`rounded-full px-2 py-0.5 font-mono-x text-[9px] uppercase ${
+                    a.status === "published"
+                      ? "bg-lime/15 text-lime"
+                      : a.status === "pending_review"
+                        ? "bg-amberx/15 text-amberx"
+                        : "bg-rose-500/15 text-rose-300"
+                  }`}
+                >
+                  {a.status}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </div>

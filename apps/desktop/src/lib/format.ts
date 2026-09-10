@@ -1,0 +1,71 @@
+export const CATEGORY_LABEL: Record<string, string> = {
+  "child-sexual-abuse": "শিশু যৌন নির্যাতন",
+  "extramarital-crime": "পরকীয়া অপরাধ",
+  "missing-children": "নিখোঁজ শিশু",
+};
+
+export const CATEGORY_TINT: Record<string, string> = {
+  "child-sexual-abuse": "#60a5fa",
+  "extramarital-crime": "#f87171",
+  "missing-children": "#2dd4bf",
+};
+
+export const POST_STATUS_LABEL: Record<string, string> = {
+  published: "প্রকাশিত",
+  pending_review: "রিভিউ অপেক্ষায়",
+  approved: "অনুমোদিত",
+  rejected: "বাতিল",
+  removed: "সরানো হয়েছে",
+};
+
+const BN_DIGITS = "০১২৩৪৫৬৭৮৯";
+export const toBn = (v: number | string) =>
+  String(v).replace(/\d/g, (d) => BN_DIGITS[Number(d)]);
+
+export function bnNum(v: number | string) {
+  return toBn(v);
+}
+
+export function bnTime(d: Date | string | null | undefined) {
+  if (!d) return "—";
+  const date = typeof d === "string" ? new Date(d) : d;
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("bn-BD", {
+    timeZone: "Asia/Dhaka",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}
+
+export function bnDate(d: Date | string | null | undefined) {
+  if (!d) return "—";
+  const date = typeof d === "string" ? new Date(d) : d;
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("bn-BD", {
+    timeZone: "Asia/Dhaka",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+export function agoBn(d: Date | string | null | undefined) {
+  if (!d) return "—";
+  const date = typeof d === "string" ? new Date(d) : d;
+  const mins = Math.max(1, Math.round((Date.now() - date.getTime()) / 60000));
+  if (Number.isNaN(mins)) return "—";
+  if (mins < 60) return `${toBn(mins)} মিনিট আগে`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${toBn(hrs)} ঘণ্টা আগে`;
+  return `${toBn(Math.round(hrs / 24))} দিন আগে`;
+}
+
+export function bnClock(seconds = false): string {
+  return new Date().toLocaleTimeString("bn-BD", {
+    timeZone: "Asia/Dhaka",
+    hour: "2-digit",
+    minute: "2-digit",
+    ...(seconds ? { second: "2-digit" } : {}),
+  });
+}

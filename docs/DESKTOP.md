@@ -177,20 +177,40 @@ apps/desktop/
 
 ## Mockup parity (desk)
 
-The desktop UI mirrors the `mockup/` desk controller:
+The desktop UI mirrors the `mockup/` desk controller exactly:
 
-- **Sidebar** — monitor / collector / web desk / settings nav with keyboard
-  shortcuts **1–4**, live **Dhaka clock**, "controller online" indicator and
-  the run-pipeline button (`src/components/Sidebar.tsx`).
-- **Dashboard** — 4 stat tiles + an SVG **next-sync countdown ring** (`2h`
-  schedule, `0 */2 * * *`) matching the mockup's `Countdown` component
-  (`src/screens/Dashboard.tsx`).
-- **Collector** — live stdout log with mockup **log-level colors** (`log-ok`,
-  `log-warn`, `log-err`, `log-info` in `src/index.css`; parsed out of each
-  line in `src/screens/Pipeline.tsx`).
-- **Settings** — saved as Stronghold-style encrypted credentials in the AES-GCM
-  vault; branding (site_name / slogan / tagline / logo / accent) is read from
-  the shared Turso `settings` row via the bundled runner (`src/screens/Settings.tsx`).
+- **Frameless window** — `decorations: false` + custom `TitleBar` (traffic lights:
+  minimize / maximize / close; drag region only on the center strip), min width
+  1100. `tauri.conf.json`, `capabilities/default.json` (window permissions).
+- **7-tab console** — Monitor / Watchlist / Queue / Collector / Vault / Settings /
+  Moderation with keyboard shortcuts **1–7**, inline menubar (ফাইল/সোর্স/রান/ভল্ট/
+  সাহায্য) and a statusbar (TAURI 2.1 · `TURSO`/`LOCAL` DB badge · Hoichoi clock).
+  Shell: `src/App.tsx`, `components/{TitleBar,Sidebar,Countdown}.tsx`.
+- **Monitor** — 4 stat tiles (আজ সংগৃহীত / লাইভ প্রকাশিত / ডুপ্লিকেট ব্লকড / গড় রান)
+  + the mockup **countdown ring**, pipeline-health and source-health panels, latest
+  collector logs and the recent content queue (`screens/Dashboard.tsx`).
+- **Watchlist** — real source CRUD against the runner
+  (`sources list|add|toggle|remove`), search + kind filter + add form, health bars,
+  watching/paused states (`screens/Watchlist.tsx`).
+- **Queue** — live status tabs (সব / প্রকাশিত / অপেক্ষমান / ডুপ্লিকেট) with real
+  counts and a "view on site" link (`screens/Queue.tsx`).
+- **Collector** — live stdout log (mockup log colors via `log-ok`/`log-warn`/
+  `log-err`/`log-info` + `.log-warn` scan overlay) with Run / Stop; Stop terminates
+  the child via `stop_pipeline` (Windows `taskkill /F /T`) (`screens/Collector.tsx`).
+- **Vault** — KeyVault-style table of the AES-256-GCM credential store with
+  reveal/copy per key + copy-all `.env` payload (`screens/Vault.tsx`).
+- **Settings** — mockup preference panels (cron `0 */N * * *` → `pipeline_hours` via
+  `settingsSet`, model/temp/gate/toggles persisted to `localStorage`) above the real
+  functional panels (cloud sync, branding, admin codes, backup/reset/sync)
+  (`screens/Settings.tsx`).
+- **Moderation** — comment queue with pending/approved/blocked tabs and approve/block
+  actions through the runner (`moderation list|set`) (`screens/Moderation.tsx`).
+- **Runner desk CLI** — new subcommands `stats`, `sources`, `queue`, `moderation`
+  (all `apps/scraper/src/cli.ts`). Backend passthrough `desk_call` (Rust) +
+  wrapper `deskCall`/`deskSources`/`deskQueue`/`deskStats`/`deskModeration`/
+  `deskModerationSet` (`src/lib/tauri.ts`). `sources` gained columns `kind`, `fb_id`,
+  `topics`, `health` (added idempotently by `ensureDeskColumns` in
+  `packages/db/src/client.ts`).
 
 ## Rebuilding the installer
 

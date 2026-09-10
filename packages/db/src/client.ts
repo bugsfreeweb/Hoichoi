@@ -152,6 +152,29 @@ CREATE INDEX IF NOT EXISTS idx_admin_codes_email ON admin_login_codes (email);
   `);
 }
 
+/** Desk/console watchlist columns added to `sources` for the desktop UI. */
+const DESK_SOURCE_COLUMNS: Array<[name: string, ddl: string]> = [
+  ["kind", "TEXT NOT NULL DEFAULT 'page'"],
+  ["fb_id", "TEXT"],
+  ["topics", "TEXT NOT NULL DEFAULT '[]'"],
+  ["health", "INTEGER NOT NULL DEFAULT 100"],
+];
+
+/**
+ * Upgrade helper: adds the desk-watchlist columns (`kind`, `fb_id`, `topics`,
+ * `health`) to an existing `sources` table. Idempotent — safe on fresh DBs
+ * where the CREATE TABLE may or may not already include them.
+ */
+export async function ensureDeskColumns(client: Client): Promise<void> {
+  const info = await client.execute("PRAGMA table_info(sources)");
+  const existing = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));
+  for (const [name, ddl] of DESK_SOURCE_COLUMNS) {
+    if (!existing.has(name)) {
+      await client.execute(`ALTER TABLE sources ADD COLUMN ${name} ${ddl}`);
+    }
+  }
+}
+
 /** Ensure schema exists, then seed base config on a fresh database. */
 export async function ensureSchema(client: Client): Promise<void> {
   // Desktop runtime: migrations live next to the bundled console (env override).
@@ -168,6 +191,7 @@ export async function ensureSchema(client: Client): Promise<void> {
   await ensureBrandingColumns(client);
   await ensureCommentsTable(client);
   await ensureAdminLoginCodesTable(client);
+  await ensureDeskColumns(client);
   await seedDefaults(client, nowIso());
 }
 

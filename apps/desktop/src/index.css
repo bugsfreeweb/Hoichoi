@@ -74,17 +74,13 @@ body {
   color: #c8f65d;
 }
 .log-warn {
-  color: #f5b800;
+  color: #ffb454;
 }
 .log-err {
   color: #ff6b6b;
 }
 .log-info {
   color: #7cc3ff;
-}
-
-.countdown-ring {
-  transition: stroke-dashoffset 1s linear;
 }
 
 .scroll-slim::-webkit-scrollbar {
@@ -94,4 +90,98 @@ body {
 .scroll-slim::-webkit-scrollbar-thumb {
   background: #2a3040;
   border-radius: 8px;
+}
+
+/* ---------- Tauri desk window chrome (Option A · mockup parity) ---------- */
+.desk-scene {
+  min-height: 100%;
+  background:
+    radial-gradient(1200px 600px at 12% 88%, rgba(210, 32, 44, 0.22), transparent 55%),
+    radial-gradient(900px 500px at 88% 12%, rgba(200, 246, 93, 0.1), transparent 50%),
+    #07080c;
+}
+
+.tauri-win {
+  background: #0c1017;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 40px 90px rgba(0, 0, 0, 0.55),
+    0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.bg-night-grid {
+  background-color: #0a0d12;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 46px 46px;
+}
+
+.traffic {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.35) inset;
+  transition: filter 0.15s ease;
+}
+.traffic:hover {
+  filter: brightness(1.25);
+}
+
+.titlebar {
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+.scan-line {
+  background: linear-gradient(180deg, transparent, rgba(200, 246, 93, 0.07), transparent);
+  animation: scan 4.8s linear infinite;
+  pointer-events: none;
+}
+@keyframes scan {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(400%);
+  }
+}
+
+.dock-bounce {
+  animation: dock 1.6s ease-in-out infinite;
+}
+@keyframes dock {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.indeterminate-bar {
+  background-image: repeating-linear-gradient(90deg, #c8f65d 0 40px, transparent 40px 80px);
+  animation: progslide 1.2s linear infinite;
+}
+@keyframes progslide {
+  to {
+    background-position: 80px 0;
+  }
+}
+
+.grid-pop {
+  animation: pop 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }

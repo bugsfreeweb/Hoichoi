@@ -16,8 +16,9 @@
         "title": "হইচই ডেস্ক · Hoichoi Desk",
         "width": 1280,
         "height": 800,
-        "minWidth": 1024,
-        "minHeight": 700
+        "minWidth": 1100,
+        "minHeight": 700,
+        "decorations": false
       }
     ],
     "security": {

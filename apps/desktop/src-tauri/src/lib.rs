@@ -7,6 +7,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
             commands::run_pipeline,
+            commands::stop_pipeline,
             commands::open_admin,
             commands::repo_root,
             commands::settings_get,
@@ -15,6 +16,8 @@ pub fn run() {
             commands::backup_import,
             commands::reset_db,
             commands::sync_db,
+            commands::admin_codes,
+            commands::desk_call,
             vault::vault_set,
             vault::vault_get,
             vault::vault_delete,
