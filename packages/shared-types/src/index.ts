@@ -1,5 +1,5 @@
 /**
- * Shared domain types for হইচই (Hoichoi).
+ * Shared domain types for হৈচৈ (Hoichoi).
  * These map 1:1 to the Turso/libSQL schema (see packages/db/migrations/).
  */
 
@@ -251,6 +251,11 @@ export interface SiteSettings {
   favicon_url: string | null;
   /** Branding — accent color (hex) for masthead/footer brand elements. */
   accent_color: string;
+  /** Advertisement slots (raw ad-network HTML/JS). Empty = placeholder sponsor card. */
+  ad_leaderboard_html: string | null;
+  ad_rect_html: string | null;
+  ad_infeed_html: string | null;
+  ad_strip_html: string | null;
 }
 
 export interface StatsSnapshot {

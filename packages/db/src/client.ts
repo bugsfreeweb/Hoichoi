@@ -114,7 +114,7 @@ export async function applyMigration(
 /** Branding columns added in the centralized-settings pass; idempotent on existing DBs. */
 const BRANDING_COLUMNS: Array<[name: string, ddl: string]> = [
   ["slogan_bn", "TEXT NOT NULL DEFAULT 'ভাইরাল বাংলা, সপ্তাহখানেক'"],
-  ["tagline", "TEXT NOT NULL DEFAULT 'ফেসবুকের হইচই — এখন বাংলায়, সাত দিন পর উবে যায়'"],
+  ["tagline", "TEXT NOT NULL DEFAULT 'ফেসবুকের হৈচৈ — এখন বাংলায়, সাত দিন পর গায়েব'"],
   ["logo_url", "TEXT"],
   ["favicon_url", "TEXT"],
   ["accent_color", "TEXT NOT NULL DEFAULT '#d64541'"],
@@ -160,6 +160,28 @@ const DESK_SOURCE_COLUMNS: Array<[name: string, ddl: string]> = [
   ["health", "INTEGER NOT NULL DEFAULT 100"],
 ];
 
+/** Advertisement-slot columns added to `settings` (nullable raw ad HTML). */
+const AD_SLOT_COLUMNS: Array<[name: string, ddl: string]> = [
+  ["ad_leaderboard_html", "TEXT"],
+  ["ad_rect_html", "TEXT"],
+  ["ad_infeed_html", "TEXT"],
+  ["ad_strip_html", "TEXT"],
+];
+
+/**
+ * Upgrade helper: adds the `ad_*` columns to an existing `settings` table so the
+ * admin can paste ad-network HTML for each slot. Idempotent — safe on fresh DBs.
+ */
+export async function ensureAdSlotColumns(client: Client): Promise<void> {
+  const info = await client.execute("PRAGMA table_info(settings)");
+  const existing = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));
+  for (const [name, ddl] of AD_SLOT_COLUMNS) {
+    if (!existing.has(name)) {
+      await client.execute(`ALTER TABLE settings ADD COLUMN ${name} ${ddl}`);
+    }
+  }
+}
+
 /**
  * Upgrade helper: adds the desk-watchlist columns (`kind`, `fb_id`, `topics`,
  * `health`) to an existing `sources` table. Idempotent — safe on fresh DBs
@@ -189,6 +211,7 @@ export async function ensureSchema(client: Client): Promise<void> {
   const sqlText = fs.readFileSync(path.join(dir, "001_init.sql"), "utf-8");
   await applyMigration(client, "001_init", sqlText);
   await ensureBrandingColumns(client);
+  await ensureAdSlotColumns(client);
   await ensureCommentsTable(client);
   await ensureAdminLoginCodesTable(client);
   await ensureDeskColumns(client);

@@ -9,9 +9,11 @@ import { AdSlot } from "./AdSlot";
 export function CollectionGrid({
   posts,
   cats,
+  adInfeedHtml = null,
 }: {
   posts: Post[];
   cats: CategoryMeta[];
+  adInfeedHtml?: string | null;
 }) {
   const all: CategorySlug | "all" = "all";
   const [active, setActive] = useState<CategorySlug | "all">("all");
@@ -50,7 +52,7 @@ export function CollectionGrid({
         {filtered.map((post, i) => (
           <Fragment key={post.id}>
             <PostCard post={post} cats={cats} />
-            {(i + 1) % 4 === 0 && <AdSlot key={`ad-${post.id}`} variant="infeed" />}
+            {(i + 1) % 4 === 0 && <AdSlot key={`ad-${post.id}`} variant="infeed" html={adInfeedHtml} />}
           </Fragment>
         ))}
       </div>

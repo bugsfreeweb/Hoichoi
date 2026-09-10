@@ -17,6 +17,10 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
     logo_url: initial.logo_url ?? "",
     favicon_url: initial.favicon_url ?? "",
     accent_color: initial.accent_color,
+    ad_leaderboard_html: initial.ad_leaderboard_html ?? "",
+    ad_rect_html: initial.ad_rect_html ?? "",
+    ad_infeed_html: initial.ad_infeed_html ?? "",
+    ad_strip_html: initial.ad_strip_html ?? "",
   });
   const [status, setStatus] = useState<null | "ok" | "err" | "denied">(null);
 
@@ -91,6 +95,27 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
             <input type="number" min={1} className={field} value={form.archive_retention_days} onChange={(e) => setForm({ ...form, archive_retention_days: num(e.target.value) })} />
           </Field>
         </div>
+      </div>
+
+      <h3 className="border-t border-ink/15 pt-5 font-sans-bn text-[15px] font-bold text-ink">বিজ্ঞাপন স্লট (Ad slots)</h3>
+      <p className="-mt-2 text-[12px] leading-relaxed text-ink-soft">
+        প্রতিটি স্লটে যেকোনো অ্যাড-নেটওয়ার্ক কোড / HTML / <code className="font-mono-x text-[11px]">{"<script>"}</code> ব্লক পেস্ট
+        করুন (AdSense, Adsterra, ইন-হাউজ ব্যানার…)। খালি রাখলে ডিফল্ট স্পনসর কার্ড দেখাবে। সংরক্ষণের পর সরাসরি সাইটে
+        লাইভ হয়।
+      </p>
+      <div className="grid gap-4">
+        <Field label="Leaderboard (হোমপেজের শীর্ষ · ~728×90)">
+          <textarea rows={3} className={`${field} resize-y font-mono-x text-[12px] leading-relaxed`} placeholder={'<ins class="adsbygoogle" ... /> অথবা ব্যানার HTML'} value={form.ad_leaderboard_html} onChange={(e) => setForm({ ...form, ad_leaderboard_html: e.target.value })} />
+        </Field>
+        <Field label="Strip (হোমপেজের নিচের ডার্ক ব্যানার · ~970×64)">
+          <textarea rows={3} className={`${field} resize-y font-mono-x text-[12px] leading-relaxed`} placeholder={'<a href="..."><img src="..." /></a>'} value={form.ad_strip_html} onChange={(e) => setForm({ ...form, ad_strip_html: e.target.value })} />
+        </Field>
+        <Field label="Infeed (গ্রিডে প্রতি ৪র্থ আইটেমে)">
+          <textarea rows={4} className={`${field} resize-y font-mono-x text-[12px] leading-relaxed`} placeholder={"নিউজফিড-স্টাইলের বিজ্ঞাপন কোড"} value={form.ad_infeed_html} onChange={(e) => setForm({ ...form, ad_infeed_html: e.target.value })} />
+        </Field>
+        <Field label="Rect (আর্টিকেল পেজে · ~300×250)">
+          <textarea rows={4} className={`${field} resize-y font-mono-x text-[12px] leading-relaxed`} placeholder={"আর্টিকেল ভেতরের বক্স বিজ্ঞাপন"} value={form.ad_rect_html} onChange={(e) => setForm({ ...form, ad_rect_html: e.target.value })} />
+        </Field>
       </div>
       {status === "ok" && <p className="border border-cat-teal bg-cat-teal/10 px-3 py-2 text-[12.5px] font-bold text-ink">✓ সংরক্ষিত।</p>}
       {status === "err" && <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">✗ ব্যর্থ।</p>}

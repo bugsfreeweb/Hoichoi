@@ -110,8 +110,8 @@ export async function seedDefaults(
       (id, pipeline_hours, site_name, contact_email, police_helpline, child_helpline,
        archive_visible_days, archive_retention_days,
        slogan_bn, tagline, accent_color, updated_at)
-      VALUES (1, 2, 'হইচই', 'contact@hoichoi.local', '999', '109', 7, 30,
-       'ভাইরাল বাংলা, সপ্তাহখানেক', 'ফেসবুকের হইচই — এখন বাংলায়, সাত দিন পর উবে যায়', '#d64541', ?)`,
+      VALUES (1, 2, 'হৈচৈ', 'contact@hoichoi.local', '999', '109', 7, 30,
+       'ভাইরাল বাংলা, সপ্তাহখানেক', 'ফেসবুকের হৈচৈ — এখন বাংলায়, সাত দিন পর গায়েব', '#d64541', ?)`,
     args: [now],
   });
 
@@ -128,7 +128,7 @@ export async function seedDefaults(
     await client.execute({
       sql: `INSERT OR IGNORE INTO admin_users (id, email, display_name, password_hash, role, created_at)
             VALUES (?, ?, ?, ?, 'admin', ?)`,
-      args: [randomUUID(), email, "হইচই ডেস্ক", hashSync(password, 10), now],
+      args: [randomUUID(), email, "হৈচৈ ডেস্ক", hashSync(password, 10), now],
     });
   }
 

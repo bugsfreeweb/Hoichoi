@@ -49,7 +49,7 @@ export default function TitleBar() {
           হ
         </span>
         <span className="font-serif-bn text-[12.5px] font-bold text-white/85">
-          হইচই ডেস্ক
+          হৈচৈ ডেস্ক
         </span>
         <span className="hidden font-mono-x text-[9px] tracking-[0.2em] text-white/30 uppercase sm:inline">
           TAURI 2 · OPTION A

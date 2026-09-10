@@ -30,7 +30,7 @@ const program = new Command();
 
 program
   .name("hoichoi-scraper")
-  .description("হইচই auto-curation pipeline — scrape, dedup, rewrite, archive")
+  .description("হৈচৈ auto-curation pipeline — scrape, dedup, rewrite, archive")
   .version("1.0.0");
 
 program
@@ -111,11 +111,15 @@ const SETTING_KEYS: Array<keyof SiteSettings> = [
   "logo_url",
   "favicon_url",
   "accent_color",
+  "ad_leaderboard_html",
+  "ad_rect_html",
+  "ad_infeed_html",
+  "ad_strip_html",
 ];
 
 program
   .command("settings:set <assign...>")
-  .description('update site settings — e.g. settings:set "site_name=হইচই" "slogan_bn=..." "accent_color=#d64541"')
+  .description('update site settings — e.g. settings:set "site_name=হৈচৈ" "slogan_bn=..." "accent_color=#d64541"')
   .action(async (assigns: string[]) => {
     try {
       await ensureSchema(getClient());

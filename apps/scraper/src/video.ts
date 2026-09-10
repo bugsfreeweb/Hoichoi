@@ -17,7 +17,7 @@ export interface VideoOptions {
 
 /**
  * Re-encode a Facebook video to H.264/AAC and (when the ffmpeg binary and a
- * Bangla-capable font are available) burn a "হইচই।" watermark + timestamp.
+ * Bangla-capable font are available) burn a "হৈচৈ।" watermark + timestamp.
  * Lazy-loads ffmpeg-static so installs without it still run the pipeline;
  * the video is stored locally and never hotlinked.
  */
@@ -59,7 +59,7 @@ export async function processVideo(opts: VideoOptions): Promise<VideoResult | nu
   try {
     args.push(
       "-vf",
-      `drawtext=text='হইচই। ${opts.stampText}':x=w-tw-24:y=h-th-24:fontcolor=white@0.9:fontsize=28:box=1:boxcolor=0x0A0C10@0.65:boxborderw=12`,
+      `drawtext=text='হৈচৈ। ${opts.stampText}':x=w-tw-24:y=h-th-24:fontcolor=white@0.9:fontsize=28:box=1:boxcolor=0x0A0C10@0.65:boxborderw=12`,
     );
     watermarked = true;
   } catch {

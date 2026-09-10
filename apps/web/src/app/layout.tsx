@@ -32,17 +32,17 @@ const SITE_URL =
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "হইচই। — ভাইরাল বাংলা, সপ্তাহখানেক",
-    template: "%s · হইচই।",
+    default: "হৈচৈ। — ভাইরাল বাংলা, সপ্তাহখানেক",
+    template: "%s · হৈচৈ।",
   },
   description:
-    "হইচই — অটো-কিউরেটেড বাংলা সংবাদ ডেস্ক। ফেসবুকের ভাইরাল পোস্ট সাত দিনের জানালায় সচেতনতামূলক সংবাদ আকারে পুনর্লিখিত।",
+    "হৈচৈ — অটো-কিউরেটেড বাংলা সংবাদ ডেস্ক। ফেসবুকের ভাইরাল পোস্ট সাত দিনের জানালায় সচেতনতামূলক সংবাদ আকারে পুনর্লিখিত।",
   icons: {
     icon: "/icon.svg",
   },
   openGraph: {
     type: "website",
-    siteName: "হইচই।",
+    siteName: "হৈচৈ।",
     locale: "bn_BD",
     url: SITE_URL,
   },

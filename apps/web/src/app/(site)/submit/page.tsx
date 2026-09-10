@@ -3,7 +3,7 @@ import { SubmitSourceForm } from "@/components/SubmitSourceForm";
 
 export const metadata: Metadata = {
   title: "পেজ প্রস্তাব করুন",
-  description: "একটি ফেসবুক পেজ বা গ্রুপ হইচই-এর সোর্স হিসেবে প্রস্তাব করুন।",
+  description: "একটি ফেসবুক পেজ বা গ্রুপ হৈচৈ-এর সোর্স হিসেবে প্রস্তাব করুন।",
 };
 
 export default function SubmitPage() {

@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "হইচই। — ভাইরাল বাংলা, সপ্তাহখানেক",
-    short_name: "হইচই।",
+    name: "হৈচৈ। — ভাইরাল বাংলা, সপ্তাহখানেক",
+    short_name: "হৈচৈ।",
     description: "Auto-curated Bangla news desk — Facebook ভাইরাল কনটেন্ট, সাত দিনের জানালা।",
     start_url: "/",
     display: "standalone",

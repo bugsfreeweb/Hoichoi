@@ -79,7 +79,7 @@ Strict rules:
     present.
   - Set SAFETY_FLAG: none. This is the ONE category where identifying
     details are intentionally NOT redacted.
-- For "ছেলে ধরা" (stranger-kidnap hoax / mob panic) reports:
+- For suspected abduction / stranger-danger (অপহরণ) hoax reports:
   - DO NOT amplify panic. Lead with: "পুলিশের বরাত দিয়ে ফেসবুক
     পোস্টে দাবি করা হয়েছে..." or "প্রাথমিকভাবে যাচাই করা হয়নি..."
   - If the source is a rumor-driven post, mark SAFETY_FLAG:

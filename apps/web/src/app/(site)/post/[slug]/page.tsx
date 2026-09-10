@@ -12,6 +12,7 @@ import { ContentWarningGate } from "@/components/ContentWarningGate";
 import { ReportButton } from "@/components/ReportButton";
 import { PostCard } from "@/components/PostCard";
 import { CommentsSection } from "@/components/CommentsSection";
+import { AdSlot } from "@/components/AdSlot";
 import { getSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
@@ -164,6 +165,10 @@ function PostContent({
           <p key={i}>{p}</p>
         ))}
         <p className="text-[12px] text-ink-soft/80">সম্পাদকীয় নোট: এই প্রতিবেদনটি একটি সামাজিক মাধ্যম পোস্ট থেকে সংগৃহীত তথ্যের ভিত্তিতে সম্পাদকীয় পুনর্লিখন।</p>
+      </div>
+
+      <div className="mt-10">
+        <AdSlot variant="rect" html={settings.ad_rect_html} />
       </div>
 
       <div className="mt-10 border-t border-ink/15 pt-6">

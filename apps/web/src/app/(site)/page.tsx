@@ -9,12 +9,17 @@ import { PipelineDiagram } from "@/components/PipelineDiagram";
 import { ScrollProgress } from "@/components/ScrollProgress";
 import { RewriteComparator } from "@/components/RewriteComparator";
 import { AdSlot } from "@/components/AdSlot";
+import { getSettings } from "@/lib/settings";
 import Link from "next/link";
 
 export const revalidate = 300;
 
 export default async function HomePage() {
-  const [posts, cats] = await Promise.all([windowPosts({ limit: 30 }), getCategories()]);
+  const [posts, cats, settings] = await Promise.all([
+    windowPosts({ limit: 30 }),
+    getCategories(),
+    getSettings(),
+  ]);
   const lead = posts[0];
 
   return (
@@ -41,7 +46,7 @@ export default async function HomePage() {
       </section>
 
       <section className="mx-auto max-w-site px-4 pt-12 md:px-8">
-        <AdSlot variant="leaderboard" />
+        <AdSlot variant="leaderboard" html={settings.ad_leaderboard_html} />
       </section>
 
       <CategoryMarquee />
@@ -54,7 +59,7 @@ export default async function HomePage() {
               <h2 className="mt-2 font-serif-bn text-[34px] font-black text-ink md:text-[44px]">একই ঘটনা — দুই জগত</h2>
             </div>
             <p className="max-w-sm text-[12.5px] leading-relaxed text-ink-soft">
-              বামে ফেসবুকে সোর্স-পোস্ট যেমন করে পড়ে আসছিল, ডানে সেই একই ঘটনা হইচইয়ের
+              বামে ফেসবুকে সোর্স-পোস্ট যেমন করে পড়ে আসছিল, ডানে সেই একই ঘটনা হৈচৈয়ের
               সম্পাদকীয় শৈলীতে — বানান ঠিক, নাম গোপন, শিরোনামে শুধু ঘটনা।
             </p>
           </div>
@@ -66,13 +71,13 @@ export default async function HomePage() {
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="font-mono-x text-[10.5px] tracking-[0.26em] text-alizarin uppercase">▚ TODAY'S COLLECTION · AUTO-CURATED</p>
-            <h2 className="mt-2 font-serif-bn text-[34px] font-black text-ink md:text-[44px]">আজকের হইচই</h2>
+            <h2 className="mt-2 font-serif-bn text-[34px] font-black text-ink md:text-[44px]">আজকের হৈচৈ</h2>
           </div>
           <p className="max-w-sm text-[12.5px] leading-relaxed text-ink-soft">
             প্রতিটি আইটেম ফেসবুক থেকে সংগৃহীত, হ্যাশ-ফিঙ্গারপ্রিন্টে ডুপ্লিকেট যাচাই সম্পন্ন এবং বাংলা সম্পাদকীয় শৈলীতে পুনর্লিখিত।
           </p>
         </div>
-        <CollectionGrid posts={posts} cats={cats} />
+        <CollectionGrid posts={posts} cats={cats} adInfeedHtml={settings.ad_infeed_html} />
       </section>
 
       <PipelineDiagram />
@@ -84,7 +89,7 @@ export default async function HomePage() {
               হ
             </span>
             <div>
-              <p className="font-serif-bn text-[22px] font-black text-ink">হইচই কন্ট্রোল খুলুন</p>
+              <p className="font-serif-bn text-[22px] font-black text-ink">হৈচৈ কন্ট্রোল খুলুন</p>
               <p className="mt-1 font-mono-x text-[9.5px] tracking-[0.2em] text-ink-soft uppercase md:text-[10.5px]">
                 WEB TWIN · LIVE CONSOLE · সোর্স, মডারেশন, ব্যাকআপ জানালা
               </p>
@@ -104,7 +109,7 @@ export default async function HomePage() {
       </section>
 
       <section className="mx-auto max-w-site px-4 pb-14 md:px-8">
-        <AdSlot variant="strip" />
+        <AdSlot variant="strip" html={settings.ad_strip_html} />
       </section>
     </>
   );

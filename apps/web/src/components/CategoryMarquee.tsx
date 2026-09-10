@@ -1,7 +1,7 @@
 const WORDS: Array<{ text: string; outline: boolean }> = [
   { text: "শিশু সুরক্ষা", outline: false },
   { text: "পরকীয়া অপরাধ", outline: true },
-  { text: "নিখোঁজ শিশু ও ছেলে ধরা", outline: false },
+  { text: "নিখোঁজ শিশু", outline: false },
   { text: "যাচাইকৃত সংবাদ", outline: true },
 ];
 

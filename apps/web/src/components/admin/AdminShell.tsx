@@ -55,7 +55,7 @@ export function AdminShell({ user, children }: { user: AdminUser; children: Reac
                 হ
               </span>
               <div>
-                <p className="text-[13px] leading-tight font-bold text-white">হইচই কন্ট্রো</p>
+                <p className="text-[13px] leading-tight font-bold text-white">হৈচৈ কন্ট্রো</p>
                 <p className="font-mono-x text-[8.5px] tracking-[0.16em] text-white/35 uppercase">LIVE CONSOLE</p>
               </div>
             </div>

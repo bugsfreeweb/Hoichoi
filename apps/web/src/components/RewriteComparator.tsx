@@ -109,7 +109,7 @@ export function RewriteComparator({ post }: { post: Post }) {
         {/* RIGHT — rewritten, clipped */}
         <div className="absolute inset-0 bg-ink p-6 md:p-10" style={{ clipPath: `inset(0 0 0 ${x}%)` }}>
           <span className="inline-flex items-center gap-1.5 bg-lime px-2.5 py-1 text-[10.5px] font-bold text-night">
-            <SparkIcon /> হইচই সংস্করণ
+            <SparkIcon /> হৈচৈ সংস্করণ
           </span>
           <h3 className="mt-4 max-w-lg font-serif-bn text-[19px] leading-[1.45] font-black text-paper md:text-[25px]">
             {post.title_bn}

@@ -193,12 +193,12 @@ export const CATEGORY_SEED: CategoryMeta[] = [
   },
   {
     slug: "missing-children",
-    displayNameBn: "নিখোঁজ শিশু ও ছেলে ধরা",
+    displayNameBn: "নিখোঁজ শিশু",
     displayNameEn: "Missing children & child safety",
     descriptionBn:
-      '"ছেলে ধরা" সংক্রান্ত গুজব ও ঘটনা এবং নিখোঁজ শিশুদের সংবাদ ও সচেতনতা।',
+      "নিখোঁজ শিশুদের সংবাদ, উদ্ধার ও সচেতনতা এবং অপহরণ-সংক্রান্ত গুজব-সতর্কতা।",
     descriptionEn:
-      'News and awareness about missing children and "chhele dhora" stranger-kidnap incidents.',
+      "News and awareness about missing children and abduction-safety incidents.",
     dot: "0d9488",
     config: {
       requires_double_approval: false,

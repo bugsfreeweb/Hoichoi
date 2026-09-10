@@ -14,7 +14,7 @@ function BrowserHint() {
   return (
     <div className="flex h-full items-center justify-center">
       <div className="panel max-w-md text-center">
-        <p className="font-serif-bn text-[26px] font-black">হইচই ডেস্ক</p>
+        <p className="font-serif-bn text-[26px] font-black">হৈচৈ ডেস্ক</p>
         <p className="mt-2 text-[13px] text-ink-soft">
           এই UI টি শুধু Tauri ডেস্কটপ অ্যাপের ভেতরে চলে।
         </p>

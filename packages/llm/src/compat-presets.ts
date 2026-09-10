@@ -16,7 +16,7 @@ export function buildOpenAICompat(row: LLMProviderRow, key: string | null): Open
     defaultBaseUrl: DEFAULT_BASE_URLS[row.provider_key] ?? "https://api.openai.com/v1",
   };
   if (row.provider_key === "openrouter") {
-    opts.extraHeaders = { "HTTP-Referer": "https://hoichoi.local", "X-Title": "হইচই" };
+    opts.extraHeaders = { "HTTP-Referer": "https://hoichoi.local", "X-Title": "হৈচৈ" };
   }
   if (row.provider_key === "ollama") {
     // Ollama accepts the key verbatim when its auth is enabled.

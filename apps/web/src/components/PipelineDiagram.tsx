@@ -57,7 +57,7 @@ export function PipelineDiagram() {
       <div className="mx-auto max-w-site px-4 py-14 md:px-8 md:py-18">
         <div className="mb-10 text-center">
           <p className="font-mono-x text-[10.5px] tracking-[0.26em] text-lime uppercase">▚ SYSTEM BLUEPRINT · খোলামেলা</p>
-          <h2 className="mt-2 font-serif-bn text-[34px] font-black md:text-[44px]">ফেসবুক থেকে হইচই পর্যন্ত — ছয় ধাপ</h2>
+          <h2 className="mt-2 font-serif-bn text-[34px] font-black md:text-[44px]">ফেসবুক থেকে হৈচৈ পর্যন্ত — ছয় ধাপ</h2>
         </div>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
           {STEPS.map((s) => (

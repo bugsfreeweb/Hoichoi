@@ -124,7 +124,7 @@ export default function SetupWizard({ onDone }: { onDone: () => Promise<void> })
     <div className="flex h-full items-center justify-center p-6">
       <div className="w-full max-w-2xl">
         <p className="font-serif-bn text-[34px] font-black">
-          হইচই<span className="text-alizarin">।</span> ডেস্ক
+          হৈচৈ<span className="text-alizarin">।</span> ডেস্ক
         </p>
         <p className="mt-1 font-mono text-[10px] tracking-[0.26em] text-ink-soft uppercase">
           First-run setup · credentials encrypted locally (AES-256-GCM)

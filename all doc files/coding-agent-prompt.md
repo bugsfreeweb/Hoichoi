@@ -5,8 +5,8 @@
 > **Decisions locked in (from user):**
 > 0. **Legal posture (clarified by user):** All content is collected from public Facebook feeds with the original user posts as the source. The site is a public-interest news aggregator (not a scraper site), attribution is always preserved, and the activity is legitimate. This is the framing used throughout Phase 8 and the editorial policy.
 > 0a. **Positioning (clarified by user):** The product is a **viral-content ephemeral snapshot** — not a permanent news archive. Content appears, trends, then disappears. The platform does not claim ownership of FB content; it only holds a temporary, attributed mirror of public posts for a short window. After the window, content is hard-deleted on our side; the original FB post remains the source of truth.
-> 0b. **Project name:** **হইচই (Hoichoi)** — "buzz/uproar/commotion" in Bangla. Captures the viral spread feeling, distinctly Bangla, and fun. Wordmark is `হইচই।` with the red dot. Top-bar brand text: `HOICHOI · AUTO-CURATED NEWS DESK`. Primary tagline: `"ভাইরাল বাংলা, সপ্তাহখানেক"` (Viral Bangla, for a week). Secondary masthead tagline: `"ফেসবুকের হইচই — এখন বাংলায়, সাত দিন পর উবে যায়"` (Facebook's buzz — now in Bangla, gone after 7 days).
->   > **Note on brand overlap:** there is an existing Bangla OTT streaming platform also called "Hoichoi / হইচই". The streaming platform focuses on Bengali movies and series; this product focuses on viral news aggregation. The contexts are different. The colloquial Bangla word "হইচই" (meaning "buzz") predates the streaming brand. If brand overlap is a concern, the user can pivot to **চর্চা (Chorcha)** or **ফুলকি (Fulki)** without changing any architecture.
+> 0b. **Project name:** **হৈচৈ (Hoichoi)** — "buzz/uproar/commotion" in Bangla. Captures the viral spread feeling, distinctly Bangla, and fun. Wordmark is `হৈচৈ।` with the red dot. Top-bar brand text: `HOICHOI · AUTO-CURATED NEWS DESK`. Primary tagline: `"ভাইরাল বাংলা, সপ্তাহখানেক"` (Viral Bangla, for a week). Secondary masthead tagline: `"ফেসবুকের হৈচৈ — এখন বাংলায়, সাত দিন পর গায়েব"` (Facebook's buzz — now in Bangla, gone after 7 days).
+>   > **Note on brand overlap:** there is an existing Bangla OTT streaming platform also called "Hoichoi / হৈচৈ". The streaming platform focuses on Bengali movies and series; this product focuses on viral news aggregation. The contexts are different. The colloquial Bangla word "হৈচৈ" (meaning "buzz") predates the streaming brand. If brand overlap is a concern, the user can pivot to **চর্চা (Chorcha)** or **ফুলকি (Fulki)** without changing any architecture.
 > 0c. **Archive window:** **7 days rolling** (post is public for 7 days after `published_at`, then auto-archived; archive retention is 30 days admin-only, then hard-deleted). After ~37 days max, every trace (rewritten body, media, screenshot, raw_post) is permanently deleted from our side. Configurable via env var `ARCHIVE_VISIBLE_DAYS` (default 7) and `ARCHIVE_RETENTION_DAYS` (default 30).
 > 1. Categories — **final slugs and display names** (chosen for clarity, SEO, and appropriate gravity; user confirmed colloquial terms can be rearranged):
 >
@@ -212,7 +212,7 @@ create table sources (
 --   ('https://facebook.com/<verified-bangla-news-page>', '<Page Name>', 'child-sexual-abuse', false, true)
 --   ('https://facebook.com/<verified-bangla-news-page>', '<Page Name>', 'extramarital-crime', false, true)
 --   ('https://facebook.com/<verified-bangla-news-page>', '<Page Name>', 'missing-children', false, true)
--- Note: if a public Facebook Page with হইচই in its name exists and qualifies under our editorial rules
+-- Note: if a public Facebook Page with হৈচৈ in its name exists and qualifies under our editorial rules
 -- (verified news/awareness outlet, not the Hoichoi OTT platform), it can be added as a seed source
 -- AFTER manual verification by an admin.
 
@@ -681,14 +681,14 @@ After the SQL runs, call the Vercel deploy hook so the public site regenerates w
 
 ### 4.0 Design system (read `design-system.md` first)
 
-The site follows the **"হইচই"** (Hoichoi) visual identity — a Bangla newspaper that feels both traditional and modern. The full design tokens, typography, layout, and component library are in **`design-system.md`**. The summary:
+The site follows the **"হৈচৈ"** (Hoichoi) visual identity — a Bangla newspaper that feels both traditional and modern. The full design tokens, typography, layout, and component library are in **`design-system.md`**. The summary:
 
 - **Color tokens:** `--paper #f3eee1` (cream bg) + `--ink #0a0c10` (near-black) + `--alizarin #d2202c` (red accent) + `--lime #c8f65d` (live indicator) + `--amberx #f5b800` (warning) + per-category color dots (blue for child protection, teal for family/society, red for crime, etc.).
 - **Typography:** Noto Serif Bengali for display/headlines, Hind Siliguri for body, Space Grotesk for English UI, JetBrains Mono for technical labels — all self-hosted via `next/font/google`.
 - **Page chrome (in this order, top to bottom):**
   1. `<TopBar />` — 40px sticky ink bar with brand + nav (পাবলিক সাইট / অ্যাডমিন কনসোল / সিস্টেম ব্লুপ্রিন্ট) + animated red ping dot + "AUTO-SHIP · EVERY 2H" indicator
   2. `<BreakingTicker />` — red "জরুরি আপডেট" panel + horizontal-scrolling headlines
-  3. `<Masthead />` — Bangla date strip + giant "হইচই।" wordmark with red dot + horizontal-rule-flanked tagline
+  3. `<Masthead />` — Bangla date strip + giant "হৈচৈ।" wordmark with red dot + horizontal-rule-flanked tagline
   4. `<HeroPostCard variant="lead" />` (left) + `<LiveDeskMonitor />` + `<MostReadList />` (right sidebar)
   5. `<CategoryMarquee />` — full-width band of giant scrolling category names
   6. `<PostGrid />` — "আজকের সংগ্রহ" (Today's Collection) 3-column card grid with category filter pills
@@ -717,7 +717,7 @@ The text below are ASCII wireframes of the three most important pages: the publi
 ├──────────────────────────────────────────────────────────────────────────────┤
 │ সোমবার, ৭ সেপ্টেম্বর, ২০২৬ · ঢাকা সংস্করণ  ISSN-AUTO-24        মূল্য: ৳০  │  ~24px
 │                                                                              │
-│                            হইচই।                                              │  ~120px wordmark
+│                            হৈচৈ।                                              │  ~120px wordmark
 │        ── ভাইরাল বাংলা, সপ্তাহখানেক ──                                       │  ~16px tagline
 │                                                                              │
 ├──────────────────────────────────────────────────────────────────────────────┤
@@ -745,7 +745,7 @@ The text below are ASCII wireframes of the three most important pages: the publi
 │  ◀ ◀  ◀ অপরাধ ✳ শিশু সুরক্ষা ✳ পরিবার ও সমাজ ✳ ভাইরাল ও তথ্য ✳ যাচাইকৃত ▶ ▶  │  marquee
 │                                                                              │
 │ ▚ TODAY'S COLLECTION · AUTO-CURATED       প্রতিটি আইটেম ফেসবুক থেকে...   │
-│ আজকের হইচই (৮)                                                          │
+│ আজকের হৈচৈ (৮)                                                          │
 │                                                                              │
 │ [সব ৮] [অপরাধ ৩] [পরিবার ২] [শিশু সুরক্ষা ২] [ভাইরাল ১]    FILTER · LLM  │
 │                                                                              │
@@ -765,7 +765,7 @@ The text below are ASCII wireframes of the three most important pages: the publi
 │                                                                              │
 │   ✓ ফ্যাক্ট-গেট যাচাই     ✓ হ্যাশ মিলানো     ✓ শৈলী পুনর্লিখন              →│
 ├──────────────────────────────────────────────────────────────────────────────┤
-│ হইচই।     স্বয়ংক্রিয় সংবাদ কিউরেশন ডেস্কের... │ বিভাগসমূহ    │ সিস্টেম মানচিত্র │  footer
+│ হৈচৈ।     স্বয়ংক্রিয় সংবাদ কিউরেশন ডেস্কের... │ বিভাগসমূহ    │ সিস্টেম মানচিত্র │  footer
 │                                              │ ◆ অপরাধ     │ [অ্যাডমিন →]    │
 │                                              │ ◆ শিশু সুরক্ষা │ [সিস্টেম →]   │
 │                                              │ ◆ পরিবার ও সমাজ│                 │
@@ -848,7 +848,7 @@ The text below are ASCII wireframes of the three most important pages: the publi
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ ● HOICHOI · AUTO-CURATED NEWS DESK   [📰পাবলিক সাইট] [▶অ্যাডমিন*] [⌘সিস্টেম]│
 ├──────────────────────────────────────────────────────────────────────────────┤
-│ 🛡 হইচই · অ্যাডমিন কনসোল                                                    │  admin sub-header
+│ 🛡 হৈচৈ · অ্যাডমিন কনসোল                                                    │  admin sub-header
 │                                                                              │
 │ ┌─নেভ─┬─────────────────────────────────────────────────────────────────────┐│
 │ │হোম  │  ▚ MODERATION QUEUE · ১২ pending review · ৩ needs double-approval   ││
@@ -896,7 +896,7 @@ The text below are ASCII wireframes of the three most important pages: the publi
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ হইচই · ডেস্কটপ কালেক্টর  v1.0      [─][□][×]                                 │  title bar (native)
+│ হৈচৈ · ডেস্কটপ কালেক্টর  v1.0      [─][□][×]                                 │  title bar (native)
 ├──────────────────────────────────────────────────────────────────────────────┤
 │ │ ড্যাশবোর্ড │ পাইপলাইন │ ক্রেডেনশিয়াল │ AI প্রোভাইডার │ সোর্স │ কিউ │ আর্কাইভ │ লগ │  tabs
 ├──────────────────────────────────────────────────────────────────────────────┤
@@ -962,7 +962,7 @@ The text below are ASCII wireframes of the three most important pages: the publi
 - **Published date** in Bangla locale (`toLocaleDateString('bn-BD')`).
 - **"সম্পর্কিত পোস্ট / Related posts"** section: 3 posts from the same category, fetched server-side.
 - **NEVER** displays the FB UI screenshot. The screenshot is admin-only (visible in the moderation queue and the desktop app's post view).
-- **Archived post behavior:** if `post.archived_at IS NOT NULL`, the server component returns a Bangla "এই পোস্ট হইচই থেকে গায়েব হয়ে গেছে — সাত দিনের মধ্যে প্রকাশিত সব পোস্ট চলে যায়" page (HTTP 200, polite notice) instead of the full content. The page shows: the original publish date, the category name, the source name + URL, and a "গত ৭ দিনের সব খবর দেখুন" link back to the homepage. This is so that old shared links (e.g., from Facebook shares) don't 404. The actual post body, media, and `case_status` badge are NOT rendered. Exception: if `case_status = 'active'` and the post is `missing-children`, the full content is shown regardless of archive status (active missing child cases are never archived).
+- **Archived post behavior:** if `post.archived_at IS NOT NULL`, the server component returns a Bangla "এই পোস্ট হৈচৈ থেকে গায়েব হয়ে গেছে — সাত দিনের মধ্যে প্রকাশিত সব পোস্ট চলে যায়" page (HTTP 200, polite notice) instead of the full content. The page shows: the original publish date, the category name, the source name + URL, and a "গত ৭ দিনের সব খবর দেখুন" link back to the homepage. This is so that old shared links (e.g., from Facebook shares) don't 404. The actual post body, media, and `case_status` badge are NOT rendered. Exception: if `case_status = 'active'` and the post is `missing-children`, the full content is shown regardless of archive status (active missing child cases are never archived).
 - **Content warning gate** (only for `child-sexual-abuse`): if `category_configs.config.show_content_warning = true` for the post's category, render a `<details>` block BEFORE the title with the warning text (e.g. "সতর্কতা: এই প্রবন্ধে শিশু যৌন নির্যাতন সংক্রান্ত বিষয়বস্তু রয়েছে, যা পড়তে কষ্টকর হতে পারে।"). The user clicks to reveal. Style it with a soft warning color (amber, not red — red feels alarmist). This is both ethical (informed consent for sensitive content) and helps with platform-level content moderation policies.
 - **Case status badge** (only for `missing-children`): if `case_status` is set, show a small badge in the header: "সক্রিয় অনুসন্ধান" (active) / "শিশুকে উদ্ধার করা হয়েছে" (found) / "অমীমাংসিত" (unresolved) / "ভুয়া খবর" (false alarm). For `false-alarm` or `found`, show a "সর্বশেষ আপডেট: <date>" line. This is the only category where published posts get updated in-place after publish.
 
@@ -1321,7 +1321,7 @@ The README should include:
   - `pnpm --filter scraper archive --older-than-days=7` correctly stamps every published post older than 7 days with `archived_at` and `archive_reason = 'auto_rollover'`.
   - `missing-children` posts with `case_status = 'active'` are NOT archived (they stay public).
   - After archive, those posts are NOT visible on the public site (homepage, category pages, sitemap) within one Vercel deploy cycle.
-  - Visiting an archived post's `/post/[slug]` URL returns the polite "এই পোস্ট হইচই থেকে গায়েব হয়ে গেছে" page (200 OK, no body, no media) — not 404.
+  - Visiting an archived post's `/post/[slug]` URL returns the polite "এই পোস্ট হৈচৈ থেকে গায়েব হয়ে গেছে" page (200 OK, no body, no media) — not 404.
   - The Archive page in `/admin/archive` shows the newly archived posts.
   - `pipeline_runs` has a row with `stats.job = 'auto_rollover'`.
 - [ ] **Retention purge verified**: `pnpm --filter scraper purge --older-than-days=1` (in a test environment with fake data) hard-deletes posts older than 1 day from the archive, including their media + screenshot + raw_post rows, and the corresponding `admin_actions` row is written. Posts with `legal_hold = true` are NOT purged.

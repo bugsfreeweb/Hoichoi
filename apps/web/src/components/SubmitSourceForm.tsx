@@ -7,7 +7,7 @@ const CATEGORIES: Array<{ slug: CategorySlug | ""; label: string }> = [
   { slug: "", label: "বাছাই করুন…" },
   { slug: "child-sexual-abuse", label: "শিশু যৌন নির্যাতন" },
   { slug: "extramarital-crime", label: "পরকীয়া অপরাধ" },
-  { slug: "missing-children", label: "নিখোঁজ শিশু ও ছেলে ধরা" },
+  { slug: "missing-children", label: "নিখোঁজ শিশু" },
 ];
 
 export function SubmitSourceForm() {

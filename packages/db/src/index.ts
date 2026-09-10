@@ -1,5 +1,5 @@
 /**
- * @hoichoi/db — Turso/libSQL data layer for হইচই.
+ * @hoichoi/db — Turso/libSQL data layer for হৈচৈ.
  * Exports the client plus typed helpers used by the web app and the scraper.
  */
 export * from "./client";
@@ -30,17 +30,21 @@ import { mapCategory, mapPost, parseJson } from "./rows";
 export const DEFAULT_SETTINGS: SiteSettings = {
   id: 1,
   pipeline_hours: 2,
-  site_name: "হইচই",
+  site_name: "হৈচৈ",
   contact_email: "contact@hoichoi.local",
   police_helpline: "999",
   child_helpline: "109",
   archive_visible_days: 7,
   archive_retention_days: 30,
   slogan_bn: "ভাইরাল বাংলা, সপ্তাহখানেক",
-  tagline: "ফেসবুকের হইচই — এখন বাংলায়, সাত দিন পর উবে যায়",
+  tagline: "ফেসবুকের হৈচৈ — এখন বাংলায়, সাত দিন পর গায়েব",
   logo_url: null,
   favicon_url: null,
   accent_color: "#d64541",
+  ad_leaderboard_html: null,
+  ad_rect_html: null,
+  ad_infeed_html: null,
+  ad_strip_html: null,
 };
 
 export function mapSettings(row: Record<string, unknown>): SiteSettings {
@@ -59,6 +63,10 @@ export function mapSettings(row: Record<string, unknown>): SiteSettings {
     logo_url: (row.logo_url as string | null) ?? null,
     favicon_url: (row.favicon_url as string | null) ?? null,
     accent_color: str(row.accent_color, DEFAULT_SETTINGS.accent_color),
+    ad_leaderboard_html: (row.ad_leaderboard_html as string | null) ?? null,
+    ad_rect_html: (row.ad_rect_html as string | null) ?? null,
+    ad_infeed_html: (row.ad_infeed_html as string | null) ?? null,
+    ad_strip_html: (row.ad_strip_html as string | null) ?? null,
   };
 }
 
@@ -86,15 +94,23 @@ export async function updateSettings(fields: Partial<SiteSettings>): Promise<voi
     "logo_url",
     "favicon_url",
     "accent_color",
+    "ad_leaderboard_html",
+    "ad_rect_html",
+    "ad_infeed_html",
+    "ad_strip_html",
   ];
   if (fields.logo_url === "") fields.logo_url = null;
   if (fields.favicon_url === "") fields.favicon_url = null;
+  const adSlotKeys = ["ad_leaderboard_html", "ad_rect_html", "ad_infeed_html", "ad_strip_html"] as const;
+  for (const k of adSlotKeys) {
+    if (fields[k] === "") fields[k] = null;
+  }
   const sets: string[] = [];
   const args: InValue[] = [];
   for (const k of allowed) {
     const v = fields[k];
     if (v === undefined) continue;
-    if (v === null && k !== "logo_url" && k !== "favicon_url") continue;
+    if (v === null && k !== "logo_url" && k !== "favicon_url" && !adSlotKeys.includes(k as (typeof adSlotKeys)[number])) continue;
     sets.push(`${k} = ?`);
     args.push(v as InValue);
   }

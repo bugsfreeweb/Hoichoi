@@ -1,4 +1,4 @@
-# Contributing to হইচই (Hoichoi)
+# Contributing to হৈচৈ (Hoichoi)
 
 Thanks for your interest in contributing.
 

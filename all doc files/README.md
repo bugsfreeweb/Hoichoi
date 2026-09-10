@@ -1,4 +1,4 @@
-# হইচই (Hoichoi) — Bangla Viral-Content Ephemeral Snapshot
+# হৈচৈ (Hoichoi) — Bangla Viral-Content Ephemeral Snapshot
 
 > **"ভাইরাল বাংলা, সপ্তাহখানেক"** — Viral Bangla, for a week.
 

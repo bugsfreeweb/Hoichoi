@@ -116,6 +116,14 @@ pnpm --filter @hoichoi/web build
   (cloud sync), one shared source for web metadata, masthead and footer. Always
   run `pnpm --filter db migrate` (or the app's first boot) against the Turso DB
   once so the new branding columns are added to an existing `settings` table.
+- **Advertisement slots:** four nullable `ad_*` columns on the same `settings`
+  row (`ad_leaderboard_html`, `ad_strip_html`, `ad_infeed_html`,
+  `ad_rect_html`). The web admin settings screen's *বিজ্ঞাপন স্লট (Ad slots)*
+  section accepts raw ad-network HTML; an empty slot renders the default sponsor
+  card (matches `mockup/src/components/ad-slot.tsx`), a filled one renders the
+  pasted code live on the homepage leaderboard/strip/infeed and the article
+  page's 300×250 rect. Admin-pasted `<script>` tags are re-injected client-side
+  so AdSense/Adsterra-style units execute after hydration.
 - The public rolling-window pages use ISR (`revalidate = 300`, matching the
   `ARCHIVE_VISIBLE_DAYS` / ISR window from the docs), so Vercel serves cached
   HTML and revalidates in the background.

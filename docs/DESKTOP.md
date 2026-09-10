@@ -54,8 +54,13 @@ editing it once reflects immediately on web **and** desktop (no GitHub upload):
 - **Branding editor:** settings screen → *Site branding* — `site_name`, `slogan`,
   `tagline`, `logo_url`, `favicon_url`, `accent_color` (hex). Saved through the
   runner (`settings:set`), so the web masthead/footer/metadata update immediately.
+- **Ad slots:** settings screen → *বিজ্ঞাপন স্লট (Ad slots)* — paste raw ad-network
+  HTML/JS for `ad_leaderboard_html` (homepg top), `ad_strip_html` (homepg bottom
+  dark bar), `ad_infeed_html` (grid every 4th item), `ad_rect_html` (post page).
+  Empty slot → default sponsor card; non-empty → the admin HTML renders live on
+  web (scripts re-injected for AdSense/Adsterra-style tags).
 - New runner CLI: `settings` (JSON dump) and `settings:set k=v …` (whitelisted
-  keys, `key=` clears nullable `logo_url`/`favicon_url`).
+  keys, `key=` clears a nullable field).
 - Backend commands: `settings_get` / `settings_set` (Rust) + `settingsGet` /
   `settingsSet` (`src/lib/tauri.ts`).
 

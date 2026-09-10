@@ -3,7 +3,7 @@ import { ImageResponse } from "next/og";
 export const runtime = "nodejs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "হইচই। — ভাইরাল বাংলা, সপ্তাহখানেক";
+export const alt = "হৈচৈ। — ভাইরাল বাংলা, সপ্তাহখানেক";
 
 export default async function OpengraphImage() {
   return new ImageResponse(
@@ -22,7 +22,7 @@ export default async function OpengraphImage() {
         }}
       >
         <div style={{ display: "flex", fontSize: 120, fontWeight: 900 }}>
-          হইচই<span style={{ color: "#d2202c" }}>।</span>
+          হৈচৈ<span style={{ color: "#d2202c" }}>।</span>
         </div>
         <div style={{ display: "flex", fontSize: 28, color: "#4a4a4a", marginTop: 12 }}>
           HOICHOI · AUTO-CURATED NEWS DESK — ভাইরাল বাংলা, সপ্তাহখানেক

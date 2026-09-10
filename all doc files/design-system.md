@@ -1,4 +1,4 @@
-# Design System — হইচই (Hoichoi)
+# Design System — হৈচৈ (Hoichoi)
 
 > **Reference site:** [01a07a14-9b8a-7776-9318-bea715f50b3d.arena.site](https://01a07a14-9b8a-7776-9318-bea715f50b3d.arena.site/) — a Bangla news aggregator mockup the user pointed to as the design direction. Read this document before building any UI.
 
@@ -10,9 +10,9 @@ The visual goal: a Bangla newspaper that feels both traditional (serif headlines
 
 ## 1. Brand
 
-- **Site name (Bangla):** হইচই
+- **Site name (Bangla):** হৈচৈ
 - **Site name (English subtitle):** Hoichoi / Auto-Curated News Desk
-- **Wordmark:** giant Noto Serif Bengali "হইচই" followed by a red dot "।" in alizarin (the dot is the period, in red — like a newspaper's lead mark)
+- **Wordmark:** giant Noto Serif Bengali "হৈচৈ" followed by a red dot "।" in alizarin (the dot is the period, in red — like a newspaper's lead mark)
 - **Tagline (primary):** "ভাইরাল বাংলা, সপ্তাহখানেক" (Viral Bangla, for a week)
 - **Tagline (secondary, on masthead):** "ফেসবুক ফিড → স্ক্রিনশট আর্কাইভ → ডুপ্লিকেট যাচাই → বাংলা পুনর্লিখন — সাত দিন পর গায়েব" (Facebook feed → screenshot → dedup → Bangla rewrite — gone after 7 days)
 - **Subtitle on /admin:** "AUTONOMOUS NEWS DESK"
@@ -110,7 +110,7 @@ Inside `<main>`, max-w-[1400px], padded. Three sub-sections:
 
 - **Top thin line:** Bangla date "সোমবার, ৭ সেপ্টেম্বর, ২০২৬ · ঢাকা সংস্করণ" on left, "AUTONOMOUS NEWS DESK · ISSN-AUTO-24" in mono uppercase tracked on right (hidden on mobile), "মূল্য: অবৈতনিক" (Price: Free) on far right. All `text-[11.5px] font-medium text-ink-soft` with `border-b border-ink/20 pb-3`.
 
-- **Center wordmark:** centered column with the giant "হইচই" wordmark and red dot. The dot is colored `text-alizarin`, sized proportionally to the wordmark (1/1.6 ratio). Below the wordmark, a horizontal rule + tagline + horizontal rule: `<span class="h-px flex-1 bg-ink/25"></span>` flanking the tagline `<p class="text-[12px] font-medium tracking-wide text-ink-soft">ফেসবুক ফিড → স্ক্রিনশট আর্কাইভ → ডুপ্লিকেট যাচাই → বাংলা পুনর্লিখন — সাত দিন পর গায়েব</p>`.
+- **Center wordmark:** centered column with the giant "হৈচৈ" wordmark and red dot. The dot is colored `text-alizarin`, sized proportionally to the wordmark (1/1.6 ratio). Below the wordmark, a horizontal rule + tagline + horizontal rule: `<span class="h-px flex-1 bg-ink/25"></span>` flanking the tagline `<p class="text-[12px] font-medium tracking-wide text-ink-soft">ফেসবুক ফিড → স্ক্রিনশট আর্কাইভ → ডুপ্লিকেট যাচাই → বাংলা পুনর্লিখন — সাত দিন পর গায়েব</p>`.
 
 ### 4.4 Hero section
 
@@ -171,7 +171,7 @@ Plus a final red alizarin circle with a `move-right` arrow, indicating "to publi
 ### 4.8 Footer
 
 `border-t-2 border-ink mt-16`. Inside `mx-auto max-w-[1400px] px-4 py-12 md:px-8`, 12-col grid:
-- **Col 1-5 (md:col-span-5):** giant wordmark "হইচই" + red dot, `font-serif-bn text-[34px] leading-none font-black`. Below: a `max-w-xs text-[12.5px] leading-relaxed text-ink-soft` paragraph describing the platform.
+- **Col 1-5 (md:col-span-5):** giant wordmark "হৈচৈ" + red dot, `font-serif-bn text-[34px] leading-none font-black`. Below: a `max-w-xs text-[12.5px] leading-relaxed text-ink-soft` paragraph describing the platform.
 - **Col 6-8 (md:col-span-3):** "বিভাগসমূহ" (Categories) label in `font-mono-x text-[10px] tracking-[0.24em] uppercase text-ink-soft`. Below, a `space-y-2.5 text-[13px] font-medium` list of category names, each preceded by a small red diamond `<span class="h-1 w-1 rotate-45 bg-alizarin"></span>`.
 - **Col 9-12 (md:col-span-4):** "সিস্টেম মানচিত্র" (System map) label. Two pill buttons: "অ্যাডমিন কনসোল →" and "সিস্টেম ব্লুপ্রিন্ট →", both `border border-ink/30 px-4 py-2 text-[12px] font-bold hover:border-ink hover:bg-ink hover:text-paper`. Below: a `text-[10.5px] leading-relaxed text-ink-soft/80` note about photo credits and the fact that this is a mockup/demo (in production: replace with a real disclaimer + photo source attribution policy).
 - **Bottom strip:** `mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-ink/15 pt-6 font-mono-x text-[10px] tracking-[0.16em] text-ink-soft uppercase`. Left: "© 2026 HOICHOI DESK · v1.0 LAUNCH" (replace with real version). Right: lucide `earth` icon + "DHAKA · ASIA/UTC+6 · EDGE CACHE ON".

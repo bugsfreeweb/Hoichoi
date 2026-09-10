@@ -20,7 +20,7 @@ export function Footer({ settings }: { settings: SiteSettings }) {
             <ul className="mt-4 space-y-2.5 text-[13px] font-medium">
               <li className="flex items-center gap-2"><span className="diamond"></span><Link href="/category/child-sexual-abuse">শিশু যৌন নির্যাতন</Link></li>
               <li className="flex items-center gap-2"><span className="diamond"></span><Link href="/category/extramarital-crime">পরকীয়া অপরাধ</Link></li>
-              <li className="flex items-center gap-2"><span className="diamond"></span><Link href="/category/missing-children">নিখোঁজ শিশু ও ছেলে ধরা</Link></li>
+              <li className="flex items-center gap-2"><span className="diamond"></span><Link href="/category/missing-children">নিখোঁজ শিশু</Link></li>
             </ul>
           </div>
           <div className="md:col-span-4">

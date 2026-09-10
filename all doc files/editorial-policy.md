@@ -1,4 +1,4 @@
-# Editorial Policy — হইচই (Hoichoi)
+# Editorial Policy — হৈচৈ (Hoichoi)
 
 > **This document is the editorial standard the engineering follows. It is NOT legal advice. The user must have a qualified lawyer review before public launch.**
 
@@ -6,7 +6,7 @@
 
 ## Positioning
 
-**হইচই (Hoichoi)** is a viral-content ephemeral snapshot for Bangla local content. We collect what's trending on Facebook right now, rewrite it in clean Bangla, show it for up to 7 days, then it disappears. We are **not a permanent archive** and we **do not claim ownership** of the original content. The original Facebook user/page is always the canonical source.
+**হৈচৈ (Hoichoi)** is a viral-content ephemeral snapshot for Bangla local content. We collect what's trending on Facebook right now, rewrite it in clean Bangla, show it for up to 7 days, then it disappears. We are **not a permanent archive** and we **do not claim ownership** of the original content. The original Facebook user/page is always the canonical source.
 
 Think of us as: the "আজকের ঢেউ" (today's wave) of Bangla public-interest content, captured, rewritten, and shown — then released.
 

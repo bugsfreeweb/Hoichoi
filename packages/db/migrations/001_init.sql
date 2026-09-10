@@ -1,5 +1,5 @@
 -- ============================================================
--- হইচই (Hoichoi) — Turso / libSQL schema, v1
+-- হৈচৈ (Hoichoi) — Turso / libSQL schema, v1
 -- Ported 1:1 from the Postgres design in coding-agent-prompt.md
 -- Timestamps are ISO-8601 TEXT; booleans are INTEGER 0/1 0.12
 -- ============================================================
@@ -184,17 +184,21 @@ CREATE TABLE IF NOT EXISTS redaction_blocklist (
 CREATE TABLE IF NOT EXISTS settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   pipeline_hours INTEGER NOT NULL DEFAULT 2,
-  site_name TEXT NOT NULL DEFAULT 'হইচই',
+  site_name TEXT NOT NULL DEFAULT 'হৈচৈ',
   contact_email TEXT,
   police_helpline TEXT NOT NULL DEFAULT '999',
   child_helpline TEXT NOT NULL DEFAULT '109',
   archive_visible_days INTEGER NOT NULL DEFAULT 7,
   archive_retention_days INTEGER NOT NULL DEFAULT 30,
   slogan_bn TEXT NOT NULL DEFAULT 'ভাইরাল বাংলা, সপ্তাহখানেক',
-  tagline TEXT NOT NULL DEFAULT 'ফেসবুকের হইচই — এখন বাংলায়, সাত দিন পর উবে যায়',
+  tagline TEXT NOT NULL DEFAULT 'ফেসবুকের হৈচৈ — এখন বাংলায়, সাত দিন পর গায়েব',
   logo_url TEXT,
   favicon_url TEXT,
   accent_color TEXT NOT NULL DEFAULT '#d64541',
+  ad_leaderboard_html TEXT,
+  ad_rect_html TEXT,
+  ad_infeed_html TEXT,
+  ad_strip_html TEXT,
   updated_at TEXT NOT NULL
 );
 

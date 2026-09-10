@@ -12,7 +12,7 @@ export default function NotFound() {
       <p className="font-mono-x text-[10px] tracking-[0.26em] text-alizarin uppercase">▚ 404 / 410</p>
       <h1 className="mt-3 font-serif-bn text-[44px] font-black text-ink">{TITLES.notfound}</h1>
       <p className="mx-auto mt-4 max-w-md text-[14px] leading-relaxed text-ink-soft">
-        হইচই-এর প্রতিটি পোস্ট সাত দিনের জানালায় সীমাবদ্ধ — জানালা শেষ হলে তা আর্কাইভ ও নির্দিষ্ট সময় পর স্থায়ীভাবে মুছে যায়। যা খুঁজছেন তা হয়তো এভাবে উবে গেছে।
+        হৈচৈ-এর প্রতিটি পোস্ট সাত দিনের জানালায় সীমাবদ্ধ — জানালা শেষ হলে তা আর্কাইভ ও নির্দিষ্ট সময় পর স্থায়ীভাবে মুছে যায়। যা খুঁজছেন তা হয়তো এভাবে উবে গেছে।
       </p>
       <div className="mt-8 flex justify-center gap-3">
         <Link href="/" className="border border-ink bg-ink px-5 py-2.5 text-[13px] font-bold text-paper hover:bg-alizarin">

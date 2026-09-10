@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { bnNum } from "@/lib/bn";
 
 /* Inline SVG icons (web app avoids lucide-react). */
@@ -36,20 +36,26 @@ type Variant = "leaderboard" | "rect" | "infeed" | "strip";
 const impKey = "hoichoi-ad-impressions";
 const clkKey = "hoichoi-ad-clicks";
 
-/** Transparent mock advertisement slot — matches mockup/src/components/ad-slot.tsx. */
+/** Transparent mock advertisement slot — matches mockup/src/components/ad-slot.tsx.
+ *  When `html` (paste from the admin ad-slot settings) is set, the raw ad code is
+ *  rendered instead of the sponsor placeholder; scripts are re-injected so
+ *  AdSense/Adsterra-style codes run after hydration. */
 export function AdSlot({
   variant = "leaderboard",
-  sponsor = "হইচই লাইভ",
+  sponsor = "হৈচৈ লাইভ",
   headline = "আপনার বিজ্ঞাপন এখানে",
-  sub = "হইচই পাঠকের কাছে সরাসরি পৌঁছান — ads@hoichoi.example",
+  sub = "হৈচৈ পাঠকের কাছে সরাসরি পৌঁছান — ads@hoichoi.example",
+  html = null,
 }: {
   variant?: Variant;
   sponsor?: string;
   headline?: string;
   sub?: string;
+  html?: string | null;
 }) {
   const [clicked, setClicked] = useState(false);
   const [bump, setBump] = useState(0);
+  const rawRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     try {
@@ -59,6 +65,18 @@ export function AdSlot({
       /* noop */
     }
   }, []);
+
+  /* Re-inject <script> tags inside admin-pasted HTML — innerHTML alone never
+     executes scripts, so ad-network tags need this explicit pass. */
+  useEffect(() => {
+    if (!html || !rawRef.current) return;
+    rawRef.current.querySelectorAll("script").forEach((s) => {
+      const ns = document.createElement("script");
+      ns.textContent = s.textContent ?? "";
+      if (s.src) ns.src = s.src;
+      s.replaceWith(ns);
+    });
+  }, [html]);
 
   const onAd = () => {
     let n = 1;
@@ -97,6 +115,31 @@ export function AdSlot({
       </span>
     </>
   );
+
+  // Admin-pasted ad code wins over the placeholder sponsor card.
+  if (html) {
+    const box = (extra: string, bgDark = false) => (
+      <div
+        className={`relative flex w-full items-center justify-center overflow-hidden border border-dashed ${bgDark ? "border-ink/35 bg-ink" : "border-ink/35 bg-paper-deep/40"} ${extra}`}
+      >
+        <div ref={rawRef} className="ad-raw w-full" dangerouslySetInnerHTML={{ __html: html }} />
+        <span className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-sm border border-ink/30 bg-paper/90 px-1.5 py-0.5 font-mono-x text-[8.5px] font-semibold tracking-[0.2em] text-ink-soft uppercase">
+          <MegaphoneIcon /> বিজ্ঞাপন · AD
+        </span>
+      </div>
+    );
+
+    if (variant === "infeed") {
+      return <div className="h-full min-h-[280px]">{box("h-full min-h-[280px]")}</div>;
+    }
+    if (variant === "rect") {
+      return box("min-h-[250px] p-2");
+    }
+    if (variant === "strip") {
+      return box("min-h-[64px] p-2", true);
+    }
+    return box("min-h-[90px] p-2");
+  }
 
   return (
     <button
