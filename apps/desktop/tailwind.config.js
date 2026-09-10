@@ -5,10 +5,10 @@ export default {
   theme: {
     extend: {
       colors: {
-        // dark "desk console" palette (matches mockup/src/components/desk/*)
-        night: "#0a0d12",
-        "night-grid": "#0c1017",
-        panel: "#11151d",
+        // dark "desk console" palette — tokens flip via CSS vars (see index.css)
+        night: "var(--color-night)",
+        "night-grid": "var(--color-night-grid)",
+        panel: "var(--color-panel)",
         // legacy light tokens kept for compatibility (overridden in index.css)
         paper: "#f3eee1",
         "paper-deep": "#e8e0cd",

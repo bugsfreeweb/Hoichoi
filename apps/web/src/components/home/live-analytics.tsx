@@ -118,7 +118,7 @@ export default function LiveAnalytics() {
           <div className={s.service}><IconRadio size={16} /><p>ডেস্কটপ কালেক্টর<small>{data?.collector.lastSeenAt ? `Heartbeat ${timeBn(data.collector.lastSeenAt)}` : "Heartbeat পাওয়া যায়নি"}</small></p><span className={s.serviceStatus + (!workerReady || error ? ` ${s.warn}` : "")}><i />{error ? "অজানা" : workerLabel}</span></div>
         </div></article>
       </div>
-      <div className={s.footnote}><span><IconInfo size={13} />প্রতি ১০ সেকেন্ডে নতুন তথ্য। গ্রাফে ডাটাবেসের রেকর্ড গণনা করা হয়; নমুনা রেকর্ড থাকলে সেটিও অন্তর্ভুক্ত। কালেক্টর শুধু প্রকৃত heartbeat পেলেই সংযুক্ত দেখাবে।</span><Link href="/admin">পাইপলাইন কীভাবে চলে ↗</Link></div>
+      <div className={s.footnote}><span><IconInfo size={13} />প্রতি ১০ সেকেন্ডে নতুন তথ্য। গ্রাফে ডাটাবেসের রেকর্ড গণনা করা হয়; নমুনা রেকর্ড থাকলে সেটিও অন্তর্ভুক্ত। কালেক্টর শুধু প্রকৃত heartbeat পেলেই সংযুক্ত দেখাবে।</span><span>পাইপলাইন অটো-চালিত · প্রতি ২ ঘণ্টা</span></div>
       <div className={s.srOnly} aria-live="polite">{error ? "লাইভ তথ্য আপডেট হয়নি" : data ? "পরিসংখ্যান আপডেট হয়েছে" : "পরিসংখ্যান লোড হচ্ছে"}</div>
     </div>
   </section>;

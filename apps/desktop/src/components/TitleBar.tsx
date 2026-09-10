@@ -1,5 +1,6 @@
 import { Minus, Square, X } from "lucide-react";
 import type { MouseEvent as ReactMouseEvent } from "react";
+import ThemeToggle from "./ThemeToggle";
 import { isTauri } from "../lib/tauri";
 
 let w: null | {
@@ -73,6 +74,7 @@ export default function TitleBar() {
       </div>
 
       <div className="flex items-center gap-1 text-white/35">
+        <ThemeToggle />
         <button onClick={min} className="rounded p-1 hover:bg-white/10" title="মিনিমাইজ">
           <Minus size={12} />
         </button>

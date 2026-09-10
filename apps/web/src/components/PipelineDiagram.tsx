@@ -53,7 +53,7 @@ const GATES = ["ফ্যাক্ট-গেট যাচাই", "হ্যা�
 
 export function PipelineDiagram() {
   return (
-    <section className="border-t-2 border-ink bg-ink text-paper">
+    <section className="border-t-2 border-white/10 bg-night text-white">
       <div className="mx-auto max-w-site px-4 py-14 md:px-8 md:py-18">
         <div className="mb-10 text-center">
           <p className="font-mono-x text-[10.5px] tracking-[0.26em] text-lime uppercase">▚ SYSTEM BLUEPRINT · খোলামেলা</p>

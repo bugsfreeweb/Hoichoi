@@ -207,6 +207,15 @@ apps/desktop/
 
 The desktop UI mirrors the `mockup/` desk controller exactly:
 
+- **Theme toggle** — desktop now mirrors the mockup `option-a` dark/light switch
+  (same `localStorage["hoichoi-theme"]` key, same prefers-color-scheme fallback).
+  Implemented as CSS-variable tokens (`night`, `night-grid`, `panel`, `window`,
+  `main-tx`, `grid-line`, `field-bg`, `desk-bg`) on `:root` (dark) +
+  `html[data-theme="light"]` in `apps/desktop/src/index.css`; no-FOUC script in
+  `index.html`; a `ThemeToggle` component in the TitleBar. All hard-coded dark
+  surfaces (`bg-[#...]`, `.desk-scene`, `.tauri-win`, `.bg-night-grid`,
+  `.titlebar`, scrollbars) flip via the light override block; live-log terminals
+  (`bg-[#07090d]`) stay dark in both themes to preserve log-colour contrast.
 - **Frameless window** — `decorations: false` + custom `TitleBar` (traffic lights:
   minimize / maximize / close; drag region only on the center strip), min width
   1100. `tauri.conf.json`, `capabilities/default.json` (window permissions).

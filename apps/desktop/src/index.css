@@ -2,6 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Design tokens (mockup option-a pattern — `html[data-theme]` flips the desk window) */
+:root {
+  --color-night: #0a0d12;
+  --color-night-grid: #0c1017;
+  --color-panel: #11151d;
+  --color-window: #0c1017;
+  --color-window-border: rgba(255, 255, 255, 0.1);
+  --color-window-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 40px 90px rgba(0, 0, 0, 0.55),
+    0 8px 24px rgba(0, 0, 0, 0.35);
+  --color-bd: rgba(255, 255, 255, 0.12);
+  --color-main-tx: #e9e6da;
+  --color-main-tx-soft: #9aa1a8;
+  --color-field-bg: #0a0d12;
+  --color-grid-line: rgba(255, 255, 255, 0.045);
+  --color-desk-bg:
+    radial-gradient(1200px 600px at 12% 88%, rgba(210, 32, 44, 0.22), transparent 55%),
+    radial-gradient(900px 500px at 88% 12%, rgba(200, 246, 93, 0.1), transparent 50%),
+    #07080c;
+}
+
+html[data-theme="light"] {
+  --color-night: #0a0d12; /* text-night on lime/white chips stays dark */
+  --color-night-grid: #f3f0e8;
+  --color-panel: #f6f4ec;
+  --color-window: #fbfaf5;
+  --color-window-border: rgba(26, 20, 13, 0.14);
+  --color-window-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 34px 70px rgba(26, 20, 13, 0.2),
+    0 6px 18px rgba(26, 20, 13, 0.12);
+  --color-bd: rgba(26, 20, 13, 0.14);
+  --color-main-tx: #241d12;
+  --color-main-tx-soft: #6f6a5d;
+  --color-field-bg: #ffffff;
+  --color-grid-line: rgba(26, 20, 13, 0.06);
+  --color-desk-bg:
+    radial-gradient(1200px 600px at 12% 88%, rgba(210, 32, 44, 0.1), transparent 55%),
+    radial-gradient(900px 500px at 88% 12%, rgba(200, 246, 93, 0.18), transparent 50%),
+    #e9e4d7;
+}
+
 html,
 body,
 #root {
@@ -9,11 +52,12 @@ body,
 }
 
 body {
-  background: #0c1017;
-  color: #e9e6da;
+  background: var(--color-window-border);
+  color: var(--color-main-tx);
   font-family: "Hind Siliguri", "Space Grotesk", sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
+  transition: background-color 0.35s ease, color 0.35s ease;
 }
 
 ::-webkit-scrollbar {
@@ -21,46 +65,71 @@ body {
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0d12;
+  background: var(--color-night);
 }
 ::-webkit-scrollbar-thumb {
   background: #2a3040;
   border-radius: 0;
 }
+html[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(26, 20, 13, 0.25);
+}
 ::-webkit-scrollbar-thumb:hover {
   background: #3a4256;
+}
+html[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(26, 20, 13, 0.4);
 }
 
 /* ---------- dark "desk console" building blocks (from mockup desk) ---------- */
 .panel {
-  @apply rounded-xl border border-white/10 bg-panel p-4;
+  @apply rounded-xl border p-4;
+  border-color: var(--color-bd);
+  background: var(--color-panel);
 }
 
 .panel-title {
-  @apply font-mono-x text-[10px] tracking-[0.24em] uppercase text-white/40;
+  @apply font-mono-x text-[10px] tracking-[0.24em] uppercase;
+  color: var(--color-main-tx-soft);
 }
 
 .field {
-  @apply w-full rounded-lg border border-white/12 bg-[#0a0d12] px-3 py-2 text-[14px] text-white placeholder:text-white/40 focus:border-lime/60 focus:outline-none;
+  @apply w-full rounded-lg border px-3 py-2 text-[14px] placeholder:opacity-50 focus:border-lime/60 focus:outline-none;
+  border-color: var(--color-bd);
+  background: var(--color-field-bg);
+  color: var(--color-main-tx);
+}
+.field::placeholder {
+  color: var(--color-main-tx-soft);
 }
 
 .btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg bg-lime px-3 py-2 text-[12px] font-bold uppercase tracking-wider text-night transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40;
+  @apply inline-flex items-center justify-center gap-2 rounded-lg bg-lime px-3 py-2 text-[12px] font-bold uppercase tracking-wider transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40;
+  color: #0a0d12;
 }
 
 .btn-ghost {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-transparent px-3 py-2 text-[12px] font-bold uppercase tracking-wider text-white/75 transition-colors hover:border-white/40 hover:text-white;
+  @apply inline-flex items-center justify-center gap-2 rounded-lg border bg-transparent px-3 py-2 text-[12px] font-bold uppercase tracking-wider transition-colors hover:text-white;
+  border-color: var(--color-bd);
+  color: var(--color-main-tx-soft);
+}
+.btn-ghost:hover {
+  border-color: var(--color-main-tx);
+  color: var(--color-main-tx);
 }
 
 /* keep the rest of the app (Settings/SetupWizard/Desk) legible on dark */
 .text-ink {
-  color: #e9e6da !important;
+  color: var(--color-main-tx) !important;
 }
 .text-ink-soft {
-  color: #9aa1a8 !important;
+  color: var(--color-main-tx-soft) !important;
 }
 .text-alizarin {
   color: #ff7070 !important;
+}
+html[data-theme="light"] .text-alizarin {
+  color: #c6302c !important;
 }
 .bg-ink {
   background-color: #0a0d12 !important;
@@ -95,27 +164,24 @@ body {
 /* ---------- Tauri desk window chrome (Option A · mockup parity) ---------- */
 .desk-scene {
   min-height: 100%;
-  background:
-    radial-gradient(1200px 600px at 12% 88%, rgba(210, 32, 44, 0.22), transparent 55%),
-    radial-gradient(900px 500px at 88% 12%, rgba(200, 246, 93, 0.1), transparent 50%),
-    #07080c;
+  background: var(--color-desk-bg);
+  transition: background 0.35s ease;
 }
 
 .tauri-win {
-  background: #0c1017;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.06) inset,
-    0 40px 90px rgba(0, 0, 0, 0.55),
-    0 8px 24px rgba(0, 0, 0, 0.35);
+  background: var(--color-window);
+  border: 1px solid var(--color-window-border);
+  box-shadow: var(--color-window-shadow);
+  transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
 }
 
 .bg-night-grid {
-  background-color: #0a0d12;
+  background-color: var(--color-night-grid);
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    linear-gradient(var(--color-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-grid-line) 1px, transparent 1px);
   background-size: 46px 46px;
+  transition: background-color 0.35s ease;
 }
 
 .traffic {
@@ -184,4 +250,118 @@ body {
     opacity: 1;
     transform: none;
   }
+}
+
+/* ---------- light theme: flip the desk window (mockup option-a tokens) ---------- */
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
+html[data-theme="light"] .titlebar {
+  background: #f3f0e8;
+}
+
+html[data-theme="light"] .text-white {
+  color: #241d12;
+}
+html[data-theme="light"] .text-white\/25 {
+  color: rgba(36, 29, 18, 0.25);
+}
+html[data-theme="light"] .text-white\/30 {
+  color: rgba(36, 29, 18, 0.3);
+}
+html[data-theme="light"] .text-white\/35 {
+  color: rgba(36, 29, 18, 0.35);
+}
+html[data-theme="light"] .text-white\/40 {
+  color: rgba(36, 29, 18, 0.4);
+}
+html[data-theme="light"] .text-white\/45 {
+  color: rgba(36, 29, 18, 0.45);
+}
+html[data-theme="light"] .text-white\/50 {
+  color: rgba(36, 29, 18, 0.5);
+}
+html[data-theme="light"] .text-white\/55 {
+  color: rgba(36, 29, 18, 0.55);
+}
+html[data-theme="light"] .text-white\/60 {
+  color: rgba(36, 29, 18, 0.6);
+}
+html[data-theme="light"] .text-white\/70 {
+  color: rgba(36, 29, 18, 0.7);
+}
+html[data-theme="light"] .text-white\/75 {
+  color: rgba(36, 29, 18, 0.75);
+}
+html[data-theme="light"] .text-white\/80 {
+  color: rgba(36, 29, 18, 0.8);
+}
+html[data-theme="light"] .text-white\/85 {
+  color: rgba(36, 29, 18, 0.85);
+}
+html[data-theme="light"] .text-white\/90 {
+  color: rgba(36, 29, 18, 0.9);
+}
+
+html[data-theme="light"] .border-white\/8 {
+  border-color: rgba(26, 20, 13, 0.08);
+}
+html[data-theme="light"] .border-white\/10 {
+  border-color: rgba(26, 20, 13, 0.1);
+}
+html[data-theme="light"] .border-white\/12 {
+  border-color: rgba(26, 20, 13, 0.12);
+}
+html[data-theme="light"] .border-white\/40 {
+  border-color: rgba(26, 20, 13, 0.4);
+}
+
+html[data-theme="light"] .bg-white\/8 {
+  background-color: rgba(26, 20, 13, 0.08);
+}
+html[data-theme="light"] .bg-white\/8:hover {
+  background-color: rgba(26, 20, 13, 0.12);
+}
+html[data-theme="light"] .bg-white\/10 {
+  background-color: rgba(26, 20, 13, 0.08);
+}
+html[data-theme="light"] .bg-white\/15 {
+  background-color: rgba(26, 20, 13, 0.12);
+}
+html[data-theme="light"] .bg-white\/30 {
+  background-color: rgba(26, 20, 13, 0.18);
+}
+
+/* literal-dark shell surfaces flip with the theme (window chrome) */
+html[data-theme="light"] .bg-\[\#0a0d12\] {
+  background-color: #f6f4ec;
+}
+html[data-theme="light"] .bg-\[\#0e1219\] {
+  background-color: #f3f0e8;
+}
+html[data-theme="light"] .bg-\[\#0c1017\] {
+  background-color: #fbfaf5;
+}
+html[data-theme="light"] .bg-\[\#12161e\] {
+  background-color: #f3f0e8;
+}
+html[data-theme="light"] .bg-white\/\[0\.05\] {
+  background-color: rgba(26, 20, 13, 0.06);
+}
+
+/* the live-log terminals stay dark in both themes; keep their white text white */
+html[data-theme="light"] .bg-\[\#07090d\] {
+  background-color: #0b0f14;
+}
+html[data-theme="light"] .bg-\[\#07090d\] .text-white,
+html[data-theme="light"] .bg-\[\#07090d\] .text-white\/30,
+html[data-theme="light"] .bg-\[\#07090d\] .text-white\/35,
+html[data-theme="light"] .bg-\[\#07090d\] .text-white\/75 {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+html[data-theme="light"] .titlebar {
+  background: #f3f0e8;
+  border-bottom-color: rgba(26, 20, 13, 0.1);
 }

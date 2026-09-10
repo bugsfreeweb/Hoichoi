@@ -137,6 +137,21 @@ pnpm --filter @hoichoi/web build
 - **Breaking-news ticker** reuses the mockup marquee: `.ticker-track` in
   `apps/web/src/app/globals.css` is `display:flex; width:max-content` with a
   52 s linear loop (hover pauses) so the headline strip scrolls seamlessly.
+- **Theme toggle** — both web and desktop now implement a dark/light theme
+  switch (`localStorage["hoichoi-theme"]` = `dark`/`light`, honors
+  `prefers-color-scheme: light` by default). The web uses CSS variables on
+  `:root` / `html[data-theme="dark"]` (palette from `mockup/public/option-a.css`)
+  and injects a no-FOUC inline script in `apps/web/src/app/layout.tsx`; a
+  `ThemeToggle` component sits in the TopBar. The desktop mirrors the same
+  variable-based tokens (`apps/desktop/src/index.css` `:root` + `html[data-theme="light"]`)
+  with a toggle in the TitleBar; legacy hard-coded surfaces (`bg-[#...]`) flip via
+  a light-mode override block. Admin console remains dark-only by design.
+- **Single admin link** — only one admin-console link exists (TopBar nav);
+  the footer chip and the live-analytics footnote link were removed to satisfy
+  the "one link" rule.
+- **Admin login auto-provisions** — `/api/auth/login` now upserts an `admin_users`
+  row on first successful code login (`INSERT OR IGNORE ... role='admin'`),
+  so newly minted desktop codes work immediately without a pre-seeded email row.
 - The public rolling-window pages use ISR (`revalidate = 300`, matching the
   `ARCHIVE_VISIBLE_DAYS` / ISR window from the docs), so Vercel serves cached
   HTML and revalidates in the background.

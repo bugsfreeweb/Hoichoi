@@ -26,9 +26,6 @@ export function Footer({ settings }: { settings: SiteSettings }) {
           <div className="md:col-span-4">
             <p className="font-mono-x text-[10px] tracking-[0.24em] text-ink-soft uppercase">সিস্টেম মানচিত্র</p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Link href="/admin" className="border border-ink/30 px-4 py-2 text-[12px] font-bold transition-all duration-300 hover:border-ink hover:bg-ink hover:text-paper">
-                অ্যাডমিন কনসোল →
-              </Link>
               <Link href="/submit" className="border border-ink/30 px-4 py-2 text-[12px] font-bold transition-all duration-300 hover:border-ink hover:bg-ink hover:text-paper">
                 পেজ প্রস্তাব করুন →
               </Link>

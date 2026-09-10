@@ -40,7 +40,7 @@ export function PostFigure({
           </div>
         )}
       </div>
-      <span className="absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full bg-ink/80 px-3 py-1.5 font-mono-x text-[9.5px] tracking-[0.16em] text-paper uppercase backdrop-blur-sm">
+      <span className="absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full bg-night/80 px-3 py-1.5 font-mono-x text-[9.5px] tracking-[0.16em] text-white uppercase backdrop-blur-sm">
         {post.media_kind === "video" ? "VIDEO · SOURCE" : "SOURCE · FACEBOOK ARCHIVE"}
       </span>
     </div>

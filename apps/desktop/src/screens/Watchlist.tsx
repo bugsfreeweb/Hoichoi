@@ -144,18 +144,18 @@ export default function Watchlist({
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="পেজের নাম"
-            className="rounded-lg border border-white/10 bg-night px-3 py-2 text-[12px] text-white outline-none"
+            className="rounded-lg border border-white/10 bg-night-grid px-3 py-2 text-[12px] text-white outline-none"
           />
           <input
             value={form.fbId}
             onChange={(e) => setForm({ ...form, fbId: e.target.value })}
             placeholder="Facebook ID / URL"
-            className="rounded-lg border border-white/10 bg-night px-3 py-2 font-mono-x text-[12px] text-white outline-none"
+            className="rounded-lg border border-white/10 bg-night-grid px-3 py-2 font-mono-x text-[12px] text-white outline-none"
           />
           <select
             value={form.kind}
             onChange={(e) => setForm({ ...form, kind: e.target.value as "page" | "group" })}
-            className="rounded-lg border border-white/10 bg-night px-3 py-2 text-[12px] text-white outline-none"
+            className="rounded-lg border border-white/10 bg-night-grid px-3 py-2 text-[12px] text-white outline-none"
           >
             <option value="page">পেজ</option>
             <option value="group">গ্রুপ</option>

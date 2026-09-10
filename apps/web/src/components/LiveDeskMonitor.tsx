@@ -32,7 +32,7 @@ export async function LiveDeskMonitor() {
   const s = bnNum(pad2(secondsLeft % 60));
 
   return (
-    <div className="bg-ink p-6 text-paper">
+    <div className="bg-night p-6 text-white">
       <p className="flex items-center gap-2 font-mono-x text-[10px] tracking-[0.24em] text-lime uppercase">
         <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
         ডেস্ক মনিটর · লাইভ
