@@ -21,7 +21,30 @@ monorepo checkout, no `pnpm`, no Playwright browser download) because it ships a
 4. Runtime paths are set by the host: `HOICHOI_MIGRATIONS_DIR` (bundled SQL),
    `HOICHOI_MEDIA_ROOT` (app-data), and by default
    `TURSO_DATABASE_URL=file:<app_data_dir>/hoichoi.db` unless the user configured
-   a Turso remote in the keychain.
+   a Turso remote in the keychain (or a `.env` file is found — see below).
+
+### Runner env precedence
+
+Every runner spawn (`run_runner` in `src-tauri/src/commands.rs`) builds its env
+in a strict order, so the desktop behaves like the web/CLI on the same machine:
+
+1. **Keychain vault** values (human-friendly names mapped by `src/lib/vault.ts`
+   — the table below) win for any key that is stored there.
+2. **`.env` file fallback** for keys the vault does not provide — discovered at
+   (in order) `cwd`, the monorepo root (dev), or next to the app exe (installed
+   beside a `.env`). Simple `KEY=value` lines only; quoted values are unquoted.
+3. **Local file DB default** — if still no `TURSO_DATABASE_URL`/`DATABASE_URL`,
+   the runner targets `file:<app_data_dir>/hoichoi.db` (migrations seeded by the
+   bundled SQL). Installed without any cloud config therefore runs fully local.
+
+So in a dev checkout with a root `.env` containing `TURSO_DATABASE_URL` +
+`TURSO_AUTH_TOKEN`, admin codes, moderation, queue/sources and `sync push/pull`
+all hit the same **cloud** DB the web app reads — no keychain entry needed. Add
+the creds to the keychain (*Settings → Keychain*) for machines without a `.env`.
+The dev fallback spawn passes each CLI argument **verbatim**
+(`cmd /D /S /C pnpm --filter @hoichoi/scraper exec tsx src/cli.ts "admin-code" …`
+via `raw_arg`, no shell re-quoting), so commands like `admin-code`/`moderation`
+are never mangled into `unknown command`.
 
 ### Keychain → runner env mapping
 

@@ -208,6 +208,45 @@ pub fn open_admin(url: String) -> Result<(), String> {
 
 /// Run the bundled (or dev) runner CLI with `args` + `env`, capturing stdout.
 /// Used by settings get/set — same spawning + portable-env rules as run_pipeline.
+/// Discover a `.env` file (repo root → exe dir → cwd) and parse simple
+/// KEY=value lines. Only used as a *fallback* for keys the caller did not
+/// provide — gives dev/installed builds the same cloud DB the web uses.
+fn load_dotenv_fallback() -> Vec<(String, String)> {
+    let mut candidates: Vec<PathBuf> = vec![std::env::current_dir().unwrap_or_default()];
+    candidates.push(repo_root_dir());
+    if let Ok(exe) = std::env::current_exe() {
+        candidates.push(exe);
+    }
+    for base in candidates {
+        let file = if base.ends_with(".env") {
+            base
+        } else {
+            base.join(".env")
+        };
+        let Ok(lines) = std::fs::read_to_string(&file) else {
+            continue;
+        };
+        let mut out = Vec::new();
+        for line in lines.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            if let Some((k, v)) = line.split_once('=') {
+                let k = k.trim();
+                let v = v.trim().trim_matches('"').trim_matches('\'');
+                if !k.is_empty() && !v.is_empty() {
+                    out.push((k.to_string(), v.to_string()));
+                }
+            }
+        }
+        if !out.is_empty() {
+            return out;
+        }
+    }
+    Vec::new()
+}
+
 fn run_runner(
     app: &AppHandle,
     args: &[&str],
@@ -224,21 +263,35 @@ fn run_runner(
         c.args(args);
         c
     } else {
-        // Dev fallback: pnpm exec tsx on the scraper CLI.
-        let quoted: Vec<String> = args
-            .iter()
-            .map(|a| format!("\"{}\"", a.replace('"', "")))
-            .collect();
+        // Dev fallback: pnpm exec tsx on the scraper CLI. Passed through
+        // cmd.exe with /D /S /C and *verbatim* tokens (raw_arg) so quoted
+        // args like `admin-code`/`moderation` never get mangled.
         #[cfg(windows)]
         let c = {
+            use std::os::windows::process::CommandExt;
+            let tokens: Vec<String> = args
+                .iter()
+                .map(|a| {
+                    if a.is_empty() {
+                        "\"\"".to_string()
+                    } else if a.contains(' ')
+                        || a.contains('"')
+                        || a.contains('&')
+                        || a.contains('^')
+                    {
+                        format!("\"{}\"", a.replace('"', ""))
+                    } else {
+                        a.to_string()
+                    }
+                })
+                .collect();
             let mut c = Command::new("cmd");
-            c.current_dir(repo_root_dir()).args([
-                "/C",
-                &format!(
-                    "pnpm --filter @hoichoi/scraper exec tsx src/cli.ts {}",
-                    quoted.join(" ")
-                ),
-            ]);
+            c.current_dir(repo_root_dir());
+            let inner = format!(
+                "pnpm --filter @hoichoi/scraper exec tsx src/cli.ts {}",
+                tokens.join(" ")
+            );
+            c.raw_arg("/D /S /C ").raw_arg(&inner);
             c
         };
         #[cfg(not(windows))]
@@ -254,24 +307,29 @@ fn run_runner(
         c
     };
 
+    // Caller-supplied env wins; fall back to a discovered .env for anything
+    // missing (turso creds etc.), then to a local file DB as the last resort.
     for (k, v) in env {
         cmd.env(k, v);
     }
-
-    // Portable runtime paths + system Edge + local-DB fallback, like run_pipeline.
+    for (k, v) in load_dotenv_fallback() {
+        if !env.contains_key(&k) {
+            cmd.env(k, v);
+        }
+    }
+    cmd.env("HOICHOI_USE_SYSTEM_BROWSER", "1");
     if let Some((_, cli)) = bundled_runner(app) {
         let app_dir = cli
             .parent()
             .map(|p| p.to_path_buf())
             .unwrap_or_default();
         cmd.env("HOICHOI_MIGRATIONS_DIR", app_dir.join("migrations"));
-        cmd.env("HOICHOI_USE_SYSTEM_BROWSER", "1");
-        if !env.contains_key("TURSO_DATABASE_URL") && !env.contains_key("DATABASE_URL") {
-            cmd.env(
-                "TURSO_DATABASE_URL",
-                format!("file:{}", data_dir.join("hoichoi.db").display()),
-            );
-        }
+    }
+    if !env.contains_key("TURSO_DATABASE_URL") && !env.contains_key("DATABASE_URL") {
+        cmd.env(
+            "TURSO_DATABASE_URL",
+            format!("file:{}", data_dir.join("hoichoi.db").display()),
+        );
     }
 
     hide_console(&mut cmd);

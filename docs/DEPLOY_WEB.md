@@ -129,10 +129,14 @@ pnpm --filter @hoichoi/web build
   (this project's `/api/stats` route) recomputes an `AnalyticsSnapshot` from the
   database on every call (`packages/db::analyticsSnapshot`: collected/published
   trend series, content donut, per-category bars, collector status from the latest
-  pipeline run, DB latency). The client provider (`components/home/live-data.tsx`)
-  polls it every 10 s with pause / range / refresh controls. Because the page has
-  `revalidate = 300`, users see a stale-safe snapshot instantly on load, then the
-  graph goes live after hydration.
+  pipeline run, DB latency; approved-comment counts use `comments.created_at` —
+  the `comments` table has no `reviewed_at` column). The client provider
+  (`components/home/live-data.tsx`) polls it every 10 s with pause / range /
+  refresh controls. Because the page has `revalidate = 300`, users see a
+  stale-safe snapshot instantly on load, then the graph goes live after hydration.
+- **Breaking-news ticker** reuses the mockup marquee: `.ticker-track` in
+  `apps/web/src/app/globals.css` is `display:flex; width:max-content` with a
+  52 s linear loop (hover pauses) so the headline strip scrolls seamlessly.
 - The public rolling-window pages use ISR (`revalidate = 300`, matching the
   `ARCHIVE_VISIBLE_DAYS` / ISR window from the docs), so Vercel serves cached
   HTML and revalidates in the background.

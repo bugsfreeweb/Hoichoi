@@ -316,7 +316,7 @@ export async function analyticsSnapshot(
       ),
       client.execute("SELECT phash, scraped_at FROM raw_posts"),
       client.execute(
-        "SELECT created_at, reviewed_at FROM comments WHERE status = 'approved'",
+        "SELECT created_at FROM comments WHERE status = 'approved'",
       ),
       client.execute("SELECT is_active FROM sources"),
       client.execute(
@@ -407,7 +407,7 @@ export async function analyticsSnapshot(
   }
 
   for (const c of comments) {
-    const at = pt(c.reviewed_at ?? c.created_at);
+    const at = pt(c.created_at);
     if (inside(at)) totals.approvedComments++;
   }
 
