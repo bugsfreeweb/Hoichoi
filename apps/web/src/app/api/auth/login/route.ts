@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSession, verifyPassword } from "@/lib/auth";
+import { consumeAdminLoginCode } from "@hoichoi/db";
+import { createSession, getUserByEmail } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
-  const body = (await req.json().catch(() => null)) as { email?: string; password?: string } | null;
-  if (!body?.email || !body?.password) {
-    return NextResponse.json({ error: "email and password required" }, { status: 400 });
+  const body = (await req.json().catch(() => null)) as { email?: string; code?: string } | null;
+  if (!body?.email || !body?.code) {
+    return NextResponse.json({ error: "email and code required" }, { status: 400 });
   }
-  const user = await verifyPassword(body.email, body.password);
+  const accepted = await consumeAdminLoginCode(body.email, body.code);
+  if (!accepted) {
+    return NextResponse.json({ error: "invalid, used, or expired code" }, { status: 401 });
+  }
+  const user = await getUserByEmail(body.email);
   if (!user) {
-    return NextResponse.json({ error: "invalid credentials" }, { status: 401 });
+    return NextResponse.json({ error: "no admin account for that email" }, { status: 401 });
   }
   await createSession(user);
   return NextResponse.json({ admin: user, ok: true });

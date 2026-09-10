@@ -57,7 +57,9 @@ export function getClient(): Client {
   if (cached && cachedUrl === url) return cached;
   if (url.startsWith("file:")) {
     const dbPath = fileURLToPath(url);
-    fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+    const parent = path.dirname(dbPath);
+    // Windows drive roots can't be mkdir'd; skip when parent == itself.
+    if (parent !== dbPath) fs.mkdirSync(parent, { recursive: true });
   }
   const config: Config = { url };
   const token = process.env.TURSO_AUTH_TOKEN;
@@ -133,6 +135,23 @@ export async function ensureBrandingColumns(client: Client): Promise<void> {
   }
 }
 
+/** One-time admin login codes (desktop-issued, no-password web login). */
+export async function ensureAdminLoginCodesTable(client: Client): Promise<void> {
+  await client.executeMultiple(`
+CREATE TABLE IF NOT EXISTS admin_login_codes (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  label TEXT,
+  code_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  used_at TEXT,
+  revoked_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_admin_codes_email ON admin_login_codes (email);
+  `);
+}
+
 /** Ensure schema exists, then seed base config on a fresh database. */
 export async function ensureSchema(client: Client): Promise<void> {
   // Desktop runtime: migrations live next to the bundled console (env override).
@@ -148,6 +167,7 @@ export async function ensureSchema(client: Client): Promise<void> {
   await applyMigration(client, "001_init", sqlText);
   await ensureBrandingColumns(client);
   await ensureCommentsTable(client);
+  await ensureAdminLoginCodesTable(client);
   await seedDefaults(client, nowIso());
 }
 

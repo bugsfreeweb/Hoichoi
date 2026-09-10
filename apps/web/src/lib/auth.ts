@@ -32,6 +32,24 @@ export async function verifyPassword(email: string, password: string): Promise<A
   };
 }
 
+/** Load an admin user by email (no password check). */
+export async function getUserByEmail(email: string): Promise<AdminUser | null> {
+  const client = getClient();
+  const res = await client.execute({
+    sql: "SELECT * FROM admin_users WHERE email = ? LIMIT 1",
+    args: [email.trim().toLowerCase()],
+  });
+  if (res.rows.length === 0) return null;
+  const row = res.rows[0] as Record<string, unknown>;
+  return {
+    user_id: String(row.id),
+    email: String(row.email),
+    display_name: (row.display_name as string) ?? null,
+    role: row.role as AdminRole,
+    created_at: String(row.created_at),
+  };
+}
+
 /** Create a session row + matching HttpOnly cookie. */
 export async function createSession(user: AdminUser): Promise<void> {
   const token = randomBytes(32).toString("hex");

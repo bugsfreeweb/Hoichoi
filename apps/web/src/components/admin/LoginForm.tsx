@@ -6,7 +6,7 @@ import { useState } from "react";
 export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -18,7 +18,7 @@ export function LoginForm() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, code: code.trim() }),
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "login failed");
@@ -40,21 +40,26 @@ export function LoginForm() {
         <input type="email" required autoFocus className={field} value={email} onChange={(e) => setEmail(e.target.value)} />
       </label>
       <label className="block">
-        <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">পাসওয়ার্ড</span>
+        <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">ওয়ান-টাইম কোড</span>
         <input
-          type="password"
+          type="text"
           required
-          className={field}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="off"
+          spellCheck={false}
+          maxLength={8}
+          className={`${field} font-mono uppercase tracking-[0.2em]`}
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          placeholder="A B C D 1 2 3 4"
         />
       </label>
       {error && <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[13px] font-bold text-ink">⚠ {error}</p>}
       <button disabled={busy} className="border-2 border-ink bg-ink px-5 py-2.5 text-[13.5px] font-bold text-paper transition hover:bg-alizarin disabled:opacity-50">
-        {busy ? "প্রবেশ করা হচ্ছে…" : "প্রবেশ করুন →"}
+        {busy ? "যাচাই করা হচ্ছে…" : "প্রবেশ করুন →"}
       </button>
-      <p className="text-[11px] text-ink-soft/80">
-        ডেমো: <code className="bg-paper-deep px-1">admin@hoichoi.local</code> · <code className="bg-paper-deep px-1">demo-admin-2026</code>
+      <p className="text-[11px] leading-relaxed text-ink-soft/80">
+        কোডটি Hoichoi Desk অ্যাপের <span className="font-bold">Settings → Admin access</span> থেকে তৈরি হয়; ১০ মিনিটের মধ্যে ব্যবহার
+        করতে হবে এবং একবারই চলে।
       </p>
     </form>
   );

@@ -14,6 +14,9 @@ import {
   resetContent,
   makeSyncClients,
   copyTables,
+  createAdminLoginCode,
+  listAdminLoginCodes,
+  revokeAdminLoginCode,
   CONTENT_TABLES,
   type ExportBundle,
 } from "@hoichoi/db";
@@ -127,6 +130,33 @@ program
       }
       await updateSettings(fields);
       console.log(JSON.stringify({ ok: true, fields: Object.keys(fields) }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("admin-code <action> [email]")
+  .description("manage one-time admin login codes (desktop issues, web consumes)")
+  .option("--label <label>", "short description for a created code")
+  .option("--id <id>", "code id (revoke)")
+  .action(async (action: string, email: string | undefined, opts: { label?: string; id?: string }) => {
+    try {
+      await ensureSchema(getClient());
+      if (action === "create") {
+        if (!email) throw new Error("email required");
+        const created = await createAdminLoginCode({ email, label: opts.label });
+        console.log(JSON.stringify({ ok: true, ...created }));
+      } else if (action === "list") {
+        console.log(JSON.stringify({ ok: true, codes: await listAdminLoginCodes() }, null, 2));
+      } else if (action === "revoke") {
+        if (!opts.id) throw new Error("--id required");
+        await revokeAdminLoginCode(opts.id);
+        console.log(JSON.stringify({ ok: true }));
+      } else {
+        throw new Error(`unknown action: ${action}`);
+      }
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;

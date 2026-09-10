@@ -34,6 +34,14 @@ STORAGE_ADAPTER      local | r2
 > `file:` URLs do not work on Vercel (ephemeral filesystem) — use a Turso
 > `libsql://` database.
 
+**Admin login** no longer uses a password. `/admin/login` accepts a desktop
+**one-time code** (email + code from the Hoichoi Desk app → *Settings → Admin
+access*); the code is consumed once and a normal 7-day session cookie starts.
+`admin_users.email` must still exist (seeded as `ADMIN_BOOTSTRAP_EMAIL`,
+default `admin@hoichoi.local`) and be in `ADMIN_ALLOWED_EMAILS`. codes live in
+the `admin_login_codes` table (migration `002_admin_login_codes.sql`, applied by
+the in-build `pnpm db:migrate`).
+
 Every Vercel build now runs **`pnpm db:migrate` first** (a `prebuild` hook in
 `apps/web/package.json`, mirrored in both `vercel.json` files) so the DB is
 never missing — the very first deploy crashed prerendering `/about` with

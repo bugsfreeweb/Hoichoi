@@ -15,6 +15,10 @@ import {
   backupImport,
   resetDb,
   syncDb,
+  adminCodes,
+  type AdminLoginCode,
+  type AdminCodeList,
+  type CreatedAdminLoginCode,
 } from "../lib/tauri";
 import { pushGithubSecret } from "../lib/github";
 
@@ -57,6 +61,13 @@ export default function Settings({
   const [bkPass, setBkPass] = useState("");
   const [bkMsg, setBkMsg] = useState<string | null>(null);
   const [bkErr, setBkErr] = useState<string | null>(null);
+
+  const [admEmail, setAdmEmail] = useState("");
+  const [admLabel, setAdmLabel] = useState("");
+  const [admCodes, setAdmCodes] = useState<AdminLoginCode[]>([]);
+  const [newCode, setNewCode] = useState<string | null>(null);
+  const [admMsg, setAdmMsg] = useState<string | null>(null);
+  const [admErr, setAdmErr] = useState<string | null>(null);
 
   const show = (m: string) => {
     setMsg(m);
@@ -121,7 +132,47 @@ export default function Settings({
   // (not only after the user clicks "Load current").
   useEffect(() => {
     void loadBrand();
+    void loadAdminCodes();
   }, []);
+
+  const loadAdminCodes = async () => {
+    try {
+      const res = (await adminCodes("list", await getRunEnv())) as AdminCodeList;
+      setAdmCodes(res.codes ?? []);
+      setAdmErr(null);
+    } catch {
+      setAdmCodes([]);
+    }
+  };
+
+  const createCode = async () => {
+    if (!admEmail.trim()) {
+      setAdmErr("ওয়ান-টাইম কোডের জন্য ইমেইল দিতে হবে (admin_users-এর মেলে)");
+      return;
+    }
+    try {
+      setAdmErr(null);
+      const res = (await adminCodes("create", await getRunEnv(), {
+        email: admEmail.trim(),
+        label: admLabel.trim() || null,
+      })) as CreatedAdminLoginCode;
+      setNewCode(res.code);
+      setAdmMsg(`কোড তৈরি হয়েছে — ${res.expires_at.slice(0, 16).replace("T", " ")} পর্যন্ত বৈধ, একবারই ব্যবহারযোগ্য।`);
+      await loadAdminCodes();
+    } catch (e) {
+      setAdmErr(String(e));
+    }
+  };
+
+  const revokeCode = async (id: string) => {
+    try {
+      await adminCodes("revoke", await getRunEnv(), { id });
+      await loadAdminCodes();
+      setAdmMsg("কোড বাতিল হয়েছে।");
+    } catch (e) {
+      setAdmErr(String(e));
+    }
+  };
 
   const saveBrand = async () => {
     try {
@@ -285,6 +336,109 @@ export default function Settings({
         </div>
         {brandMsg && <p className="mt-2 text-[11.5px] font-bold text-ink">✓ {brandMsg}</p>}
         {brandErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {brandErr}</p>}
+      </div>
+
+      <div className="panel mt-5">
+        <p className="panel-title">Admin access · one-time login codes</p>
+        <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+          কোড ১০ মিনিটের জন্য বৈধ, একবার ব্যবহারেই শেষ। ওয়েব অ্যাডমিনে
+          password-এর বদলে এই কোড দিয়ে ঢোকা যায় — পাসওয়ার্ড আর ব্যবহার হয় না।
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <input
+            className="field min-w-48 flex-1"
+            placeholder="admin ইমেইল (admin_user)"
+            value={admEmail}
+            onChange={(e) => setAdmEmail(e.target.value)}
+          />
+          <input
+            className="field min-w-48 flex-1"
+            placeholder="লেবেল (যেমন desktop-chrome)"
+            value={admLabel}
+            onChange={(e) => setAdmLabel(e.target.value)}
+          />
+          <button className="btn" onClick={() => void createCode()}>
+            ✦ কোড তৈরি
+          </button>
+          <button className="btn-ghost" onClick={() => void loadAdminCodes()}>
+            ↻ refresh
+          </button>
+        </div>
+        {newCode && (
+          <div className="mt-3 border-2 border-dashed border-lime bg-paper-deep px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-ink-soft">
+              ইমেইল + কোড দিয়ে লগইন করুন →
+            </p>
+            <p className="mt-1 font-mono text-[28px] font-black tracking-[0.18em] text-lime">{newCode}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                className="btn"
+                onClick={() => {
+                  void navigator.clipboard.writeText(newCode);
+                  setAdmMsg("কোড কপি হয়েছে — clipboard-এ।");
+                }}
+              >
+                ⧉ Copy code
+              </button>
+              <button className="btn-ghost" onClick={() => setNewCode(null)}>
+                ✕ লুকাও
+              </button>
+            </div>
+          </div>
+        )}
+        {admCodes.length > 0 && (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-left text-[11.5px]">
+              <thead>
+                <tr className="border-b border-ink/20 text-[10px] uppercase tracking-wider text-ink-soft">
+                  <th className="py-1 pr-2">email</th>
+                  <th className="py-1 pr-2">label</th>
+                  <th className="py-1 pr-2">created</th>
+                  <th className="py-1 pr-2">expires</th>
+                  <th className="py-1 pr-2">state</th>
+                  <th className="py-1 pr-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {admCodes.map((c) => {
+                  const state = c.used_at
+                    ? "✓ used"
+                    : c.revoked_at
+                      ? "✕ revoked"
+                      : new Date(c.expires_at) < new Date()
+                        ? "expired"
+                        : "active";
+                  return (
+                    <tr key={c.id} className="border-b border-ink/10">
+                      <td className="py-1 pr-2 font-mono text-[10.5px]">{c.email}</td>
+                      <td className="py-1 pr-2">{c.label ?? "—"}</td>
+                      <td className="py-1 pr-2 text-[10.5px]">{c.created_at.slice(0, 16).replace("T", " ")}</td>
+                      <td className="py-1 pr-2 text-[10.5px]">{c.expires_at.slice(0, 16).replace("T", " ")}</td>
+                      <td className="py-1 pr-2">
+                        <span
+                          className={
+                            state === "active" ? "bg-lime px-1.5 py-0.5 text-[10px] font-bold" : "px-1.5 py-0.5 text-[10px] font-bold text-ink-soft/70"
+                          }
+                        >
+                          {state}
+                        </span>
+                      </td>
+                      <td className="py-1 pr-2">
+                        {state === "active" && (
+                          <button className="text-[10px] font-bold text-alizarin underline" onClick={() => void revokeCode(c.id)}>
+                            বাতিল
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {admMsg && <p className="mt-2 text-[11.5px] font-bold text-ink">✓ {admMsg}</p>}
+        {admErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {admErr}</p>}
       </div>
 
       <div className="panel mt-5">

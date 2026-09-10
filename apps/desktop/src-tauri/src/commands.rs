@@ -394,6 +394,33 @@ pub async fn sync_db(
     ))
 }
 
+/// Manage one-time admin login codes through the runner (`admin-code` CLI).
+/// `op` ∈ create | list | revoke. Returns the runner's JSON stdout verbatim.
+#[tauri::command]
+pub async fn admin_codes(
+    app: AppHandle,
+    op: String,
+    email: Option<String>,
+    label: Option<String>,
+    id: Option<String>,
+    env: Option<HashMap<String, String>>,
+) -> Result<String, String> {
+    let mut args = vec!["admin-code".to_string(), op.clone()];
+    if let Some(e) = email {
+        args.push(e);
+    }
+    if let Some(l) = label {
+        args.push("--label".to_string());
+        args.push(l);
+    }
+    if let Some(i) = id {
+        args.push("--id".to_string());
+        args.push(i);
+    }
+    let strs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+    run_runner(&app, &strs, &env.unwrap_or_default())
+}
+
 fn now_stamp() -> String {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

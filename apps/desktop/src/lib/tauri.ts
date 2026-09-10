@@ -61,3 +61,42 @@ export async function syncDb(
 ): Promise<string> {
   return await invoke<string>("sync_db", { direction, env });
 }
+
+export interface AdminLoginCode {
+  id: string;
+  email: string;
+  label: string | null;
+  created_at: string;
+  expires_at: string;
+  used_at: string | null;
+  revoked_at: string | null;
+}
+
+export interface CreatedAdminLoginCode {
+  ok: boolean;
+  id: string;
+  code: string;
+  email: string;
+  expires_at: string;
+}
+
+export interface AdminCodeList {
+  ok: boolean;
+  codes: AdminLoginCode[];
+}
+
+/** Create / list / revoke one-time admin login codes via the bundled runner. */
+export async function adminCodes(
+  op: "create" | "list" | "revoke",
+  env: Record<string, string>,
+  opts?: { email?: string; label?: string | null; id?: string | null },
+): Promise<CreatedAdminLoginCode | AdminCodeList | { ok: boolean }> {
+  const raw = await invoke<string>("admin_codes", {
+    op,
+    email: opts?.email ?? null,
+    label: opts?.label ?? null,
+    id: opts?.id ?? null,
+    env,
+  });
+  return JSON.parse(raw);
+}

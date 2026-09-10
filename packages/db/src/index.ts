@@ -7,6 +7,7 @@ export * from "./rows";
 export * from "./archive";
 export * from "./media";
 export * from "./transfer";
+export * from "./admin-auth";
 
 import type {
   CaseStatus,

@@ -87,6 +87,27 @@ through the bundled runner (new CLI subcommands: `backup export`,
 The runner **must** be rebuilt for these commands to exist in the bundled app:
 run `pnpm --filter @hoichoi/desktop bundle:runner` before `tauri build`.
 
+## Admin access — one-time login codes (no password)
+
+The web admin no longer uses a password. The desktop app mints **one-time login
+codes** (desktop → browser flow):
+
+- **Settings screen → *Admin access* panel** — enter an admin email
+  (`admin_users` email, e.g. `admin@hoichoi.local`), optionally a label, and hit
+  ✦ কোড তৈরি. The **8-character code** is shown once in the UI with a Copy
+  button; it is stored as a SHA-256 hash in the new `admin_login_codes` table.
+- Codes are valid **10 minutes**, usable **exactly once** (atomic guarded UPDATE),
+  and can be revoked from the panel's list before use.
+- Web login (`/admin/login`) takes **email + code** only; `/api/auth/login`
+  consumes the code atomically, then creates the standard 7-day session cookie
+  (`admin_sessions` + `hoichoi_session`). No `verifyPassword` call anymore —
+  `password_hash` on `admin_users` is legacy/ignored.
+- Runner CLI: `admin-code create <email> [--label]`, `admin-code list`,
+  `admin-code revoke --id <id>`. Backend command: `admin_codes` (Rust) +
+  `adminCodes` (`src/lib/tauri.ts`).
+- DB migration `packages/db/migrations/002_admin_login_codes.sql`; `ensureSchema`
+  also creates the table on the desktop / runner side.
+
 ## Building a standalone (bundled) desktop app
 
 Prerequisites (one-time, on your machine — this needs the desktop toolchain):
@@ -111,6 +132,9 @@ Notes:
 - `bundle:runner -- --refresh` reinstalls the runtime `node_modules`.
 - A prebuilt runner can still be staged instead via `HOICHOI_RUNNER` (and
   `HOICHOI_RUNNER_NODE` for an embedded Node dir).
+- Running the bundled `cli.cjs` by hand (outside the app) needs
+  `HOICHOI_MIGRATIONS_DIR=<runner>/app/migrations` — the Tauri host sets it
+  automatically, but standalone debug runs don't.
 
 Output: `apps/desktop/src-tauri/target/release/bundle/{nsis,msi}/...` and
 `target/release/*.exe`. The packaged app contains the runner + Node runtime and
