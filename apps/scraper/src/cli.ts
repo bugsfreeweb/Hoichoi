@@ -491,40 +491,6 @@ program
     }
   });
 
-program
-  .command("sync <direction>")
-  .description("desk sync: push (local→cloud) or pull (cloud→local)")
-  .action(async (direction: "push" | "pull") => {
-    try {
-      await ensureSchema(getClient());
-      if (direction !== "push" && direction !== "pull") throw new Error("direction must be push or pull");
-      const client = getClient();
-      const tables = [
-        "settings",
-        "category_configs",
-        "sources",
-        "source_categories",
-        "llm_providers",
-        "raw_posts",
-        "posts",
-        "submitted_pages",
-        "admin_users",
-        "admin_sessions",
-        "pipeline_runs",
-        "removal_requests",
-        "admin_actions",
-        "comments",
-        "redaction_blocklist",
-      ];
-      
-      // For now, just log - full sync implementation would be in the runner
-      console.log(JSON.stringify({ ok: true, direction, tables, note: "Full sync via runner (syncDb)" }, null, 2));
-    } catch (err) {
-      console.error("[fatal]", (err as Error).message);
-      process.exitCode = 1;
-    }
-  });
-
 program.parseAsync(process.argv).catch((err) => {
   console.error("[fatal]", (err as Error).message);
   process.exitCode = 1;

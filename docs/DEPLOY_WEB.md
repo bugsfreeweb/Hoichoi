@@ -134,7 +134,7 @@ pnpm --filter @hoichoi/web build
   pasted code live on the homepage leaderboard/strip/infeed and the article
   page's 300×250 rect. Admin-pasted `<script>` tags are re-injected client-side
   so AdSense/Adsterra-style units execute after hydration.
-- **Live home graph** — the homepage renders the mockup *"হইচই চলছে। দেখুন
+- **Live home graph** — the homepage renders the mockup *"হৈচৈ চলছে। দেখুন
   সংখ্যায়।"* analytics section. Endpoint `GET /api/stats?range=24h|7d|all`
   (this project's `/api/stats` route) recomputes an `AnalyticsSnapshot` from the
   database on every call (`packages/db::analyticsSnapshot`: collected/published

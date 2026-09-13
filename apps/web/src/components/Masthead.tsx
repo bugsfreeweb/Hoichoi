@@ -7,7 +7,7 @@ export function Masthead({ settings }: { settings: SiteSettings }) {
   return (
     <header className="mx-auto max-w-site px-4 pt-6 md:px-8">
       <div className="flex items-center justify-between border-b border-ink/20 pb-3 text-[11.5px] font-medium text-ink-soft">
-        <span>{longDateBn(new Date().toISOString())} · ঢাকা সংস্করণ</span>
+        <span>{longDateBn(new Date().toISOString())} · অনলাইন সংস্করণ</span>
         <span className="hidden font-mono-x tracking-[0.2em] uppercase sm:block">
           AUTONOMOUS NEWS DESK · ISSN-AUTO-24
         </span>

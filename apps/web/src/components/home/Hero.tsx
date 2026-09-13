@@ -68,7 +68,7 @@ export default function Hero({
           </div>
 
           <h1 className="headline-grad mt-6 font-serif-bn text-[76px] leading-[0.92] font-black tracking-tight md:text-[120px]">
-            হইচই<span className="text-alizarin">।</span>
+            হৈচৈ<span className="text-alizarin">।</span>
           </h1>
 
           <div className="kin-mask mt-5 h-16 md:h-18">
@@ -82,7 +82,7 @@ export default function Hero({
           </div>
 
           <p className="mt-5 max-w-xl text-[13.5px] leading-relaxed text-white/55">
-            শহরের ঘটনা, মানুষের কথা। হইচইয়ের সম্পাদকীয় ডেস্কে প্রতিটি খবর ও
+            শহরের ঘটনা, মানুষের কথা। হৈচৈ-র সম্পাদকীয় ডেস্কে প্রতিটি খবর ও
             পাঠকের মন্তব্যের জন্য আছে আলাদা পর্যালোচনা। নিচের লাইভ গ্রাফে দেখুন
             ডাটাবেসে কত প্রতিবেদন জমেছে, কোনটি প্রকাশিত, আর আলোচনায় কী যোগ হলো।
           </p>
@@ -137,7 +137,7 @@ export default function Hero({
               className="beam flex items-center gap-2 rounded-md bg-white/[0.06] px-6 py-3.5 text-[13.5px] font-bold text-white backdrop-blur-sm transition-colors duration-300 hover:bg-white/10"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-lime"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/></svg>
-              হইচই ডেস্ক লঞ্চ
+              হৈচৈ ডেস্ক লঞ্চ
             </a>
           </div>
         </div>

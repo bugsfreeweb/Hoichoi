@@ -232,7 +232,7 @@ export default function App() {
       >
         <img src="/images/hoichoi-mark.svg" alt="" />
         <span className="dock-txt">
-          <strong>হইচই ডেস্ক</strong>
+          <strong>হৈচৈ ডেস্ক</strong>
           <small>CLICK TO RESTORE · PURE</small>
         </span>
       </button>
@@ -266,7 +266,7 @@ export default function App() {
           </div>
           <div className="wintitle">
             <img src="/images/hoichoi-mark.svg" alt="" />
-            <span>হইচই ডেস্ক</span>
+            <span>হৈচৈ ডেস্ক</span>
             <em>PURE HTML · CSS · JS</em>
           </div>
           <div className="winctl">

@@ -2,7 +2,7 @@
   "name": "hoichoi",
   "version": "1.0.0",
   "private": true,
-  "description": "হইচই — Bangla viral-content ephemeral snapshot (auto-curated news desk)",
+  "description": "হৈচৈ — Bangla viral-content ephemeral snapshot (auto-curated news desk)",
   "packageManager": "pnpm@11.18.0",
   "scripts": {
     "dev": "turbo run dev --parallel",

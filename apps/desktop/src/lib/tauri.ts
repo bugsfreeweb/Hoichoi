@@ -248,11 +248,3 @@ export async function deskModerationSet(
 ): Promise<void> {
   await deskCall(["moderation", "set", id, status], env);
 }
-
-export async function deskSync(
-  env: Record<string, string>,
-  direction: "push" | "pull",
-): Promise<{ ok: true; syncedTables: number; tablesSynced: number; rowsAffected: number; conflicts: number }> {
-  const res = await deskCall(["sync", direction], env);
-  return res as { ok: true; syncedTables: number; tablesSynced: number; rowsAffected: number; conflicts: number };
-}

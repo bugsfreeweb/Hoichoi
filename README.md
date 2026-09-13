@@ -1,4 +1,4 @@
-# হইচই · Hoichoi
+# হৈচৈ · Hoichoi
 
 Bangla viral-content **ephemeral** news desk — an auto-curated feed that scrapes
 public social pages, dedupes, redacts PII, rewrites neutrally via a multi-provider

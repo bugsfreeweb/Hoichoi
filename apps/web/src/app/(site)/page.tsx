@@ -56,7 +56,7 @@ export default async function HomePage() {
                   ▚ LEAD STORY · এই সিঙ্কের প্রধান কনটেন্ট
                 </p>
                 <h2 className="mt-2 font-serif-bn text-[34px] font-black text-ink md:text-[44px]">
-                  আজকের প্রধান হইচই
+                  আজকের প্রধান হৈচৈ
                 </h2>
               </div>
               <span className="font-mono-x text-[10px] tracking-[0.2em] text-ink-soft uppercase">
@@ -253,7 +253,7 @@ export default async function HomePage() {
                 </h2>
                 <p className="mt-3 max-w-xl text-[13.5px] leading-relaxed text-ink-soft">
                   বামে: ফিডের কাঁচা অবস্থা — হুটোপাটো ক্যাপশন, বানান-ভুল, আধমাথা
-                  তথ্য। ডানে: হইচইর ফ্যাক্ট-গেট পার হওয়া পুনর্লিখন। হাতলটি ধরে
+                  তথ্য। ডানে: হৈচৈ-র ফ্যাক্ট-গেট পার হওয়া পুনর্লিখন। হাতলটি ধরে
                   টেনে নিজেই বিচার করুন।
                 </p>
               </div>

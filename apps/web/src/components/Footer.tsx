@@ -22,8 +22,8 @@ export function Footer({ settings }: { settings: SiteSettings }) {
             </span>
             <p className="mt-4 max-w-xs text-[12.5px] leading-relaxed text-ink-soft">
               {BRAND.tagline} — স্বয়ংক্রিয় সংবাদ কিউরেশন ডেস্কের কারিগরি
-              প্রদর্শনী: ডেস্কটপ কালেক্টর, পুনর্লিখন ইঞ্জিন, GitHub-ভিত্তিক
-              প্রকাশনা ও Vercel ডিপ্লয়লাইনের পূর্ণ প্রবাহ।
+              প্রদর্শনী: ডেস্কটপ কালেক্টর, পুনর্লিখন ইঞ্জিন, AI agent-ভিত্তিক
+              প্রকাশনা ও Web ডিপ্লয়লাইনের পূর্ণ প্রবাহ।
             </p>
           </div>
           <div className="md:col-span-3">
