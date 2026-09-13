@@ -230,7 +230,7 @@ export default function App() {
         hidden={!winMinimized}
         onClick={() => setWinMinimized(false)}
       >
-        <img src="/images/hoichoi-mark.png" alt="" />
+        <img src="/images/hoichoi-mark.svg" alt="" />
         <span className="dock-txt">
           <strong>হইচই ডেস্ক</strong>
           <small>CLICK TO RESTORE · PURE</small>
@@ -265,7 +265,7 @@ export default function App() {
             />
           </div>
           <div className="wintitle">
-            <img src="/images/hoichoi-mark.png" alt="" />
+            <img src="/images/hoichoi-mark.svg" alt="" />
             <span>হইচই ডেস্ক</span>
             <em>PURE HTML · CSS · JS</em>
           </div>
