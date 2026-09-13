@@ -1,5 +1,11 @@
 # হৈচৈ (Hoichoi) — Bangla Viral-Content Ephemeral Snapshot
 
+> **Preserved reference (original design-phase README).** For the current state
+> see the repo root `README.md`, `docs/DEPLOY_WEB.md` and `docs/DESKTOP.md`.
+> Historical notes: the desktop vault has moved from Stronghold to its own
+> AES-256-GCM key store, and the web admin now logs in with **one-time codes**
+> (desktop-minted) instead of a password.
+
 > **"ভাইরাল বাংলা, সপ্তাহখানেক"** — Viral Bangla, for a week.
 
 Hoichoi is a **public-interest news aggregator** for Bangla local content. It watches **public Facebook Pages** in three narrow categories, describes them in clean Bangla, shows them for **7 days**, then makes every trace disappear. Posts are rewritten by a **multi-AI-provider** system with automatic fallback (free by default), deduplicated by **semantic embeddings + perceptual hashes**, hosted on **Vercel**, and driven by a **GitHub Actions cron** that runs every 2 hours.
@@ -37,7 +43,7 @@ Exceptions: active `missing-children` cases stay public until resolved; `legal_h
 │   ├── shared-types/ Types shared everywhere
 │   ├── db/           Turso/libSQL client, migrations, seeds, + shared archive/media helpers
 │   └── llm/          Multi-provider LLM abstraction (8 providers + resolver + prompts)
-├── docs/             DESKTOP.md (self-contained desktop build), DEPLOY_WEB.md (Vercel via GitHub)
+├── docs/             index + DEPLOY_WEB, DESKTOP, design system, editorial policy, etc.
 ├── vercel.json       scopes Vercel to apps/web (web/desktop are separate deploys)
 └── .github/workflows/ pipeline-cron (every 2h), rolling-archive (daily), keep-alive, ci, deploy-web
 ```

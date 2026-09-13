@@ -405,3 +405,31 @@ html[data-theme="light"] .tauri-win {
   left: 18px;
   border-color: transparent;
 }
+
+/* ---------- reveal on scroll ----------
+   Content is VISIBLE by default (no-JS safe). Only when the inline
+   <script> in <body> adds `.js` do we arm the hidden state, and only
+   `.reveal-in` (added by the observer) brings it back — plus a safety
+   timeout in the component so nothing can stay invisible. (ports mockup) */
+.reveal {
+  opacity: 1;
+  transform: none;
+}
+.js .reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.8s ease,
+    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.js .reveal.reveal-in {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .js .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

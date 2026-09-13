@@ -47,18 +47,6 @@ export function PostFigure({
   );
 }
 
-export function DefaultPostFigure({ ratio = "aspect-[16/8.2]" }: { ratio?: string }) {
-  return (
-    <div className={`${ratio} overflow-hidden bg-paper-deep border-[1.5px] border-ink`}>
-      <div className="flex h-full items-center justify-center px-6">
-        <p className="text-center font-serif-bn text-[15px] font-bold leading-relaxed text-ink/40">
-          এই পোস্টে ছবি নেই — কেবল সংবাদ বিবরণ
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export function ReadStats({ minutes }: { minutes: number | string }) {
   return (
     <span className="flex items-center gap-1.5 text-[11.5px] text-ink-soft">

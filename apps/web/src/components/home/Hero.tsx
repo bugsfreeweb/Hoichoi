@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties } from "react";
-import Link from "next/link";
 import Counter from "@/components/home/counter";
 import { useLiveData } from "./live-data";
 import { timeBn } from "@/lib/bn";
@@ -131,13 +130,15 @@ export default function Hero({
                 <path d="m12 5 7 7-7 7" />
               </svg>
             </a>
-            <Link
-              href="/desk"
+            <a
+              href="https://github.com/bugsfreeweb/Hoichoi/releases"
+              target="_blank"
+              rel="noreferrer"
               className="beam flex items-center gap-2 rounded-md bg-white/[0.06] px-6 py-3.5 text-[13.5px] font-bold text-white backdrop-blur-sm transition-colors duration-300 hover:bg-white/10"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-lime"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/></svg>
               হইচই ডেস্ক লঞ্চ
-            </Link>
+            </a>
           </div>
         </div>
 

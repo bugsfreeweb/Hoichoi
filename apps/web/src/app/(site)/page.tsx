@@ -2,7 +2,6 @@ import Link from "next/link";
 import { windowPosts } from "@hoichoi/db";
 import { getCategories } from "@/lib/categories-server";
 import { ScrollProgress } from "@/components/ScrollProgress";
-import { BreakingTicker } from "@/components/BreakingTicker";
 import Hero from "@/components/home/Hero";
 import LiveAnalytics from "@/components/home/live-analytics";
 import PulseFlow from "@/components/home/PulseFlow";
@@ -10,10 +9,11 @@ import RewriteSlider from "@/components/home/RewriteSlider";
 import TiltCard from "@/components/home/TiltCard";
 import ArticleGrid from "@/components/ArticleGrid";
 import { AdSlot } from "@/components/AdSlot";
+import { Reveal } from "@/components/Reveal";
 import { HomeLiveProvider } from "@/components/home/live-data";
 import { getSettings } from "@/lib/settings";
 import { timeBn, readMinutesBn, shortId, bnNum } from "@/lib/bn";
-import { CATEGORY_LABEL, CATEGORY_TINT } from "@/lib/format";
+import { CATEGORY_LABEL, CATEGORY_TINT, agoBn } from "@/lib/format";
 import { BRAND } from "@/lib/brand";
 
 export const revalidate = 300;
@@ -29,9 +29,8 @@ export default async function HomePage() {
   const topPicks = rest.slice(0, 3);
 
   return (
-    <>
+    <HomeLiveProvider>
       <ScrollProgress />
-      <BreakingTicker />
 
       <Hero
         lastRunIso={featured?.created_at ?? null}
@@ -46,28 +45,28 @@ export default async function HomePage() {
         <AdSlot variant="leaderboard" html={settings.ad_leaderboard_html} />
       </div>
 
-      <HomeLiveProvider>
-        <LiveAnalytics />
-      </HomeLiveProvider>
+      <LiveAnalytics />
 
       {featured && (
         <section className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
-          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="font-mono-x text-[10.5px] tracking-[0.28em] text-alizarin uppercase">
-                ▚ LEAD STORY · এই সিঙ্কের প্রধান কনটেন্ট
-              </p>
-              <h2 className="mt-2 font-serif-bn text-[34px] font-black text-ink md:text-[44px]">
-                আজকের প্রধান হইচই
-              </h2>
+          <Reveal>
+            <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="font-mono-x text-[10.5px] tracking-[0.28em] text-alizarin uppercase">
+                  ▚ LEAD STORY · এই সিঙ্কের প্রধান কনটেন্ট
+                </p>
+                <h2 className="mt-2 font-serif-bn text-[34px] font-black text-ink md:text-[44px]">
+                  আজকের প্রধান হইচই
+                </h2>
+              </div>
+              <span className="font-mono-x text-[10px] tracking-[0.2em] text-ink-soft uppercase">
+                SYNCED {timeBn(featured.created_at ?? new Date().toISOString())} · AUTO-FEATURED
+              </span>
             </div>
-            <span className="font-mono-x text-[10px] tracking-[0.2em] text-ink-soft uppercase">
-              SYNCED {timeBn(featured.created_at ?? new Date().toISOString())} · AUTO-FEATURED
-            </span>
-          </div>
+          </Reveal>
 
           <div className="mt-10 grid items-start gap-12 lg:grid-cols-12">
-            <div className="lg:col-span-7">
+            <Reveal className="lg:col-span-7">
               <Link href={`/post/${featured.slug}`} className="group block">
                 <TiltCard>
                   <div className="frame-press relative overflow-hidden">
@@ -104,13 +103,14 @@ export default async function HomePage() {
                   </span>
                 </p>
               </Link>
-            </div>
+            </Reveal>
 
             <div className="lg:col-span-5">
+              <Reveal delay={100}>
               <div className="flex flex-wrap items-center gap-3">
                 <span
                   className="flex items-center gap-1.5 px-3 py-1 text-[11.5px] font-bold text-white"
-                  style={{ background: CATEGORY_TINT[featured.category] ?? "#fbbf24" }}
+                  style={{ background: CATEGORY_TINT[featured.category] ?? "#d2202c" }}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>
                   {CATEGORY_LABEL[featured.category] ?? featured.category}
@@ -167,7 +167,7 @@ export default async function HomePage() {
                     <li key={a.id}>
                       <Link href={`/post/${a.slug}`} className="group flex items-start gap-4 py-3.5">
                         <span className="text-outline-ink mt-0.5 font-serif-bn text-2xl leading-none font-black">
-                          {i + 1}
+                          {bnNum(i + 1)}
                         </span>
                         <div>
                           <h4 className="link-sweep inline font-serif-bn text-[14.5px] leading-snug font-bold">
@@ -176,10 +176,10 @@ export default async function HomePage() {
                           <p className="mt-1 flex items-center gap-2 text-[10.5px] text-ink-soft">
                             <span
                               className="inline-block h-1.5 w-1.5 rounded-full"
-                              style={{ background: CATEGORY_TINT[a.category] ?? "#fbbf24" }}
+                              style={{ background: CATEGORY_TINT[a.category] ?? "#d2202c" }}
                             />
                             {CATEGORY_LABEL[a.category] ?? a.category} ·{" "}
-                            {a.created_at ? timeBn(a.created_at) : "—"}
+                            {agoBn(a.published_at ?? a.created_at)}
                           </p>
                         </div>
                       </Link>
@@ -187,6 +187,7 @@ export default async function HomePage() {
                   ))}
                 </ol>
               </div>
+              </Reveal>
             </div>
           </div>
         </section>
@@ -194,7 +195,8 @@ export default async function HomePage() {
 
       <section className="bg-ink text-paper">
         <div className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
-          <div className="flex flex-wrap items-end justify-between gap-4">
+          <Reveal>
+            <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="font-mono-x text-[10.5px] tracking-[0.26em] text-lime uppercase">
                 AUTOMATION PIPELINE · EVERY 2 HOURS
@@ -229,7 +231,8 @@ export default async function HomePage() {
                 <path d="m12 5 7 7-7 7" />
               </svg>
             </Link>
-          </div>
+            </div>
+          </Reveal>
           <div className="mt-12">
             <PulseFlow />
           </div>
@@ -239,6 +242,7 @@ export default async function HomePage() {
       {featured && (
         <section className="border-y-2 border-ink bg-paper-deep/60">
           <div className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
+            <Reveal>
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p className="font-mono-x text-[10.5px] tracking-[0.26em] text-alizarin uppercase">
@@ -261,6 +265,7 @@ export default async function HomePage() {
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
               </Link>
             </div>
+            </Reveal>
             <div className="mt-10">
               <RewriteSlider
                 raw={featured.summary_bn ?? featured.body_bn}
@@ -275,6 +280,7 @@ export default async function HomePage() {
       )}
 
       <section id="latest" className="mx-auto max-w-[1400px] scroll-mt-24 px-4 py-16 md:px-8 md:py-20">
+        <Reveal>
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="font-mono-x text-[10.5px] tracking-[0.26em] text-alizarin uppercase">
@@ -289,12 +295,15 @@ export default async function HomePage() {
             এখানে জায়গা পায় না; পায় শুধু যাচাই করা, পুনর্লিখিত সংস্করণ।
           </p>
         </div>
+        </Reveal>
         <ArticleGrid posts={rest} ads adInfeedHtml={settings.ad_infeed_html} />
       </section>
 
       <section className="mx-auto max-w-[1400px] px-4 pb-16 md:px-8">
-        <Link
-          href="/desk"
+        <a
+          href="https://github.com/bugsfreeweb/Hoichoi/releases"
+          target="_blank"
+          rel="noreferrer"
           className="group relative flex flex-col items-start justify-between gap-6 overflow-hidden border-[1.5px] border-ink bg-ink p-7 text-paper md:flex-row md:items-center md:p-10"
         >
           <div className="drift pointer-events-none absolute -top-24 right-10 h-64 w-64 rounded-full bg-lime/10 blur-[80px]" />
@@ -323,12 +332,12 @@ export default async function HomePage() {
             অ্যাপ লঞ্চ
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
           </span>
-        </Link>
+        </a>
       </section>
 
       <div className="mx-auto max-w-[1400px] px-4 pb-12 md:px-8">
         <AdSlot variant="strip" html={settings.ad_strip_html} />
       </div>
-    </>
+    </HomeLiveProvider>
   );
 }

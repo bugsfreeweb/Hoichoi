@@ -84,6 +84,16 @@ Live site: `https://hoichoifeed.vercel.app`.
    - `outputDirectory: ".next"` (+ `/media/**` and `/_next/static/**` cache headers).
 3. Add the env vars above. Vercel auto-detects Next.js.
 
+## Common mistakes
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Cannot find module '@hoichoi/db'` | Uploaded only `apps/web`, not the whole repo | Push the entire monorepo (packages/ must be present) |
+| `Lockfile is up to date` build error | Frozen lockfile mismatch | Already handled (`--no-frozen-lockfile` in root `vercel.json`) |
+| `file:./data/...` DB errors on Vercel | Used `file:` URL | Use a remote Turso `libsql://` URL |
+| `ADMIN_AUTH_SECRET is required` | Missing env var | Add the env var to Vercel project settings |
+| Build succeeds but site is blank | No posts yet / wrong DB | Run migrate + seed against the remote DB |
+
 ## Local pre-flight (matches CI)
 
 ```bash
