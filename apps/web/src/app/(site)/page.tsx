@@ -1,16 +1,19 @@
+import Link from "next/link";
 import { windowPosts } from "@hoichoi/db";
 import { getCategories } from "@/lib/categories-server";
 import { ScrollProgress } from "@/components/ScrollProgress";
 import { BreakingTicker } from "@/components/BreakingTicker";
-import { Hero } from "@/components/home/Hero";
-import { LiveAnalytics } from "@/components/home/live-analytics";
-import { PulseFlow } from "@/components/home/PulseFlow";
-import { RewriteSlider } from "@/components/home/RewriteSlider";
-import { ArticleGrid } from "@/components/ArticleGrid";
+import Hero from "@/components/home/Hero";
+import LiveAnalytics from "@/components/home/live-analytics";
+import PulseFlow from "@/components/home/PulseFlow";
+import RewriteSlider from "@/components/home/RewriteSlider";
+import TiltCard from "@/components/home/TiltCard";
+import ArticleGrid from "@/components/ArticleGrid";
 import { AdSlot } from "@/components/AdSlot";
 import { HomeLiveProvider } from "@/components/home/live-data";
 import { getSettings } from "@/lib/settings";
-import { bnTime } from "@/lib/bn";
+import { timeBn, readMinutesBn, shortId, bnNum } from "@/lib/bn";
+import { CATEGORY_LABEL, CATEGORY_TINT } from "@/lib/format";
 import { BRAND } from "@/lib/brand";
 
 export const revalidate = 300;
@@ -21,26 +24,22 @@ export default async function HomePage() {
     getCategories(),
     getSettings(),
   ]);
-  const lead = posts[0];
-  const featured = posts.find((p) => p.featured) ?? posts[0] ?? null;
+  const featured = posts[0] ?? null;
   const rest = posts.filter((p) => p.id !== featured?.id);
-  const collectedToday = posts.length;
-  const dupToday = posts.filter((p) => p.status === "duplicate").length;
-  const lastRun = posts[0] ?? null;
   const topPicks = rest.slice(0, 3);
 
   return (
     <>
       <ScrollProgress />
-      <BreakingTicker items={posts.slice(0, 6).map((p) => p.title)} />
+      <BreakingTicker />
 
       <Hero
-        lastRunIso={lastRun?.created_at?.toISOString() ?? null}
-        collected={collectedToday}
+        lastRunIso={featured?.created_at ?? null}
+        collected={posts.length}
         published={posts.filter((p) => p.status === "published").length}
-        dups={dupToday}
-        featuredImg={featured?.imageUrl ?? null}
-        featuredTitle={featured?.title ?? null}
+        dups={0}
+        featuredImg={featured?.media_path ?? null}
+        featuredTitle={featured?.title_bn ?? null}
       />
 
       <div className="mx-auto max-w-[1400px] px-4 pt-8 md:px-8">
@@ -63,28 +62,33 @@ export default async function HomePage() {
               </h2>
             </div>
             <span className="font-mono-x text-[10px] tracking-[0.2em] text-ink-soft uppercase">
-              SYNCED {bnTime(featured.created_at ?? new Date().toISOString())} · AUTO-FEATURED
+              SYNCED {timeBn(featured.created_at ?? new Date().toISOString())} · AUTO-FEATURED
             </span>
           </div>
 
           <div className="mt-10 grid items-start gap-12 lg:grid-cols-12">
             <div className="lg:col-span-7">
-              <Link
-                href={`/news/${featured.id}`}
-                className="group block"
-              >
+              <Link href={`/post/${featured.slug}`} className="group block">
                 <TiltCard>
                   <div className="frame-press relative overflow-hidden">
                     <div className="aspect-[16/9.5] overflow-hidden bg-paper-deep">
-                      <img
-                        src={featured.imageUrl}
-                        alt={featured.title}
-                        className="photo-grade h-full w-full object-cover"
-                      />
+                      {featured.media_path && featured.media_kind !== "none" ? (
+                        <img
+                          src={featured.media_path}
+                          alt={featured.title_bn}
+                          className="photo-grade h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center px-6">
+                          <p className="text-center font-serif-bn text-[15px] font-bold leading-relaxed text-ink/40">
+                            {featured.summary_bn?.slice(0, 80) ?? featured.title_bn.slice(0, 60)}…
+                          </p>
+                        </div>
+                      )}
                     </div>
                     <span className="absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full bg-ink/80 px-3 py-1.5 font-mono-x text-[9.5px] tracking-[0.16em] text-paper uppercase backdrop-blur-sm">
                       <svg xmlns="http://www.w3.org/2000/svg" width="9.5" height="9.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
-                      SOURCE · FACEBOOK ARCHIVE
+                      SOURCE · {featured.source_name}
                     </span>
                     <span className="absolute top-3 left-3 flex items-center gap-1.5 bg-alizarin px-2.5 py-1 text-[10px] font-bold text-white">
                       <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>
@@ -93,9 +97,9 @@ export default async function HomePage() {
                   </div>
                 </TiltCard>
                 <p className="mt-3 flex items-center justify-between text-[10.5px] text-ink-soft/80">
-                  <span>ছবি: {featured.imageCredit} · প্রতীকী</span>
+                  <span>ছবি: {featured.media_path ? "সংগৃহীত" : "কেবল টেক্সট"} · প্রতীকী</span>
                   <span className="font-mono-x tracking-wide">
-                    SHOT_{featured.id.toString().padStart(4, "0")}.PNG · PLAYWRIGHT
+                    SHOT_{shortId(featured.id).toUpperCase()} · PLAYWRIGHT
                     1440×900
                   </span>
                 </p>
@@ -106,29 +110,27 @@ export default async function HomePage() {
               <div className="flex flex-wrap items-center gap-3">
                 <span
                   className="flex items-center gap-1.5 px-3 py-1 text-[11.5px] font-bold text-white"
-                  style={{
-                    background: featured.category === "crime" ? "#d2202c" : featured.category === "child" ? "#60a5fa" : featured.category === "family" ? "#2dd4bf" : "#fbbf24",
-                  }}
+                  style={{ background: CATEGORY_TINT[featured.category] ?? "#fbbf24" }}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>
-                  {featured.category === "crime" ? "অপরাধ" : featured.category === "child" ? "শিশু সুরক্ষা" : featured.category === "family" ? "পরিবার ও সমাজ" : "ভাইরাল ও তথ্য"}
+                  {CATEGORY_LABEL[featured.category] ?? featured.category}
                 </span>
                 <span className="flex items-center gap-1 text-[12px] text-ink-soft">
                   <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0"/><circle cx="12" cy="10" r="3"/></svg>
-                  {featured.location}
+                  {featured.source_name}
                 </span>
               </div>
-              <Link href={`/news/${featured.id}`} className="mt-4 block">
+              <Link href={`/post/${featured.slug}`} className="mt-4 block">
                 <h3 className="link-sweep inline font-serif-bn text-[26px] leading-[1.32] font-extrabold text-ink md:text-[32px]">
-                  {featured.title}
+                  {featured.title_bn}
                 </h3>
               </Link>
               <p className="mt-4 text-[14.5px] leading-relaxed text-ink-soft">
-                {featured.summary}
+                {featured.summary_bn ?? featured.body_bn}
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-4">
                 <Link
-                  href={`/news/${featured.id}`}
+                  href={`/post/${featured.slug}`}
                   className="group flex items-center gap-2 bg-ink px-5 py-3 text-[13px] font-bold text-paper transition-colors duration-300 hover:bg-alizarin"
                 >
                   পুরোটা পড়ুন
@@ -150,11 +152,11 @@ export default async function HomePage() {
                 </Link>
                 <span className="flex items-center gap-1.5 font-mono-x text-[10.5px] text-ink-soft">
                   <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3L7 21M17 3l-2 18M4 8h17M3 16h17"/></svg>
-                  {featured.hash.slice(0, 10)}
+                  {shortId(featured.id)}
                 </span>
                 <span className="flex items-center gap-1.5 text-[11.5px] text-ink-soft">
                   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                  {featured.readingMinutes} মিনিট
+                  {bnNum(readMinutesBn(featured.body_bn))} মিনিট
                 </span>
               </div>
 
@@ -163,27 +165,21 @@ export default async function HomePage() {
                 <ol className="mt-1 divide-y divide-ink/12">
                   {topPicks.map((a, i) => (
                     <li key={a.id}>
-                      <Link
-                        href={`/news/${a.id}`}
-                        className="group flex items-start gap-4 py-3.5"
-                      >
+                      <Link href={`/post/${a.slug}`} className="group flex items-start gap-4 py-3.5">
                         <span className="text-outline-ink mt-0.5 font-serif-bn text-2xl leading-none font-black">
                           {i + 1}
                         </span>
                         <div>
                           <h4 className="link-sweep inline font-serif-bn text-[14.5px] leading-snug font-bold">
-                            {a.title}
+                            {a.title_bn}
                           </h4>
                           <p className="mt-1 flex items-center gap-2 text-[10.5px] text-ink-soft">
                             <span
                               className="inline-block h-1.5 w-1.5 rounded-full"
-                              style={{
-                                background:
-                                  a.category === "crime" ? "#d2202c" : a.category === "child" ? "#60a5fa" : a.category === "family" ? "#2dd4bf" : "#fbbf24",
-                              }}
+                              style={{ background: CATEGORY_TINT[a.category] ?? "#fbbf24" }}
                             />
-                            {a.category === "crime" ? "অপরাধ" : a.category === "child" ? "শিশু সুরক্ষা" : a.category === "family" ? "পরিবার ও সমাজ" : "ভাইরাল ও তথ্য"} ·{" "}
-                            {a.created_at ? bnTime(a.created_at) : "—"}
+                            {CATEGORY_LABEL[a.category] ?? a.category} ·{" "}
+                            {a.created_at ? timeBn(a.created_at) : "—"}
                           </p>
                         </div>
                       </Link>
@@ -258,7 +254,7 @@ export default async function HomePage() {
                 </p>
               </div>
               <Link
-                href={`/news/${featured.id}`}
+                href={`/post/${featured.slug}`}
                 className="link-sweep flex items-center gap-2 text-[13px] font-bold text-ink"
               >
                 সম্পূর্ণ প্রতিবেদন
@@ -267,11 +263,11 @@ export default async function HomePage() {
             </div>
             <div className="mt-10">
               <RewriteSlider
-                raw={featured.source_excerpt ?? "কাঁচা ফিড পাওয়া যায়নি।"}
-                headline={featured.title}
-                body={featured.body.split("\n\n")[1] ?? featured.summary}
+                raw={featured.summary_bn ?? featured.body_bn}
+                headline={featured.title_bn}
+                body={featured.body_bn}
                 sourceName={featured.source_name ?? "অজানা"}
-                location={featured.location}
+                location={featured.source_name}
               />
             </div>
           </div>
@@ -293,7 +289,7 @@ export default async function HomePage() {
             এখানে জায়গা পায় না; পায় শুধু যাচাই করা, পুনর্লিখিত সংস্করণ।
           </p>
         </div>
-        <ArticleGrid articles={rest} ads />
+        <ArticleGrid posts={rest} ads adInfeedHtml={settings.ad_infeed_html} />
       </section>
 
       <section className="mx-auto max-w-[1400px] px-4 pb-16 md:px-8">
@@ -336,5 +332,3 @@ export default async function HomePage() {
     </>
   );
 }
-
-import Link from "next/link";
