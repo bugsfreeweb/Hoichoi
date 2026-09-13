@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import {
   listen,
   openAdmin,
+  isTauri,
   startPipeline,
   stopPipeline,
   settingsGet,
@@ -68,6 +69,25 @@ function StatusClock() {
   return <span className="ml-auto">{clock || "· · : · · : · ·"} · ঢাকা</span>;
 }
 
+let _win: null | {
+  minimize: () => Promise<void>;
+  toggleMaximize: () => Promise<void>;
+  close: () => Promise<void>;
+  startDragging: () => Promise<void>;
+} = null;
+
+/** Lazy-import the Tauri window API so titlebar buttons control the OS window. */
+function deskWin(): Promise<typeof _win> {
+  if (!isTauri()) return Promise.resolve(null);
+  if (!_win) {
+    return import("@tauri-apps/api/window").then(({ getCurrentWindow }) => {
+      _win = getCurrentWindow();
+      return _win;
+    });
+  }
+  return Promise.resolve(_win);
+}
+
 function TabButton({ id, icon, label, active, onClick, shortcut }: {
   id: View;
   icon: string;
@@ -89,14 +109,14 @@ function TabButton({ id, icon, label, active, onClick, shortcut }: {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-10 w-full px-8 py-8 rounded-8 font-medium text-[12.5px] font-weight-500 transition-colors ${
+      className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium text-[12.5px] transition-colors ${
         active
           ? "bg-white text-night"
           : "text-white/55 hover:bg-white/8 hover:text-white"
       }`}
       data-tab={id}
     >
-      <span>{icons[icon]}</span>
+      {icons[icon]}
       <span className="flex-1 text-left">{label}</span>
       <kbd className={`font-mono-x text-[9px] ${active ? "text-night/40" : "text-white/25"}`}>
         {shortcut}
@@ -114,7 +134,7 @@ function MTabsButton({ id, label, active, onClick }: {
   return (
     <button
       onClick={onClick}
-      className={`flex-none rounded-full px-4 py-2 text-[11px] transition-colors ${
+      className={`flex-none rounded-full px-3 py-1 text-[11px] transition-colors ${
         active
           ? "bg-white text-night"
           : "text-white/50 hover:bg-white/8 hover:text-white"
@@ -249,22 +269,44 @@ export default function App() {
               className="dot red"
               id="btnClose"
               title="বন্ধ · সাইটে ফিরুন"
-              onClick={() => void openAdmin(SITE_URL)}
+              onClick={() => {
+                void deskWin().then((w) =>
+                  w ? w.close() : openAdmin(SITE_URL),
+                );
+              }}
             />
             <button
               className="dot yellow"
               id="btnMin"
               title="মিনিমাইজ"
-              onClick={() => setWinMinimized(true)}
+              onClick={() => {
+                void deskWin().then((w) =>
+                  w ? w.minimize() : setWinMinimized(true),
+                );
+              }}
             />
             <button
               className="dot green"
               id="btnMax"
               title="ম্যাক্সিমাইজ"
-              onClick={() => setWinMaximized(!winMaximized)}
+              onClick={() => {
+                void deskWin().then((w) =>
+                  w ? w.toggleMaximize() : setWinMaximized(!winMaximized),
+                );
+              }}
             />
           </div>
-          <div className="wintitle">
+          <div
+            className="wintitle"
+            onMouseDown={(e) => {
+              if (e.button !== 0) return;
+              void deskWin().then((w) => w?.startDragging());
+            }}
+            onDoubleClick={(e) => {
+              e.preventDefault();
+              void deskWin().then((w) => w?.toggleMaximize());
+            }}
+          >
             <img src="/images/hoichoi-mark.svg" alt="" />
             <span>হৈচৈ ডেস্ক</span>
             <em>PURE HTML · CSS · JS</em>
@@ -274,24 +316,36 @@ export default function App() {
             <button
               id="btnMin2"
               title="মিনিমাইজ"
-              onClick={() => setWinMinimized(true)}
+              onClick={() => {
+                void deskWin().then((w) =>
+                  w ? w.minimize() : setWinMinimized(true),
+                );
+              }}
             >
               <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M5 12h14"/></svg>
             </button>
             <button
               id="btnMax2"
               title="ম্যাক্সিমাইজ / পুনরুদ্ধার"
-              onClick={() => setWinMaximized(!winMaximized)}
+              onClick={() => {
+                void deskWin().then((w) =>
+                  w ? w.toggleMaximize() : setWinMaximized(!winMaximized),
+                );
+              }}
             >
               <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
             </button>
-            <a
-              href="/"
-              title="বন্ধ · সাইটে ফিরুন"
-              onClick={(e) => { e.preventDefault(); void openAdmin(SITE_URL); }}
+            <button
+              id="btnClose2"
+              title="বন্ধ · অ্যাপ বন্ধ করুন"
+              onClick={() => {
+                void deskWin().then((w) =>
+                  w ? w.close() : openAdmin(SITE_URL),
+                );
+              }}
             >
               <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-            </a>
+            </button>
           </div>
         </div>
 
@@ -323,7 +377,9 @@ export default function App() {
             <div className="side-foot">
               <p className="online"><span className="pulse-dot"></span>CONTROLLER ONLINE</p>
               <p className="watching" id="sideWatch">{toBn(watchingCount)} সোর্স সক্রিয়</p>
-              <p className="datasrc" id="dataSrc">ডেটা: সংযোগ…</p>
+              <p className="datasrc" id="dataSrc">
+                ডেটা: {dbDriver} · সংযুক্ত
+              </p>
             </div>
           </aside>
 
@@ -365,11 +421,11 @@ export default function App() {
               </section>
 
               <section className="pane col" id="pane-vault" hidden={view !== "vault"}>
-                <Vault configured={configured} />
+                <Vault configured={configured} onEdit={() => jump("settings")} />
               </section>
 
               <section className="pane" id="pane-settings" hidden={view !== "settings"}>
-                <Settings refresh={refresh} refreshBrand={async () => {}} />
+                <Settings refresh={refresh} refreshBrand={refresh} />
               </section>
 
               <section className="pane" id="pane-moderation" hidden={view !== "moderation"}>
