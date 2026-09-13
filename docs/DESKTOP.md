@@ -207,26 +207,28 @@ apps/desktop/
 
 The desktop UI mirrors the `mockup/` desk controller exactly:
 
-- **Theme toggle** — desktop now mirrors the mockup `option-a` dark/light switch
+- **Theme toggle** — desktop mirrors the mockup `option-a` dark/light switch
   (same `localStorage["hoichoi-theme"]` key, same prefers-color-scheme fallback).
   Implemented as CSS-variable tokens (`night`, `night-grid`, `panel`, `window`,
   `main-tx`, `grid-line`, `field-bg`, `desk-bg`) on `:root` (dark) +
   `html[data-theme="light"]` in `apps/desktop/src/index.css`; no-FOUC script in
   `index.html`; a `ThemeToggle` component in the TitleBar. All hard-coded dark
-  surfaces (`bg-[#...]`, `.desk-scene`, `.tauri-win`, `.bg-night-grid`,
-  `.titlebar`, scrollbars) flip via the light override block; live-log terminals
-  (`bg-[#07090d]`) stay dark in both themes to preserve log-colour contrast.
-- **Frameless window** — `decorations: false` + custom `TitleBar` (traffic lights:
-  minimize / maximize / close; drag region only on the center strip), min width
-  1100. `tauri.conf.json`, `capabilities/default.json` (window permissions).
-  Dragging is implemented via the Tauri `startDragging` API (double-click the strip
-  toggles maximize); there are no child console windows — every runner/spawn
-  (pipeline, taskkill, admin link, `cmd` dev fallback) uses `CREATE_NO_WINDOW`
-  (`commands.rs::hide_console`).
+  surfaces (`bg-[#...]`, `.desk-scene`, `.bg-night-grid`, `.titlebar`, scrollbars)
+  flip via the light override block; live-log terminals (`bg-[#07090d]`) stay dark
+  in both themes to preserve log-colour contrast.
+- **Frameless window** — `decorations: false` + custom option-a chrome
+  (traffic lights: close → opens the admin site, minimize / maximize via local
+  state + `#dockRestore` docked restore button), min width 1100.
+  `tauri.conf.json`, `capabilities/default.json` (window permissions).
+  The window chrome (`win`/`titlebar`/`traffic`/`wintitle`/`winctl`/`menubar`/
+  `winbody`/`side`/`sidenav`/`side-foot`/`maincol`/`mtabs`/`stage`/`statusbar`/`sb`)
+  is ported verbatim from `mockup/public/option-a.css` into `apps/desktop/src/index.css`;
+  there are no child console windows — every runner/spawn (pipeline, taskkill,
+  admin link, `cmd` dev fallback) uses `CREATE_NO_WINDOW` (`commands.rs::hide_console`).
 - **7-tab console** — Monitor / Watchlist / Queue / Collector / Vault / Settings /
-  Moderation with keyboard shortcuts **1–7**, inline menubar (ফাইল/সোর্স/রান/ভল্ট/
-  সাহায্য) and a statusbar (TAURI 2.1 · `TURSO`/`LOCAL` DB badge · Hoichoi clock).
-  Shell: `src/App.tsx`, `components/{TitleBar,Sidebar,Countdown}.tsx`.
+  Moderation with keyboard shortcuts **1–7** (inline `TabButton` in a `sidenav`),
+  inline menubar (ফাইল/সোর্স/রান/ভল্ট/সাহায্য) and a statusbar (TAURI 2.1 ·
+  `TURSO`/`LOCAL` DB badge · Hoichoi clock). Shell: `src/App.tsx` (option-a classes).
 - **Monitor** — 4 stat tiles (আজ সংগৃহীত / লাইভ প্রকাশিত / ডুপ্লিকেট ব্লকড / গড় রান)
   + the mockup **countdown ring**, pipeline-health and source-health panels, latest
   collector logs and the recent content queue (`screens/Dashboard.tsx`). A barley
