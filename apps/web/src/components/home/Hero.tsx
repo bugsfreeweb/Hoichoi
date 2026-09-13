@@ -2,9 +2,9 @@
 
 import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import Counter from "@/components/Counter";
+import Counter from "@/components/home/counter";
 import { useLiveData } from "./live-data";
-import { bnTime } from "@/lib/bn";
+import { timeBn } from "@/lib/bn";
 import { BRAND } from "@/lib/brand";
 
 const PHRASES = [
@@ -205,7 +205,7 @@ export default function Hero({
               FEED → SHOT → HASH → LLM → GIT → DEPLOY
             </p>
             <div className="flex flex-wrap items-center gap-5">
-              <span className="text-[11px] text-white/40">সর্বশেষ নথিভুক্ত রান: {lastRunIso ? bnTime(lastRunIso) : "এখনো নেই"}</span>
+              <span className="text-[11px] text-white/40">সর্বশেষ নথিভুক্ত রান: {lastRunIso ? timeBn(lastRunIso) : "এখনো নেই"}</span>
               <a href="#live-insights" className="flex items-center gap-2 text-sm font-semibold text-lime">লাইভ গ্রাফ দেখুন
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="rotate-90"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
               </a>

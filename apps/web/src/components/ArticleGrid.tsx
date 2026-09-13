@@ -1,23 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
+import type { Post } from "@hoichoi/shared-types";
 import ArticleCard from "@/components/ArticleCard";
-import AdSlot from "@/components/AdSlot";
+import { AdSlot } from "@/components/AdSlot";
 import { CATEGORY_LABEL, toBn } from "@/lib/format";
-import type { ArticleLite } from "@/lib/data";
 
 export default function ArticleGrid({
-  articles,
+  posts,
   ads = false,
+  adInfeedHtml = null,
 }: {
-  articles: ArticleLite[];
+  posts: Post[];
   ads?: boolean;
+  adInfeedHtml?: string | null;
 }) {
-  const cats = Array.from(new Set(articles.map((a) => a.category)));
+  const cats = Array.from(new Set(posts.map((a) => a.category)));
   const [active, setActive] = useState<string>("all");
 
   const shown =
-    active === "all" ? articles : articles.filter((a) => a.category === active);
+    active === "all" ? posts : posts.filter((a) => a.category === active);
 
   return (
     <div>
@@ -30,7 +32,7 @@ export default function ArticleGrid({
               : "border-ink/25 text-ink-soft hover:border-ink hover:text-ink"
           }`}
         >
-          সব <span className="font-mono-x text-[10px] opacity-70">{toBn(articles.length)}</span>
+          সব <span className="font-mono-x text-[10px] opacity-70">{toBn(posts.length)}</span>
         </button>
         {cats.map((c) => (
           <button
@@ -44,7 +46,7 @@ export default function ArticleGrid({
           >
             {CATEGORY_LABEL[c] ?? c}{" "}
             <span className="font-mono-x text-[10px] opacity-70">
-              {toBn(articles.filter((a) => a.category === c).length)}
+              {toBn(posts.filter((a) => a.category === c).length)}
             </span>
           </button>
         ))}
@@ -58,14 +60,16 @@ export default function ArticleGrid({
         className="grid-pop mt-10 grid gap-x-8 gap-y-14 sm:grid-cols-2 xl:grid-cols-3"
       >
         {shown.map((a, i) => (
-          <div key={a.id} className="grid-pop" style={{ animationDelay: `${(i % 6) * 60}ms` }}>
-            <ArticleCard a={a} index={i} />
+          <Fragment key={a.id}>
+            <div className="grid-pop" style={{ animationDelay: `${(i % 6) * 60}ms` }}>
+              <ArticleCard post={a} index={i} />
+            </div>
             {ads && i !== shown.length - 1 && (i + 1) % 4 === 0 && (
               <div className="mt-10">
-                <AdSlot variant="infeed" />
+                <AdSlot variant="infeed" html={adInfeedHtml} />
               </div>
             )}
-          </div>
+          </Fragment>
         ))}
         {shown.length === 0 && (
           <p className="col-span-full py-16 text-center text-ink-soft">

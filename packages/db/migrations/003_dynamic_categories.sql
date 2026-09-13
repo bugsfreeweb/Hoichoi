@@ -60,10 +60,11 @@ CREATE TABLE IF NOT EXISTS sync_checkpoint (
 -- 8) Add sync_version to settings for version tracking
 -- (settings table already exists, we just ensure it has the right columns)
 
--- 9) Add moderation queue enhancements
-ALTER TABLE comments ADD COLUMN IF NOT EXISTS moderated_by TEXT;
-ALTER TABLE comments ADD COLUMN IF NOT EXISTS moderated_at TEXT;
-ALTER TABLE comments ADD COLUMN IF NOT EXISTS moderation_reason TEXT;
+-- 9) Add moderation queue enhancements (SQLite doesn't support IF NOT EXISTS in ALTER TABLE)
+-- These will be added idempotently by the application layer if missing
+-- ALTER TABLE comments ADD COLUMN moderated_by TEXT;
+-- ALTER TABLE comments ADD COLUMN moderated_at TEXT;
+-- ALTER TABLE comments ADD COLUMN moderation_reason TEXT;
 
 -- 10) Add ad slot configuration tracking
 -- (settings table already has ad_*_html columns)
