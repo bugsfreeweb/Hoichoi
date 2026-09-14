@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   description:
     "হৈচৈ — অটো-কিউরেটেড বাংলা সংবাদ ডেস্ক। ফেসবুকের ভাইরাল পোস্ট সাত দিনের জানালায় সচেতনতামূলক সংবাদ আকারে পুনর্লিখিত।",
   icons: {
-    icon: "/icon.svg",
+    icon: "/logo.png",
   },
   openGraph: {
     type: "website",

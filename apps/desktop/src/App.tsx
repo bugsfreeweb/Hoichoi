@@ -110,17 +110,13 @@ function TabButton({ id, icon, label, active, onClick, shortcut }: {
     <button
       onClick={onClick}
       className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium text-[12.5px] transition-colors ${
-        active
-          ? "bg-white text-night"
-          : "text-white/55 hover:bg-white/8 hover:text-white"
+        active ? "active" : ""
       }`}
       data-tab={id}
     >
       {icons[icon]}
       <span className="flex-1 text-left">{label}</span>
-      <kbd className={`font-mono-x text-[9px] ${active ? "text-night/40" : "text-white/25"}`}>
-        {shortcut}
-      </kbd>
+      <kbd className="font-mono-x text-[9px]">{shortcut}</kbd>
     </button>
   );
 }
@@ -135,9 +131,7 @@ function MTabsButton({ id, label, active, onClick }: {
     <button
       onClick={onClick}
       className={`flex-none rounded-full px-3 py-1 text-[11px] transition-colors ${
-        active
-          ? "bg-white text-night"
-          : "text-white/50 hover:bg-white/8 hover:text-white"
+        active ? "active" : ""
       }`}
       data-tab={id}
     >
@@ -250,7 +244,7 @@ export default function App() {
         hidden={!winMinimized}
         onClick={() => setWinMinimized(false)}
       >
-        <img src="/images/hoichoi-mark.svg" alt="" />
+        <img src="/logo.png" alt="" />
         <span className="dock-txt">
           <strong>হৈচৈ ডেস্ক</strong>
           <small>CLICK TO RESTORE · PURE</small>
@@ -307,7 +301,7 @@ export default function App() {
               void deskWin().then((w) => w?.toggleMaximize());
             }}
           >
-            <img src="/images/hoichoi-mark.svg" alt="" />
+<img src="/logo.png" alt="" />
             <span>হৈচৈ ডেস্ক</span>
             <em>PURE HTML · CSS · JS</em>
           </div>

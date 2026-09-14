@@ -5,14 +5,11 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-[60] h-10 border-b border-white/10 bg-night text-white/85">
       <div className="mx-auto flex h-full max-w-site items-center justify-between px-4">
-        <div className="flex items-center gap-2.5 font-mono-x text-[10px] tracking-[0.22em] uppercase">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-alizarin opacity-75"></span>
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-alizarin"></span>
-          </span>
+        <Link href="/" className="flex items-center gap-2 font-mono-x text-[10px] tracking-[0.22em] uppercase">
+          <img src="/logo.png" alt="" className="h-5 w-5 rounded-sm object-cover" />
           HOICHOI <span className="hidden text-white/35 sm:inline">·</span>
           <span className="hidden text-white/35 sm:inline">AUTO-CURATED NEWS DESK</span>
-        </div>
+        </Link>
         <nav className="flex items-center gap-1">
           <Link
             href="/"

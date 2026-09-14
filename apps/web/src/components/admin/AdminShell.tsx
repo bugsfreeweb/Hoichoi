@@ -26,6 +26,7 @@ export function AdminShell({ user, children }: { user: AdminUser; children: Reac
     <div className="admin-console min-h-dvh">
       <header className="sticky top-0 z-[60] flex h-12 items-center justify-between border-b border-white/10 bg-[#0a0d12] px-5 text-paper/85">
         <div className="flex items-center gap-2.5 font-mono-x text-[10px] tracking-[0.22em] uppercase">
+          <img src="/logo.png" alt="" className="h-5 w-5 rounded-sm object-cover" />
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-alizarin opacity-75"></span>
             <span className="relative inline-flex h-2 w-2 rounded-full bg-alizarin"></span>
@@ -51,9 +52,7 @@ export function AdminShell({ user, children }: { user: AdminUser; children: Reac
           <div className="px-5">
             <p className="font-mono-x text-[9.5px] tracking-[0.24em] text-white/35 uppercase">ADMIN</p>
             <div className="mt-3 flex items-center gap-3 border-b border-white/10 pb-4">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-alizarin font-serif-bn text-[17px] font-black text-white">
-                হ
-              </span>
+              <img src="/logo.png" alt="" className="h-9 w-9 rounded-lg object-cover ring-1 ring-white/20" />
               <div>
                 <p className="text-[13px] leading-tight font-bold text-white">হৈচৈ কন্ট্রো</p>
                 <p className="font-mono-x text-[8.5px] tracking-[0.16em] text-white/35 uppercase">LIVE CONSOLE</p>

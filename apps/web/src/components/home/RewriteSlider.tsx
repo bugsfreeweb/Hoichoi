@@ -96,13 +96,13 @@ export default function RewriteSlider({
         </div>
 
         <div
-          className="absolute inset-0 bg-ink p-6 md:p-10"
+          className="absolute inset-0 bg-night p-6 md:p-10"
           style={{ clipPath: `inset(0 0 0 ${x}%)` }}
         >
           <span className="inline-flex items-center gap-1.5 bg-lime px-2.5 py-1 text-[10.5px] font-bold text-night">
             {Icons.Sparkles} হৈচৈ সংস্করণ
           </span>
-          <h3 className="mt-4 max-w-lg font-serif-bn text-[19px] leading-[1.45] font-black text-paper md:text-[25px]">
+          <h3 className="mt-4 max-w-lg font-serif-bn text-[19px] leading-[1.45] font-black text-white md:text-[25px]">
             {headline}
           </h3>
           <p className="mt-4 max-w-md text-[13px] leading-[1.85] text-white/65">

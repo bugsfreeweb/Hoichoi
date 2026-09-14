@@ -6,6 +6,11 @@ export const metadata: Metadata = { title: "আমাদের সম্পর�
 export default function AboutPage() {
   return (
     <Section title="আমাদের সম্পর্কে" kicker="ABOUT THE DESK">
+      <img
+        src="/logo.png"
+        alt=""
+        className="h-16 w-16 rounded-full object-cover ring-2 ring-alizarin/30"
+      />
       <p>
         হৈচৈ। একটি <strong>স্বয়ংক্রিয় সংবাদ কিউরেশন ডেস্ক</strong> — ফেসবুকে ছড়িয়ে পড়া ভাইরাল বাংলা
         পোস্টগুলোকে ৭ দিনের মধ্যে সম্পাদকীয় সংবাদ আকারে সাজিয়ে প্রকাশ করে, তারপর জানালাটা বন্ধ করে দেয়।

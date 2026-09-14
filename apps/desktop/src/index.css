@@ -555,7 +555,8 @@ html[data-theme="light"] .theme-toggle .t-moon {
   color: var(--t5);
 }
 .sidenav button.active kbd {
-  opacity: 0.4;
+  color: var(--active-tx);
+  opacity: 0.45;
 }
 .side-foot {
   border-top: 1px solid var(--color-bd);

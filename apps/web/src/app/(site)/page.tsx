@@ -193,7 +193,7 @@ export default async function HomePage() {
         </section>
       )}
 
-      <section className="bg-ink text-paper">
+      <section className="bg-night text-white">
         <div className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
           <Reveal>
             <div className="flex flex-wrap items-end justify-between gap-4">
@@ -304,7 +304,7 @@ export default async function HomePage() {
           href="https://github.com/bugsfreeweb/Hoichoi/releases"
           target="_blank"
           rel="noreferrer"
-          className="group relative flex flex-col items-start justify-between gap-6 overflow-hidden border-[1.5px] border-ink bg-ink p-7 text-paper md:flex-row md:items-center md:p-10"
+          className="group relative flex flex-col items-start justify-between gap-6 overflow-hidden border-[1.5px] border-white/10 bg-night p-7 text-white md:flex-row md:items-center md:p-10"
         >
           <div className="drift pointer-events-none absolute -top-24 right-10 h-64 w-64 rounded-full bg-lime/10 blur-[80px]" />
           <div className="relative flex items-start gap-4">
