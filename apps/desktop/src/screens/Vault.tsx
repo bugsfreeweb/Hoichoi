@@ -208,7 +208,7 @@ export default function Vault({
                     <td className="px-3 py-3.5">
                       {has ? (
                         <div className="flex items-center gap-1.5">
-                          <code className="rounded-md border border-white/10 bg-night-grid px-2.5 py-1.5 font-mono-x text-[10.5px] tracking-wide text-amberx/90">
+                          <code className="rounded-md border border-white/10 bg-night px-2.5 py-1.5 font-mono-x text-[10.5px] tracking-wide text-amberx/90">
                             {isOpen ? v : mask(v ?? "")}
                           </code>
                           <button

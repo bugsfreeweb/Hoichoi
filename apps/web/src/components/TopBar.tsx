@@ -6,6 +6,10 @@ export function TopBar() {
     <header className="sticky top-0 z-[60] h-10 border-b border-white/10 bg-night text-white/85">
       <div className="mx-auto flex h-full max-w-site items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2 font-mono-x text-[10px] tracking-[0.22em] uppercase">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-lime opacity-75"></span>
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-lime"></span>
+          </span>
           <img src="/logo.png" alt="" className="h-5 w-5 rounded-sm object-cover" />
           HOICHOI <span className="hidden text-white/35 sm:inline">·</span>
           <span className="hidden text-white/35 sm:inline">AUTO-CURATED NEWS DESK</span>
@@ -23,7 +27,7 @@ export function TopBar() {
             className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] font-medium text-white/55 hover:bg-white/10 hover:text-white"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
-            অ্যাডমিন কনসোল
+            ওয়েব অ্যাডমিন
           </Link>
           <Link
             href="/system"

@@ -50,7 +50,7 @@ const NODES = [
   { icon: "AppWindow", t: "ডেস্কটপ কালেক্টর", s: "PLAYWRIGHT SHOT" },
   { icon: "Fingerprint", t: "ডুপ্লিকেট গেট", s: "SHA-256 × SIMHASH" },
   { icon: "Sparkles", t: "পুনর্লিখন ডেস্ক", s: "LLM + FACT-GATE ০.৯০" },
-  { icon: "GitBranch", t: "AI engine কমিট", s: "CONTENT/*.JSON" },
+  { icon: "GitBranch", t: "AI ইঞ্জিন কমিট", s: "CONTENT/*.JSON" },
   { icon: "Triangle", t: "Web লাইভ", s: "ISR · ~৮ সে" },
 ];
 

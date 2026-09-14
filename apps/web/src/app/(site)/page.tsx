@@ -193,7 +193,7 @@ export default async function HomePage() {
         </section>
       )}
 
-      <section className="bg-night text-white">
+      <section className="bg-ink text-paper">
         <div className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
           <Reveal>
             <div className="flex flex-wrap items-end justify-between gap-4">
@@ -204,7 +204,7 @@ export default async function HomePage() {
               <h2 className="mt-2 font-serif-bn text-[30px] font-black md:text-[42px]">
                 ফিড থেকে লাইভ — ছয় ধাপ, <span className="text-lime">শূন্য ছোঁয়া।</span>
               </h2>
-              <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-white/50">
+              <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-paper/50">
                 আলোর বিন্দুটি রাস্তাটা দেখিয়ে দিচ্ছে — প্রতিটি রানে ডেটা ঠিক এই
                 পথ ধরে এগোয়: সোর্স থেকে শট, শট থেকে হ্যাশ, হ্যাশ পেরোলে লেখা,
                 লেখা শেষে সোজা প্রোডাকশনে।
@@ -253,7 +253,7 @@ export default async function HomePage() {
                 </h2>
                 <p className="mt-3 max-w-xl text-[13.5px] leading-relaxed text-ink-soft">
                   বামে: ফিডের কাঁচা অবস্থা — হুটোপাটো ক্যাপশন, বানান-ভুল, আধমাথা
-                  তথ্য। ডানে: হৈচৈ-র ফ্যাক্ট-গেট পার হওয়া পুনর্লিখন। হাতলটি ধরে
+                  তথ্য। ডানে: হৈচৈর ফ্যাক্ট-গেট পার হওয়া পুনর্লিখন। হাতলটি ধরে
                   টেনে নিজেই বিচার করুন।
                 </p>
               </div>
@@ -304,7 +304,7 @@ export default async function HomePage() {
           href="https://github.com/bugsfreeweb/Hoichoi/releases"
           target="_blank"
           rel="noreferrer"
-          className="group relative flex flex-col items-start justify-between gap-6 overflow-hidden border-[1.5px] border-white/10 bg-night p-7 text-white md:flex-row md:items-center md:p-10"
+          className="group relative flex flex-col items-start justify-between gap-6 overflow-hidden border-[1.5px] border-ink bg-ink p-7 text-paper md:flex-row md:items-center md:p-10"
         >
           <div className="drift pointer-events-none absolute -top-24 right-10 h-64 w-64 rounded-full bg-lime/10 blur-[80px]" />
           <div className="relative flex items-start gap-4">
@@ -320,7 +320,7 @@ export default async function HomePage() {
               <h3 className="mt-1 font-serif-bn text-[26px] font-black md:text-[32px]">
                 {BRAND.desk} খুলুন
               </h3>
-              <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-white/55">
+              <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-paper/55">
                 এই সাইটের প্রতিটি লাইনের পেছনে ওই একটাই ইঞ্জিন — ওয়াচলিস্ট,
                 কালেক্টর, ডুপ্লিকেট গেট, API ভল্ট ও দুই-ঘণ্টার ক্রন। ওয়েব শুধু
                 ছাপে; অ্যাপই চালায়।

@@ -13,18 +13,18 @@ function MegaphoneIcon({ size = 9 }: { size?: number }) {
   );
 }
 
-function TrendIcon({ size = 12 }: { size?: number }) {
+function TrendIcon({ size = 12, className = "" }: { size?: number; className?: string }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="M3 17l6-6 4 4 8-8" />
       <path d="M14 7h7v7" />
     </svg>
   );
 }
 
-function ClickIcon({ size = 12 }: { size?: number }) {
+function ClickIcon({ size = 12, className = "" }: { size?: number; className?: string }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
       <path d="M13 13l6 6" />
     </svg>
@@ -101,7 +101,7 @@ export function AdSlot({
   const body = (
     <>
       <div className="flex items-center gap-3">
-        <span className="flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-night bg-night text-[13px] font-black text-lime">
+        <span className="ad-chip flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-ink bg-ink text-[13px] font-black text-lime">
           {sponsor.slice(0, 1)}
         </span>
         <div className="text-left">
@@ -109,8 +109,8 @@ export function AdSlot({
           <p className="mt-0.5 text-[10.5px] text-ink-soft">{sub}</p>
         </div>
       </div>
-      <span className="flex items-center gap-2 bg-night px-3.5 py-2 text-[11px] font-bold whitespace-nowrap text-white">
-        {clicked ? <ClickIcon /> : <TrendIcon />}
+      <span className="flex items-center gap-2 bg-ink px-3.5 py-2 text-[11px] font-bold whitespace-nowrap text-paper">
+        {clicked ? <ClickIcon className="text-lime" /> : <TrendIcon className="text-lime" />}
         {clicked ? `ক্লিক #${bnNum(bump)} ✓` : "স্পনসর হোন"}
       </span>
     </>
@@ -165,20 +165,20 @@ export function AdSlot({
       {variant === "infeed" && (
         <div className="relative h-full min-h-[280px] border-[1.5px] border-dashed border-ink/45 bg-paper-deep/30 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-ink">
           <span className="absolute top-3 right-3">{chip}</span>
-          <span className="flex h-12 w-12 items-center justify-center rounded-full border-[1.5px] border-night bg-night text-[16px] font-black text-lime">
+          <span className="ad-chip flex h-12 w-12 items-center justify-center rounded-full border-[1.5px] border-ink bg-ink text-[16px] font-black text-lime">
             {sponsor.slice(0, 1)}
           </span>
           <p className="mt-6 font-serif-bn text-[19px] leading-snug font-extrabold text-ink">{headline}</p>
           <p className="mt-2 line-clamp-3 text-[12.5px] leading-relaxed text-ink-soft">{sub}</p>
-          <span className="mt-5 inline-flex items-center gap-2 bg-night px-4 py-2 text-[11.5px] font-bold text-white">
-            <TrendIcon />
+          <span className="mt-5 inline-flex items-center gap-2 bg-ink px-4 py-2 text-[11.5px] font-bold text-paper">
+            <TrendIcon className="text-lime" />
             {clicked ? `ক্লিক #${bnNum(bump)} ✓` : "বিস্তারিত"}
           </span>
         </div>
       )}
 
       {variant === "strip" && (
-        <div className="relative flex min-h-[64px] items-center justify-center gap-4 border border-dashed border-night/35 bg-night px-5 py-4 text-white transition-colors duration-300 hover:bg-panel">
+        <div className="relative flex min-h-[64px] items-center justify-center gap-4 border border-dashed border-ink/35 bg-ink px-5 py-4 text-paper transition-colors duration-300 hover:bg-[#241d12]">
           {body}
           <span className="absolute top-2 right-2 flex items-center gap-1 rounded-sm border border-paper/30 px-1.5 py-0.5 font-mono-x text-[8.5px] font-semibold tracking-[0.2em] text-paper/70 uppercase">
             <MegaphoneIcon /> AD

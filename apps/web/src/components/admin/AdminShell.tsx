@@ -48,25 +48,27 @@ export function AdminShell({ user, children }: { user: AdminUser; children: Reac
       </header>
 
       <div className="flex min-h-[calc(100dvh-3rem)]">
-        <aside className="w-[218px] shrink-0 border-r border-white/10 bg-[#0a0d12] py-6">
+        <aside className="w-60 shrink-0 border-r border-white/10 bg-[#0a0d12] py-6">
           <div className="px-5">
             <p className="font-mono-x text-[9.5px] tracking-[0.24em] text-white/35 uppercase">ADMIN</p>
             <div className="mt-3 flex items-center gap-3 border-b border-white/10 pb-4">
               <img src="/logo.png" alt="" className="h-9 w-9 rounded-lg object-cover ring-1 ring-white/20" />
               <div>
-                <p className="text-[13px] leading-tight font-bold text-white">হৈচৈ কন্ট্রো</p>
-                <p className="font-mono-x text-[8.5px] tracking-[0.16em] text-white/35 uppercase">LIVE CONSOLE</p>
+                <p className="text-[13px] leading-tight font-bold text-white">হৈচৈ কন্ট্রোল</p>
+                <p className="font-mono-x text-[8.5px] tracking-[0.16em] text-white/35 uppercase">WEB TWIN · DESK IS PRIMARY</p>
               </div>
             </div>
           </div>
-          <ul className="mt-4 space-y-0.5 px-3 font-sans-bn text-[13px] font-medium">
+          <nav className="mt-4 px-3">
+            <Link href="/admin/moderation" className="mb-3 flex items-center justify-between rounded-lg border border-lime/30 bg-lime/10 px-3 py-3 text-[13px] font-bold text-lime transition-colors hover:bg-lime/15">মন্তব্য মডারেশন <span>↗</span></Link>
+            <ul className="space-y-0.5 font-sans-bn text-[12.5px] font-medium">
             {NAV.map((n) => {
               const active = path === n.href || path.startsWith(`${n.href}/`);
               return (
                 <li key={n.href}>
                   <Link
                     href={n.href}
-                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 transition-colors ${
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
                       active
                         ? "bg-white text-night"
                         : "text-white/55 hover:bg-white/8 hover:text-white"
@@ -74,12 +76,13 @@ export function AdminShell({ user, children }: { user: AdminUser; children: Reac
                   >
                     <span className="text-[14px]">{n.emoji}</span>
                     <span className="flex-1">{n.label}</span>
-                    {active && <span className="h-1.5 w-1.5 rounded-full bg-lime" />}
+                    {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-alizarin" />}
                   </Link>
                 </li>
               );
             })}
           </ul>
+          </nav>
           <div className="mt-6 border-t border-white/10 px-5 pt-4">
             <p className="font-mono-x text-[8.5px] tracking-[0.18em] text-lime uppercase">● CONTROLLER ONLINE</p>
             <p className="mt-1 text-[10px] text-white/35">TURSO · VERCEL · EDGE</p>

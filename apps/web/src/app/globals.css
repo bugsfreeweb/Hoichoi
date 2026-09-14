@@ -177,6 +177,15 @@ body.grain::after {
   flex-shrink: 0;
 }
 
+/* Sponsor avatar chip: matches mockup bg-ink text-lime in the light (default)
+   theme, but keeps a dark background in dark mode so the lime letter stays readable. */
+.ad-chip {
+  background-color: var(--color-ink);
+}
+html[data-theme="dark"] .ad-chip {
+  background-color: #0a0c10;
+}
+
 .cat-dot {
   display: inline-block;
   width: 6px;
