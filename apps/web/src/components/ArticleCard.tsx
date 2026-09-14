@@ -34,7 +34,7 @@ export default function ArticleCard({ post, index }: ArticleCardProps) {
             <img
               src={post.media_path}
               alt={post.title_bn}
-              className="photo-grade h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="photo-grade h-full w-full object-cover"
             />
           ) : (
             <div className="flex h-full items-center justify-center px-6">

@@ -41,6 +41,10 @@ export default {
         45: "0.45",
         55: "0.55",
       },
+      spacing: {
+        18: "4.5rem",
+        34: "8.5rem",
+      },
       maxWidth: {
         site: "1400px",
       },

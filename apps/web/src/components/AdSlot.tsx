@@ -149,6 +149,7 @@ export function AdSlot({
     >
       {variant === "leaderboard" && (
         <div className="relative flex min-h-[90px] items-center justify-center gap-4 overflow-hidden border border-dashed border-ink/35 bg-paper-deep/40 px-5 py-6 transition-colors duration-300 hover:border-ink/60">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_42%,rgba(210,32,44,0.07)_50%,transparent_58%)] bg-[length:250%_100%] opacity-0 transition-opacity duration-500 group-hover:animate-[shine_2.4s_linear_infinite] group-hover:opacity-100" />
           {body}
           <span className="absolute top-2 right-2">{chip}</span>
         </div>
@@ -177,9 +178,9 @@ export function AdSlot({
       )}
 
       {variant === "strip" && (
-        <div className="relative flex min-h-[64px] items-center justify-center gap-4 border border-dashed border-white/15 bg-night px-5 py-4 text-white transition-colors duration-300 hover:bg-[#131a24]">
+        <div className="relative flex min-h-[64px] items-center justify-center gap-4 border border-dashed border-ink/35 bg-ink px-5 py-4 text-paper transition-colors duration-300 hover:bg-[#241d12]">
           {body}
-          <span className="absolute top-2 right-2 flex items-center gap-1 rounded-sm border border-white/25 px-1.5 py-0.5 font-mono-x text-[8.5px] font-semibold tracking-[0.2em] text-white/70 uppercase">
+          <span className="absolute top-2 right-2 flex items-center gap-1 rounded-sm border border-paper/30 px-1.5 py-0.5 font-mono-x text-[8.5px] font-semibold tracking-[0.2em] text-paper/70 uppercase">
             <MegaphoneIcon /> AD
           </span>
         </div>

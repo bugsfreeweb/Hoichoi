@@ -1,5 +1,4 @@
 import { Footer } from "@/components/Footer";
-import { Masthead } from "@/components/Masthead";
 import { BreakingTicker } from "@/components/BreakingTicker";
 import { TopBar } from "@/components/TopBar";
 import { getSettings } from "@/lib/settings";
@@ -14,14 +13,13 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-/** পাবলিক সাইট শেল — টপ বার, টিকার, ম্যাস্টহেড, ফুটার। */
+/** পাবলিক সাইট শেল — টপ বার, টিকার, ফুটার। */
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
   const settings = await getSettings();
   return (
     <div className="page-chrome">
       <TopBar />
       <BreakingTicker />
-      <Masthead settings={settings} />
       {children}
       <Footer settings={settings} />
     </div>
