@@ -118,6 +118,8 @@ export interface DeskSource {
   fb_id: string | null;
   topics: string[];
   category: string;
+  /** Multi-category membership via source_categories (authoritative). */
+  categories: string[];
   is_active: boolean;
   last_scraped_at: string | null;
   posts_today: number;

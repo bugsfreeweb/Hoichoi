@@ -319,23 +319,93 @@ html[data-theme="dark"] .ad-chip {
 }
 
 .headline-grad {
-  background: linear-gradient(
-    110deg,
-    #f3eee1 25%,
-    rgba(243, 238, 225, 0.72) 42%,
-    #c8f65d 50%,
-    rgba(243, 238, 225, 0.72) 58%,
-    #f3eee1 75%
+  padding: 16px 20px;
+  background-image: linear-gradient(
+    112deg,
+    #f3eee1 0%,
+    rgba(243, 238, 225, 0.74) 16%,
+    #c8f65d 31%,
+    #ffb454 41%,
+    #fa8b9b 49%,
+    #c8f65d 57%,
+    rgba(243, 238, 225, 0.74) 68%,
+    #f3eee1 84%
   );
-  background-size: 220% 100%;
+  background-size: 300% 100%;
+  background-position: 60% 0;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: shine 6s linear infinite;
+  animation:
+    headline-in 1.15s cubic-bezier(0.16, 1, 0.3, 1) both,
+    headline-shine 9.5s cubic-bezier(0.45, 0, 0.55, 1) 1.15s infinite,
+    headline-glow 6s ease-in-out 1.9s infinite;
+  will-change: transform, opacity, filter, background-position, letter-spacing;
+}
+@keyframes headline-in {
+  0% {
+    opacity: 0;
+    transform: translateY(0.18em) skewY(1.5deg) scale(0.965);
+    filter: blur(22px) saturate(1.6);
+    letter-spacing: 0.015em;
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(0) skewY(0.4deg) scale(1.01);
+    filter: blur(5px) saturate(1.18);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: blur(0) saturate(1);
+    letter-spacing: -0.01em;
+  }
+}
+@keyframes headline-shine {
+  0%,
+  16% {
+    background-position: 120% 0;
+  }
+  58%,
+  84% {
+    background-position: -120% 0;
+  }
+  100% {
+    background-position: -120% 0;
+  }
+}
+@keyframes headline-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 2px 6px rgba(200, 246, 93, 0));
+    letter-spacing: -0.01em;
+  }
+  32% {
+    letter-spacing: 0.002em;
+  }
+  50% {
+    filter: drop-shadow(0 16px 46px rgba(200, 246, 93, 0.34))
+      drop-shadow(0 4px 18px rgba(250, 139, 155, 0.2));
+  }
+  68% {
+    letter-spacing: -0.014em;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .headline-grad {
+    animation: none;
+    background-position: 50% 0;
+  }
 }
 @keyframes shine {
   to {
-    background-position: -220% 0;
+    background-position: -250% 0;
+  }
+}
+
+@media (min-width: 768px) {
+  .headline-grad {
+    padding: 25px 20px;
   }
 }
 

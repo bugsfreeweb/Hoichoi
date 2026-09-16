@@ -315,3 +315,18 @@ The example site uses **broader categories** (অপরাধ, শিশু স�
 3. **Hybrid: 4 broad public categories + 1 sensitive sub-category.** E.g. show "শিশু সুরক্ষা" publicly (covering missing-children, child safety tips, abuse awareness), but the most sensitive posts (sexual abuse specifically) get tagged internally as `child-sexual-abuse` and routed to double-approval + content warning. The double-approval applies to a sub-segment, not the whole category. This is the most flexible.
 
 I built option 1 into the prompt. If you want option 2 or 3, tell me and I'll restructure the schema and the editorial policy.
+
+---
+
+## 11. Post-mockup parity additions (latest batch)
+
+Implemented in `apps/web` + `apps/desktop` (mockup = read-only new spec):
+
+- **Home hero:** `.headline-grad` uses the mockup recipe — `padding 16px 20px → 25px 20px @md`, layered `headline-in` / `headline-shine` (background-position 120% → -120%) / `headline-glow` keyframes, with a `prefers-reduced-motion` reset. The hero chip reads "HOICHOI DATABASE". The `shine` keyframe (`background-position: -250%`) is shared with the AdSlot hover sheen (`bg-[length:250%_100%]`).
+- **Home category strip:** `categoriesWithCounts()` powers a "বিভাগসমূহ" section after Live Analytics — chips link to `/category/{slug}` with a `CATEGORY_TINT` dot and the published-post count in `bnNum`. Only categories having at least one published, non-archived post are shown.
+- **Rewrite slider:** FB-branded pill is hard-coded `#1877f2` (`bg-[#1877f2]`, not the `--color-fb` token whose dark theme flips to a pastel), the "A · কাঁচা ফিড" label is `mt-3`, and the band overlay is `p-8 md:p-12` (left panel matches so the clip seam lines up).
+- **Reader report form:** the post page `ReportForm` mirrors the mockup — collapsed header + fields `reporterName`/`reporterEmail`/`reason`/`details`, validates the shared `REPORT_REASONS` list (`apps/web/src/lib/report-reasons.ts`), posts to `/api/reports`. Never shown publicly; only the admin queue renders it.
+- **Comments section:** mockup parity — required email ("প্রকাশিত হয় না"), hidden `website` honeypot (server silently drops populated submissions with a 201), `৮০০`-char limit with live count, 10s polling + `visibilitychange` refresh (an `AbortController` + `retry` button on failure), `Array.from(author)[0]` avatar disc, "সম্পাদক অনুমোদিত" meta, and the "অনুমোদনের পর প্রকাশিত" pill. Comments keep the `/api/comments?postId=` endpoint; the DB gained a nullable `comments.email` column.
+- **Dark data band:** `--color-band #1a140d` / `--color-bandline #f3eee1` (post "তথ্য শৃঙ্খলা" band and rewrite-slider band read in both themes); web `:root` and desktop dark `:root` both carry them.
+- **Desktop `--ds-*` tokens:** `apps/desktop/src/index.css` aliases the desk console palette (`--ds-bg`, `--ds-panel`, `--ds-text`, `--ds-muted`, `--ds-border`, `--ds-ink`, `--ds-chip`, `--ds-watch`, `--ds-fb`) in both dark `:root` and `html[data-theme="light"]` so the Watchlist renders mockup-identical in either theme.
+- **Watchlist parity:** add-row offers per-category chips + "সব বিভাগ" (stores `source_categories` junction through the runner CLI's `--categories`), sources render their category sub-chips, dead sources (health `0`) show a red TriangleAlert pill, and the header uses the same `--ds-*` density as the mockup desk.

@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 
-const CATEGORIES = [
-  { value: "child-sexual-abuse", label: "শিশু যৌন নির্যাতন" },
-  { value: "extramarital-crime", label: "বৈবাহিক অপরাধ" },
-  { value: "missing-children", label: "নিখোঁজ শিশু" },
-];
+type CategoryOption = { slug: string; label: string };
 
-export function SourceForm() {
-  const [form, setForm] = useState({ pageUrl: "", pageName: "", category: "missing-children" as string });
+export function SourceForm({ categories }: { categories: CategoryOption[] }) {
+  const [form, setForm] = useState({
+    pageUrl: "",
+    pageName: "",
+    categories: [] as string[],
+    allCategories: false,
+  });
   const [status, setStatus] = useState<null | "ok" | "err" | "busy" | "denied">(null);
 
   const field = "mt-1 w-full border border-ink/30 bg-paper px-3 py-2 text-[13px] focus:outline-none focus:border-ink";
@@ -30,10 +31,20 @@ export function SourceForm() {
       }
       if (!res.ok) throw new Error(data.error ?? "failed");
       setStatus("ok");
-      setForm({ pageUrl: "", pageName: "", category: "missing-children" });
+      setForm({ pageUrl: "", pageName: "", categories: [], allCategories: false });
     } catch {
       setStatus("err");
     }
+  }
+
+  function toggleCategory(slug: string) {
+    setForm((f) => ({
+      ...f,
+      allCategories: false,
+      categories: f.categories.includes(slug)
+        ? f.categories.filter((c) => c !== slug)
+        : [...f.categories, slug],
+    }));
   }
 
   return (
@@ -57,16 +68,33 @@ export function SourceForm() {
           onChange={(e) => setForm({ ...form, pageName: e.target.value })}
         />
       </label>
-      <label className="block">
+      <fieldset className="block">
         <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">ক্যাটাগরি</span>
-        <select className={field} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-          {CATEGORIES.map((c) => (
-            <option key={c.value} value={c.value}>
+        <div className="mt-1 grid gap-1.5">
+          {categories.map((c) => (
+            <label key={c.slug} className="flex cursor-pointer items-center gap-2 border border-ink/20 bg-paper px-3 py-2 text-[12.5px] hover:border-ink/50">
+              <input
+                type="checkbox"
+                checked={form.categories.includes(c.slug)}
+                onChange={() => toggleCategory(c.slug)}
+                className="accent-ink"
+              />
               {c.label}
-            </option>
+            </label>
           ))}
-        </select>
-      </label>
+          <label className="flex cursor-pointer items-center gap-2 border border-ink/20 bg-paper-deep px-3 py-2 text-[12.5px] font-bold hover:border-ink/50">
+            <input
+              type="checkbox"
+              checked={form.allCategories}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, allCategories: e.target.checked, categories: [] }))
+              }
+              className="accent-ink"
+            />
+            সব বিভাগ
+          </label>
+        </div>
+      </fieldset>
       {status === "ok" && <p className="border border-cat-teal bg-cat-teal/10 px-3 py-2 text-[12.5px] font-bold text-ink">✓ যোগ হয়েছে।</p>}
       {status === "err" && <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">✗ যোগ করা যায়নি।</p>}
       {status === "denied" && <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">অনুমতি নেই — admin/editor প্রয়োজন।</p>}

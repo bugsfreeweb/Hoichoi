@@ -49,6 +49,39 @@
   --fb: "Noto Serif Bengali", Georgia, serif;
   --fl: "Space Grotesk", system-ui, sans-serif;
   --fm: "JetBrains Mono", ui-monospace, monospace;
+
+  /* mockup desk tokens (option-b watchlist parity) */
+  --ds-titlebar: #12161e;
+  --ds-menubar: #0e1219;
+  --ds-side: #0e1219;
+  --ds-main: #0c1017;
+  --ds-status: #0a0d12;
+  --ds-term: #07090d;
+  --ds-field: #0a0c10;
+  --ds-bd: rgba(255, 255, 255, 0.08);
+  --ds-bd-2: rgba(255, 255, 255, 0.12);
+  --ds-bd-15: rgba(255, 255, 255, 0.15);
+  --ds-row: rgba(255, 255, 255, 0.06);
+  --ds-t1: #ffffff;
+  --ds-t2: rgba(255, 255, 255, 0.85);
+  --ds-t3: rgba(255, 255, 255, 0.6);
+  --ds-t4: rgba(255, 255, 255, 0.45);
+  --ds-t5: rgba(255, 255, 255, 0.35);
+  --ds-t6: rgba(255, 255, 255, 0.25);
+  --ds-kb: rgba(255, 255, 255, 0.04);
+  --ds-kb8: rgba(255, 255, 255, 0.08);
+  --ds-kb10: rgba(255, 255, 255, 0.1);
+  --ds-active: #ffffff;
+  --ds-active-tx: #0a0c10;
+  --ds-acc: #c8f65d;
+  --ds-acc-soft: rgba(200, 246, 93, 0.15);
+  --ds-amber: #ffb454;
+  --ds-amber-soft: rgba(255, 180, 84, 0.15);
+  --ds-rose: #fb7185;
+  --ds-rose-soft: rgba(251, 113, 133, 0.15);
+  --ds-rose-bd: rgba(251, 113, 133, 0.4);
+  --ds-sky: #7dd3fc;
+  --ds-sky-soft: rgba(125, 211, 252, 0.12);
 }
 
 html[data-theme="light"] {
@@ -94,6 +127,39 @@ html[data-theme="light"] {
   --knob: #16110a;
   --bd-2: rgba(26, 20, 13, 0.16);
   --bd-3: rgba(26, 20, 13, 0.34);
+
+  /* mockup desk tokens (option-b watchlist parity) — light */
+  --ds-titlebar: #f6f3eb;
+  --ds-menubar: #f3f0e8;
+  --ds-side: #f3f0e8;
+  --ds-main: #f7f4ec;
+  --ds-status: #efeadf;
+  --ds-term: #f7f4ec;
+  --ds-field: #ffffff;
+  --ds-bd: rgba(26, 20, 13, 0.1);
+  --ds-bd-2: rgba(26, 20, 13, 0.16);
+  --ds-bd-15: rgba(26, 20, 13, 0.18);
+  --ds-row: rgba(26, 20, 13, 0.08);
+  --ds-t1: #16110a;
+  --ds-t2: rgba(26, 20, 13, 0.85);
+  --ds-t3: rgba(26, 20, 13, 0.62);
+  --ds-t4: rgba(26, 20, 13, 0.5);
+  --ds-t5: rgba(26, 20, 13, 0.4);
+  --ds-t6: rgba(26, 20, 13, 0.3);
+  --ds-kb: rgba(26, 20, 13, 0.05);
+  --ds-kb8: rgba(26, 20, 13, 0.09);
+  --ds-kb10: rgba(26, 20, 13, 0.12);
+  --ds-active: #16110a;
+  --ds-active-tx: #fbfaf5;
+  --ds-acc: #5f8f0e;
+  --ds-acc-soft: rgba(95, 143, 14, 0.14);
+  --ds-amber: #b45309;
+  --ds-amber-soft: rgba(180, 83, 9, 0.14);
+  --ds-rose: #be123c;
+  --ds-rose-soft: rgba(190, 18, 60, 0.12);
+  --ds-rose-bd: rgba(190, 18, 60, 0.45);
+  --ds-sky: #1d4ed8;
+  --ds-sky-soft: rgba(29, 78, 216, 0.12);
 }
 
 html,

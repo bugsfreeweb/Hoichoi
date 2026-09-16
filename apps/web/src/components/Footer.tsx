@@ -2,7 +2,7 @@ import Link from "next/link";
 import { toBn, CATEGORY_LABEL } from "@/lib/format";
 import { BRAND } from "@/lib/brand";
 
-export function Footer({ context = "OPTION B HOME" }: { context?: string }) {
+export function Footer() {
   return (
     <footer className="page-chrome border-t-2 border-ink">
       <div className="mx-auto max-w-[1400px] px-4 py-12 md:px-8">
@@ -63,7 +63,7 @@ export function Footer({ context = "OPTION B HOME" }: { context?: string }) {
         </div>
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-ink/15 pt-6 font-mono-x text-[10px] tracking-[0.16em] text-ink-soft uppercase">
           <span>
-            © {toBn(2026)} {BRAND.en} DESK · {context} · BUILD 3.2
+            © {toBn(2026)} {BRAND.en} DESK · BUILD 3.2
           </span>
           <span className="flex items-center gap-4">
             <Link href="/about">সম্পর্কে</Link>

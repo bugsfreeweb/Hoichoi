@@ -13,6 +13,12 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   if (body) {
     const sets: string[] = ["updated_at = ?"];
     const args: InValue[] = [nowIso()];
+    let apiKey: string | null | undefined;
+    if (typeof body.api_key === "string") apiKey = body.api_key.trim() || null;
+    if ("api_key" in body) {
+      sets.push("api_key = ?");
+      args.push((apiKey ?? null) as InValue);
+    }
     const fields: Record<string, unknown> = {
       is_active: body.is_active,
       priority: body.priority,

@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { windowPosts } from "@hoichoi/db";
-import { getCategories } from "@/lib/categories-server";
+import { windowPosts, categoriesWithCounts } from "@hoichoi/db";
 import { ScrollProgress } from "@/components/ScrollProgress";
 import Hero from "@/components/home/Hero";
 import LiveAnalytics from "@/components/home/live-analytics";
@@ -19,9 +18,9 @@ import { BRAND } from "@/lib/brand";
 export const revalidate = 300;
 
 export default async function HomePage() {
-  const [posts, cats, settings] = await Promise.all([
+  const [posts, catStats, settings] = await Promise.all([
     windowPosts({ limit: 30 }),
-    getCategories(),
+    categoriesWithCounts(),
     getSettings(),
   ]);
   const featured = posts[0] ?? null;
@@ -46,6 +45,37 @@ export default async function HomePage() {
       </div>
 
       <LiveAnalytics />
+
+      <section className="border-y border-ink/15 bg-paper-deep/40">
+        <div className="mx-auto max-w-[1400px] px-4 py-7 md:px-8">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="mr-1 font-mono-x text-[10px] tracking-[0.28em] text-ink-soft uppercase">
+              ▚ বিভাগসমূহ
+            </span>
+            {catStats.map(({ category, count }) => (
+              <Link
+                key={category.slug}
+                href={`/category/${category.slug}`}
+                className="group flex items-center gap-2 border border-ink/20 bg-paper px-3.5 py-1.5 text-[12.5px] font-bold text-ink transition-all duration-300 hover:border-ink hover:bg-ink hover:text-paper"
+              >
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ background: CATEGORY_TINT[category.slug] ?? "#d2202c" }}
+                />
+                {category.displayNameBn}
+                <span className="font-mono-x text-[9.5px] font-medium text-ink-soft group-hover:text-paper/60">
+                  {bnNum(count)}
+                </span>
+              </Link>
+            ))}
+            {catStats.length === 0 && (
+              <span className="text-[12px] text-ink-soft">
+                কোনো প্রকাশিত বিভাগ নেই।
+              </span>
+            )}
+          </div>
+        </div>
+      </section>
 
       {featured && (
         <section className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">

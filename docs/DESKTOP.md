@@ -261,7 +261,14 @@ The desktop UI mirrors the `mockup/` desk controller exactly:
   overflow-auto`); Vault and Settings got root scroll containers too.
 - **Watchlist** — real source CRUD against the runner
   (`sources list|add|toggle|remove`), search + kind filter + add form, health bars,
-  watching/paused states (`screens/Watchlist.tsx`).
+  watching/paused states (`screens/Watchlist.tsx`). The add row offers **per-category
+  chips + "সব বিভাগ"** (stored through the runner CLI's `--categories` into the
+  `source_categories` junction, returned by `sources list` thanks to a new
+  `GROUP_CONCAT` category subquery), each source renders its category sub-chips,
+  dead sources (health `0`) show a red TriangleAlert pill, and the whole screen
+  uses the `--ds-*` desk palette aliases in `apps/desktop/src/index.css` (defined
+  for dark `:root` **and** `html[data-theme="light"]`) so it is mockup-identical
+  in both themes.
 - **Queue** — live status tabs (সব / প্রকাশিত / অপেক্ষমান / ডুপ্লিকেট) with real
   counts and a "view on site" link (`screens/Queue.tsx`).
 - **Collector** — live stdout log (mockup log colors via `log-ok`/`log-warn`/

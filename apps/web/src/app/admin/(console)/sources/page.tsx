@@ -1,4 +1,4 @@
-import { getClient, mapSource } from "@hoichoi/db";
+import { getClient, mapSource, getSourceCategories, listCategories } from "@hoichoi/db";
 import type { Source } from "@hoichoi/shared-types";
 import { SourceForm } from "@/components/admin/SourceForm";
 import { SourceRow } from "@/components/admin/SourceRow";
@@ -8,7 +8,11 @@ export const dynamic = "force-dynamic";
 export default async function AdminSourcesPage() {
   const client = getClient();
   const res = await client.execute("SELECT * FROM sources ORDER BY created_at DESC");
-  const sources = res.rows.map((r) => mapSource(r as Record<string, unknown>));
+  const rows = res.rows as Record<string, unknown>[];
+  const sources: Source[] = await Promise.all(
+    rows.map(async (r) => mapSource(r, await getSourceCategories(String(r.id)))),
+  );
+  const cats = await listCategories();
 
   return (
     <div>
@@ -18,7 +22,7 @@ export default async function AdminSourcesPage() {
           <h3 className="font-sans-bn text-[15px] font-bold text-ink">নতুন সোর্স যোগ</h3>
           <p className="mt-1 text-[12px] text-ink-soft">শুধু পাবলিক পেজ/গ্রুপ — ব্যক্তিগত প্রোফাইল নয়।</p>
           <div className="mt-4">
-            <SourceForm />
+            <SourceForm categories={cats.map((c) => ({ slug: c.slug, label: c.displayNameBn }))} />
           </div>
         </div>
         <div className="space-y-2.5">

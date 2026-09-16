@@ -161,8 +161,14 @@ pnpm --filter @hoichoi/web build
   the "one link" rule.
 - **Admin console shell** — `/admin/*` renders inside a persistent `AdminShell`
   sidebar (dashboard, sources, moderation, providers, submissions, removals,
-  settings, archive, logs, posts, backup, categories). `/admin` is the dashboard
-  home with live stat tiles; the shell mirrors the desktop desk chrome.
+  reports, settings, archive, logs, posts, backup, categories). `/admin` is the
+  dashboard home with live stat tiles; the shell mirrors the desktop desk chrome.
+  Reader reports from `/api/reports` (public post) land in the `/admin/reports`
+  queue with open → reviewed/dismissed transitions.
+- **Public report + comments parity** — the post page uses the mockup reader
+  report form (nobody but the admin queue sees it) and the mockup comments block;
+  the `/api/reports` route validates the shared `REPORT_REASONS` list; `/api/comments`
+  accepts an optional mandatory email and drops honeypot-filled submissions.
 - **Desk preview (`/desk`)** — `apps/web/src/app/desk/page.tsx` renders the
   desk-console chrome (`DeskShell` with the `--ds-*` desk palette) as an
   in-browser preview of the Tauri desktop app. It is linked from the TopBar nav,

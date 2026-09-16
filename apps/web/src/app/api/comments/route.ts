@@ -36,8 +36,9 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * POST /api/comments  { postId, author, body }
+ * POST /api/comments  { postId, author, body, email?, website? }
  * Public — a new comment always lands in the moderation queue (status = pending).
+ * `website` is a honeypot: any value means an automated bot → silently dropped.
  */
 export async function POST(req: Request) {
   let payload: unknown;
@@ -46,27 +47,40 @@ export async function POST(req: Request) {
   } catch {
     return bad();
   }
-  const { postId, author, body } = (payload ?? {}) as {
+  const { postId, author, body, email, website } = (payload ?? {}) as {
     postId?: unknown;
     author?: unknown;
     body?: unknown;
+    email?: unknown;
+    website?: unknown;
   };
   const ref = typeof postId === "string" ? postId.trim() : "";
   const authorStr = typeof author === "string" ? author.trim() : "";
   const bodyStr = typeof body === "string" ? body.trim() : "";
+  const emailStr = typeof email === "string" ? email.trim() : "";
+  const honeypot = typeof website === "string" ? website.trim() : "";
 
-  if (!ref || authorStr.length < 2 || authorStr.length > 60 || bodyStr.length < 2 || bodyStr.length > 1200) {
+  if (!ref || authorStr.length < 2 || authorStr.length > 60 || bodyStr.length < 2 || bodyStr.length > 800) {
     return bad("নাম/মন্তব্য খুব ছোট বা খুব দীর্ঘ");
   }
+  if (emailStr.length > 120) return bad("ইমেইল খুব দীর্ঘ");
 
   const post = await getPostById(ref);
   if (!post) {
     return NextResponse.json({ ok: false, error: "প্রতিবেদন পাওয়া যায়নি" }, { status: 404 });
   }
 
+  // Honeypot trip → pretend success, persist nothing.
+  if (honeypot) {
+    return NextResponse.json({ ok: true, message: "মন্তব্য জমা হয়েছে।" }, { status: 201 });
+  }
+
   try {
-    const comment = await createComment({ postId: post.id, author: authorStr, body: bodyStr });
-    return NextResponse.json({ ok: true, comment }, { status: 201 });
+    const comment = await createComment({ postId: post.id, author: authorStr, body: bodyStr, email: emailStr || null });
+    return NextResponse.json(
+      { ok: true, comment, message: "আপনার মন্তব্য সম্পাদকীয় পর্যালোচনায় গেছে — অনুমোদনের পর প্রকাশিত হবে।" },
+      { status: 201 },
+    );
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : "Insert failed" },

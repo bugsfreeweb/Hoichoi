@@ -213,6 +213,9 @@ export async function ensureSchema(client: Client): Promise<void> {
   await ensureBrandingColumns(client);
   await ensureAdSlotColumns(client);
   await ensureCommentsTable(client);
+  await ensureCommentsEmailColumn(client);
+  await ensureProviderApiKeyColumn(client);
+  await ensureReaderReportsTable(client);
   await ensureAdminLoginCodesTable(client);
   await ensureDeskColumns(client);
   await seedDefaults(client, nowIso());
@@ -236,5 +239,42 @@ CREATE TABLE IF NOT EXISTS comments (
 );
 CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);
 CREATE INDEX IF NOT EXISTS idx_comments_status ON comments(status);
+  `);
+}
+
+/** Adds comments.email (public form) to older databases. Idempotent. */
+export async function ensureCommentsEmailColumn(client: Client): Promise<void> {
+  const info = await client.execute("PRAGMA table_info(comments)");
+  const existing = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));
+  if (!existing.has("email")) {
+    await client.execute("ALTER TABLE comments ADD COLUMN email TEXT");
+  }
+}
+
+/** Adds llm_providers.api_key (admin-entered override). Idempotent. */
+export async function ensureProviderApiKeyColumn(client: Client): Promise<void> {
+  const info = await client.execute("PRAGMA table_info(llm_providers)");
+  const existing = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));
+  if (!existing.has("api_key")) {
+    await client.execute("ALTER TABLE llm_providers ADD COLUMN api_key TEXT");
+  }
+}
+
+/** Reader report queue (public form → admin). Idempotent. */
+export async function ensureReaderReportsTable(client: Client): Promise<void> {
+  await client.executeMultiple(`
+CREATE TABLE IF NOT EXISTS reader_reports (
+  id TEXT PRIMARY KEY,
+  post_id TEXT REFERENCES posts(id) ON DELETE CASCADE,
+  reporter_name TEXT NOT NULL,
+  reporter_email TEXT,
+  reason TEXT NOT NULL,
+  details TEXT,
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','reviewed','dismissed')),
+  created_at TEXT NOT NULL,
+  reviewed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_reader_reports_status ON reader_reports (status, created_at);
+CREATE INDEX IF NOT EXISTS idx_reader_reports_post ON reader_reports (post_id);
   `);
 }

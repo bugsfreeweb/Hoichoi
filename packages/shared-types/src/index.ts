@@ -160,6 +160,9 @@ export interface LLMProviderRow {
   base_url: string | null;
   model_name: string;
   api_key_env_var: string;
+  /** Optional admin-entered key stored in the DB row. When set it takes
+   *  precedence over the Stronghold/env resolution (edit-time override). */
+  api_key?: string | null;
   priority: number;
   is_active: boolean;
   is_free_tier: boolean;
@@ -189,6 +192,28 @@ export interface RemovalRequest {
   reporter_email: string | null;
   status: "open" | "reviewed" | "actioned";
   created_at: string;
+}
+
+/** Reader report on a published post (reports table = hoichoi_reports in mockup). */
+export type ReaderReportStatus = "open" | "reviewed" | "dismissed";
+
+export interface ReaderReport {
+  id: string;
+  post_id: string;
+  reporter_name: string;
+  reporter_email: string | null;
+  reason: string;
+  details: string | null;
+  status: ReaderReportStatus;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
+/** A report joined with its parent post (admin queue). */
+export interface ReaderReportWithPost extends ReaderReport {
+  postTitle: string | null;
+  postSlug: string | null;
+  postCategory: string | null;
 }
 
 export type AdminRole = "admin" | "editor" | "moderator";
@@ -331,6 +356,8 @@ export interface Comment {
   post_id: string;
   author: string;
   body: string;
+  /** Optional — collected on the public form, never shown publicly. */
+  email?: string | null;
   likes: number;
   status: CommentStatus;
   created_at: string;

@@ -9,7 +9,7 @@ import { bnDate, bnTime, CATEGORY_TINT, CATEGORY_LABEL } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
 import { CaseStatusBadge } from "@/components/CaseStatusBadge";
 import { ContentWarningGate } from "@/components/ContentWarningGate";
-import { ReportButton } from "@/components/ReportButton";
+import { ReportForm } from "@/components/ReportForm";
 import { PostCard } from "@/components/PostCard";
 import { CommentsSection } from "@/components/CommentsSection";
 import { AdSlot } from "@/components/AdSlot";
@@ -358,7 +358,7 @@ function PostContent({
         </aside>
       </div>
 
-      <ReportButton slug={post!.slug} />
+      <ReportForm postId={post!.id} />
       <CommentsSection postId={post!.id} initial={initialComments} />
 
       {/* related */}
@@ -369,7 +369,7 @@ function PostContent({
               একই বিভাগে আরও
             </h2>
             <Link
-              href="/"
+              href={`/category/${post!.category}`}
               className="group flex items-center gap-2 text-[12.5px] font-bold text-ink"
             >
               সব দেখুন

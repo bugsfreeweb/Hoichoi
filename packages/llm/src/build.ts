@@ -9,7 +9,7 @@ import type { LLMProvider } from "./types";
 export type KeyStore = (keyName: string) => string | null;
 
 export function buildProvider(row: LLMProviderRow, keyStore: KeyStore): LLMProvider {
-  const key = keyStore(row.api_key_env_var) ?? process.env[row.api_key_env_var] ?? null;
+  const key = row.api_key ?? keyStore(row.api_key_env_var) ?? process.env[row.api_key_env_var] ?? null;
 
   switch (row.provider_key) {
     case "google":

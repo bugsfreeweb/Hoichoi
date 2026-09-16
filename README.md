@@ -8,8 +8,8 @@ window. Every post is archived or purged by policy.
 Live site: <https://hoichoifeed.vercel.app> · Source: <https://github.com/bugsfreeweb/Hoichoi> (private)
 
 ```
-Web (apps/web)      Next.js 15 public site (SSR feed, /sitemap, OG images) + admin shell,
-                      /desk preview, live /api/stats
+Web (apps/web)      Next.js 15 public site (SSR feed, /sitemap, OG images) + admin shell
+                      (/moderation, /reports queue, /providers), /desk preview, live /api/stats
 Scraper             Collection pipeline: scrape → dedup → rewrite → moderate → publish
 Desktop (apps/desktop)  Tauri 2 desktop admin + local collector controller
 DB/LLM/Types        packages/db (Turso/libSQL), packages/llm (multi-provider resolver), shared-types
@@ -63,6 +63,12 @@ Copy `.env.example` → `.env`. Key ones:
 | `GOOGLE_API_KEY` `GROQ_API_KEY` `OPENROUTER_API_KEY` `OLLAMA_BASE_URL` … | LLM resolver keys |
 | `FB_SESSION_COOKIE` | Optional `c_user`/`xs` cookie for logged-in Facebook scraping |
 | `ARCHIVE_VISIBLE_DAYS` `ARCHIVE_RETENTION_DAYS` | Rolling policy |
+
+Provider keys can also be registered per-provider from the admin `AI প্রোভাইডার`
+page: an optional **API key override** is stored on the `llm_providers` row
+(takes precedence over vault/env) and the **⚡ মডেল অটো-ফেচ** button pulls the
+provider's `/v1/models` list (OpenRouter auto-filtered to free models) so you can
+pick without hand-typing.
 
 ## Deployments
 

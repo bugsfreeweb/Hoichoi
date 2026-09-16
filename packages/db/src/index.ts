@@ -22,6 +22,9 @@ import type {
   CurrentWindowPost,
   Post,
   PostStatus,
+  ReaderReport,
+  ReaderReportStatus,
+  ReaderReportWithPost,
   SiteSettings,
   StatsSnapshot,
 } from "@hoichoi/shared-types";
@@ -139,6 +142,31 @@ export async function getCategory(slug: string): Promise<CategoryMeta | null> {
   });
   if (res.rows.length === 0) return null;
   return mapCategory(res.rows[0] as Record<string, unknown>);
+}
+
+/** Active categories with a live published-post count — drives the public
+ *  home-page category strip (a category only appears when it has content). */
+export async function categoriesWithCounts(): Promise<Array<{ category: CategoryMeta; count: number }>> {
+  const client = getClient();
+  const cats = await listCategories();
+  if (cats.length === 0) return [];
+  const placeholders = cats.map(() => "?").join(",");
+  const res = await client.execute({
+    sql: `SELECT category, COUNT(*) AS n FROM posts
+          WHERE status = 'published' AND archived_at IS NULL
+            AND category IN (${placeholders})
+          GROUP BY category`,
+    args: cats.map((c) => c.slug),
+  });
+  const counts = new Map(
+    res.rows.map((r) => [
+      String((r as Record<string, unknown>).category),
+      Number((r as Record<string, unknown>).n),
+    ]),
+  );
+  return cats
+    .map((category) => ({ category, count: counts.get(category.slug) ?? 0 }))
+    .filter((c) => c.count > 0);
 }
 
 /** Create a new category (admin). */
@@ -762,6 +790,7 @@ function mapComment(row: Record<string, unknown>): Comment {
     post_id: String(row.post_id),
     author: String(row.author),
     body: String(row.body),
+    email: row.email ? String(row.email) : null,
     likes: Number(row.likes ?? 0),
     status: (String(row.status ?? "pending") as CommentStatus),
     created_at: String(row.created_at),
@@ -802,19 +831,21 @@ export async function createComment(input: {
   postId: string;
   author: string;
   body: string;
+  email?: string | null;
 }): Promise<Comment> {
   const client = getClient();
   const id = crypto.randomUUID();
   const created = nowIso();
   await client.execute({
-    sql: "INSERT INTO comments (id, post_id, author, body, likes, status, created_at) VALUES (?, ?, ?, ?, 0, 'pending', ?)",
-    args: [id, input.postId, input.author.trim(), input.body.trim(), created],
+    sql: "INSERT INTO comments (id, post_id, author, body, email, likes, status, created_at) VALUES (?, ?, ?, ?, ?, 0, 'pending', ?)",
+    args: [id, input.postId, input.author.trim(), input.body.trim(), input.email?.trim() || null, created],
   });
   return {
     id,
     post_id: input.postId,
     author: input.author.trim(),
     body: input.body.trim(),
+    email: input.email?.trim() || null,
     likes: 0,
     status: "pending",
     created_at: created,
@@ -840,6 +871,92 @@ export async function deleteComment(id: string): Promise<void> {
 }
 
 /* ------------------------------------------------------------------ *
+ * Reader reports (public report form → admin queue)
+ * ------------------------------------------------------------------ */
+
+function mapReport(row: Record<string, unknown>): ReaderReport {
+  return {
+    id: String(row.id),
+    post_id: String(row.post_id),
+    reporter_name: String(row.reporter_name),
+    reporter_email: (row.reporter_email as string | null) ?? null,
+    reason: String(row.reason),
+    details: (row.details as string | null) ?? null,
+    status: (String(row.status ?? "open") as ReaderReportStatus),
+    created_at: String(row.created_at),
+    reviewed_at: (row.reviewed_at as string | null) ?? null,
+  };
+}
+
+/** New reader report lands in the queue (status = open). */
+export async function createReaderReport(input: {
+  postId: string;
+  reporterName: string;
+  reporterEmail?: string;
+  reason: string;
+  details?: string;
+}): Promise<ReaderReport> {
+  const client = getClient();
+  const id = crypto.randomUUID();
+  const created = nowIso();
+  await client.execute({
+    sql: "INSERT INTO reader_reports (id, post_id, reporter_name, reporter_email, reason, details, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'open', ?)",
+    args: [
+      id,
+      input.postId,
+      input.reporterName.trim(),
+      input.reporterEmail?.trim() || null,
+      input.reason,
+      input.details?.trim() || null,
+      created,
+    ],
+  });
+  return {
+    id,
+    post_id: input.postId,
+    reporter_name: input.reporterName.trim(),
+    reporter_email: input.reporterEmail?.trim() || null,
+    reason: input.reason,
+    details: input.details?.trim() || null,
+    status: "open",
+    created_at: created,
+    reviewed_at: null,
+  };
+}
+
+/** Admin queue — reports joined with parent post, newest first. */
+export async function listReaderReports(limit = 200): Promise<ReaderReportWithPost[]> {
+  const client = getClient();
+  const res = await client.execute({
+    sql: `SELECT r.*, p.title_bn AS postTitle, p.slug AS postSlug, p.category AS postCategory
+          FROM reader_reports r LEFT JOIN posts p ON p.id = r.post_id
+          ORDER BY r.created_at DESC LIMIT ?`,
+    args: [limit],
+  });
+  return res.rows.map((r) => {
+    const row = r as Record<string, unknown>;
+    return {
+      ...mapReport(row),
+      postTitle: (row.postTitle as string | null) ?? null,
+      postSlug: (row.postSlug as string | null) ?? null,
+      postCategory: (row.postCategory as string | null) ?? null,
+    };
+  });
+}
+
+/** Move a report to reviewed/dismissed (admin). */
+export async function setReaderReportStatus(
+  id: string,
+  status: "reviewed" | "dismissed",
+): Promise<void> {
+  const client = getClient();
+  await client.execute({
+    sql: "UPDATE reader_reports SET status = ?, reviewed_at = ? WHERE id = ?",
+    args: [status, nowIso(), id],
+  });
+}
+
+/* ------------------------------------------------------------------ *
  * Bi-directional Sync (local file DB ↔ cloud Turso)
  * ------------------------------------------------------------------ */
 
@@ -857,6 +974,7 @@ const SYNC_TABLES = [
   "admin_sessions",
   "pipeline_runs",
   "removal_requests",
+  "reader_reports",
   "admin_actions",
   "comments",
   "redaction_blocklist",

@@ -58,7 +58,7 @@ export default function Hero({
               </span>
               {live?.error ? "সংযোগ বিচ্ছিন্ন" : live?.paused ? "আপডেট বিরতিতে" : live?.data ? "লাইভ ডেটা সংযুক্ত" : "ডেটা যাচাই চলছে"}
             </span>
-            {["HOICHOI NEWSROOM", "TURSO DATABASE", "HUMAN REVIEW"].map((c) => (
+            {["HOICHOI NEWSROOM", "HOICHOI DATABASE", "HUMAN REVIEW"].map((c) => (
               <span
                 key={c}
                 className="rounded-full border border-white/12 bg-white/[0.04] px-3 py-1 font-mono-x text-[9.5px] tracking-[0.18em] text-white/50 uppercase"

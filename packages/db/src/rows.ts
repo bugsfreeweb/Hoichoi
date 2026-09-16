@@ -33,13 +33,13 @@ function rowDates<T extends { created_at?: string }>(row: T): T {
   return row;
 }
 
-export function mapSource(row: Record<string, unknown>): Source {
+export function mapSource(row: Record<string, unknown>, categories?: CategorySlug[]): Source {
   return {
     id: String(row.id),
     page_url: String(row.page_url),
     page_name: String(row.page_name),
     category: row.category as CategorySlug,
-    categories: [], // Will be populated via source_categories join
+    categories: categories ?? [], // Populated via source_categories join by callers
     is_verified: yesNo(row.is_verified),
     is_active: yesNo(row.is_active),
     last_scraped_at: (row.last_scraped_at as string | null) ?? null,
@@ -117,6 +117,7 @@ export function mapProvider(row: Record<string, unknown>): LLMProviderRow {
     base_url: (row.base_url as string | null) ?? null,
     model_name: String(row.model_name),
     api_key_env_var: String(row.api_key_env_var),
+    api_key: (row.api_key as string | null | undefined) ?? null,
     priority: Number(row.priority),
     is_active: yesNo(row.is_active),
     is_free_tier: yesNo(row.is_free_tier),

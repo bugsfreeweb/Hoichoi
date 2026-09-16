@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
     baseUrl?: string;
     modelName?: string;
     apiKeyEnvVar?: string;
+    api_key?: string;
     priority?: number;
     isFreeTier?: boolean;
     supportsRewrite?: boolean;
@@ -34,9 +35,9 @@ export async function POST(req: NextRequest) {
   await client.execute({
     sql: `
       INSERT INTO llm_providers (
-        id, provider_key, display_name, base_url, model_name, api_key_env_var,
+        id, provider_key, display_name, base_url, model_name, api_key_env_var, api_key,
         priority, is_active, is_free_tier, supports_rewrite, supports_embeddings, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
     `,
     args: [
       crypto.randomUUID(),
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest) {
       body.baseUrl?.trim() || null,
       body.modelName,
       body.apiKeyEnvVar?.trim() || `${body.providerKey.toUpperCase().replace(/-/g, "_")}_API_KEY`,
+      body.api_key?.trim() || null,
       Number(body.priority ?? 100),
       body.isFreeTier ? 1 : 0,
       body.supportsRewrite ?? 1,

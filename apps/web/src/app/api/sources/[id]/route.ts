@@ -36,6 +36,20 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         args,
       });
     }
+    if (Array.isArray(body.categories) || body.allCategories === true) {
+      const { listCategories } = await import("@hoichoi/db");
+      const active = (await listCategories()).map((c) => c.slug);
+      const next = body.allCategories === true
+        ? active
+        : (body.categories as string[]).filter((c) => active.includes(c));
+      // Replace source_categories membership.
+      await client.execute({ sql: "DELETE FROM source_categories WHERE source_id = ?", args: [id] });
+      if (next.length > 0) {
+        const values = next.map(() => "(?, ?)").join(", ");
+        const args2 = next.flatMap((slug: string) => [id, slug]);
+        await client.execute({ sql: `INSERT INTO source_categories (source_id, category_slug) VALUES ${values}`, args: args2 });
+      }
+    }
   }
   await client.execute({
     sql: "INSERT INTO admin_actions (id, admin_user_id, action, target_table, target_id, created_at) VALUES (?, ?, ?, 'sources', ?, ?)",

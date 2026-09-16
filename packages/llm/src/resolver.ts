@@ -92,8 +92,7 @@ export class Resolver {
   }
 
   private resolveKey(row: LLMProviderRow): string | null {
-    const fromStore = this.opts.keyStore?.(row.api_key_env_var);
-    return fromStore ?? process.env[row.api_key_env_var] ?? null;
+    return row.api_key ?? this.opts.keyStore?.(row.api_key_env_var) ?? process.env[row.api_key_env_var] ?? null;
   }
 
   private isCoolingDown(id: string): boolean {

@@ -34,9 +34,13 @@ export function SourceRow({ source }: { source: Source }) {
         <p className="truncate font-mono-x text-[11px] text-ink-soft">{source.page_url}</p>
       </div>
       <div className="flex items-center gap-3">
-        <span className="rounded-full border border-ink/20 px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
-          {source.category}
-        </span>
+        <div className="flex max-w-[280px] flex-wrap items-center justify-end gap-1">
+          {(source.categories.length ? source.categories : [source.category]).map((c) => (
+            <span key={c} className="rounded-full border border-ink/20 px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+              {c}
+            </span>
+          ))}
+        </div>
         <Tag active={verified} onClick={() => patch({ is_verified: !verified })} busy={busy} label="Verified" />
         <Tag active={active} onClick={() => patch({ is_active: !active })} busy={busy} label={active ? "Active" : "Paused"} />
       </div>

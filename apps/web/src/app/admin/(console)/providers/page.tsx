@@ -26,8 +26,8 @@ export default async function AdminProvidersPage() {
     <div>
       <PageHeading emoji="🤖" kicker="FREE-TIER FIRST RESOLVER" title="AI প্রোভাইডার" />
       <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-ink-soft">
-        ক্রম অনুযায়ী fallback: Google Gemini → Groq → OpenRouter :free → Ollama (local) → paid। চাবি কখনো ডাটাবেজে
-        সংরক্ষিত হয় না — শুধু পরিবেশ ভেরিয়েবলের নাম।
+        ক্রম অনুযায়ী fallback: Google Gemini → Groq → OpenRouter :free → Ollama (local) → paid। চাবি ডিফল্টে
+        Stronghold/vault/env-এ থাকে; একটি প্রোভাইডারের জন্য আলাদা API key দিলে সেটি override হিসেবে সংরক্ষিত হয় (vault/env অপরাজিত)।
       </p>
       <div className="mt-6 grid gap-8 lg:grid-cols-[320px_1fr]">
         <div className="border border-ink/20 bg-paper-deep p-5">

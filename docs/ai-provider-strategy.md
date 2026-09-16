@@ -123,6 +123,27 @@ The custom slot just needs: base URL (e.g. `https://api.together.xyz/v1`), model
 
 ---
 
+## Where keys live: vault/env (default) vs per-provider override
+
+By default **no key is ever stored in the database**. The resolver resolves in this precedence order:
+
+1. `llm_providers.api_key` — an **optional** admin-entered override stored on the row (only if you explicitly type one in the admin Provider form).
+2. Stronghold/AES vault on desktop (`keyStore`), keyed by `api_key_env_var`.
+3. `process.env[api_key_env_var]` (web hosts, CI, self-hosted).
+
+This lets a hosted Vercel web twin work with a per-provider key in the DB **without** exposing it in env config, while the desktop keeps its sealed vault as the primary mechanism (see the "Keys encrypted" panel in AdminShell). The same precedence applies in `packages/llm` `buildProvider` and `Resolver.resolveKey`.
+
+## Auto-fetching free models
+
+The admin **Provider** form (web) has an "⚡ মডেল তালিকা অটো-ফেচ করুন" button that calls `POST /api/providers/models` (admin-only, server-side):
+
+- OpenAI-compatible providers: `${base_url}/v1/models` with the typed key as `Authorization: Bearer` (Ollama sends none).
+- Google: `${base_url}/v1beta/models?key=…`.
+- **OpenRouter is always filtered to `:free` / free-priced models.**
+- The returned list fills the model-name field (one click). The key used for the probe is transient — this route never persists keys; `/api/providers` (POST) and `/api/providers/[id]` (PATCH) handle the optional `api_key` override storage.
+
+---
+
 ## What if all providers go down simultaneously?
 
 The pipeline doesn't crash. It:

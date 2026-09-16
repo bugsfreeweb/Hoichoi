@@ -279,6 +279,9 @@ function deskSourceRow(row: Record<string, unknown>) {
     fb_id: (row.fb_id as string | null) ?? null,
     topics,
     category: row.category as CategorySlug,
+    categories: row.category_csv
+      ? String(row.category_csv).split(",").map((s) => s.trim()).filter(Boolean)
+      : row.category ? [String(row.category)] : [],
     is_active: Boolean(row.is_active),
     last_scraped_at: (row.last_scraped_at as string | null) ?? null,
     posts_today: Number(row.posts_today ?? 0),
@@ -292,7 +295,8 @@ async function listDeskSources() {
   const today = new Date().toISOString().slice(0, 10);
   const res = await client.execute({
     sql: `SELECT s.*,
-            (SELECT count(*) FROM raw_posts rp WHERE rp.source_id = s.id AND rp.scraped_at LIKE ?) AS posts_today
+            (SELECT count(*) FROM raw_posts rp WHERE rp.source_id = s.id AND rp.scraped_at LIKE ?) AS posts_today,
+            (SELECT COALESCE(GROUP_CONCAT(category_slug), '') FROM source_categories sc WHERE sc.source_id = s.id) AS category_csv
           FROM sources s ORDER BY s.is_active DESC, s.created_at DESC`,
     args: [`${today}%`],
   });

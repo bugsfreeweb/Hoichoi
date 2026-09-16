@@ -35,6 +35,9 @@ export function ProviderRow({ provider, index }: { provider: LLMProviderRow; ind
           <p className="font-mono-x text-[11px] text-ink-soft">
             {provider.provider_key} · {provider.model_name} · prio {provider.priority}
           </p>
+          <p className="font-mono-x text-[10px] text-ink-soft/70">
+            key: <span className={provider.api_key ? "text-cat-teal" : "text-ink-soft/50"}>{provider.api_key ? "DB override ✓" : `env → ${provider.api_key_env_var}`}</span>
+          </p>
         </div>
       </div>
       <div className="flex items-center gap-2">
