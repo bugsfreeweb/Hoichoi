@@ -1,5 +1,15 @@
 # Architecture & Design Notes — Bangla Feed Pipeline (v2)
 
+> **Current-state deltas (Sept 2026):** this is a design note, not the live
+> spec. The repo now uses **Turso/libSQL** (not Supabase/Postgres — no
+> pgvector, no keep-alive ping; dedup vectors use libSQL `vec0`, and media
+> lives on a pluggable adapter: local FS dev / Cloudflare R2 prod). The desktop
+> vault is **AES-256-GCM** (not Stronghold), and admin auth uses **one-time
+> codes** minted in the desktop app (no password, `admin_login_codes`). The
+> desktop console is an **8-tab mockup-parity desk** (Monitor … Ads) with a
+> live sync bar. See `README.md`, `docs/DEPLOY_WEB.md`, `docs/DESKTOP.md` and
+> `docs/design-system.md` for the authoritative current state.
+
 Companion to `coding-agent-prompt.md`. Read this for the *why* before pasting the prompt.
 
 > **v2.1 update — category clarity.** The user clarified that the three categories are: child sexual abuse (madrasa/mosque/private place victims, both genders), extramarital blackmail/crime, and missing children + ছেলে ধরা hoaxes. The colloquial names have been replaced with clearer slugs (`child-sexual-abuse`, `extramarital-crime`, `missing-children`) and each category has its own LLM system prompt, its own moderation rules, and its own public-page behavior. See `editorial-policy.md` for the full editorial standard. **Before pasting the prompt, also read `editorial-policy.md`** — this is a public-interest news platform covering sensitive topics, and the engineering is only the floor, not the ceiling, of what's needed.

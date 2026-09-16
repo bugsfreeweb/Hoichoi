@@ -81,7 +81,10 @@ editing it once reflects immediately on web **and** desktop (no GitHub upload):
   HTML/JS for `ad_leaderboard_html` (homepg top), `ad_strip_html` (homepg bottom
   dark bar), `ad_infeed_html` (grid every 4th item), `ad_rect_html` (post page).
   Empty slot → default sponsor card; non-empty → the admin HTML renders live on
-  web (scripts re-injected for AdSense/Adsterra-style tags).
+  web (scripts re-injected for AdSense/Adsterra-style tags). The dedicated
+  **বিজ্ঞাপন (Ads)** tab (`screens/Ads.tsx`) is a larger mockup-style editor for
+  the same four slots — toggle switches, per-slot HTML textareas, save (writes
+  non-empty fields only) and reset-to-defaults.
 - New runner CLI: `settings` (JSON dump) and `settings:set k=v …` (whitelisted
   keys, `key=` clears a nullable field).
 - Backend commands: `settings_get` / `settings_set` (Rust) + `settingsGet` /
@@ -225,14 +228,35 @@ The desktop UI mirrors the `mockup/` desk controller exactly:
   is ported verbatim from `mockup/public/option-a.css` into `apps/desktop/src/index.css`;
   there are no child console windows — every runner/spawn (pipeline, taskkill,
   admin link, `cmd` dev fallback) uses `CREATE_NO_WINDOW` (`commands.rs::hide_console`).
-- **7-tab console** — Monitor / Watchlist / Queue / Collector / Vault / Settings /
-  Moderation with keyboard shortcuts **1–7** (inline `TabButton` in a `sidenav`),
-  inline menubar (ফাইল/সোর্স/রান/ভল্ট/সাহায্য) and a statusbar (TAURI 2.1 ·
-  `TURSO`/`LOCAL` DB badge · Hoichoi clock). Shell: `src/App.tsx` (option-a classes).
+  The sidebar foot no longer shows a hard-coded `dataSrc` text line — the active
+  DB (`TURSO`/`LOCAL`) badge lives in the statusbar, derived from the real
+  `dbDriver` state (`src/lib/tauri.ts`).
+- **8-tab console** — Monitor / Watchlist / Queue / Collector / Vault / Settings /
+  Moderation / **Ads** with keyboard shortcuts **1–8** (inline `TabButton` in a
+  `sidenav`), inline menubar (ফাইল/সোর্স/রান/ভল্ট/সাহায্য) and a statusbar
+  (TAURI 2.1 · `TURSO`/`LOCAL` DB badge · Hoichoi clock). The titlebar `em`
+  reads `TAURI 2.1` and the menubar shows a `1–8 TABS` kbd hint on the right —
+  the older "· OPTION A" / "PURE HTML" badges are gone so the chrome matches
+  `mockup/src/components/desk/shell.tsx` exactly. Shell: `src/App.tsx`
+  (option-a classes).
+- **Sync bar** — `components/DeskSyncBar.tsx` sits between the menubar and the
+  console body, copying `mockup/src/components/desk/sync-controls.tsx`: a pending
+  badge (counts queue rows whose status is `pending_review`/`approved`),
+  স্মার্ট রিসিঙ্ক (auto — push when pending > 0, else pull), ডেস্ক → ওয়েব প্রকাশ
+  (push), and ওয়েব → ডেস্ক (pull). Push/pull call `syncDb(direction, env)` from
+  `lib/tauri` through the runner's `sync` command; last-push/last-pull times
+  persist under `localStorage["hoichoi-sync-state"]` and the note shows the synced
+  tables / rows affected / conflicts the runner returns.
+- **Ads** — `screens/Ads.tsx` is the mockup "বিজ্ঞাপন ম্যানেজার" panel
+  (`mockup/src/components/admin/ads-panel.tsx`) wired to the real `settings` ad
+  slots via `settingsGet`/`settingsSet`: the four toggles, four HTML textareas,
+  save and reset as described under *Centralized site settings & branding* above.
 - **Monitor** — 4 stat tiles (আজ সংগৃহীত / লাইভ প্রকাশিত / ডুপ্লিকেট ব্লকড / গড় রান)
   + the mockup **countdown ring**, pipeline-health and source-health panels, latest
   collector logs and the recent content queue (`screens/Dashboard.tsx`). A barley
   **activity-trend chart** (last 8 runs' published counts) sits below the queue.
+  Panel labels match the mockup: "TAURI CONTROLLER · LIVE" and the pipeline row
+  reads "AI Agent → Web · hoichoi-content · READY".
 - **Scroll** — every tab scrolls independently (all roots are `scroll-slim
   overflow-auto`); Vault and Settings got root scroll containers too.
 - **Watchlist** — real source CRUD against the runner

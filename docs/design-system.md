@@ -178,6 +178,38 @@ Plus a final red alizarin circle with a `move-right` arrow, indicating "to publi
 
 ---
 
+### 4.9 Desk scene — the dark console chrome (web `/desk` + Tauri desktop)
+
+A second, darker visual system ("desk scene") is used by the admin shell, the
+`/desk` preview route and the entire Tauri desktop app. It is the mockup's
+`option-a` console palette. Dark values (light variants and all tokens live in
+`apps/web/src/app/globals.css` desk-scene block, dark ~L490 / light ~L523, and
+are mirrored in `apps/desktop/src/index.css`):
+
+| Token | Dark value | Use |
+|---|---|---|
+| `--ds-titlebar` | `#12161e` | window titlebar |
+| `--ds-menubar` / `--ds-side` | `#0e1219` | menubar, sidebar |
+| `--ds-main` | `#0c1017` | console body / content area |
+| `--ds-status` | `#0a0d12` | statusbar |
+| `--ds-term` | `#07090d` | log terminal |
+| `--ds-field` | `#0a0c10` | inputs, table fields |
+| `--ds-acc` | `#c8f65d` (lime) | accent — active tab underline, live ping, sync highlight |
+| `--ds-amber` | `#ffb454` | warnings / dedup counts |
+| `--ds-rose` | `#fb7185` | errors / destructive |
+| `--ds-sky` | `#7dd3fc` | info / links |
+| `--ds-t1 … --ds-t6` | `#fff` → `rgba(255,255,255,.25)` | text emphasis ladder |
+| `--ds-active` / `--ds-active-tx` | `#ffffff` / `#0a0c10` | active pill tab (ink-on-white) |
+
+The desktop port keeps equivalent names (`--titlebar #12161e`, `--win-2 #0e1219`,
+`--win #0c1017`, `--statusbar #0a0d12`, accent = lime). Styling rules that carry
+over: the faint `desk-scene` grid background, mono-uppercase tracked labels
+(0.13–0.26em), `is-active` white pill tabs, and `scroll-slim` scrollbars per pane.
+The desktop 8-tab console itself (Monitor … Ads, sync bar) is documented in
+[`DESKTOP.md`](DESKTOP.md).
+
+---
+
 ## 5. Component library (shadcn/ui + custom)
 
 Use **shadcn/ui** as the base, but heavily restyle it with these tokens. Don't use shadcn's default grays — override `border`, `bg`, `text` to use the `ink/paper/alizarin` palette.

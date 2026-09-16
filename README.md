@@ -8,7 +8,8 @@ window. Every post is archived or purged by policy.
 Live site: <https://hoichoifeed.vercel.app> · Source: <https://github.com/bugsfreeweb/Hoichoi> (private)
 
 ```
-Web (apps/web)      Next.js 15 public site (SSR feed, /sitemap, OG images) + admin console
+Web (apps/web)      Next.js 15 public site (SSR feed, /sitemap, OG images) + admin shell,
+                      /desk preview, live /api/stats
 Scraper             Collection pipeline: scrape → dedup → rewrite → moderate → publish
 Desktop (apps/desktop)  Tauri 2 desktop admin + local collector controller
 DB/LLM/Types        packages/db (Turso/libSQL), packages/llm (multi-provider resolver), shared-types
@@ -25,6 +26,7 @@ pnpm dev             # web at http://localhost:3000, desktop at :1420
 ```
 
 - **Public site:** http://localhost:3000
+- **Desk preview:** http://localhost:3000/desk (in-browser mirror of the desktop console)
 - **Admin console:** http://localhost:3000/admin — demo access
   `admin@hoichoi.local` (seeded; codes minted from the desktop app)
 - **One-shot scrape:** `pnpm run scrape` (add `HOICHOI_MOCK=1` for an offline fake run)
@@ -36,6 +38,7 @@ apps/
   web/        Next.js 15 public site + admin (the ONLY app deployed to Vercel)
   scraper/    Playwright + HTTP pipeline: scrape → dedup → rewrite → moderate → publish
   desktop/    Tauri 2 native desktop controller (self-contained Windows installer)
+              mockup-parity 8-tab desk console (Monitor … Ads) + live sync bar
 packages/
   db/         Turso/libSQL client, migrations, seeds, shared archive/media helpers
   llm/        Multi-provider resolver (Gemini/Groq/OpenRouter/Ollama/…) with fail-over

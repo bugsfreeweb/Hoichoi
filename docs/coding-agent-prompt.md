@@ -1,5 +1,15 @@
 # Coding Agent Prompt — Bangla Facebook Content Pipeline (v2)
 
+> **Status: historical build prompt.** This is the original phase-by-phase prompt
+> that constructed the system; it is kept as a reference, not a spec. Subsequent
+> decisions changed parts of it: the DB is **Turso/libSQL** (Supabase was
+> dropped — no pgvector; dedup uses libSQL `vec0`, storage is a pluggable
+> local/R2 adapter), the desktop vault is **AES-256-GCM** (Stronghold removed),
+> admin login is **one-time codes** (no password), and the desktop is a
+> mockup-parity **8-tab desk console** with a sync bar (see `docs/DESKTOP.md`).
+> For the current state read `README.md`, `docs/DEPLOY_WEB.md`,
+> `docs/DESKTOP.md`, `docs/design-system.md`, `docs/database-decision.md`.
+
 > **How to use:** Copy everything below the line into your coding agent (Claude Code, Cursor Agent, Codex, etc.). The agent should work in phases. Confirm each phase before moving to the next.
 >
 > **Decisions locked in (from user):**

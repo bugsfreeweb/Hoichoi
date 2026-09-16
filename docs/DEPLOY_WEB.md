@@ -159,6 +159,16 @@ pnpm --filter @hoichoi/web build
 - **Single admin link** — only one admin-console link exists (TopBar nav);
   the footer chip and the live-analytics footnote link were removed to satisfy
   the "one link" rule.
+- **Admin console shell** — `/admin/*` renders inside a persistent `AdminShell`
+  sidebar (dashboard, sources, moderation, providers, submissions, removals,
+  settings, archive, logs, posts, backup, categories). `/admin` is the dashboard
+  home with live stat tiles; the shell mirrors the desktop desk chrome.
+- **Desk preview (`/desk`)** — `apps/web/src/app/desk/page.tsx` renders the
+  desk-console chrome (`DeskShell` with the `--ds-*` desk palette) as an
+  in-browser preview of the Tauri desktop app. It is linked from the TopBar nav,
+  the home hero, the footer, and the admin shell sidebar. It is decorative client
+  chrome (no runner access in the browser) — the same UI in `apps/desktop` is the
+  real controller.
 - **Admin login auto-provisions** — `/api/auth/login` now upserts an `admin_users`
   row on first successful code login (`INSERT OR IGNORE ... role='admin'`),
   so newly minted desktop codes work immediately without a pre-seeded email row.

@@ -66,7 +66,7 @@ pnpm dev                    # web on :3000, scraper CLI ready
 ```
 
 - **Web:** `pnpm --filter web dev` → http://localhost:3000
-- **Admin:** http://localhost:3000/admin (demo login: `admin@hoichoi.local` / `demo-admin-2026`)
+- **Admin:** http://localhost:3000/admin (demo access: `admin@hoichoi.local` seeded; one-time code minted from the desktop app)
 - **Desktop:** `pnpm --filter desktop tauri dev` (requires Rust toolchain)
 
 ## Database choice
