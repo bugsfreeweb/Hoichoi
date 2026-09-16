@@ -90,28 +90,28 @@ export default function RewriteSlider({
               {sourceName} · ক্যাপশন অপরিশোধিত · বানান-ভুলসহ
             </p>
           </div>
-          <p className="mt-6 inline-block bg-alizarin px-3 py-1.5 text-[11px] font-bold text-white">
+          <p className="mt-6 inline-block bg-alizarin-deep px-3 py-1.5 text-[11px] font-bold text-white">
             A · কাঁচা ফিড
           </p>
         </div>
 
         <div
-          className="absolute inset-0 bg-ink p-6 md:p-10"
+          className="absolute inset-0 bg-band p-6 md:p-10"
           style={{ clipPath: `inset(0 0 0 ${x}%)` }}
         >
           <span className="inline-flex items-center gap-1.5 bg-lime px-2.5 py-1 text-[10.5px] font-bold text-night">
             {Icons.Sparkles} হৈচৈ সংস্করণ
           </span>
-          <h3 className="mt-4 max-w-lg font-serif-bn text-[19px] leading-[1.45] font-black text-paper md:text-[25px]">
+          <h3 className="mt-4 max-w-lg font-serif-bn text-[19px] leading-[1.45] font-black text-bandline md:text-[25px]">
             {headline}
           </h3>
-          <p className="mt-4 max-w-md text-[13px] leading-[1.85] text-paper/65">
+          <p className="mt-4 max-w-md text-[13px] leading-[1.85] text-bandline/70">
             {body}
           </p>
           <p className="mt-5 font-mono-x text-[9.5px] tracking-[0.18em] text-lime/70 uppercase">
             ✓ FACT-GATE 0.94 · ✓ HASH UNIQUE · 📍 {location}
           </p>
-          <span className="absolute right-6 bottom-6 font-serif-bn text-5xl font-black text-paper/10 md:text-7xl">
+          <span className="absolute right-6 bottom-6 font-serif-bn text-5xl font-black text-bandline/10 md:text-7xl">
             হ
           </span>
         </div>

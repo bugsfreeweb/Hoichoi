@@ -665,6 +665,9 @@ html[data-theme="light"] .theme-toggle .t-moon {
   display: flex;
   flex-direction: column;
 }
+.pane.col[hidden] {
+  display: none;
+}
 
 .bg-night-grid {
   background-color: var(--color-night-grid);

@@ -1,9 +1,8 @@
 import Link from "next/link";
-import type { SiteSettings } from "@hoichoi/shared-types";
+import { toBn, CATEGORY_LABEL } from "@/lib/format";
 import { BRAND } from "@/lib/brand";
-import { CATEGORY_LABEL } from "@/lib/format";
 
-export function Footer({ settings }: { settings: SiteSettings }) {
+export function Footer({ context = "OPTION B HOME" }: { context?: string }) {
   return (
     <footer className="page-chrome border-t-2 border-ink">
       <div className="mx-auto max-w-[1400px] px-4 py-12 md:px-8">
@@ -22,7 +21,7 @@ export function Footer({ settings }: { settings: SiteSettings }) {
             </span>
             <p className="mt-4 max-w-xs text-[12.5px] leading-relaxed text-ink-soft">
               {BRAND.tagline} — স্বয়ংক্রিয় সংবাদ কিউরেশন ডেস্কের কারিগরি
-              প্রদর্শনী: ডেস্কটপ কালেক্টর, পুনর্লিখন ইঞ্জিন, AI agent-ভিত্তিক
+              প্রদর্শনী: ডেস্কটপ কালেক্টর, পুনর্লিখন ইঞ্জিন, AI Agent-ভিত্তিক
               প্রকাশনা ও Web ডিপ্লয়লাইনের পূর্ণ প্রবাহ।
             </p>
           </div>
@@ -46,24 +45,25 @@ export function Footer({ settings }: { settings: SiteSettings }) {
               সিস্টেম মানচিত্র
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/desk" className="border border-ink/30 px-4 py-2 text-[12px] font-bold transition-all duration-300 hover:border-ink hover:bg-ink hover:text-paper">
+                ডেস্কটপ অ্যাপ →
+              </Link>
               <Link href="/admin" className="border border-ink/30 px-4 py-2 text-[12px] font-bold transition-all duration-300 hover:border-ink hover:bg-ink hover:text-paper">
                 ওয়েব অ্যাডমিন →
               </Link>
               <Link href="/system" className="border border-ink/30 px-4 py-2 text-[12px] font-bold transition-all duration-300 hover:border-ink hover:bg-ink hover:text-paper">
                 সিস্টেম ব্লুপ্রিন্ট →
               </Link>
-              <Link href="/submit" className="border border-ink/30 px-4 py-2 text-[12px] font-bold transition-all duration-300 hover:border-ink hover:bg-ink hover:text-paper">
-                পেজ প্রস্তাব করুন →
-              </Link>
             </div>
             <p className="mt-6 text-[10.5px] leading-relaxed text-ink-soft/80">
-              ছবি: Pexels ফটোগ্রাফারগণ · প্রতীকী। সব চরিত্র ও ঘটনা কাল্পনিক এবং কেবল সচেতনতামূলক বিন্যাসে রচিত।
+              ছবি: Pexels ফটোগ্রাফারগণ · এটি একটি প্রযুক্তি প্রদর্শনী (মকআপ) —
+              সব চরিত্র ও ঘটনাবহুল কাল্পনিক এবং কেবল সচেতনতামূলক বিন্যাসে রচিত।
             </p>
           </div>
         </div>
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-ink/15 pt-6 font-mono-x text-[10px] tracking-[0.16em] text-ink-soft uppercase">
           <span>
-            © ২০২৬ {BRAND.en} DESK · OPTION B HOME · BUILD 3.2
+            © {toBn(2026)} {BRAND.en} DESK · {context} · BUILD 3.2
           </span>
           <span className="flex items-center gap-4">
             <Link href="/about">সম্পর্কে</Link>
@@ -73,8 +73,8 @@ export function Footer({ settings }: { settings: SiteSettings }) {
             <Link href="/contact">যোগাযোগ</Link>
           </span>
           <span className="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20"/><path d="M2 12h20"/></svg>
-            DHAKA · ASIA/UTC+6 · EDGE CACHE ON
+            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+            BUGSFREE STUDIO · ASIA/UTC+6 · EDGE CACHE ON
           </span>
         </div>
       </div>

@@ -116,6 +116,25 @@ export function AdSlot({
     </>
   );
 
+  /* Strip lives on the fixed dark band — always light type + lime CTA. */
+  const bandBody = (
+    <>
+      <div className="flex items-center gap-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-bandline/40 bg-bandline text-[13px] font-black text-band">
+          {sponsor.slice(0, 1)}
+        </span>
+        <div className="text-left">
+          <p className="font-serif-bn text-[14px] leading-tight font-extrabold text-bandline">{headline}</p>
+          <p className="mt-0.5 text-[10.5px] text-bandline/60">{sub}</p>
+        </div>
+      </div>
+      <span className="flex items-center gap-2 bg-lime px-3.5 py-2 text-[11px] font-bold whitespace-nowrap text-night">
+        {clicked ? <ClickIcon /> : <TrendIcon />}
+        {clicked ? `ক্লিক #${bnNum(bump)} ✓` : "স্পনসর হোন"}
+      </span>
+    </>
+  );
+
   // Admin-pasted ad code wins over the placeholder sponsor card.
   if (html) {
     const box = (extra: string, bgDark = false) => (
@@ -178,9 +197,9 @@ export function AdSlot({
       )}
 
       {variant === "strip" && (
-        <div className="relative flex min-h-[64px] items-center justify-center gap-4 border border-dashed border-ink/35 bg-ink px-5 py-4 text-paper transition-colors duration-300 hover:bg-[#241d12]">
-          {body}
-          <span className="absolute top-2 right-2 flex items-center gap-1 rounded-sm border border-paper/30 px-1.5 py-0.5 font-mono-x text-[8.5px] font-semibold tracking-[0.2em] text-paper/70 uppercase">
+        <div className="relative flex min-h-[64px] items-center justify-center gap-4 border border-dashed border-bandline/25 bg-band px-5 py-4 text-bandline transition-colors duration-300 hover:bg-[#241d12]">
+          {bandBody}
+          <span className="absolute top-2 right-2 flex items-center gap-1 rounded-sm border border-bandline/30 px-1.5 py-0.5 font-mono-x text-[8.5px] font-semibold tracking-[0.2em] text-bandline/70 uppercase">
             <MegaphoneIcon /> AD
           </span>
         </div>

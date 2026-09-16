@@ -17,6 +17,9 @@ export default {
         fb: "var(--color-fb)",
         "cat-blue": "var(--color-cat-blue)",
         "cat-teal": "var(--color-cat-teal)",
+        // fixed editorial band (never flips with theme)
+        band: "var(--color-band)",
+        bandline: "var(--color-bandline)",
         // dark "admin console" palette (matches mockup/src/app/admin)
         night: "var(--color-night)",
         "night-grid": "var(--color-night-grid)",

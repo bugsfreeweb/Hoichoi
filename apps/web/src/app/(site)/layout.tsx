@@ -15,13 +15,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /** পাবলিক সাইট শেল — টপ বার, টিকার, ফুটার। */
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
-  const settings = await getSettings();
   return (
     <div className="page-chrome">
       <TopBar />
       <BreakingTicker />
       {children}
-      <Footer settings={settings} />
+      <Footer />
     </div>
   );
 }

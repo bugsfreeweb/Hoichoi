@@ -23,82 +23,95 @@ export function AdminShell({ user, children }: { user: AdminUser; children: Reac
   const path = usePathname();
 
   return (
-    <div className="admin-console min-h-dvh">
-      <header className="sticky top-0 z-[60] flex h-12 items-center justify-between border-b border-white/10 bg-[#0a0d12] px-5 text-paper/85">
-        <div className="flex items-center gap-2.5 font-mono-x text-[10px] tracking-[0.22em] uppercase">
-          <img src="/logo.png" alt="" className="h-5 w-5 rounded-sm object-cover" />
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-alizarin opacity-75"></span>
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-alizarin"></span>
-          </span>
-          HOICHOI · ADMIN CONSOLE
-        </div>
-        <nav className="flex items-center gap-2">
-          <Link
-            href="/"
-            className="rounded-full px-3 py-1 text-[11.5px] font-medium text-white/55 hover:bg-white/10 hover:text-white"
-          >
-            পাবলিক সাইট
-          </Link>
-          <span className="hidden items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] font-medium text-white/70 sm:flex">
-            <span className="cat-dot bg-lime"></span> {user.email}
-          </span>
-          <LogoutButton />
-        </nav>
-      </header>
-
-      <div className="flex min-h-[calc(100dvh-3rem)]">
-        <aside className="w-60 shrink-0 border-r border-white/10 bg-[#0a0d12] py-6">
-          <div className="px-5">
-            <p className="font-mono-x text-[9.5px] tracking-[0.24em] text-white/35 uppercase">ADMIN</p>
-            <div className="mt-3 flex items-center gap-3 border-b border-white/10 pb-4">
-              <img src="/logo.png" alt="" className="h-9 w-9 rounded-lg object-cover ring-1 ring-white/20" />
-              <div>
-                <p className="text-[13px] leading-tight font-bold text-white">হৈচৈ কন্ট্রোল</p>
-                <p className="font-mono-x text-[8.5px] tracking-[0.16em] text-white/35 uppercase">WEB TWIN · DESK IS PRIMARY</p>
-              </div>
+    <main className="admin-console bg-night-grid min-h-screen pb-16 text-[#e9e6da]">
+      <div className="mx-auto flex max-w-[1500px] gap-6 px-4 pt-8 md:px-6">
+        {/* ============ SIDEBAR ============ */}
+        <aside className="sticky top-16 hidden h-[calc(100vh-6.5rem)] w-60 shrink-0 flex-col rounded-2xl border border-white/8 bg-panel/60 p-4 lg:flex">
+          <div className="flex items-center gap-3 border-b border-white/8 px-2 pb-4">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-alizarin font-serif-bn text-[17px] font-black text-white">
+              হ
+            </span>
+            <div>
+              <p className="text-[14px] leading-tight font-bold text-white">
+                হৈচৈ কন্ট্রোল
+              </p>
+              <p className="font-mono-x text-[8.5px] tracking-[0.2em] text-white/35 uppercase">
+                WEB TWIN · DESK IS PRIMARY
+              </p>
             </div>
           </div>
-          <nav className="mt-4 px-3">
+
+          <nav className="mt-4 space-y-1">
             <Link href="/admin/moderation" className="mb-3 flex items-center justify-between rounded-lg border border-lime/30 bg-lime/10 px-3 py-3 text-[13px] font-bold text-lime transition-colors hover:bg-lime/15">মন্তব্য মডারেশন <span>↗</span></Link>
             <ul className="space-y-0.5 font-sans-bn text-[12.5px] font-medium">
-            {NAV.map((n) => {
-              const active = path === n.href || path.startsWith(`${n.href}/`);
-              return (
-                <li key={n.href}>
-                  <Link
-                    href={n.href}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
-                      active
-                        ? "bg-white text-night"
-                        : "text-white/55 hover:bg-white/8 hover:text-white"
-                    }`}
-                  >
-                    <span className="text-[14px]">{n.emoji}</span>
-                    <span className="flex-1">{n.label}</span>
-                    {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-alizarin" />}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+              {NAV.map((n) => {
+                const active = path === n.href || path.startsWith(`${n.href}/`);
+                return (
+                  <li key={n.href}>
+                    <Link
+                      href={n.href}
+                      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-300 ${
+                        active
+                          ? "bg-white text-night"
+                          : "text-white/55 hover:bg-white/8 hover:text-white"
+                      }`}
+                    >
+                      <span className="text-[14px]">{n.emoji}</span>
+                      <span className="flex-1">{n.label}</span>
+                      {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-alizarin" />}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
           </nav>
-          <div className="mt-6 border-t border-white/10 px-5 pt-4">
-            <p className="font-mono-x text-[8.5px] tracking-[0.18em] text-lime uppercase">● CONTROLLER ONLINE</p>
-            <p className="mt-1 text-[10px] text-white/35">TURSO · VERCEL · EDGE</p>
+
+          <Link
+            href="/desk"
+            className="mt-4 flex items-center gap-2 rounded-xl bg-lime px-3 py-2.5 text-[12px] font-bold text-night transition-all hover:brightness-110"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/></svg>
+            ডেস্কটপ অ্যাপ খুলুন
+          </Link>
+
+          <div className="mt-auto rounded-xl border border-white/8 bg-white/[0.04] p-4">
+            <p className="flex items-center gap-2 text-[11px] font-semibold text-white/85">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-lime"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              ভল্ট সিলড
+            </p>
+            <p className="mt-2 font-mono-x text-[9px] leading-relaxed tracking-wide text-white/40">
+              KEYS ENCRYPTED · AES-256 MASTER KEY DESKTOP ENV-এ · রিপোতে কখনো না
+            </p>
+          </div>
+
+          <div className="mt-4 border-t border-white/8 pt-3">
+            <div className="flex items-center gap-1.5 px-1 text-[10.5px] text-white/70">
+              <span className="cat-dot bg-lime"></span>
+              <span className="truncate">{user.email}</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between px-1">
+              <Link
+                href="/"
+                className="font-mono-x text-[9.5px] tracking-[0.16em] text-white/40 uppercase transition-colors hover:text-white"
+              >
+                পাবলিক সাইট ↘
+              </Link>
+              <LogoutButton />
+            </div>
           </div>
         </aside>
 
-        <main className="flex-1 px-8 py-6 pb-24">{children}</main>
+        {/* ============ MAIN ============ */}
+        <section className="min-w-0 flex-1">{children}</section>
       </div>
-    </div>
+    </main>
   );
 }
 
 function LogoutButton() {
   return (
     <form action={adminLogout}>
-      <button className="rounded-full px-3 py-1 text-[11.5px] font-medium text-white/55 transition-colors hover:bg-alizarin hover:text-white">
+      <button className="font-mono-x text-[9.5px] tracking-[0.16em] text-alizarin uppercase transition-colors hover:text-white">
         লগআউট
       </button>
     </form>

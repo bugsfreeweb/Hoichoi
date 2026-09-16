@@ -50,7 +50,7 @@ export default async function HomePage() {
       {featured && (
         <section className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
           <Reveal>
-            <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+            <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p className="font-mono-x text-[10.5px] tracking-[0.28em] text-alizarin uppercase">
                   ▚ LEAD STORY · এই সিঙ্কের প্রধান কনটেন্ট
@@ -65,7 +65,7 @@ export default async function HomePage() {
             </div>
           </Reveal>
 
-          <div className="mt-10 grid items-start gap-12 lg:grid-cols-12">
+          <div className="grid items-start gap-12 lg:grid-cols-12">
             <Reveal className="lg:col-span-7">
               <Link href={`/post/${featured.slug}`} className="group block">
                 <TiltCard>
@@ -193,7 +193,7 @@ export default async function HomePage() {
         </section>
       )}
 
-      <section className="bg-ink text-paper">
+      <section className="bg-band text-bandline">
         <div className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
           <Reveal>
             <div className="flex flex-wrap items-end justify-between gap-4">
@@ -204,7 +204,7 @@ export default async function HomePage() {
               <h2 className="mt-2 font-serif-bn text-[30px] font-black md:text-[42px]">
                 ফিড থেকে লাইভ — ছয় ধাপ, <span className="text-lime">শূন্য ছোঁয়া।</span>
               </h2>
-              <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-paper/50">
+              <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-bandline/55">
                 আলোর বিন্দুটি রাস্তাটা দেখিয়ে দিচ্ছে — প্রতিটি রানে ডেটা ঠিক এই
                 পথ ধরে এগোয়: সোর্স থেকে শট, শট থেকে হ্যাশ, হ্যাশ পেরোলে লেখা,
                 লেখা শেষে সোজা প্রোডাকশনে।
@@ -266,7 +266,7 @@ export default async function HomePage() {
               </Link>
             </div>
             </Reveal>
-            <div className="mt-10">
+            <div>
               <RewriteSlider
                 raw={featured.summary_bn ?? featured.body_bn}
                 headline={featured.title_bn}
@@ -300,11 +300,9 @@ export default async function HomePage() {
       </section>
 
       <section className="mx-auto max-w-[1400px] px-4 pb-16 md:px-8">
-        <a
-          href="https://github.com/bugsfreeweb/Hoichoi/releases"
-          target="_blank"
-          rel="noreferrer"
-          className="group relative flex flex-col items-start justify-between gap-6 overflow-hidden border-[1.5px] border-ink bg-ink p-7 text-paper md:flex-row md:items-center md:p-10"
+        <Link
+          href="/desk"
+          className="group relative flex flex-col items-start justify-between gap-6 overflow-hidden border-[1.5px] border-band bg-band p-7 text-bandline md:flex-row md:items-center md:p-10"
         >
           <div className="drift pointer-events-none absolute -top-24 right-10 h-64 w-64 rounded-full bg-lime/10 blur-[80px]" />
           <div className="relative flex items-start gap-4">
@@ -315,12 +313,12 @@ export default async function HomePage() {
             />
             <div>
               <p className="font-mono-x text-[10px] tracking-[0.26em] text-lime uppercase">
-                OPTION A · TAURI 2 NATIVE CONTROLLER
+                TAURI DESK · NATIVE CONTROLLER
               </p>
               <h3 className="mt-1 font-serif-bn text-[26px] font-black md:text-[32px]">
                 {BRAND.desk} খুলুন
               </h3>
-              <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-paper/55">
+              <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-bandline/60">
                 এই সাইটের প্রতিটি লাইনের পেছনে ওই একটাই ইঞ্জিন — ওয়াচলিস্ট,
                 কালেক্টর, ডুপ্লিকেট গেট, API ভল্ট ও দুই-ঘণ্টার ক্রন। ওয়েব শুধু
                 ছাপে; অ্যাপই চালায়।
@@ -332,7 +330,7 @@ export default async function HomePage() {
             অ্যাপ লঞ্চ
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
           </span>
-        </a>
+        </Link>
       </section>
 
       <div className="mx-auto max-w-[1400px] px-4 pb-12 md:px-8">
