@@ -53,7 +53,7 @@ export default function Dashboard({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="font-mono-x text-[9.5px] tracking-[0.26em] text-lime uppercase">
-            TAURI CONTROLLER · OPTION A · LIVE
+            TAURI CONTROLLER · LIVE
           </p>
           <h2 className="mt-1 font-serif-bn text-[26px] font-black text-white">ডেস্ক মনিটর</h2>
         </div>
@@ -116,7 +116,7 @@ export default function Dashboard({
               { icon: Camera, t: "Playwright শট", s: "1440×900 · headless", ok: true },
               { icon: Fingerprint, t: "Dedup গেট", s: "SHA-256 + SimHash 0.87", ok: true },
               { icon: Sparkles, t: "LLM ফ্যাক্ট-গেট", s: "থ্রেশহোল্ড ০.৯০", ok: true },
-              { icon: GitBranch, t: "GitHub → Vercel", s: "hoichoi-content · READY", ok: true },
+              { icon: GitBranch, t: "AI Agent → Web", s: "hoichoi-content · READY", ok: true },
             ].map((n) => (
               <li key={n.t} className="flex items-center gap-3">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-lime">

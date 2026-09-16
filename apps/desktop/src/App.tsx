@@ -28,7 +28,9 @@ import Collector from "./screens/Collector";
 import Vault from "./screens/Vault";
 import Settings from "./screens/Settings";
 import Moderation from "./screens/Moderation";
+import Ads from "./screens/Ads";
 import ThemeToggle from "./components/ThemeToggle";
+import DeskSyncBar from "./components/DeskSyncBar";
 
 export type View =
   | "dashboard"
@@ -37,7 +39,8 @@ export type View =
   | "collector"
   | "vault"
   | "settings"
-  | "moderation";
+  | "moderation"
+  | "ads";
 
 const ONBOARD_KEY = "hoichoi.desk.onboarded.v1";
 const VIEW_ORDER: View[] = [
@@ -48,6 +51,7 @@ const VIEW_ORDER: View[] = [
   "vault",
   "settings",
   "moderation",
+  "ads",
 ];
 
 const TAB_LABELS: Record<View, { icon: string; label: string }> = {
@@ -58,6 +62,7 @@ const TAB_LABELS: Record<View, { icon: string; label: string }> = {
   vault: { icon: "key", label: "API ভল্ট" },
   settings: { icon: "gear", label: "সেটিংস" },
   moderation: { icon: "shield", label: "মন্তব্য মডারেশন" },
+  ads: { icon: "mega", label: "বিজ্ঞাপন" },
 };
 
 function StatusClock() {
@@ -104,6 +109,7 @@ function TabButton({ id, icon, label, active, onClick, shortcut }: {
     key: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="15" r="4.5"/><path d="M11.5 11.5L21 2M16.5 6.5l3 3M13.5 9.5l2.5 2.5"/></svg>,
     gear: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
     shield: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 6h11M10 12h11M10 18h11"/><path d="M4 6h1v4M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>,
+    mega: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 13z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>,
   };
 
   return (
@@ -181,7 +187,7 @@ export default function App() {
       if (!t) return;
       if (t.isContentEditable) return;
       if (t.closest("input, textarea, select, hoichoi-moderation")) return;
-      const i = ["1", "2", "3", "4", "5", "6", "7"].indexOf(e.key);
+      const i = ["1", "2", "3", "4", "5", "6", "7", "8"].indexOf(e.key);
       if (i >= 0) setView(VIEW_ORDER[i]);
     };
     window.addEventListener("keydown", onKey);
@@ -305,7 +311,7 @@ export default function App() {
           >
 <img src="/logo.png" alt="" />
             <span>হৈচৈ ডেস্ক</span>
-            <em>TAURI 2.1 · OPTION A</em>
+            <em>TAURI 2.1</em>
           </div>
           <div className="winctl">
             <ThemeToggle />
@@ -351,9 +357,13 @@ export default function App() {
           <button onClick={() => jump("collector")}>রান</button>
           <button onClick={() => jump("vault")}>ভল্ট</button>
           <a href="/system" onClick={(e) => { e.preventDefault(); void openAdmin(`${SITE_URL}/system`); }}>সাহায্য</a>
-          <span className="pure-badge">Pure HTML সংস্করণ</span>
-          <span className="kbd-hint">1–7 TABS</span>
+          <span className="kbd-hint ml-auto">1–8 TABS</span>
         </div>
+
+        <DeskSyncBar
+          queueRows={queueRows}
+          onSynced={() => refresh()}
+        />
 
         <div className="winbody">
           <aside className="side">
@@ -373,9 +383,6 @@ export default function App() {
             <div className="side-foot">
               <p className="online"><span className="pulse-dot"></span>CONTROLLER ONLINE</p>
               <p className="watching" id="sideWatch">{toBn(watchingCount)} সোর্স সক্রিয়</p>
-              <p className="datasrc" id="dataSrc">
-                ডেটা: {dbDriver} · সংযুক্ত
-              </p>
             </div>
           </aside>
 
@@ -426,6 +433,10 @@ export default function App() {
 
               <section className="pane" id="pane-moderation" hidden={view !== "moderation"}>
                 <Moderation />
+              </section>
+
+              <section className="pane" id="pane-ads" hidden={view !== "ads"}>
+                <Ads refreshBrand={refresh} />
               </section>
             </main>
           </div>
