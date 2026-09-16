@@ -197,6 +197,24 @@ export async function ensureDeskColumns(client: Client): Promise<void> {
   }
 }
 
+/**
+ * Upgrade helper: creates the `source_categories` junction (multi-category
+ * sources). Only `db:migrate` applied it before, so fresh DBs created through
+ * `ensureSchema` (desktop local file DB, first sync to a Turso DB) missed it.
+ * Idempotent — safe on databases that already ran migration 003.
+ */
+export async function ensureSourceCategoriesTable(client: Client): Promise<void> {
+  await client.executeMultiple(`
+CREATE TABLE IF NOT EXISTS source_categories (
+  source_id TEXT NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+  category_slug TEXT NOT NULL REFERENCES category_configs(slug) ON DELETE CASCADE,
+  PRIMARY KEY (source_id, category_slug)
+);
+CREATE INDEX IF NOT EXISTS idx_source_categories_source ON source_categories (source_id);
+CREATE INDEX IF NOT EXISTS idx_source_categories_category ON source_categories (category_slug);
+  `);
+}
+
 /** Ensure schema exists, then seed base config on a fresh database. */
 export async function ensureSchema(client: Client): Promise<void> {
   // Desktop runtime: migrations live next to the bundled console (env override).
@@ -218,7 +236,93 @@ export async function ensureSchema(client: Client): Promise<void> {
   await ensureReaderReportsTable(client);
   await ensureAdminLoginCodesTable(client);
   await ensureDeskColumns(client);
+  await ensureSourceCategoriesTable(client);
+  await ensureNoStaticCategoryChecks(client);
   await seedDefaults(client, nowIso());
+}
+
+/**
+ * Drops the leftover `CHECK (category IN (...))` constraints from `sources`,
+ * `posts` and `submitted_pages`. Migration 003 intended to remove them ("category
+ * is now dynamic") but SQLite cannot drop column constraints, so NEW categories
+ * created in the admin could never be assigned to a source/post. The rebuild
+ * copies the exact original schema (PRAGMA table_info) minus the category CHECK,
+ * keeping every other constraint/default/index/view intact. Idempotent.
+ *
+ * Views that reference the rebuilt table are re-created afterwards from the
+ * canonical 003/001 definitions, since `DROP TABLE` invalidates them.
+ */
+export async function ensureNoStaticCategoryChecks(client: Client): Promise<void> {
+const viewRes = await client.execute("SELECT name, sql FROM sqlite_master WHERE type = 'view'");
+    const views = (viewRes.rows as unknown as Array<{ name: string; sql: string }>).filter((v) => v.sql);
+
+  for (const table of ["sources", "posts", "submitted_pages"]) {
+    const got = await client.execute({
+      sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+      args: [table],
+    });
+    const sql = String(got.rows[0]?.sql ?? "");
+    if (!/CHECK\s*\(\s*category\s+IN\s*\(/i.test(sql)) continue;
+
+    const info = await client.execute(`PRAGMA table_info(${table})`);
+    const rows = info.rows as unknown as Array<{
+      name: string;
+      type: string;
+      notnull: number;
+      dflt_value: string | null;
+      pk: number;
+    }>;
+    const pkCols = rows
+      .filter((r) => r.pk > 0)
+      .sort((a, b) => a.pk - b.pk)
+      .map((r) => `"${r.name}"`);
+    const colDefs = rows.map((r) => {
+      const parts = [`"${r.name}"`, r.type];
+      if (r.notnull) parts.push("NOT NULL");
+      if (r.dflt_value !== null) parts.push(`DEFAULT ${r.dflt_value}`);
+      if (r.pk > 0 && pkCols.length === 1) parts.push("PRIMARY KEY");
+      return parts.join(" ");
+    });
+    const colList = rows.map((r) => `"${r.name}"`).join(", ");
+    const createSql = `CREATE TABLE "${table}" (${colDefs.join(", ")}${
+      pkCols.length > 1 ? `, PRIMARY KEY (${pkCols.join(", ")})` : ""
+    })`;
+
+    // SQLite cannot drop a CHECK; we re-create the table without it. The rebuild
+    // must NOT use ALTER RENAME (RENAME validates tokens in other objects, and
+    // with the old table dropped the dependent views/foreign keys fail that
+    // check), so we double-copy into the final table name.
+    await client.execute("PRAGMA foreign_keys = OFF");
+    await client.execute("BEGIN");
+    try {
+      await client.execute(`CREATE TABLE "__rebuild" AS SELECT ${colList} FROM ${table}`);
+      await client.execute(`DROP TABLE ${table}`);
+      await client.execute(createSql);
+      await client.execute(`INSERT INTO ${table} (${colList}) SELECT ${colList} FROM "__rebuild"`);
+      await client.execute(`DROP TABLE "__rebuild"`);
+      await client.execute("COMMIT");
+    } catch (err) {
+      await client.execute("ROLLBACK");
+      throw err;
+    } finally {
+      await client.execute("PRAGMA foreign_keys = ON");
+    }
+
+    if (table === "sources") {
+      await client.execute("CREATE INDEX IF NOT EXISTS idx_sources_active ON sources (is_active, category)");
+    } else if (table === "posts") {
+      await client.execute("CREATE INDEX IF NOT EXISTS idx_posts_window ON posts (status, archived_at, published_at)");
+      await client.execute("CREATE INDEX IF NOT EXISTS idx_posts_category ON posts (category, status, published_at)");
+      await client.execute("CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts (slug)");
+    } else if (table === "submitted_pages") {
+      await client.execute("CREATE INDEX IF NOT EXISTS idx_submitted_status ON submitted_pages (status, created_at)");
+    }
+  }
+
+  for (const v of views) {
+    await client.execute(`DROP VIEW IF EXISTS "${v.name}"`);
+    await client.execute((v.sql as string).replace(/^CREATE\s+VIEW\s+/i, "CREATE VIEW IF NOT EXISTS "));
+  }
 }
 
 /**

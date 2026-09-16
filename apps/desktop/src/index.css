@@ -714,6 +714,37 @@ html[data-theme="light"] .theme-toggle .t-moon {
   background: var(--active-bg);
   color: var(--active-tx);
 }
+
+/* Section tabs inside the Settings screen (keeps the long page navigable). */
+.settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 18px;
+}
+.settings-tabs button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 99px;
+  padding: 5px 13px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--t3);
+  background: none;
+  border: 1px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.settings-tabs button:hover {
+  color: var(--color-main-tx);
+  border-color: var(--color-bd);
+}
+.settings-tabs button.active {
+  background: var(--active-bg);
+  color: var(--active-tx);
+  border-color: transparent;
+}
 .stage {
   flex: 1;
   min-height: 0;

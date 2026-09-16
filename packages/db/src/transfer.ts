@@ -16,10 +16,13 @@ import { seedDefaults } from "./seed";
 export const CONTENT_TABLES = [
   "sources",
   "category_configs",
+  "source_categories",
   "llm_providers",
   "redaction_blocklist",
   "raw_posts",
   "posts",
+  "comments",
+  "reader_reports",
   "submitted_pages",
   "removal_requests",
   "admin_users",

@@ -21,6 +21,11 @@ import {
   recentPipelineRuns,
   getAllComments,
   setCommentStatus,
+  listCategories,
+  getCategory,
+  createCategory,
+  updateCategory,
+  deleteCategory,
   CONTENT_TABLES,
   type ExportBundle,
 } from "@hoichoi/db";
@@ -413,6 +418,7 @@ program
           pageName: opts.pageName,
           kind: opts.kind,
           category: opts.category,
+          categories: opts.categories,
           topics: opts.topics,
           fbId: opts.fbId,
         });
@@ -476,16 +482,57 @@ program
 
 program
   .command("categories <action>")
-  .description("desk categories: list")
-  .action(async (action: string) => {
+  .description("desk categories: list / add / update / delete")
+  .option("--slug <slug>", "category slug (add/update/delete)")
+  .option("--name-bn <name>", "Bangla display name (add)")
+  .option("--name-en <name>", "English display name (add)")
+  .option("--desc-bn <text>", "Bangla description (add/update)")
+  .option("--desc-en <text>", "English description (add/update)")
+  .option("--dot <hex>", "dot color hex, omit to keep seed default (add/update)")
+  .option("--sort <n>", "sort order (add/update)")
+  .action(async (action: string, opts: Record<string, string | undefined>) => {
     try {
       await ensureSchema(getClient());
       if (action === "list") {
-        const client = getClient();
-        const res = await client.execute(
-          "SELECT slug, display_name_bn, display_name_en FROM category_configs WHERE is_active = 1 ORDER BY sort_order ASC",
-        );
-        console.log(JSON.stringify({ ok: true, categories: res.rows }, null, 2));
+        console.log(JSON.stringify({ ok: true, categories: await listCategories() }, null, 2));
+      } else if (action === "add") {
+        if (!opts.slug || !opts.nameBn || !opts.nameEn) {
+          throw new Error("--slug, --name-bn and --name-en are required");
+        }
+        const slug = (opts.slug as string)
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9-]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+        if (!slug) throw new Error("invalid slug — use lowercase letters, numbers and dashes");
+        await createCategory({
+          slug,
+          displayNameBn: opts.nameBn.trim(),
+          displayNameEn: opts.nameEn.trim(),
+          descriptionBn: opts.descBn?.trim() || undefined,
+          descriptionEn: opts.descEn?.trim() || undefined,
+          dot: opts.dot?.trim() || undefined,
+          sortOrder: opts.sort !== undefined ? Number(opts.sort) : undefined,
+        });
+        console.log(JSON.stringify({ ok: true, category: await getCategory(slug) }, null, 2));
+      } else if (action === "update") {
+        if (!opts.slug) throw new Error("--slug is required");
+        const fields: Parameters<typeof updateCategory>[1] = {};
+        if (opts.nameBn !== undefined) fields.displayNameBn = opts.nameBn.trim();
+        if (opts.nameEn !== undefined) fields.displayNameEn = opts.nameEn.trim();
+        if (opts.descBn !== undefined) fields.descriptionBn = opts.descBn.trim();
+        if (opts.descEn !== undefined) fields.descriptionEn = opts.descEn.trim();
+        if (opts.dot !== undefined) fields.dot = opts.dot.trim();
+        if (opts.sort !== undefined) fields.sortOrder = Number(opts.sort);
+        if (Object.keys(fields).length === 0) {
+          throw new Error("at least one field required (--name-bn, --name-en, --desc-bn, --desc-en, --dot, --sort)");
+        }
+        await updateCategory(opts.slug, fields);
+        console.log(JSON.stringify({ ok: true, category: await getCategory(opts.slug) }, null, 2));
+      } else if (action === "delete") {
+        if (!opts.slug) throw new Error("--slug is required");
+        await deleteCategory(opts.slug);
+        console.log(JSON.stringify({ ok: true, deleted: opts.slug }));
       } else {
         throw new Error(`unknown action: ${action}`);
       }

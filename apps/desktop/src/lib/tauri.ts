@@ -216,9 +216,70 @@ export async function deskRemoveSource(env: Record<string, string>, id: string):
   await deskCall(["sources", "remove", "--id", id], env);
 }
 
-export async function deskCategories(env: Record<string, string>): Promise<Array<{ slug: string; displayNameBn: string; displayNameEn: string }>> {
+export interface DeskCategory {
+  slug: string;
+  displayNameBn: string;
+  displayNameEn: string;
+  descriptionBn: string;
+  descriptionEn: string;
+  dot: string;
+  sortOrder: number;
+}
+
+export async function deskCategories(env: Record<string, string>): Promise<DeskCategory[]> {
   const res = await deskCall(["categories", "list"], env);
-  return (res.categories as Array<{ slug: string; displayNameBn: string; displayNameEn: string }>) ?? [];
+  return (res.categories as DeskCategory[]) ?? [];
+}
+
+export async function deskAddCategory(
+  env: Record<string, string>,
+  input: {
+    slug: string;
+    displayNameBn: string;
+    displayNameEn: string;
+    descriptionBn?: string;
+    descriptionEn?: string;
+    dot?: string;
+  },
+): Promise<DeskCategory | null> {
+  const args = [
+    "categories", "add",
+    "--slug", input.slug,
+    "--name-bn", input.displayNameBn,
+    "--name-en", input.displayNameEn,
+  ];
+  if (input.descriptionBn) args.push("--desc-bn", input.descriptionBn);
+  if (input.descriptionEn) args.push("--desc-en", input.descriptionEn);
+  if (input.dot) args.push("--dot", input.dot);
+  const res = await deskCall(args, env);
+  return (res.category as DeskCategory | null) ?? null;
+}
+
+export async function deskUpdateCategory(
+  env: Record<string, string>,
+  slug: string,
+  fields: {
+    displayNameBn?: string;
+    displayNameEn?: string;
+    descriptionBn?: string;
+    descriptionEn?: string;
+    dot?: string;
+    sortOrder?: number;
+  },
+): Promise<DeskCategory | null> {
+  const args = ["categories", "update", "--slug", slug];
+  if (fields.displayNameBn !== undefined) args.push("--name-bn", fields.displayNameBn);
+  if (fields.displayNameEn !== undefined) args.push("--name-en", fields.displayNameEn);
+  if (fields.descriptionBn !== undefined) args.push("--desc-bn", fields.descriptionBn);
+  if (fields.descriptionEn !== undefined) args.push("--desc-en", fields.descriptionEn);
+  if (fields.dot !== undefined) args.push("--dot", fields.dot);
+  if (fields.sortOrder !== undefined) args.push("--sort", String(fields.sortOrder));
+  const res = await deskCall(args, env);
+  return (res.category as DeskCategory | null) ?? null;
+}
+
+export async function deskDeleteCategory(env: Record<string, string>, slug: string): Promise<void> {
+  await deskCall(["categories", "delete", "--slug", slug], env);
 }
 
 export async function deskQueue(env: Record<string, string>, status?: string | null): Promise<DeskQueueRow[]> {

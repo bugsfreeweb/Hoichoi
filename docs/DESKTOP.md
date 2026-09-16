@@ -108,7 +108,12 @@ through the bundled runner (new CLI subcommands: `backup export`,
 - **Push local → cloud / Pull cloud → local** — one-click table-level sync between
   the local file DB (`<app_data>/hoichoi.db`) and the shared Turso cloud DB
   (`TURSO_DATABASE_URL` from the keychain). Merges are `INSERT OR REPLACE` by
-  primary key; `admin_sessions` is never copied.
+  primary key; `admin_sessions` is never copied. Since the multi-category fix,
+  sync covers **14 tables** — `sources`, `category_configs`, `source_categories`,
+  `llm_providers`, `redaction_blocklist`, `raw_posts`, `posts`, `comments`,
+  `reader_reports`, `submitted_pages`, `removal_requests`, `admin_users`,
+  `admin_actions`, `settings` (see `CONTENT_TABLES` in
+  `packages/db/src/transfer.ts`).
 - Backend commands: `backup_export` / `backup_import` / `reset_db` / `sync_db`
   (Rust, `src-tauri/src/commands.rs`) + matching `backupExport` / `backupImport`
   / `resetDb` / `syncDb` (`src/lib/tauri.ts`).
@@ -138,6 +143,28 @@ codes** (desktop → browser flow):
   `adminCodes` (`src/lib/tauri.ts`).
 - DB migration `packages/db/migrations/002_admin_login_codes.sql`; `ensureSchema`
   also creates the table on the desktop / runner side.
+
+## Dynamic categories (desktop + web)
+
+Categories are no longer fixed to the original 3. The `category_configs` table is
+the source of truth; `sources.category` retains a primary slug for backward
+compat but the **`source_categories`** junction carries the full membership.
+
+- **Desktop category manager:** Settings → বিভাগ tab → `<DeskCategoryManager />`
+  component. CRUD through the runner CLI (`categories add --slug … --name-bn …
+  --name-en … [--dot "#hex"] [--sort N]`, `categories update --slug …`, `categories
+  delete --slug …`).
+- **Web category manager:** `/admin/categories` → `<CategoryManager />`
+  (`apps/web/src/components/admin/CategoryManager.tsx`). Same CRUD.
+- **Source assignment:** Watchlist add-form shows per-category chips + "সব
+  বিভাগ"; posts inherit category from the source's primary entry.
+- **Schema upgrade:** `ensureNoStaticCategoryChecks()` in
+  `packages/db/src/client.ts` idempotently rebuilds `sources`, `posts` and
+  `submitted_pages` on legacy databases to drop the leftover
+  `CHECK (category IN (...))` constraints that prevented custom categories
+  (SQLite cannot ALTER DROP a constraint; the table is recreated). Fresh
+  databases get the constraint-free `001_init.sql` directly. Applied by both
+  `ensureSchema` (runner) and `pnpm db:migrate`.
 
 ## Building a standalone (bundled) desktop app
 
@@ -279,7 +306,25 @@ The desktop UI mirrors the `mockup/` desk controller exactly:
 - **Settings** — mockup preference panels (cron `0 */N * * *` → `pipeline_hours` via
   `settingsSet`, model/temp/gate/toggles persisted to `localStorage`) above the real
   functional panels (cloud sync, branding, admin codes, backup/reset/sync)
-  (`screens/Settings.tsx`).
+  (`screens/Settings.tsx`). The screen is organized into **7 pill tabs**
+  (`.settings-tabs`, mirroring `.mtabs`) so the long settings page no longer
+  scrolls endlessly:
+  1. **প্রেফারেন্স** (Sliders) — cron, model, temperature, toggles (stateless —
+     reads `localStorage` / runner env).
+  2. **বিভাগ** (Tags) — inline category CRUD via `<DeskCategoryManager />`:
+     create (slug / Bn / En / description / dot color), edit, confirm-delete.
+     Runs through the runner's `categories` CLI (`add`, `update`, `delete`,
+     `list`).
+  3. **ক্লাউড সিঙ্ক** (Database) — cloud/local toggle (`use_cloud` keychain
+     entry) + One-Click Sync (`sync push` / `sync pull`). Push/pull now
+     transfers **`source_categories`**, **`comments`** and **`reader_reports`**
+     in addition to the original 10 tables (`CONTENT_TABLES` in
+     `packages/db/src/transfer.ts`).
+  4. **সাইট ও বিজ্ঞাপন** (Palette) — branding fields + four ad-slot HTML
+     textareas (same as the old inline section).
+  5. **অ্যাডমিন** (UserCog) — one-time login codes (unchanged).
+  6. **ব্যাকআপ** (Archive) — backup / reset / resync (unchanged).
+  7. **API ভল্ট** (KeyRound) — vault fields table (unchanged).
 - **Moderation** — comment queue with pending/approved/blocked tabs and approve/block
   actions through the runner (`moderation list|set`) (`screens/Moderation.tsx`).
 - **Runner desk CLI** — new subcommands `stats`, `sources`, `queue`, `moderation`
