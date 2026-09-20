@@ -40,6 +40,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Install Playwright chromium (collector browser)
+        run: pnpm exec playwright install --with-deps chromium
       - name: Run scraping pipeline
         run: pnpm run scrape
       - name: Ping deploy hook (if configured)

@@ -1,5 +1,6 @@
 import type { RawPost } from "@hoichoi/shared-types";
 import { launchChromium } from "./browser";
+import { mkdirForFile } from "./media";
 
 export interface ScreenshotOptions {
   url: string;
@@ -24,6 +25,7 @@ export async function captureScreenshot(
   }
   const browser = await launchChromium();
   try {
+    mkdirForFile(opts.outPath);
     const ctx = await browser.newContext({
       viewport: { width: opts.width ?? 1280, height: 1400 },
       deviceScaleFactor: 2,

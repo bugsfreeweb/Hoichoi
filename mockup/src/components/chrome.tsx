@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Newspaper, AppWindow, TerminalSquare, Network, GitBranch, FileCode2 } from "lucide-react";
+import { Newspaper, AppWindow, TerminalSquare, Network, GitBranch } from "lucide-react";
 import { BRAND } from "@/lib/brand";
+import ThemeToggle from "@/components/theme-toggle";
 
 const LINKS = [
   { href: "/", label: "পাবলিক সাইট", icon: Newspaper },
   { href: "/desk", label: "ডেস্কটপ অ্যাপ", icon: AppWindow },
-  { href: "/option-a", label: "Option-A Pure", icon: FileCode2 },
   { href: "/admin", label: "ওয়েব অ্যাডমিন", icon: TerminalSquare },
   { href: "/system", label: "ব্লুপ্রিন্ট", icon: Network },
 ];
@@ -27,7 +27,7 @@ export default function ModeChrome() {
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-alizarin" />
             </span>
             {BRAND.en} <span className="hidden text-white/35 sm:inline">·</span>
-            <span className="hidden text-white/35 sm:inline">TAURI DESK · OPTION A</span>
+            <span className="hidden text-white/35 sm:inline">TAURI DESK</span>
           </div>
 
           <nav className="flex items-center gap-1">
@@ -61,6 +61,7 @@ export default function ModeChrome() {
             </svg>
             <span className="text-white/50">AUTO-SHIP · EVERY 2H</span>
           </div>
+          <ThemeToggle />
         </div>
       </header>
       <div className="h-10" />

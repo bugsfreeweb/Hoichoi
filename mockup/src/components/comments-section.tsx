@@ -1,165 +1,77 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { MessageCircle, Heart, Send, ShieldCheck, Loader2 } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { MessageCircle, Send, ShieldCheck, Loader2, Check, RefreshCw } from "lucide-react";
 import { agoBn, toBn } from "@/lib/format";
-import type { CommentLite } from "@/lib/data";
+import type { PublicComment } from "@/lib/moderation-types";
 
-type RichComment = CommentLite;
-
-const likedKey = (id: number) => `hoichoi-liked-${id}`;
-
-export default function CommentsSection({
-  articleId,
-  initial,
-}: {
-  articleId: number;
-  initial: RichComment[];
-}) {
-  const [comments, setComments] = useState<RichComment[]>(initial);
+export default function CommentsSection({ articleId, initial }: { articleId: number; initial: PublicComment[] }) {
+  const [comments, setComments] = useState(initial);
   const [author, setAuthor] = useState("");
+  const [email, setEmail] = useState("");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const listRef = useRef<HTMLDivElement>(null);
+  const [refreshError, setRefreshError] = useState(false);
+  const [retry, setRetry] = useState(0);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (busy) return;
-    setError("");
-    setBusy(true);
-    try {
-      const res = await fetch("/api/comments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ articleId, author: author.trim(), body: body.trim() }),
-      });
-      const json = (await res.json()) as { ok: boolean; comment?: CommentLite; error?: string };
-      if (!json.ok || !json.comment) throw new Error(json.error ?? "ব্যর্থ");
-      setComments((c) => [json.comment!, ...c]);
-      setBody("");
-      setTimeout(() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 60);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "মন্তব্য পাঠানো যায়নি");
-    } finally {
-      setBusy(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    let loading = false;
+    async function refresh() {
+      if (document.hidden || loading) return;
+      loading = true;
+      try {
+        const response = await fetch(`/api/comments?articleId=${articleId}`, { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error("Unavailable");
+        const data = await response.json();
+        setComments(data.comments);
+        setRefreshError(false);
+      } catch { if (!controller.signal.aborted) setRefreshError(true); }
+      finally { loading = false; }
     }
-  };
+    refresh();
+    const timer = setInterval(refresh, 10_000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { controller.abort(); clearInterval(timer); document.removeEventListener("visibilitychange", refresh); };
+  }, [articleId, retry]);
 
-  const like = (id: number) => {
-    setComments((cs) =>
-      cs.map((c) => {
-        if (c.id !== id) return c;
-        const liked = typeof window !== "undefined" && localStorage.getItem(likedKey(id)) === "1";
-        if (liked) localStorage.removeItem(likedKey(id));
-        else if (typeof window !== "undefined") localStorage.setItem(likedKey(id), "1");
-        return { ...c, likes: Math.max(0, c.likes + (liked ? -1 : 1)) };
-      }),
-    );
-  };
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true); setError(""); setMessage("");
+    const website = new FormData(event.currentTarget).get("website");
+    try {
+      const response = await fetch("/api/comments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ articleId, author: author.trim(), email: email.trim(), body: body.trim(), website }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "মন্তব্য পাঠানো যায়নি।");
+      setBody(""); setMessage(data.message);
+    } catch (e) { setError(e instanceof Error ? e.message : "আবার চেষ্টা করুন।"); }
+    finally { setBusy(false); }
+  }
 
-  const isLiked = (id: number) =>
-    typeof window !== "undefined" && localStorage.getItem(likedKey(id)) === "1";
-
-  return (
-    <section className="mx-auto mt-20 max-w-4xl border-t-2 border-ink pt-10">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2.5 font-serif-bn text-[26px] font-black text-ink">
-          <MessageCircle size={20} className="text-alizarin" />
-          পাঠকের মন্তব্য
-          <span className="font-mono-x text-[13px] text-ink-soft">
-            ({toBn(comments.length)})
-          </span>
-        </h2>
-        <span className="flex items-center gap-1.5 rounded-full border border-ink/20 px-3 py-1 text-[10.5px] font-semibold text-ink-soft">
-          <ShieldCheck size={11.5} className="text-alizarin" />
-          পাবলিক · অটো-মডারেশন চালু
-        </span>
+  return <section id="comments" className="mx-auto mt-20 max-w-4xl scroll-mt-20 border-t-2 border-ink pt-10">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <h2 className="flex items-center gap-3 font-serif-bn text-[26px] font-black"><MessageCircle size={23} className="text-alizarin" />পাঠকের কথায় <span className="font-mono-x text-sm text-ink-soft">({toBn(comments.length)})</span></h2>
+      <span className="flex items-center gap-2 rounded-full border border-ink/20 px-3 py-1 text-xs text-ink-soft"><ShieldCheck size={13} />অনুমোদনের পর প্রকাশিত</span>
+    </div>
+    <p className="mt-3 text-sm leading-relaxed text-ink-soft">মতামত দিন, ব্যক্তিগত আক্রমণ নয়। প্রতিটি নতুন মন্তব্য সম্পাদকীয় পর্যালোচনার পর প্রকাশ করা হয়।</p>
+    <form onSubmit={submit} className="mt-6 border border-ink/20 bg-paper-deep/40 p-5 sm:p-6">
+      <div className="grid gap-4 sm:grid-cols-[190px_1fr]">
+        <label className="text-sm font-semibold">আপনার নাম<input required minLength={2} maxLength={60} autoComplete="name" value={author} onChange={e => setAuthor(e.target.value)} placeholder="নাম লিখুন" className="mt-2 w-full border border-ink/20 bg-paper px-3 py-3 outline-none focus:border-alizarin" /></label>
+        <label className="text-sm font-semibold">ইমেইল <span className="font-normal text-ink-soft">(প্রকাশিত হয় না)</span><input type="email" required maxLength={120} autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" className="mt-2 w-full border border-ink/20 bg-paper px-3 py-3 outline-none focus:border-alizarin" /></label>
+        <label className="text-sm font-semibold sm:col-span-2">আপনার মতামত<textarea required minLength={2} maxLength={800} rows={3} value={body} onChange={e => setBody(e.target.value)} placeholder="এই প্রতিবেদন নিয়ে আপনি কী ভাবছেন?" className="mt-2 w-full resize-y border border-ink/20 bg-paper px-3 py-3 outline-none focus:border-alizarin" /></label>
       </div>
-
-      {/* form */}
-      <form
-        onSubmit={submit}
-        className="mt-6 border-[1.5px] border-ink bg-paper-deep/50 p-5"
-      >
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <input
-            value={author}
-            onChange={(e) => setAuthor(e.target.value)}
-            maxLength={60}
-            placeholder="আপনার নাম"
-            className="border border-ink/25 bg-paper px-3.5 py-2.5 text-[13px] outline-none transition-colors focus:border-ink"
-          />
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            maxLength={800}
-            rows={2}
-            placeholder="সম্মানজনক ভাষায় আপনার মন্তব্য লিখুন… (সর্বোচ্চ ৮০০ অক্ষর)"
-            className="flex-1 resize-none border border-ink/25 bg-paper px-3.5 py-2.5 text-[13px] leading-relaxed outline-none transition-colors focus:border-ink"
-          />
-        </div>
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-[10.5px] text-ink-soft">
-            {error ? (
-              <span className="font-semibold text-alizarin">⚠ {error}</span>
-            ) : (
-              "প্রতিবেদনের সত্যতা-যাচাই নীতি অনুযায়ী আপত্তিকর মন্তব্য অপসারিত হয়।"
-            )}
-          </p>
-          <button
-            type="submit"
-            disabled={busy || !body.trim()}
-            className="flex items-center gap-2 bg-ink px-5 py-2.5 text-[12.5px] font-bold text-paper transition-colors duration-300 hover:bg-alizarin disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {busy ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-            মন্তব্য পাঠান
-          </button>
-        </div>
-      </form>
-
-      {/* list */}
-      <div ref={listRef} className="mt-6 space-y-4">
-        {comments.map((c) => (
-          <article key={c.id} className="border border-ink/15 bg-paper p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-ink font-serif-bn text-[13px] font-black text-paper">
-                  {c.author.slice(0, 1)}
-                </span>
-                <div>
-                  <p className="text-[13px] font-bold text-ink">{c.author}</p>
-                  <p className="font-mono-x text-[9.5px] tracking-wide text-ink-soft">
-                    {agoBn(c.createdAt)} · মডারেটেড ✓
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => like(c.id)}
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11.5px] font-semibold transition-all duration-300 ${
-                  isLiked(c.id)
-                    ? "border-alizarin bg-alizarin/10 text-alizarin"
-                    : "border-ink/20 text-ink-soft hover:border-alizarin hover:text-alizarin"
-                }`}
-              >
-                <Heart
-                  size={12}
-                  className={isLiked(c.id) ? "fill-alizarin text-alizarin" : ""}
-                />
-                {toBn(c.likes)}
-              </button>
-            </div>
-            <p className="mt-3 text-[13.5px] leading-[1.85] whitespace-pre-line text-ink/85">
-              {c.body}
-            </p>
-          </article>
-        ))}
-        {comments.length === 0 && (
-          <p className="border border-dashed border-ink/25 py-10 text-center text-[13px] text-ink-soft">
-            এখনো কোনো মন্তব্য নেই — প্রথম মন্তব্যটি আপনিই করুন।
-          </p>
-        )}
-      </div>
-    </section>
-  );
+      <div className="hidden" aria-hidden="true"><label>Website<input name="website" tabIndex={-1} autoComplete="off" /></label></div>
+      <div className="mt-3 flex items-center justify-between gap-3"><span className="text-xs text-ink-soft">{toBn(body.length)} / ৮০০ অক্ষর · ইমেইল প্রকাশ করা হয় না</span><button disabled={busy} className="flex items-center gap-2 bg-ink px-4 py-3 text-sm font-semibold text-paper transition-colors hover:bg-alizarin disabled:opacity-50">{busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}মন্তব্য জমা দিন</button></div>
+      {message && <p role="status" className="mt-4 flex items-center gap-2 border border-green-700/20 bg-green-700/5 p-3 text-sm text-green-800"><Check size={16} />{message}</p>}
+      {error && <p role="alert" className="mt-3 text-sm text-alizarin">{error}</p>}
+    </form>
+    {refreshError && <button onClick={() => setRetry(n => n + 1)} className="mt-4 flex items-center gap-2 text-xs text-alizarin"><RefreshCw size={12} />সর্বশেষ মন্তব্য লোড হয়নি · আবার চেষ্টা করুন</button>}
+    <div className="mt-6 divide-y divide-ink/15">
+      {comments.map(c => <article key={c.id} className="py-6"><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-ink font-serif-bn font-bold text-paper">{Array.from(c.author)[0]}</span><div><p className="text-sm font-semibold">{c.author}</p><p className="mt-0.5 text-xs text-ink-soft">{agoBn(c.createdAt)} · সম্পাদক অনুমোদিত</p></div></div><p className="mt-3 whitespace-pre-wrap break-words text-[15px] leading-7 text-ink/85">{c.body}</p></article>)}
+      {!comments.length && <div className="py-10 text-center text-sm text-ink-soft">এখনো কোনো অনুমোদিত মন্তব্য নেই। আপনার মতামত দিয়ে আলোচনা শুরু করুন।</div>}
+    </div>
+  </section>;
 }

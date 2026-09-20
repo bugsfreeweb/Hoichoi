@@ -5,7 +5,7 @@ import { Camera, GitBranch, ShieldCheck, Sparkles, Timer } from "lucide-react";
 import { toBn } from "@/lib/format";
 
 export default function SettingsPanel() {
-  const [cron, setCron] = useState("0 */2 * * *");
+  const [cron, setCron] = useState("");
   const [model, setModel] = useState("gpt-4o-mini");
   const [temp, setTemp] = useState(0.3);
   const [gate, setGate] = useState(90);
@@ -22,8 +22,8 @@ export default function SettingsPanel() {
 
   return (
     <div className="scroll-slim h-full overflow-auto p-5">
-      <p className="font-serif-bn text-[20px] font-black text-white">সেটিংস</p>
-      <p className="mt-1 font-mono-x text-[10px] tracking-[0.2em] text-white/35 uppercase">
+      <p className="font-serif-bn text-[20px] font-black text-[var(--ds-t1)]">সেটিংস</p>
+      <p className="mt-1 font-mono-x text-[10px] tracking-[0.2em] text-[var(--ds-t5)] uppercase">
         DESKTOP CONTROLLER · LOCAL PREFERENCES
       </p>
 
@@ -39,7 +39,7 @@ export default function SettingsPanel() {
             className="mt-1.5 w-full rounded-lg border border-white/10 bg-night px-3 py-2 font-mono-x text-[16px] text-white outline-none"
           />
           <p className="mt-2 text-[11.5px] text-white/40">
-            প্রতি দুই ঘণ্টায় স্বয়ংক্রিয় রান। খালি রাখলে শুধু ম্যানুয়াল।
+            ডেমো সাইট — কোনো স্বয়ংক্রিয় cron নেই। শুধু ম্যানুয়াল রান।
           </p>
         </section>
 
@@ -103,8 +103,8 @@ export default function SettingsPanel() {
                 ["shot", "স্ক্রিনশট আর্কাইভ"],
                 ["headless", "Playwright headless"],
                 ["fact", "ফ্যাক্ট-গেট বাধ্যতামূলক"],
-                ["commit", "অটো-কমিট GitHub"],
-                ["deploy", "Vercel অটো-ডিপ্লয়"],
+                ["commit", "অটো-কমিট AI Agent"],
+                ["deploy", "Web অটো-ডিপ্লয়"],
               ] as const
             ).map(([k, label]) => (
               <li key={k} className="flex items-center justify-between text-[12.5px]">

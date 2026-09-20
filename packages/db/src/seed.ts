@@ -18,7 +18,7 @@ const DEFAULT_PROVIDERS: Array<{
 }> = [
   { key: "google", name: "Google Gemini 2.0 Flash", model: "gemini-2.0-flash", env: "GOOGLE_API_KEY", priority: 1, free: true, rewrite: true, embed: true },
   { key: "groq", name: "Groq Llama 3.3 70B", model: "llama-3.3-70b-versatile", env: "GROQ_API_KEY", priority: 2, free: true, rewrite: true, embed: false },
-  { key: "openrouter", name: "OpenRouter Free", model: "meta-llama/llama-3.3-70b:free", env: "OPENROUTER_API_KEY", priority: 3, free: true, rewrite: true, embed: false },
+  { key: "openrouter", name: "OpenRouter Free", model: "google/gemma-4-31b-it:free", env: "OPENROUTER_API_KEY", priority: 3, free: true, rewrite: true, embed: false },
   { key: "ollama", name: "Ollama (local)", model: "llama3.2", env: "OLLAMA_BASE_URL", priority: 4, free: true, rewrite: true, embed: false, base: "http://localhost:11434/v1" },
 ];
 

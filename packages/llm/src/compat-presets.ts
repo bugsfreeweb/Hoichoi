@@ -16,7 +16,10 @@ export function buildOpenAICompat(row: LLMProviderRow, key: string | null): Open
     defaultBaseUrl: DEFAULT_BASE_URLS[row.provider_key] ?? "https://api.openai.com/v1",
   };
   if (row.provider_key === "openrouter") {
-    opts.extraHeaders = { "HTTP-Referer": "https://hoichoi.local", "X-Title": "হৈচৈ" };
+    // Header values must stay ASCII: V8 fetch rejects non-Latin1 header values
+    // ("Cannot convert argument to a ByteString ..."), which silently killed
+    // every rewrite that hit the OpenRouter provider.
+    opts.extraHeaders = { "HTTP-Referer": "https://hoichoi.local", "X-Title": "hoichoi" };
   }
   if (row.provider_key === "ollama") {
     // Ollama accepts the key verbatim when its auth is enabled.

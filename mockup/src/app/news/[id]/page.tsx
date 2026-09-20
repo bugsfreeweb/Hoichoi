@@ -17,7 +17,10 @@ import FbPost from "@/components/fb-post";
 import ArticleCard from "@/components/article-card";
 import Ticker from "@/components/ticker";
 import CommentsSection from "@/components/comments-section";
+import ReportForm from "@/components/report-form";
+import { ensureReady } from "@/lib/db-bootstrap";
 import AdSlot from "@/components/ad-slot";
+import SiteFooter from "@/components/site-footer";
 import {
   getArticleById,
   getArticles,
@@ -41,7 +44,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const a = await getArticleById(Number(id));
-  return { title: a ? `${a.title} — হইচই` : "হইচই" };
+  return { title: a ? `${a.title} — হৈচৈ` : "হৈচৈ" };
 }
 
 export default async function ArticlePage({
@@ -49,6 +52,7 @@ export default async function ArticlePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await ensureReady();
   const { id } = await params;
   const article = await getArticleById(Number(id));
   if (!article) notFound();
@@ -165,6 +169,11 @@ export default async function ArticlePage({
               পুনর্লিখিত; মূল পোস্টের স্ক্রিনশট আর্কাইভে সংরক্ষিত আছে।
             </div>
 
+            {/* reader report → /api/reports → /admin/reports */}
+            <div className="mt-4">
+              <ReportForm articleId={article.id} />
+            </div>
+
             {/* ad · in-article */}
             <div className="mt-10">
               <AdSlot variant="leaderboard" />
@@ -205,28 +214,28 @@ export default async function ArticlePage({
               {/* ad · rectangle */}
               <AdSlot variant="rect" />
 
-              {/* data discipline */}
-              <div className="bg-ink p-6 text-paper">
+              {/* data discipline — fixed dark band, readable in both themes */}
+              <div className="bg-band p-6 text-bandline">
                 <p className="flex items-center gap-2 font-mono-x text-[10px] tracking-[0.24em] text-lime uppercase">
                   <Fingerprint size={12} /> তথ্য শৃঙ্খলা
                 </p>
                 <dl className="mt-5 space-y-3 font-mono-x text-[11px]">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                    <dt className="text-white/45">SOURCE_POST</dt>
-                    <dd className="max-w-[55%] truncate text-right text-white/85">
+                  <div className="flex items-center justify-between border-b border-bandline/15 pb-2.5">
+                    <dt className="text-bandline/50">SOURCE_POST</dt>
+                    <dd className="max-w-[55%] truncate text-right text-bandline/85">
                       {article.sourceName}
                     </dd>
                   </div>
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                    <dt className="text-white/45">COLLECTED_AT</dt>
-                    <dd className="text-white/85">{bnTime(article.collectedAt)}</dd>
+                  <div className="flex items-center justify-between border-b border-bandline/15 pb-2.5">
+                    <dt className="text-bandline/50">COLLECTED_AT</dt>
+                    <dd className="text-bandline/85">{bnTime(article.collectedAt)}</dd>
                   </div>
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                    <dt className="text-white/45">CONTENT_HASH</dt>
+                  <div className="flex items-center justify-between border-b border-bandline/15 pb-2.5">
+                    <dt className="text-bandline/50">CONTENT_HASH</dt>
                     <dd className="text-amberx">{article.hash}</dd>
                   </div>
                   <div className="flex items-center justify-between">
-                    <dt className="flex items-center gap-1.5 text-white/45">
+                    <dt className="flex items-center gap-1.5 text-bandline/50">
                       <CalendarClock size={11} /> DEDUP_CHECK
                     </dt>
                     <dd className="text-lime">PASS · simhash 0.92</dd>
@@ -266,6 +275,7 @@ export default async function ArticlePage({
           </section>
         )}
       </article>
+      <SiteFooter context="OPTION B NEWS" />
     </main>
   );
 }

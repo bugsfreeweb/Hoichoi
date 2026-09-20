@@ -104,7 +104,7 @@ export default function Countdown({
         <span
           className={`font-mono-x text-[9.5px] ${dark ? "text-white/40" : "text-ink-soft/70"}`}
         >
-          cron: 0 */2 * * *
+          cron: ম্যানুয়াল
         </span>
       </div>
     </div>

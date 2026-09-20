@@ -4,7 +4,8 @@ import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { ArrowRight, AppWindow, Radio, Camera, CircleCheck } from "lucide-react";
 import Counter from "@/components/home/counter";
-import Countdown from "@/components/countdown";
+import { useLiveData } from "./live-data";
+import { bnTime } from "@/lib/format";
 import { BRAND } from "@/lib/brand";
 
 const PHRASES = [
@@ -19,7 +20,6 @@ export default function Hero({
   collected,
   published,
   dups,
-  avgSec,
   featuredImg,
   featuredTitle,
 }: {
@@ -27,7 +27,6 @@ export default function Hero({
   collected: number;
   published: number;
   dups: number;
-  avgSec: number;
   featuredImg: string | null;
   featuredTitle: string | null;
 }) {
@@ -37,7 +36,8 @@ export default function Hero({
     return () => clearInterval(t);
   }, []);
 
-  const syncMin = avgSec / 60;
+  const live = useLiveData();
+  const summary = live?.data?.totals;
 
   return (
     <section className="bg-night-grid relative overflow-hidden">
@@ -59,9 +59,9 @@ export default function Hero({
                 <span className="absolute h-full w-full animate-ping rounded-full bg-lime opacity-70" />
                 <span className="relative h-1.5 w-1.5 rounded-full bg-lime" />
               </span>
-              ডেস্ক অনলাইন
+              {live?.error ? "সংযোগ বিচ্ছিন্ন" : live?.paused ? "আপডেট বিরতিতে" : live?.data ? "লাইভ ডেটা সংযুক্ত" : "ডেটা যাচাই চলছে"}
             </span>
-            {["0 */2 * * *", "SHA-256 DEDUP", "ISR LIVE"].map((c) => (
+            {["HOICHOI NEWSROOM", "TURSO DATABASE", "HUMAN REVIEW"].map((c) => (
               <span
                 key={c}
                 className="rounded-full border border-white/12 bg-white/[0.04] px-3 py-1 font-mono-x text-[9.5px] tracking-[0.18em] text-white/50 uppercase"
@@ -72,13 +72,13 @@ export default function Hero({
           </div>
 
           <h1 className="headline-grad mt-6 font-serif-bn text-[76px] leading-[0.92] font-black tracking-tight md:text-[120px]">
-            হইচই<span className="text-alizarin">।</span>
+            হৈচৈ<span className="text-alizarin">!</span>
           </h1>
 
           <div className="kin-mask mt-5 h-16 md:h-18">
             <p
               key={idx}
-              className="kin-line font-serif-bn text-[19px] leading-[1.6] font-bold text-paper/90 md:text-[24px]"
+              className="kin-line font-serif-bn text-[19px] leading-[1.6] font-bold text-white/90 md:text-[24px]"
             >
               {BRAND.tagline} — {PHRASES[idx]}
               <span className="caret" />
@@ -86,18 +86,17 @@ export default function Hero({
           </div>
 
           <p className="mt-5 max-w-xl text-[13.5px] leading-relaxed text-white/55">
-            হইচই প্রতি দুই ঘণ্টায় আপনার নির্বাচিত ফেসবুক পেজ-গ্রুপ স্ক্যান করে,
-            প্রতিটি পোস্টের স্ক্রিনশট আর্কাইভ করে, হ্যাশ মিলিয়ে ডুপ্লিকেট বাদ দেয়,
-            আর অপরাধ-শিশু-সমাজের গল্প সম্পাদকীয় মানের বাংলায় লিখে GitHub পথে
-            Vercel-এ ছেপে দেয় — এক টাচও ছাড়া।
+            শহরের ঘটনা, মানুষের কথা। হৈচৈয়ের সম্পাদকীয় ডেস্কে প্রতিটি খবর ও
+            পাঠকের মন্তব্যের জন্য আছে আলাদা পর্যালোচনা। নিচের লাইভ গ্রাফে দেখুন
+            ডাটাবেসে কত প্রতিবেদন জমেছে, কোনটি প্রকাশিত, আর আলোচনায় কী যোগ হলো।
           </p>
 
           <div className="mt-8 grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { l: "আজ সংগৃহীত", v: collected, d: 0, s: "" },
-              { l: "লাইভ প্রকাশিত", v: published, d: 0, s: "" },
-              { l: "ডুপ্লিকেট ব্লক", v: dups, d: 0, s: "" },
-              { l: "গড় সিঙ্ক", v: syncMin, d: 1, s: " মি" },
+              { l: "সংগৃহীত রেকর্ড", v: summary?.collected ?? collected, d: 0, s: "" },
+              { l: "প্রকাশিত প্রতিবেদন", v: summary?.published ?? published, d: 0, s: "" },
+              { l: "ডুপ্লিকেট চিহ্নিত", v: summary?.duplicates ?? dups, d: 0, s: "" },
+              { l: "অনুমোদিত মন্তব্য", v: summary?.approvedComments ?? 0, d: 0, s: "" },
             ].map((m) => (
               <div key={m.l} className="border-l border-white/12 pl-3">
                 <Counter
@@ -129,7 +128,7 @@ export default function Hero({
               className="beam flex items-center gap-2 rounded-md bg-white/[0.06] px-6 py-3.5 text-[13.5px] font-bold text-white backdrop-blur-sm transition-colors duration-300 hover:bg-white/10"
             >
               <AppWindow size={15} className="text-lime" />
-              হইচই ডেস্ক লঞ্চ
+              হৈচৈ ডেস্ক লঞ্চ
             </Link>
           </div>
         </div>
@@ -198,7 +197,7 @@ export default function Hero({
           <p className="font-mono-x text-[9.5px] tracking-[0.24em] text-white/35 uppercase">
             FEED → SHOT → HASH → LLM → GIT → DEPLOY
           </p>
-          <Countdown lastRunIso={lastRunIso} size={54} dark />
+          <div className="flex flex-wrap items-center gap-5"><span className="text-[11px] text-white/40">সর্বশেষ নথিভুক্ত রান: {lastRunIso ? bnTime(lastRunIso) : "এখনো নেই"}</span><a href="#live-insights" className="flex items-center gap-2 text-sm font-semibold text-lime">লাইভ গ্রাফ দেখুন <ArrowRight size={13} className="rotate-90" /></a></div>
         </div>
       </div>
     </section>

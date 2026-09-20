@@ -1,36 +1,20 @@
-import {
-  pgTable,
-  pgEnum,
-  serial,
-  text,
-  integer,
-  boolean,
-  timestamp,
-} from "drizzle-orm/pg-core";
-
-export const articleStatus = pgEnum("article_status", [
-  "published",
-  "pending",
-  "duplicate",
-]);
-
-export const keyScope = pgEnum("key_scope", ["desktop", "web", "both"]);
-
-export const sourceKind = pgEnum("source_kind", ["page", "group"]);
-
-export const sourceStatus = pgEnum("source_status", [
-  "watching",
-  "paused",
-  "error",
-]);
-
-export const logLevel = pgEnum("log_level", ["info", "ok", "warn", "err"]);
+import { pgTable, pgEnum, serial, text, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 
 /**
- * Articles collected from monitored Facebook sources, screenshot-archived,
- * de-duplicated by hash, then rewritten into publish-ready Bangla stories.
+ * All objects are namespaced with `hoichoi_` so this app can share a database
+ * with other applications. A pre-existing `comments` / `sources` /
+ * `pipeline_runs` table belonging to another schema will NOT be adopted or
+ * altered — we create our own namespaced tables instead.
  */
-export const articles = pgTable("articles", {
+const P = "hoichoi_";
+
+export const articleStatus = pgEnum(`${P}article_status`, ["published", "pending", "duplicate"]);
+export const keyScope = pgEnum(`${P}key_scope`, ["desktop", "web", "both"]);
+export const sourceKind = pgEnum(`${P}source_kind`, ["page", "group"]);
+export const sourceStatus = pgEnum(`${P}source_status`, ["watching", "paused", "error"]);
+export const logLevel = pgEnum(`${P}log_level`, ["info", "ok", "warn", "err"]);
+
+export const articles = pgTable(`${P}articles`, {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   dek: text("dek").notNull(),
@@ -47,14 +31,11 @@ export const articles = pgTable("articles", {
   readingMinutes: integer("reading_minutes").notNull().default(3),
   featured: boolean("featured").notNull().default(false),
   status: articleStatus("status").notNull().default("pending"),
-  collectedAt: timestamp("collected_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  collectedAt: timestamp("collected_at", { withTimezone: true }).notNull().defaultNow(),
   publishedAt: timestamp("published_at", { withTimezone: true }),
 });
 
-/** Encrypted API vault entries surfaced on the admin panel. */
-export const apiKeys = pgTable("api_keys", {
+export const apiKeys = pgTable(`${P}api_keys`, {
   id: serial("id").primaryKey(),
   label: text("label").notNull(),
   service: text("service").notNull(),
@@ -67,12 +48,9 @@ export const apiKeys = pgTable("api_keys", {
   note: text("note").notNull().default(""),
 });
 
-/** Automation log — one row per 2-hour collector run. */
-export const pipelineRuns = pgTable("pipeline_runs", {
+export const pipelineRuns = pgTable(`${P}pipeline_runs`, {
   id: serial("id").primaryKey(),
-  startedAt: timestamp("started_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
   trigger: text("trigger").notNull().default("cron"),
   status: text("status").notNull().default("success"),
   collected: integer("collected").notNull().default(0),
@@ -82,8 +60,7 @@ export const pipelineRuns = pgTable("pipeline_runs", {
   note: text("note").notNull().default(""),
 });
 
-/** Facebook pages/groups the Tauri desk watches. */
-export const sources = pgTable("sources", {
+export const sources = pgTable(`${P}sources`, {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   kind: sourceKind("kind").notNull().default("page"),
@@ -98,8 +75,7 @@ export const sources = pgTable("sources", {
   note: text("note").notNull().default(""),
 });
 
-/** Streaming collector log lines shown in the desktop app. */
-export const collectorLogs = pgTable("collector_logs", {
+export const collectorLogs = pgTable(`${P}collector_logs`, {
   id: serial("id").primaryKey(),
   ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),
   level: logLevel("level").notNull().default("info"),
@@ -107,16 +83,43 @@ export const collectorLogs = pgTable("collector_logs", {
   message: text("message").notNull(),
 });
 
-/** Public reader comments on published articles. */
-export const comments = pgTable("comments", {
+export const comments = pgTable(`${P}comments`, {
   id: serial("id").primaryKey(),
-  articleId: integer("article_id")
-    .notNull()
-    .references(() => articles.id, { onDelete: "cascade" }),
+  articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
   author: text("author").notNull(),
+  email: text("email").notNull().default(""),
   body: text("body").notNull(),
   likes: integer("likes").notNull().default(0),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  status: text("status", { enum: ["pending", "approved", "rejected", "spam"] }).notNull().default("pending"),
+  moderatorNote: text("moderator_note").notNull().default(""),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const reports = pgTable(`${P}reports`, {
+  id: serial("id").primaryKey(),
+  articleId: integer("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
+  reporterName: text("reporter_name").notNull(),
+  reporterEmail: text("reporter_email").notNull(),
+  reason: text("reason").notNull(),
+  details: text("details").notNull().default(""),
+  status: text("status", { enum: ["open", "reviewed", "dismissed"] }).notNull().default("open"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const moderationActions = pgTable(`${P}moderation_actions`, {
+  id: serial("id").primaryKey(),
+  commentId: integer("comment_id").notNull().references(() => comments.id, { onDelete: "cascade" }),
+  fromStatus: text("from_status").notNull(),
+  toStatus: text("to_status").notNull(),
+  note: text("note").notNull().default(""),
+  actor: text("actor").notNull().default("admin"),
+  origin: text("origin").notNull().default("web"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const serviceHeartbeats = pgTable(`${P}service_heartbeats`, {
+  service: text("service").primaryKey(),
+  state: text("state", { enum: ["ready", "working", "error"] }).notNull().default("ready"),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
 });

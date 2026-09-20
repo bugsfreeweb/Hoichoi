@@ -11,16 +11,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Node 20 is deprecated on GitHub runners; .nvmrc pins 22 (Next 16 needs 20.9+).
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version-file: ".nvmrc"
 
+      # `npm ci` requires a committed lock file. Fall back to `npm install` and
+      # warn, so a missing lock file is a clear message instead of a hard stop.
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            echo "::warning::package-lock.json not committed — falling back to npm install. Commit the lock file for reproducible builds."
+            npm install
+          fi
 
       - name: Pure JS syntax check
-        run: node --check public/option-a.js
+        run: |
+          node --check public/moderation-panel.js
 
       - name: Generate route types
         run: npx next typegen
@@ -28,11 +37,10 @@ jobs:
       - name: Typecheck
         run: npm exec tsc -- --noEmit --pretty false
 
+      # Build must never require a live database or real secrets.
       - name: Production build
         run: npm run build
         env:
-          # Build never connects to the DB — these keep the module from
-          # complaining; runtime values come from Vercel env vars.
           DATABASE_URL: postgresql://demo:demo@127.0.0.1:5432/demo
           TURSO_DATABASE_URL: libsql://demo.turso.io
           TURSO_AUTH_TOKEN: demo

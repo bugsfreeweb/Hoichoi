@@ -234,7 +234,13 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           continue;
         }
 
-        const status: PostStatus = config.auto_pending_review ? "pending_review" : "approved";
+        const sensitive =
+          config.auto_pending_review ||
+          config.requires_double_approval ||
+          outcome.flags.some((f) =>
+            f === "needs_double_approval" || f === "minor_involved" || f === "graphic_content",
+          );
+        const status: PostStatus = sensitive ? "pending_review" : "published";
         const slug = makeSlug(outcome.rewritten.title_bn);
         const now = nowIso();
         await withTx(async (tx) => {
@@ -254,7 +260,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
               media.path, media.kind,
               sp.fbPostUrl, source.page_name, slug, status,
               JSON.stringify(outcome.flags), embeddingJson, outcome.rewritten.case_status ?? null,
-              sp.authorName ?? null, status === "approved" ? now : null, now, now,
+              sp.authorName ?? null, status === "published" ? now : null, now, now,
             ],
           });
           // vec0 row (invisible for local DBs when the extension is missing → ignore).
@@ -265,7 +271,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
             }).catch(() => {});
           }
         });
-        if (status === "approved") stats.published++;
+        if (status === "published") stats.published++;
         else stats.pendingReview++;
         stats.rewritten++;
         const prov = outcome.provider;

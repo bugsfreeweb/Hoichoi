@@ -1,3 +1,5 @@
+import { REPORT_REASONS, type ReportReason, type ReportStatus } from "./moderation-types";
+
 /**
  * Compact seed dataset shared by /api/setup for BOTH drivers (Postgres + Turso).
  * Timestamps are expressed as "hours/days ago" and converted per dialect.
@@ -157,54 +159,71 @@ export const SEED_ARTICLES: SeedArticle[] = [
   },
 ];
 
+/** [name, kind, fbId, handle, topics, checkedMinAgo, postedMinAgo, status, postsToday, health, note] */
 export const SEED_SOURCES: Array<[
-  string, "page" | "group", string, string, string, string | null, string | null,
+  string, "page" | "group", string, string, string, number, number,
   "watching" | "paused" | "error", number, number, string,
 ]> = [
-  ["মিরপুর আপডেট", "page", "1744552188412", "@mirpur-update", "শিশু · স্থানীয়", "-26 minutes", "-7 hours", "watching", 3, 98, "প্রধান শিশু-সুরক্ষা সোর্স"],
-  ["ঢাকা ট্রাফিক অ্যালার্ট", "group", "9921880317101", "@dhaka-traffic", "অপরাধ · রাস্তা", "-26 minutes", "-9 hours", "watching", 4, 94, "ভিডিও-প্রধান গ্রুপ"],
-  ["রাজশাহীভুবন", "page", "4481209930012", "@rajshahibhuvan", "পরিবার · সমাজ", "-28 minutes", "-12 hours", "watching", 1, 91, ""],
-  ["আইনি সহায়তা বাংলা", "page", "3301882291044", "@legal-aid-bd", "অপরাধ · আইন", "-30 minutes", "-15 hours", "watching", 2, 96, "ফ্যাক্ট-গেট কঠোর"],
-  ["প্যারেন্টিং বাংলা", "group", "7710021883301", "@parenting-bd", "শিশু · অভিভাবক", "-32 minutes", "-18 hours", "watching", 5, 89, ""],
-  ["কুমিল্লা টক", "group", "6100299338841", "@cumilla-talk", "ভাইরাল · গুজব", "-34 minutes", "-21 hours", "watching", 6, 72, "গুজব ফিল্টার অন"],
-  ["সিলেট সংবাদচক্র", "page", "8810221993004", "@sylhet-songbad", "পরিবার · সালিশ", "-2 hours", "-30 hours", "paused", 0, 80, "ম্যানুয়াল বিরতি"],
-  ["ঢাকা কমিউনিটি অ্যালার্ট", "group", "5501882299001", "@dhaka-alert", "শিশু · পুনরাবৃত্তি", "-12 minutes", "-4 hours", "error", 1, 41, "Graph rate-limit 429"],
+  ["মিরপুর আপডেট", "page", "1744552188412", "@mirpur-update", "শিশু · স্থানীয়", 26, 420, "watching", 3, 98, "প্রধান শিশু-সুরক্ষা সোর্স"],
+  ["ঢাকা ট্রাফিক অ্যালার্ট", "group", "9921880317101", "@dhaka-traffic", "অপরাধ · রাস্তা", 26, 540, "watching", 4, 94, "ভিডিও-প্রধান গ্রুপ"],
+  ["রাজশাহীভুবন", "page", "4481209930012", "@rajshahibhuvan", "পরিবার · সমাজ", 28, 720, "watching", 1, 91, ""],
+  ["আইনি সহায়তা বাংলা", "page", "3301882291044", "@legal-aid-bd", "অপরাধ · আইন", 30, 900, "watching", 2, 96, "ফ্যাক্ট-গেট কঠোর"],
+  ["প্যারেন্টিং বাংলা", "group", "7710021883301", "@parenting-bd", "শিশু · অভিভাবক", 32, 1080, "watching", 5, 89, ""],
+  ["কুমিল্লা টক", "group", "6100299338841", "@cumilla-talk", "ভাইরাল · গুজব", 34, 1260, "watching", 6, 72, "গুজব ফিল্টার অন"],
+  ["সিলেট সংবাদচক্র", "page", "8810221993004", "@sylhet-songbad", "পরিবার · সালিশ", 120, 1800, "paused", 0, 80, "ম্যানুয়াল বিরতি"],
+  ["ঢাকা কমিউনিটি অ্যালার্ট", "group", "5501882299001", "@dhaka-alert", "শিশু · পুনরাবৃত্তি", 12, 240, "error", 1, 41, "Graph rate-limit 429"],
 ];
 
-export const SEED_KEYS: Array<[string, string, string, string, string, string, string, string, string]> = [
+export const SEED_KEYS: Array<[string, string, string, string, string, "desktop" | "web" | "both", string, string, string]> = [
   ["Facebook Graph টোকেন", "facebook", "FB_GRAPH_TOKEN", "EAAx••••••••X7q2", "EAADEMOxK7q2mZq9vL0demo", "desktop", "rotate", "৩৪ দিন আগে", "পেজ রিড-স্কোপ · ৬০ দিনের টোকেন"],
   ["OpenAI API কী (রিরাইট)", "llm", "OPENAI_API_KEY", "sk-proj-••••••8F3d", "sk-proj-demo4xK9rT7bMzQ8F3d", "desktop", "active", "৯ দিন আগে", "মডেল: gpt-4o-mini · temp 0.3"],
-  ["GitHub PAT (কনটেন্ট)", "github", "GITHUB_CONTENT_PAT", "ghp_••••••9aKl", "ghp_demo9aKlPRm2xQwe7Tn", "desktop", "active", "১৮ দিন আগে", "রিপো: hoichoi-content"],
-  ["Vercel API টোকেন", "vercel", "VERCEL_TOKEN", "vcl_••••••Qm81", "vcl_demoQm81Zth4Lok6xN", "web", "active", "২২ দিন আগে", "ডিপ্লয় স্ট্যাটাস রিড-অনলি"],
+  ["AI Agent PAT (কনটেন্ট)", "github", "AGENT_CONTENT_PAT", "ghp_••••••9aKl", "ghp_demo9aKlPRm2xQwe7Tn", "desktop", "active", "১৮ দিন আগে", "রিপো: hoichoi-content"],
+  ["Web API টোকেন", "vercel", "WEB_API_TOKEN", "vcl_••••••Qm81", "vcl_demoQm81Zth4Lok6xN", "web", "active", "২২ দিন আগে", "ডিপ্লয় স্ট্যাটাস রিড-অনলি"],
   ["Turso ডাটাবেস URL", "database", "TURSO_DATABASE_URL", "libsql://••••turso.io", "libsql://demo.turso.io", "both", "active", "৪৫ দিন আগে", "libSQL · ফ্রি টিয়ার"],
   ["Cloudinary (শট CDN)", "storage", "CLOUDINARY_URL", "cloudinary://••••@dk2demo", "cloudinary://demo_key:demo_secret@dk2demo", "both", "rotate", "৬১ দিন আগে", "স্ক্রিনশট হোস্টিং"],
   ["ভল্ট মাস্টার কী", "vault", "VAULT_MASTER_KEY", "•••••••••••• (শুধু env)", "DEMO-MASTER-32B-F8A1C4E7", "both", "active", "৯০ দিন আগে", "AES-256 · ডেস্কটপ env থেকে"],
 ];
 
-export const SEED_RUNS: Array<[string | null, string, string, number, number, number, number, string]> = [
-  ["-26 minutes", "cron", "success", 5, 1, 3, 268, "নতুন ৩টি প্রকাশিত · চট্টগ্রাম ভিডিও ফ্যাক্ট-গেটে"],
-  ["-2 hours 26 minutes", "cron", "success", 4, 2, 2, 249, "ডুপ্লিকেট: একই ঘটনার দ্বিতীয় ভিডিও"],
-  ["-4 hours 26 minutes", "cron", "success", 6, 1, 4, 302, "সিমহ্যাশে নিকট-দ্বৈত ব্লক"],
-  ["-6 hours 26 minutes", "manual", "success", 3, 0, 3, 214, "অ্যাডমিন ম্যানুয়াল রান · দ্রুত সম্পন্ন"],
-  ["-8 hours 26 minutes", "cron", "partial", 5, 0, 4, 341, "১টি ছবি ডাউনলোড টাইমআউট · পুনঃচেষ্টা সারিতে"],
+/** [startedMinAgo, trigger, status, collected, duplicates, published, durationSec, note] */
+export const SEED_RUNS: Array<[number, string, string, number, number, number, number, string]> = [
+  [26, "cron", "success", 5, 1, 3, 268, "নতুন ৩টি প্রকাশিত · চট্টগ্রাম ভিডিও ফ্যাক্ট-গেটে"],
+  [146, "cron", "success", 4, 2, 2, 249, "ডুপ্লিকেট: একই ঘটনার দ্বিতীয় ভিডিও"],
+  [266, "cron", "success", 6, 1, 4, 302, "সিমহ্যাশে নিকট-দ্বৈত ব্লক"],
+  [386, "manual", "success", 3, 0, 3, 214, "অ্যাডমিন ম্যানুয়াল রান · দ্রুত সম্পন্ন"],
+  [506, "cron", "partial", 5, 0, 4, 341, "১টি ছবি ডাউনলোড টাইমআউট · পুনঃচেষ্টা সারিতে"],
 ];
 
-export const SEED_LOGS: Array<[string | null, string, string, string]> = [
-  ["-2 minutes", "ok", "SHIP", "Vercel READY · hoichoi.vercel.app · ISR 8.1s"],
-  ["-4 minutes", "ok", "LLM", "পুনর্লিখন সম্পন্ন · fact-gate 0.94 · 18s"],
-  ["-6 minutes", "ok", "DEDUP", "simhash 0.41 · PASS · unique"],
-  ["-7 minutes", "warn", "DEDUP", "simhash 0.91 · BLOCK · মিরপুর নিখোঁজ পুনরাবৃত্তি"],
-  ["-8 minutes", "ok", "HASH", "sha256 a1f3c9e2 · NEW"],
-  ["-9 minutes", "ok", "SHOT", "Playwright capture shot_0011.png · 1440×900"],
-  ["-11 minutes", "ok", "FETCH", "মিরপুর আপডেট · 2 new · ঢাকা ট্রাফিক · 1 video"],
-  ["-14 minutes", "info", "CRON", "scheduled tick · 0 */2 * * * · Asia/Dhaka"],
+/** [minAgo, level, stage, message] */
+export const SEED_LOGS: Array<[number, "info" | "ok" | "warn" | "err", string, string]> = [
+  [2, "ok", "SHIP", "Web READY · hoichoi.example · ISR 8.1s"],
+  [4, "ok", "LLM", "পুনর্লিখন সম্পন্ন · fact-gate 0.94 · 18s"],
+  [6, "ok", "DEDUP", "simhash 0.41 · PASS · unique"],
+  [7, "warn", "DEDUP", "simhash 0.91 · BLOCK · মিরপুর নিখোঁজ পুনরাবৃত্তি"],
+  [8, "ok", "HASH", "sha256 a1f3c9e2 · NEW"],
+  [9, "ok", "SHOT", "Playwright capture shot_0011.png · 1440×900"],
+  [11, "ok", "FETCH", "মিরপুর আপডেট · 2 new · ঢাকা ট্রাফিক · 1 video"],
+  [14, "info", "CRON", "manual collection · Asia/Dhaka"],
 ];
 
-export const SEED_COMMENTS: Array<[number, string, string, number, string | null]> = [
-  [1, "রুবাইয়া হক", "আলহামদুলিল্লাহ, বাচ্চা ফিরেছে। সিসি ক্যামেরার ভূমিকা আসলেই অবিস্মরণীয় — প্রতিটি দোকানে লাগানো উচিত।", 24, "-30 minutes"],
-  [1, "মাহমুদ হাসান", "প্রথম এক ঘণ্টার তালিকাটা খুব কাজের। ১০৯৮ নম্বরটা আগে জানা ছিল না, ধন্যবাদ।", 17, "-1 hour"],
-  [1, "সনিয়া রহমান", "নিখোঁজের পোস্ট শেয়ার করার সময় ছবি স্পষ্ট রাখুন, টাইম-সারি দিন — উদ্ধারে দ্রুত কাজ হয়।", 9, "-3 hours"],
-  [2, "আরিফুল ইসলাম", "ভিডিও ক্রপ না করে মূল ফাইল পুলিশে দেওয়াটা সবচেয়ে জরুরি — লাইনে নম্বর প্লেটটা স্পষ্ট ছিল।", 31, "-40 minutes"],
-  [2, "নাঈম শেখ", "একটা জিনিস মনে রাখবেন: ভাইরাল হওয়া মানে বিচার নয়, বিচার আদালতে। প্রমাণ পুলিশে দিন।", 12, "-2 hours"],
-  [3, "ফারহানা আক্তার", "কাউন্সেলিং নিয়ে এত কথা হয় না, আসলে একই পরিবারের মানুষগুলো অনেক উপকার পায়। ভালো উদ্যোগ।", 8, "-5 hours"],
+/** [articleId, author, body, likes, minAgo] */
+export const SEED_COMMENTS: Array<[number, string, string, number, number]> = [
+  [1, "রুবাইয়া হক", "আলহামদুলিল্লাহ, বাচ্চা ফিরেছে। সিসি ক্যামেরার ভূমিকা আসলেই অবিস্মরণীয় — প্রতিটি দোকানে লাগানো উচিত।", 24, 30],
+  [1, "মাহমুদ হাসান", "প্রথম এক ঘণ্টার তালিকাটা খুব কাজের। ১০৯৮ নম্বরটা আগে জানা ছিল না, ধন্যবাদ।", 17, 60],
+  [1, "সনিয়া রহমান", "নিখোঁজের পোস্ট শেয়ার করার সময় ছবি স্পষ্ট রাখুন, টাইম-সারি দিন — উদ্ধারে দ্রুত কাজ হয়।", 9, 180],
+  [2, "আরিফুল ইসলাম", "ভিডিও ক্রপ না করে মূল ফাইল পুলিশে দেওয়াটা সবচেয়ে জরুরি — লাইনে নম্বর প্লেটটা স্পষ্ট ছিল।", 31, 40],
+  [2, "নাঈম শেখ", "একটা জিনিস মনে রাখবেন: ভাইরাল হওয়া মানে বিচার নয়, বিচার আদালতে। প্রমাণ পুলিশে দিন।", 12, 120],
+  [3, "ফারহানা আক্তার", "কাউন্সেলিং নিয়ে এত কথা হয় না, আসলে একই পরিবারের মানুষগুলো অনেক উপকার পায়। ভালো উদ্যোগ।", 8, 300],
+];
+
+/**
+ * [articleId, reporterName, reporterEmail, reason, details, status, minAgo]
+ * Reasons are read from the canonical REPORT_REASONS list, so the demo queue can
+ * never hold a value the public API would reject.
+ */
+export const SEED_REPORTS: Array<[
+  number, string, string, ReportReason, string, ReportStatus, number,
+]> = [
+  [1, "সাদিয়া ইসলাম", "sadia.islam@example.com", REPORT_REASONS[0], "সময় ও এলাকার একটি অংশ মূল পোস্টের সঙ্গে মিলছে না — সম্পাদকীয় যাচাই দরকার।", "open", 65],
+  [2, "রাকিব হাসান", "rakib.hasan@example.com", REPORT_REASONS[2], "ভিডিও ক্লিপটি অনুমতি ছাড়া ব্যবহার হয়েছে বলে দাবি; ক্রেডিট লাইন যুক্ত করা উচিত।", "reviewed", 220],
+  [3, "নুসরাত জাহান", "nusrat.jahan@example.com", REPORT_REASONS[3], "মন্তব্য অংশে একই ওষুধের বিজ্ঞাপন বারবার আসছে — ফিল্টার দরকার।", "dismissed", 1500],
 ];

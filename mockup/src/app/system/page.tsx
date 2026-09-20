@@ -41,7 +41,7 @@ const PIPELINE = [
   {
     icon: AppWindow,
     tag: "02 · DESKTOP APP",
-    title: "হইচই ডেস্ক (Tauri)",
+    title: "হৈচৈ ডেস্ক (Tauri)",
     color: "text-lime",
     border: "hover:border-lime/60",
     points: [
@@ -77,7 +77,7 @@ const PIPELINE = [
   {
     icon: GitBranch,
     tag: "05 · REPO",
-    title: "GitHub কনটেন্ট",
+    title: "AI Agent কনটেন্ট",
     color: "text-violet-300",
     border: "hover:border-violet-300/60",
     points: [
@@ -89,7 +89,7 @@ const PIPELINE = [
   {
     icon: Triangle,
     tag: "06 · SHIP",
-    title: "Vercel অটো-ডিপ্লয়",
+    title: "Web অটো-ডিপ্লয়",
     color: "text-white",
     border: "hover:border-white/60",
     points: [
@@ -103,24 +103,24 @@ const PIPELINE = [
 const DB_OPTIONS = [
   {
     name: "Turso (libSQL)",
-    badge: "আমরা যেটি ব্যবহার করি",
+    badge: "বেছে নেওয়া",
     badgeStyle: "bg-lime text-night",
-    desc: "SQLite-সামঞ্জস্যপূর্ণ, এজ-রিপ্লিকেটেড, ফ্রি টিয়ারে ৯ GB পর্যন্ত। Vercel-এর মতো আঞ্চলিক এজ নেটওয়ার্কের সঙ্গে দুর্দান্ত ম্যাচ — রিড-লেটেন্সি খুব কম।",
-    fit: "প্রোডাকশনের ডিফল্ট ও একমাত্র চালু ড্রাইভার — ডুপ্লিকেট হ্যাশ ইনডেক্স + রান-লগ + কমেন্ট, সব এক ফাইলে। শুধু Turso কী দিলেই অটো-ডিটেক্ট।",
+    desc: "SQLite-সামঞ্জস্যপূর্ণ, এজ-রিপ্লিকেটেড, ফ্রি টিয়ারে ৯ GB পর্যন্ত। Web-এর মতো আঞ্চলিক এজ নেটওয়ার্কের সঙ্গে দুর্দান্ত ম্যাচ — রিড-লেটেন্সি খুব কম।",
+    fit: "ডুপ্লিকেট হ্যাশ ইনডেক্স + রান-লগ + কমেন্ট স্টেট — সব এক ফাইলে; DB_DRIVER=turso দিলেই চলে।",
   },
   {
-    name: "Postgres (লোকাল)",
-    badge: "শুধু ডেভ ফলব্যাক",
+    name: "Neon Postgres",
+    badge: "ব্যাকআপ ড্রাইভার",
     badgeStyle: "border border-white/20 text-white/70",
-    desc: "Turso কী ছাড়া লোকাল মেশিনে ডেভ করার জন্য একই স্কিমার Postgres সংস্করণ। প্রোডাকশনে ব্যবহার হয় না — DB_DRIVER=postgres দিলে তবেই চালু হয়।",
-    fit: "একই অ্যাপ কোড, একই কোয়েরি — শুধু লোকাল টেস্টিংয়ের সুবিধায় রাখা।",
+    desc: "সার্ভারলেস Postgres — ০.৫ GB ফ্রি, ব্রাঞ্চিং ও অটো-স্কেল। Prose ও full-text সার্চ দরকার হলে পছন্দ। স্যান্ডবক্স-লোকাল ডিফল্ট এই ড্রাইভার।",
+    fit: "একই অ্যাপ কোড — শুধু DB_DRIVER=postgres দিলেই Postgres মোড।",
   },
   {
     name: "Supabase",
-    badge: "Auth/Storage হলে ঐচ্ছিক",
+    badge: "Auth/Storage হলে",
     badgeStyle: "border border-white/20 text-white/70",
-    desc: "ভবিষ্যতে লগিন-ভিত্তিক রোল বা স্ক্রিনশট স্টোরেজ দরকার হলে বিকল্প — Postgres-ই, সঙ্গে Auth ও Storage ফ্রি প্ল্যানে।",
-    fit: "এখন লাগছে না; শুধু সম্ভাব্য সম্প্রসারণের নোট হিসেবে রাখা।",
+    desc: "Postgres-ই, সঙ্গে Auth ও স্টোরেজ ফ্রি ফ্ল্যানে। স্ক্রিনশট আর্কাইভ সরাসরি Supabase Storage-এ রাখা যায়।",
+    fit: "অ্যাডমিনে লগিন-ভিত্তিক রোল দরকার হলে সবচেয়ে দ্রুত পথ।",
   },
 ];
 
@@ -154,7 +154,7 @@ export default function SystemPage() {
       <section className="mx-auto max-w-[1400px] px-4 pt-14 md:px-8">
         <Reveal>
           <p className="font-mono-x text-[10.5px] tracking-[0.28em] text-lime uppercase">
-            SYSTEM BLUEPRINT · HOICHOI PIPELINE · OPTION A
+            SYSTEM BLUEPRINT · HOICHOI PIPELINE
           </p>
           <h1 className="mt-3 max-w-3xl font-serif-bn text-[36px] leading-[1.25] font-black text-white md:text-[56px]">
             ফিরোজা না, <span className="text-lime">প্রবাহ</span> — ফিড থেকে
@@ -163,7 +163,7 @@ export default function SystemPage() {
           <p className="mt-5 max-w-2xl text-[14px] leading-relaxed text-white/55">
             ডেস্কটপ নেটিভ অ্যাপই কন্ট্রোলর। সে-ই ফেসবুক সোর্স পর্যবেক্ষণ করে,
             স্ক্রিনশট আর্কাইভ করে, ডুপ্লিকেট বাদ দিয়ে বাংলায় পুনর্লিখন করে
-            GitHub-এ কমিট দেয় — আর Vercel সঙ্গে সঙ্গে লাইভ করে। সব ক্রেডেনশিয়াল
+            AI Agent-এ কমিট দেয় — আর Web সঙ্গে সঙ্গে লাইভ করে। সব ক্রেডেনশিয়াল
             থাকে এনক্রিপ্টড অ্যাডমিন ভল্টে; রিপোতে নয়।
           </p>
         </Reveal>
@@ -230,7 +230,7 @@ export default function SystemPage() {
               {[
                 "সব কী অ্যাডমিন প্যানেলে AES-256 এনক্রিপ্টড হয়ে জমা — মাস্টার কী শুধুই ডেস্কটপের env-এ।",
                 "ডেস্কটপ অ্যাপ ও ওয়েব সার্ভার স্কোপ অনুযায়ী কী টানে (desktop · web · both)।",
-                "GitHub রিপোতে কোনো সিক্রেট নেই — Vercel env-এ শুধু পড়ার-টোকেন।",
+                "AI Agent রিপোতে কোনো সিক্রেট নেই — Web env-এ শুধু পড়ার-টোকেন।",
                 "রোটেশন ট্র্যাকিং সহ; ৩০ দিন পেরোলে ড্যাশবোর্ডে অ্যাম্বার সতর্কতা।",
               ].map((t) => (
                 <li key={t} className="flex items-start gap-3 text-[12.5px] leading-relaxed text-white/55">
@@ -291,7 +291,7 @@ export default function SystemPage() {
             </h2>
           </div>
           <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-white/50">
-            রুলটি সরল: <span className="text-white/80">GitHub = ডেলিভারি লেয়ার</span>{" "}
+            রুলটি সরল: <span className="text-white/80">AI Agent = ডেলিভারি লেয়ার</span>{" "}
             (স্ট্যাটিক কনটেন্ট), <span className="text-white/80">Turso = মস্তিষ্ক</span>{" "}
             (ডুপ্লিকেট হ্যাশ ইনডেক্স, রান-লগ, কিউ, কমেন্ট, ক্রেডেনশিয়াল-মেটা)।
             JSON-ফাইলে স্টেট রাখলে দুই ঘণ্টার লুপে রেস-কন্ডিশন ও ব্লোট আসবেই। দুটি
@@ -363,7 +363,7 @@ export default function SystemPage() {
                 অপশন A চালু করতে চান?
               </p>
               <p className="mt-1 text-[12px] text-white/55">
-                হইচই ডেস্ক — Tauri কন্ট্রোলার, ওয়াচলিস্ট, কালেক্টর ও ভল্ট এক জানালায়।
+                হৈচৈ ডেস্ক — Tauri কন্ট্রোলার, ওয়াচলিস্ট, কালেক্টর ও ভল্ট এক জানালায়।
               </p>
             </div>
             <span className="flex items-center gap-2 rounded-xl bg-lime px-5 py-3 text-[13px] font-bold text-night transition-transform duration-300 group-hover:scale-[1.03]">

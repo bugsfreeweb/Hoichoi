@@ -1,4 +1,4 @@
-import { randomMediaName } from "./media";
+import { randomMediaName, mkdirForFile, localMediaPath } from "./media";
 
 export interface VideoResult {
   rel: string;
@@ -40,7 +40,7 @@ export async function processVideo(opts: VideoOptions): Promise<VideoResult | nu
   const inArg = (tmpIn ?? opts.inputUrl) as string;
 
   const rel = randomMediaName("vid", "mp4");
-  const out = (await import("./media")).localMediaPath(rel);
+  const out = mkdirForFile(localMediaPath(rel));
   const { spawn } = await import("node:child_process");
 
   const args: string[] = [

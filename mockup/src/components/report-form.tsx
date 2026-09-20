@@ -1,0 +1,88 @@
+"use client";
+
+import { useState, type FormEvent } from "react";
+import { Check, Flag, Loader2, X } from "lucide-react";
+import { REPORT_REASONS, REPORT_REASON_LABELS } from "@/lib/moderation-types";
+
+/**
+ * Public "রিপোর্ট করুন" control for a single article.
+ * Collapsed by default; posts to /api/reports, which validates the same
+ * REPORT_REASONS list server-side. Editors review it in /admin/reports — the
+ * report itself is never shown publicly.
+ */
+export default function ReportForm({ articleId }: { articleId: number }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [reason, setReason] = useState<string>(REPORT_REASONS[0]);
+  const [details, setDetails] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const response = await fetch("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          articleId,
+          reporterName: name.trim(),
+          reporterEmail: email.trim(),
+          reason,
+          details: details.trim(),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "রিপোর্ট পাঠানো যায়নি।");
+      setMessage(data.message ?? "রিপোর্ট জমা হয়েছে।");
+      setName(""); setEmail(""); setDetails(""); setReason(REPORT_REASONS[0]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "আবার চেষ্টা করুন।");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (message) {
+    return <div className="flex items-start gap-3 border border-ink/25 bg-paper-deep/60 px-4 py-3">
+      <Check size={14} className="mt-0.5 shrink-0 text-alizarin" />
+      <div>
+        <p className="text-[12.5px] font-semibold text-ink">{message}</p>
+        <button type="button" onClick={() => { setMessage(""); setOpen(false); }} className="mt-1 text-[11.5px] font-bold text-alizarin underline">
+          আরেকটি রিপোর্ট পাঠান
+        </button>
+      </div>
+    </div>;
+  }
+
+  return <div className="border border-ink/25 bg-paper-deep/40">
+    <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+      <Flag size={14} className="shrink-0 text-alizarin" />
+      <p className="text-[12.5px] text-ink-soft">এখানে ভুল তথ্য, কপিরাইট লঙ্ঘন বা আপত্তিকর কিছু পেয়েছেন?</p>
+      <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open} className="ml-auto flex items-center gap-2 border border-ink px-3.5 py-2 text-[11.5px] font-bold transition-colors hover:bg-ink hover:text-paper">
+        {open ? <X size={12} /> : <Flag size={12} />}
+        {open ? "বাতিল করুন" : "রিপোর্ট করুন"}
+      </button>
+    </div>
+    {open && <form onSubmit={submit} className="grid gap-4 border-t border-ink/15 px-4 py-5 sm:grid-cols-2">
+      <label className="text-[13px] font-semibold">আপনার নাম<input required minLength={2} maxLength={60} autoComplete="name" value={name} onChange={e => setName(e.target.value)} placeholder="নাম লিখুন" className="mt-2 w-full border border-ink/20 bg-paper px-3 py-2.5 text-sm outline-none focus:border-alizarin" /></label>
+      <label className="text-[13px] font-semibold">ইমেইল <span className="font-normal text-ink-soft">(সম্পাদক দেখবেন)</span><input type="email" required maxLength={120} autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" className="mt-2 w-full border border-ink/20 bg-paper px-3 py-2.5 text-sm outline-none focus:border-alizarin" /></label>
+      <label className="text-[13px] font-semibold sm:col-span-2">কারণ<select value={reason} onChange={e => setReason(e.target.value)} className="mt-2 w-full border border-ink/20 bg-paper px-3 py-2.5 text-sm outline-none focus:border-alizarin">
+        {REPORT_REASONS.map(r => <option key={r} value={r}>{REPORT_REASON_LABELS[r]}</option>)}
+      </select></label>
+      <label className="text-[13px] font-semibold sm:col-span-2">বিস্তারিত <span className="font-normal text-ink-soft">(ঐচ্ছিক · সর্বোচ্চ ৫০০ অক্ষর)</span><textarea rows={3} maxLength={500} value={details} onChange={e => setDetails(e.target.value)} placeholder="কী সমস্যা মনে হচ্ছে সংক্ষেপে লিখুন" className="mt-2 w-full resize-y border border-ink/20 bg-paper px-3 py-2.5 text-sm outline-none focus:border-alizarin" /></label>
+      <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+        <button type="submit" disabled={busy} className="flex items-center gap-2 bg-ink px-4 py-2.5 text-[12.5px] font-semibold text-paper transition-colors hover:bg-alizarin disabled:opacity-50">
+          {busy ? <Loader2 size={13} className="animate-spin" /> : <Flag size={13} />}
+          রিপোর্ট জমা দিন
+        </button>
+        <span className="text-[11.5px] text-ink-soft">রিপোর্ট শুধু সম্পাদকীয় দল দেখে — মন্তব্যে প্রকাশিত হয় না।</span>
+      </div>
+      {error && <p role="alert" className="text-[12.5px] text-alizarin sm:col-span-2">{error}</p>}
+    </form>}
+  </div>;
+}

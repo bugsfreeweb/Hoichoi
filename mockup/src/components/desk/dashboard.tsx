@@ -28,12 +28,14 @@ export default function DeskDashboard({
   runs,
   sources,
   logs,
+  commentCounts = { pending: 0, approved: 0, rejected: 0, spam: 0 },
   onOpen,
 }: {
   articles: ArticleLite[];
   runs: RunLite[];
   sources: SourceLite[];
   logs: LogLite[];
+  commentCounts?: { pending: number; approved: number; rejected: number; spam: number };
   onOpen: (tab: string) => void;
 }) {
   const last = runs[0] ?? null;
@@ -61,16 +63,16 @@ export default function DeskDashboard({
     <div className="scroll-slim h-full space-y-4 overflow-auto p-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="font-mono-x text-[9.5px] tracking-[0.26em] text-lime uppercase">
-            TAURI CONTROLLER · OPTION A · LIVE
+          <p className="font-mono-x text-[9.5px] tracking-[0.26em] text-[var(--ds-acc)] uppercase">
+            TAURI CONTROLLER · LIVE
           </p>
-          <h2 className="mt-1 font-serif-bn text-[26px] font-black text-white">
+          <h2 className="mt-1 font-serif-bn text-[26px] font-black text-[var(--ds-t1)]">
             ডেস্ক মনিটর
           </h2>
         </div>
         <button
           onClick={() => onOpen("collector")}
-          className="flex items-center gap-2 rounded-lg bg-lime px-4 py-2 text-[12px] font-bold text-night transition-all hover:brightness-110"
+          className="flex items-center gap-2 rounded-lg bg-[var(--ds-acc)] px-4 py-2 text-[12px] font-bold text-[var(--ds-active-tx)] transition-all hover:brightness-110"
         >
           <Radio size={13} /> কালেক্টর খুলুন
         </button>
@@ -93,7 +95,7 @@ export default function DeskDashboard({
       <div className="grid gap-3 lg:grid-cols-12">
         <div className="panel relative overflow-hidden rounded-xl p-5 lg:col-span-4">
           <p className="font-mono-x text-[9.5px] tracking-[0.22em] text-lime uppercase">
-            পরবর্তী সিঙ্ক · 0 */2 * * *
+            পরবর্তী সিঙ্ক · ম্যানুয়াল
           </p>
           <div className="mt-4">
             <Countdown lastRunIso={last?.startedAt ?? null} size={108} dark />
@@ -129,7 +131,7 @@ export default function DeskDashboard({
               { icon: Camera, t: "Playwright শট", s: "1440×900 · headless", ok: true },
               { icon: Fingerprint, t: "Dedup গেট", s: "SHA-256 + SimHash 0.87", ok: true },
               { icon: Sparkles, t: "LLM ফ্যাক্ট-গেট", s: "থ্রেশহোল্ড ০.৯০", ok: true },
-              { icon: GitBranch, t: "GitHub → Vercel", s: "hoichoi-content · READY", ok: true },
+              { icon: GitBranch, t: "AI Agent → Web", s: "hoichoi-content · READY", ok: true },
             ].map((n) => (
               <li key={n.t} className="flex items-center gap-3">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-lime">
@@ -182,6 +184,35 @@ export default function DeskDashboard({
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
+        <div className="panel overflow-hidden rounded-xl">
+          <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
+            <p className="flex items-center gap-2 font-mono-x text-[9.5px] tracking-[0.2em] text-white/40 uppercase">
+              <Activity size={11} /> মন্তব্য মডারেশন সারি
+            </p>
+            <button
+              onClick={() => onOpen("moderation")}
+              className="text-[11px] font-semibold text-lime"
+            >
+              মডারেশন →
+            </button>
+          </div>
+          <ul className="divide-y divide-white/6 font-mono-x text-[11px]">
+            {(
+              [
+                ["অপেক্ষমাণ", commentCounts.pending, "text-amberx"],
+                ["অনুমোদিত", commentCounts.approved, "text-lime"],
+                ["প্রত্যাখ্যাত", commentCounts.rejected, "text-rose-300"],
+                ["স্প্যাম", commentCounts.spam, "text-white/50"],
+              ] as const
+            ).map(([label, value, color]) => (
+              <li key={label} className="flex items-center justify-between px-4 py-2.5">
+                <span className="text-white/60">{label}</span>
+                <span className={`font-bold ${color}`}>{toBn(value)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
         <div className="panel overflow-hidden rounded-xl">
           <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
             <p className="flex items-center gap-2 font-mono-x text-[9.5px] tracking-[0.2em] text-white/40 uppercase">

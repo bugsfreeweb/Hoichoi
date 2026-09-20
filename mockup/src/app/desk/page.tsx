@@ -1,7 +1,9 @@
 import DeskShell from "@/components/desk/shell";
 import { DRIVER_LABEL } from "@/db";
+import { ensureReady } from "@/lib/db-bootstrap";
 import {
   getArticles,
+  getCommentStatusCounts,
   getRuns,
   getKeys,
   getSources,
@@ -21,12 +23,14 @@ export const metadata: Metadata = {
 };
 
 export default async function DeskPage() {
-  const [articles, runs, keys, sources, logs] = await Promise.all([
+  await ensureReady();
+  const [articles, runs, keys, sources, logs, commentCounts] = await Promise.all([
     getArticles(),
     getRuns(),
     getKeys(),
     getSources(),
     getLogs(),
+    getCommentStatusCounts(),
   ]);
 
   return (
@@ -36,6 +40,7 @@ export default async function DeskPage() {
       keys={keys}
       sources={sources.map(sourceLite)}
       logs={logs.map(logLite)}
+      commentCounts={commentCounts}
       dbDriver={DRIVER_LABEL}
     />
   );

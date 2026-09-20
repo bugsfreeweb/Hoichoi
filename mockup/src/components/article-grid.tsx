@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import ArticleCard from "@/components/article-card";
 import AdSlot from "@/components/ad-slot";
 import { CATEGORY_LABEL, toBn } from "@/lib/format";
@@ -60,14 +60,16 @@ export default function ArticleGrid({
         className="grid-pop mt-10 grid gap-x-8 gap-y-14 sm:grid-cols-2 xl:grid-cols-3"
       >
         {shown.map((a, i) => (
-          <div key={a.id} className="grid-pop" style={{ animationDelay: `${(i % 6) * 60}ms` }}>
-            <ArticleCard a={a} index={i} />
+          <Fragment key={a.id}>
+            <div className="grid-pop" style={{ animationDelay: `${(i % 6) * 60}ms` }}>
+              <ArticleCard a={a} index={i} />
+            </div>
             {ads && i !== shown.length - 1 && (i + 1) % 4 === 0 && (
               <div className="mt-10">
                 <AdSlot variant="infeed" />
               </div>
             )}
-          </div>
+          </Fragment>
         ))}
         {shown.length === 0 && (
           <p className="col-span-full py-16 text-center text-ink-soft">

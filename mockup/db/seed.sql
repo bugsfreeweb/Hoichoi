@@ -264,10 +264,10 @@ VALUES
   ('Facebook Graph টোকেন', 'facebook', 'FB_GRAPH_TOKEN', 'EAAx••••••••X7q2', 'EAADEMOxK7q2mZq9vL0demo', 'desktop', 'rotate', '৩৪ দিন আগে', 'পেজ রিড-স্কোপ · ৬০ দিনের টোকেন'),
   ('FB ওয়াচলিস্ট (পেজ)', 'facebook', 'FB_WATCHLIST_IDS', '1744••••4412 +৮', '1744552188412,9921880317101,…', 'desktop', 'active', '১২ দিন আগে', 'মনিটরড উন্মুক্ত পেজ তালিকা'),
   ('OpenAI API কী (রিরাইট)', 'llm', 'OPENAI_API_KEY', 'sk-proj-••••••8F3d', 'sk-proj-demo4xK9rT7bMzQ8F3d', 'desktop', 'active', '৯ দিন আগে', 'মডেল: gpt-4o-mini · temp 0.3'),
-  ('GitHub PAT (কনটেন্ট)', 'github', 'GITHUB_CONTENT_PAT', 'ghp_••••••9aKl', 'ghp_demo9aKlPRm2xQwe7Tn', 'desktop', 'active', '১৮ দিন আগে', 'রিপো: hoichoi-content'),
-  ('Vercel API টোকেন', 'vercel', 'VERCEL_TOKEN', 'vcl_••••••Qm81', 'vcl_demoQm81Zth4Lok6xN', 'web', 'active', '২২ দিন আগে', 'ডিপ্লয় স্ট্যাটাস রিড-অনলি'),
-  ('Turso ডাটাবেস URL', 'database', 'TURSO_DATABASE_URL', 'libsql://••••turso.io', 'libsql://hoichoi-demo.turso.io', 'both', 'active', '৪৫ দিন আগে', 'libSQL · এজ-রিপ্লিকেটেড · ফ্রি টিয়ার'),
-  ('Turso অথ টোকেন', 'database', 'TURSO_AUTH_TOKEN', 'ey••••••••demo', 'eyJhbGciOiJFZERTQSDEMOtoken', 'both', 'active', '৪৫ দিন আগে', 'ডাটাবেস অ্যাক্সেস টোকেন'),
+  ('AI Agent PAT (কনটেন্ট)', 'github', 'AGENT_CONTENT_PAT', 'ghp_••••••9aKl', 'ghp_demo9aKlPRm2xQwe7Tn', 'desktop', 'active', '১৮ দিন আগে', 'রিপো: hoichoi-content'),
+  ('Web API টোকেন', 'vercel', 'WEB_API_TOKEN', 'vcl_••••••Qm81', 'vcl_demoQm81Zth4Lok6xN', 'web', 'active', '২২ দিন আগে', 'ডিপ্লয় স্ট্যাটাস রিড-অনলি'),
+  ('Turso ডাটাবেস URL', 'database', 'TURSO_DATABASE_URL', 'libsql://••••turso.io', 'libsql://hoichoi-demo.turso.io', 'both', 'active', '৪৫ দিন আগে', 'libSQL · এজ রিপ্লিকা · ফ্রি টিয়ার'),
+  ('Turso অথ টোকেন', 'database', 'TURSO_AUTH_TOKEN', 'eyJh••••••••kQ', 'eyJhbGciOiJFZERTQSJ9.demo-token', 'both', 'active', '৪৫ দিন আগে', 'রিড-রাইট টোকেন'),
   ('Cloudinary (শট CDN)', 'storage', 'CLOUDINARY_URL', 'cloudinary://••••@dk2demo', 'cloudinary://demo_key:demo_secret@dk2demo', 'both', 'rotate', '৬১ দিন আগে', 'স্ক্রিনশট হোস্টিং'),
   ('ভল্ট মাস্টার কী', 'vault', 'VAULT_MASTER_KEY', '•••••••••••• (শুধু env)', 'DEMO-MASTER-32B-F8A1C4E7', 'both', 'active', '৯০ দিন আগে', 'AES-256 · ডেস্কটপ env থেকে সরবরাহ');
 
@@ -301,7 +301,7 @@ VALUES
 
 -- ============================================================ COLLECTOR LOGS
 INSERT INTO collector_logs (ts, level, stage, message) VALUES
-  (NOW() - INTERVAL '2 minutes', 'ok', 'SHIP', 'Vercel READY · hoichoi.vercel.app · ISR 8.1s'),
+  (NOW() - INTERVAL '2 minutes', 'ok', 'SHIP', 'Web READY · hoichoi.example · ISR 8.1s'),
   (NOW() - INTERVAL '3 minutes', 'ok', 'GIT', 'commit 7f3a1c on hoichoi-content/main'),
   (NOW() - INTERVAL '4 minutes', 'ok', 'LLM', 'পুনর্লিখন সম্পন্ন · fact-gate 0.94 · 18s'),
   (NOW() - INTERVAL '5 minutes', 'info', 'LLM', 'style-guide v2.4 · gpt-4o-mini · temp 0.3'),
@@ -311,12 +311,12 @@ INSERT INTO collector_logs (ts, level, stage, message) VALUES
   (NOW() - INTERVAL '9 minutes', 'ok', 'SHOT', 'Playwright capture shot_0011.png · 1440×900 · 1.2s'),
   (NOW() - INTERVAL '11 minutes', 'ok', 'FETCH', 'মিরপুর আপডেট · 2 new · ঢাকা ট্রাফিক · 1 video'),
   (NOW() - INTERVAL '13 minutes', 'info', 'WATCH', 'scanning 10 sources · public Graph read'),
-  (NOW() - INTERVAL '14 minutes', 'info', 'CRON', 'scheduled tick · 0 */2 * * * · Asia/Dhaka'),
+  (NOW() - INTERVAL '14 minutes', 'info', 'CRON', 'manual collection · Asia/Dhaka'),
   (NOW() - INTERVAL '26 minutes', 'ok', 'DONE', 'cron run complete · +3 published · 1 duplicate'),
   (NOW() - INTERVAL '2 hours 20 minutes', 'ok', 'SHIP', 'previous cycle READY'),
   (NOW() - INTERVAL '2 hours 22 minutes', 'ok', 'GIT', 'commit 2b91de · 2 files'),
   (NOW() - INTERVAL '2 hours 24 minutes', 'err', 'FETCH', 'ঢাকা কমিউনিটি অ্যালার্ট · 429 rate-limit · backoff 15m'),
-  (NOW() - INTERVAL '2 hours 26 minutes', 'info', 'CRON', 'scheduled tick');
+  (NOW() - INTERVAL '2 hours 26 minutes', 'info', 'CRON', 'manual collection');
 
 -- ============================================================ PUBLIC COMMENTS
 INSERT INTO comments (article_id, author, body, likes, created_at) VALUES

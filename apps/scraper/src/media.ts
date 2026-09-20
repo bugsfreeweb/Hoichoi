@@ -1,7 +1,18 @@
 import { mediaRoot, ensureMediaDir, localMediaPath, randomMediaName } from "@hoichoi/db";
 import * as fs from "node:fs";
+import * as path from "node:path";
 
 export { mediaRoot, ensureMediaDir, localMediaPath, randomMediaName };
+
+/**
+ * Ensure the parent directory of a media output path exists. Media names carry
+ * a date subdirectory (`2026-09-20/img_x.webp`) while ensureMediaDir only
+ * creates the root, so every writer must create its own leaf dir.
+ */
+export function mkdirForFile(outPath: string): string {
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  return outPath;
+}
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 Hoichoi/1.0";
@@ -16,7 +27,7 @@ async function loadSharp(): Promise<typeof import("sharp")> {
 /** Download a remote media file to the local store. */
 export async function downloadMedia(url: string, outRel: string): Promise<string> {
   ensureMediaDir();
-  const outPath = localMediaPath(outRel);
+  const outPath = mkdirForFile(localMediaPath(outRel));
   const res = await fetch(url, { headers: { "user-agent": UA } });
   if (!res.ok) throw new Error(`download ${url} -> ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
@@ -32,7 +43,7 @@ export async function processImage(
   opts: { maxWidthPx: number },
 ): Promise<{ rel: string; width: number; height: number; sizeBytes: number }> {
   ensureMediaDir();
-  const outPath = localMediaPath(outRel);
+  const outPath = mkdirForFile(localMediaPath(outRel));
   const meta = await (await loadSharp())(input)
     .rotate()
     .resize({ width: opts.maxWidthPx, withoutEnlargement: true })

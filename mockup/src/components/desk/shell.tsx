@@ -10,6 +10,7 @@ import {
   ScrollText,
   KeyRound,
   Settings,
+  Megaphone,
   Minus,
   Square,
   X,
@@ -17,17 +18,21 @@ import {
   Database,
   GitBranch,
 } from "lucide-react";
+import ThemeToggle from "@/components/theme-toggle";
 import DeskDashboard from "@/components/desk/dashboard";
+import DeskSyncControls from "@/components/desk/sync-controls";
 import Watchlist from "@/components/desk/watchlist";
 import Collector from "@/components/desk/collector";
 import SettingsPanel from "@/components/desk/settings-panel";
+import AdsPanel from "@/components/admin/ads-panel";
 import QueueTable from "@/components/admin/queue-table";
 import KeyVault from "@/components/admin/key-vault";
+import ModerationPanel from "@/components/admin/moderation-panel";
 import { BRAND } from "@/lib/brand";
 import { toBn } from "@/lib/format";
 import type { ArticleLite, ApiKey, LogLite, RunLite, SourceLite } from "@/lib/data";
 
-type Tab = "dashboard" | "watchlist" | "queue" | "collector" | "vault" | "settings";
+type Tab = "dashboard" | "watchlist" | "queue" | "collector" | "vault" | "settings" | "moderation" | "ads";
 type Win = "normal" | "max" | "min";
 
 const NAV: { id: Tab; label: string; icon: typeof LayoutDashboard; k: string }[] = [
@@ -37,6 +42,8 @@ const NAV: { id: Tab; label: string; icon: typeof LayoutDashboard; k: string }[]
   { id: "collector", label: "কালেক্টর", icon: ScrollText, k: "4" },
   { id: "vault", label: "API ভল্ট", icon: KeyRound, k: "5" },
   { id: "settings", label: "সেটিংস", icon: Settings, k: "6" },
+  { id: "moderation", label: "মন্তব্য মডারেশন", icon: ListOrdered, k: "7" },
+  { id: "ads", label: "বিজ্ঞাপন", icon: Megaphone, k: "8" },
 ];
 
 export default function DeskShell({
@@ -46,6 +53,7 @@ export default function DeskShell({
   sources,
   logs,
   dbDriver = "TURSO",
+  commentCounts = { pending: 0, approved: 0, rejected: 0, spam: 0 },
 }: {
   articles: ArticleLite[];
   runs: RunLite[];
@@ -53,6 +61,7 @@ export default function DeskShell({
   sources: SourceLite[];
   logs: LogLite[];
   dbDriver?: string;
+  commentCounts?: { pending: number; approved: number; rejected: number; spam: number };
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("dashboard");
@@ -76,7 +85,7 @@ export default function DeskShell({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.metaKey || e.ctrlKey || e.altKey || (e.target instanceof HTMLElement && (e.target.closest("input, textarea, select, hoichoi-moderation") || e.target.isContentEditable))) return;
       const hit = NAV.find((n) => n.k === e.key);
       if (hit) setTab(hit.id);
     };
@@ -113,7 +122,7 @@ export default function DeskShell({
           }`}
         >
           {/* titlebar */}
-          <div className="titlebar flex h-10 shrink-0 items-center border-b border-white/8 bg-[#12161e] px-3">
+          <div className="titlebar flex h-10 shrink-0 items-center bg-[var(--ds-titlebar)] px-3">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => router.push("/")}
@@ -134,20 +143,22 @@ export default function DeskShell({
             <div className="flex flex-1 items-center justify-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={BRAND.mark} alt="" className="h-4 w-4 rounded-full object-cover" />
-              <span className="font-serif-bn text-[12.5px] font-bold text-white/85">
+              <span className="font-serif-bn text-[12.5px] font-bold text-[var(--ds-t1)]">
                 {BRAND.desk}
               </span>
-              <span className="hidden font-mono-x text-[9px] tracking-[0.2em] text-white/30 uppercase sm:inline">
-                TAURI 2.1 · OPTION A
+              <span className="hidden font-mono-x text-[9px] tracking-[0.2em] text-[var(--ds-t5)] uppercase sm:inline">
+                TAURI 2.1
               </span>
             </div>
-            <div className="flex items-center gap-1 text-white/35">
-              <button onClick={() => setWin("min")} className="rounded p-1 hover:bg-white/10">
+            <div className="flex items-center gap-1 text-[var(--ds-t4)]">
+              <ThemeToggle />
+              <span className="mx-1 h-4 w-px bg-[var(--ds-bd-2)]" />
+              <button onClick={() => setWin("min")} className="rounded p-1 hover:bg-[var(--ds-kb10)]">
                 <Minus size={12} />
               </button>
               <button
                 onClick={() => setWin(win === "max" ? "normal" : "max")}
-                className="rounded p-1 hover:bg-white/10"
+                className="rounded p-1 hover:bg-[var(--ds-kb10)]"
               >
                 <Square size={10} />
               </button>
@@ -158,7 +169,7 @@ export default function DeskShell({
           </div>
 
           {/* menubar */}
-          <div className="flex h-8 shrink-0 items-center gap-1 border-b border-white/8 bg-[#0e1219] px-2 text-[11.5px] text-white/55">
+          <div className="flex h-8 shrink-0 items-center gap-1 border-b border-[var(--ds-bd)] bg-[var(--ds-menubar)] px-2 text-[11.5px] text-[var(--ds-t3)]">
             {[
               { l: "ফাইল", a: () => router.push("/") },
               { l: "সোর্স", a: () => setTab("watchlist") },
@@ -169,25 +180,22 @@ export default function DeskShell({
               <button
                 key={m.l}
                 onClick={m.a}
-                className="rounded px-2.5 py-1 hover:bg-white/8 hover:text-white"
+                className="rounded px-2.5 py-1 hover:bg-[var(--ds-kb8)] hover:text-[var(--ds-t1)]"
               >
                 {m.l}
               </button>
             ))}
-            <button
-              onClick={() => router.push("/option-a")}
-              className="ml-auto rounded border border-lime/40 px-2.5 py-1 font-mono-x text-[9.5px] tracking-[0.16em] text-lime uppercase transition-colors hover:bg-lime/10"
-            >
-              Pure HTML সংস্করণ
-            </button>
-            <span className="hidden pr-2 font-mono-x text-[9.5px] tracking-[0.16em] text-white/25 uppercase sm:inline">
-              ⌘1–6 TABS
+            <span className="ml-auto hidden pr-2 font-mono-x text-[9.5px] tracking-[0.16em] text-[var(--ds-t5)] uppercase sm:inline">
+              1–8 TABS
             </span>
           </div>
 
+          {/* web ⇄ desktop resync bar */}
+          <DeskSyncControls />
+
           <div className="flex min-h-0 flex-1">
             {/* sidebar */}
-            <aside className="hidden w-52 shrink-0 flex-col border-r border-white/8 bg-[#0e1219] sm:flex">
+            <aside className="hidden w-52 shrink-0 flex-col border-r border-[var(--ds-bd)] bg-[var(--ds-side)] sm:flex">
               <nav className="flex-1 space-y-0.5 p-2">
                 {NAV.map((n) => {
                   const active = tab === n.id;
@@ -197,14 +205,16 @@ export default function DeskShell({
                       onClick={() => setTab(n.id)}
                       className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] font-medium transition-colors ${
                         active
-                          ? "bg-white text-night"
-                          : "text-white/55 hover:bg-white/8 hover:text-white"
+                          ? "bg-[var(--ds-active)] text-[var(--ds-active-tx)]"
+                          : "text-[var(--ds-t3)] hover:bg-[var(--ds-kb8)] hover:text-[var(--ds-t1)]"
                       }`}
                     >
                       <n.icon size={14} />
                       <span className="flex-1 text-left">{n.label}</span>
                       <span
-                        className={`font-mono-x text-[9px] ${active ? "text-night/40" : "text-white/25"}`}
+                        className={`font-mono-x text-[9px] ${
+                          active ? "opacity-40" : "text-[var(--ds-t6)]"
+                        }`}
                       >
                         {n.k}
                       </span>
@@ -212,11 +222,11 @@ export default function DeskShell({
                   );
                 })}
               </nav>
-              <div className="border-t border-white/8 p-3">
-                <p className="font-mono-x text-[9px] tracking-[0.18em] text-lime uppercase">
+              <div className="border-t border-[var(--ds-bd)] p-3">
+                <p className="font-mono-x text-[9px] tracking-[0.18em] text-[var(--ds-acc)] uppercase">
                   ● CONTROLLER ONLINE
                 </p>
-                <p className="mt-1 text-[10.5px] text-white/40">
+                <p className="mt-1 text-[10.5px] text-[var(--ds-t4)]">
                   {toBn(watching)} সোর্স সক্রিয়
                 </p>
               </div>
@@ -224,13 +234,15 @@ export default function DeskShell({
 
             {/* mobile tabs */}
             <div className="flex min-w-0 flex-1 flex-col">
-              <div className="flex gap-1 overflow-x-auto border-b border-white/8 px-2 py-1.5 sm:hidden">
+              <div className="flex gap-1 overflow-x-auto border-b border-[var(--ds-bd)] bg-[var(--ds-menubar)] px-2 py-1.5 sm:hidden">
                 {NAV.map((n) => (
                   <button
                     key={n.id}
                     onClick={() => setTab(n.id)}
                     className={`shrink-0 rounded-full px-3 py-1 text-[11px] ${
-                      tab === n.id ? "bg-white text-night" : "text-white/50"
+                      tab === n.id
+                        ? "bg-[var(--ds-active)] text-[var(--ds-active-tx)]"
+                        : "text-[var(--ds-t4)]"
                     }`}
                   >
                     {n.label}
@@ -238,13 +250,14 @@ export default function DeskShell({
                 ))}
               </div>
 
-              <div className="min-h-0 flex-1 bg-[#0c1017]">
+              <div className="min-h-0 flex-1 bg-[var(--ds-main)]">
                 {tab === "dashboard" && (
                   <DeskDashboard
                     articles={articles}
                     runs={runs}
                     sources={sources}
                     logs={logs}
+                    commentCounts={commentCounts}
                     onOpen={(t) => setTab(t as Tab)}
                   />
                 )}
@@ -261,16 +274,22 @@ export default function DeskShell({
                   </div>
                 )}
                 {tab === "settings" && <SettingsPanel />}
+                {tab === "moderation" && <div className="scroll-slim h-full overflow-auto p-4"><ModerationPanel origin="desktop" /></div>}
+                {tab === "ads" && (
+                  <div className="scroll-slim h-full overflow-auto p-4">
+                    <AdsPanel />
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* statusbar */}
-          <footer className="flex h-7 shrink-0 items-center gap-4 border-t border-white/8 bg-[#0a0d12] px-3 font-mono-x text-[9.5px] tracking-[0.12em] text-white/40 uppercase">
-            <span className="flex items-center gap-1.5 text-lime">
+          <footer className="flex h-7 shrink-0 items-center gap-4 border-t border-[var(--ds-bd)] bg-[var(--ds-status)] px-3 font-mono-x text-[9.5px] tracking-[0.12em] text-[var(--ds-t4)] uppercase">
+            <span className="flex items-center gap-1.5 text-[var(--ds-acc)]">
               <Wifi size={10} /> TAURI 2.1
             </span>
-            <span className="flex items-center gap-1.5 text-lime">
+            <span className="flex items-center gap-1.5 text-[var(--ds-acc)]">
               <Database size={10} /> {dbDriver} · CONNECTED
             </span>
             <span className="flex items-center gap-1.5">

@@ -98,15 +98,19 @@ pub async fn run_pipeline(
         cmd.env(k, v);
     }
 
-    // Portable runtime paths + system Edge (bundled/standalone mode only safe
-    // when a runner is actually present; harmless in dev).
+    // Prefer a locally-installed system browser (Edge/Chrome) over a
+    // downloaded Playwright bundle. The scraper falls back across candidate
+    // engines, so this is safe even in dev, where no runner node_modules exist.
+    cmd.env("HOICHOI_USE_SYSTEM_BROWSER", "1");
+
+    // Portable runtime paths (bundled/standalone mode only safe when a runner
+    // is actually present; harmless in dev).
     if let Some((_, cli)) = bundled_runner(&app) {
         let app_dir = cli
             .parent()
             .map(|p| p.to_path_buf())
             .unwrap_or_default();
         cmd.env("HOICHOI_MIGRATIONS_DIR", app_dir.join("migrations"));
-        cmd.env("HOICHOI_USE_SYSTEM_BROWSER", "1");
         if !envs.contains_key("HOICHOI_MEDIA_ROOT") {
             cmd.env("HOICHOI_MEDIA_ROOT", data_dir.join("media"));
         }

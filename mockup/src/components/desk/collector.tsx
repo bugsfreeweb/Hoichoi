@@ -18,7 +18,7 @@ const SCRIPT: Omit<LogLite, "id" | "ts">[] = [
   { level: "info", stage: "LLM", message: "gpt-4o-mini · style-guide v2.4 · temp 0.3" },
   { level: "ok", stage: "LLM", message: "পুনর্লিখন সম্পন্ন · fact-gate 0.94" },
   { level: "ok", stage: "GIT", message: "commit 3fa91c · hoichoi-content/main" },
-  { level: "ok", stage: "SHIP", message: "Vercel READY · 7.8s · ISR revalidate" },
+  { level: "ok", stage: "SHIP", message: "Web READY · 7.8s · ISR revalidate" },
   { level: "ok", stage: "DONE", message: "রান শেষ · +১ প্রকাশিত · ১ ডুপ্লিকেট ব্লক" },
 ];
 
@@ -79,30 +79,30 @@ export default function Collector({ logs }: { logs: LogLite[] }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-wrap items-center gap-3 border-b border-white/8 px-5 py-3.5">
-        <p className="flex items-center gap-2 font-serif-bn text-[17px] font-bold text-white">
-          <Radio size={16} className={running ? "text-lime" : "text-white/50"} />
+        <p className="flex items-center gap-2 font-serif-bn text-[17px] font-bold text-[var(--ds-t1)]">
+          <Radio size={16} className={running ? "text-[var(--ds-acc)]" : "text-[var(--ds-t5)]"} />
           কালেক্টর
         </p>
-        <span className="font-mono-x text-[9.5px] tracking-[0.2em] text-white/35 uppercase">
+        <span className="font-mono-x text-[9.5px] tracking-[0.2em] text-[var(--ds-t5)] uppercase">
           PLAYWRIGHT · HASH · LLM · GIT
         </span>
         <div className="ml-auto flex items-center gap-2">
           {running && (
-            <span className="font-mono-x text-[10px] text-lime">
+            <span className="font-mono-x text-[10px] text-[var(--ds-acc)]">
               STAGE {String(step).padStart(2, "0")}/{String(SCRIPT.length).padStart(2, "0")}
             </span>
           )}
           {running ? (
             <button
               onClick={stop}
-              className="flex items-center gap-1.5 rounded-lg border border-rose-400/40 px-3 py-1.5 text-[11.5px] font-bold text-rose-300"
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--ds-rose-bd)] px-3 py-1.5 text-[11.5px] font-bold text-[var(--ds-rose)]"
             >
               <Square size={11} /> থামান
             </button>
           ) : (
             <button
               onClick={start}
-              className="flex items-center gap-1.5 rounded-lg bg-lime px-3.5 py-1.5 text-[11.5px] font-bold text-night"
+              className="flex items-center gap-1.5 rounded-lg bg-[var(--ds-acc)] px-3.5 py-1.5 text-[11.5px] font-bold text-[var(--ds-active-tx)]"
             >
               <Play size={12} /> এখনই রান করুন
             </button>
@@ -111,9 +111,9 @@ export default function Collector({ logs }: { logs: LogLite[] }) {
       </div>
 
       {running && (
-        <div className="h-0.5 bg-white/10">
+        <div className="h-0.5 bg-[var(--ds-kb10)]">
           <div
-            className="h-full bg-lime transition-all duration-500"
+            className="h-full bg-[var(--ds-acc)] transition-all duration-500"
             style={{ width: `${pct}%` }}
           />
         </div>

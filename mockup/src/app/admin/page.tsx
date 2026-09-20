@@ -22,19 +22,24 @@ import {
   Zap,
   CircleDot,
   AppWindow,
+  ArrowUpRight,
 } from "lucide-react";
 import Countdown from "@/components/countdown";
 import QueueTable from "@/components/admin/queue-table";
 import KeyVault from "@/components/admin/key-vault";
-import { getArticles, getRuns, getKeys, lite, toBn, bnTime, bnDate } from "@/lib/data";
+import AdsPanel from "@/components/admin/ads-panel";
+import { getArticles, getCommentStatusCounts, getRuns, getKeys, lite, toBn, bnTime, bnDate } from "@/lib/data";
+import { ensureReady } from "@/lib/db-bootstrap";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
-  const [articles, runs, keys] = await Promise.all([
+  await ensureReady();
+  const [articles, runs, keys, commentCounts] = await Promise.all([
     getArticles(),
     getRuns(),
     getKeys(),
+    getCommentStatusCounts(),
   ]);
 
   const lastRun = runs[0] ?? null;
@@ -63,7 +68,7 @@ export default async function AdminPage() {
     {
       label: "প্রকাশিত (লাইভ)",
       value: toBn(published),
-      sub: "GitHub → Vercel সিঙ্কড",
+      sub: "AI Agent → Web সিঙ্কড",
       icon: Newspaper,
       accent: "text-sky-300",
       bar: "bg-sky-400",
@@ -106,7 +111,7 @@ export default async function AdminPage() {
             </span>
             <div>
               <p className="text-[14px] leading-tight font-bold text-white">
-                হইচই কন্ট্রোল
+                হৈচৈ কন্ট্রোল
               </p>
               <p className="font-mono-x text-[8.5px] tracking-[0.2em] text-white/35 uppercase">
                 WEB TWIN · DESK IS PRIMARY
@@ -115,6 +120,7 @@ export default async function AdminPage() {
           </div>
 
           <nav className="mt-4 space-y-1">
+            <Link href="/admin/comments" className="mb-3 flex items-center justify-between rounded-lg border border-lime/30 bg-lime/10 px-3 py-3 text-[13px] font-bold text-lime">মন্তব্য মডারেশন <span>↗</span></Link>
             {NAV.map((n) => (
               <button
                 key={n.label}
@@ -187,6 +193,8 @@ export default async function AdminPage() {
             </div>
           </header>
 
+          <Link href="/admin/comments" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-lime/25 bg-lime/[0.06] px-5 py-4 transition-colors hover:bg-lime/10"><div><p className="text-[15px] font-bold text-white">মন্তব্য মডারেশন</p><p className="mt-1 text-xs text-white/50">নতুন মন্তব্য যাচাই, অনুমোদন, প্রত্যাখ্যান ও স্প্যাম নিয়ন্ত্রণ — এক জায়গায়।</p></div><span className="text-sm font-semibold text-lime">রিভিউ সারি খুলুন →</span></Link>
+
           {/* stats */}
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {stats.map((s) => (
@@ -248,7 +256,7 @@ export default async function AdminPage() {
               </p>
               <div className="mt-4 flex items-baseline justify-between">
                 <code className="font-mono-x text-[22px] font-bold text-white">
-                  0 */2 * * *
+                  ম্যানুয়াল
                 </code>
                 <span className="font-mono-x text-[9.5px] text-white/40">
                   ASIA/DHAKA
@@ -344,6 +352,41 @@ export default async function AdminPage() {
           {/* queue */}
           <div className="mt-4">
             <QueueTable rows={articles.map(lite)} />
+          </div>
+
+          {/* moderation summary */}
+          <div className="panel panel-hover mt-4 overflow-hidden rounded-2xl p-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="font-serif-bn text-[17px] font-bold text-white">মন্তব্য মডারেশন সারি</p>
+              <Link
+                href="/admin/comments"
+                className="ml-auto flex items-center gap-2 rounded-lg bg-lime px-3.5 py-2 text-[11px] font-bold text-night transition-all hover:brightness-110"
+              >
+                মডারেশন খুলুন <ArrowUpRight size={12} />
+              </Link>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {(
+                [
+                  ["অপেক্ষমাণ", commentCounts.pending, "text-amberx"],
+                  ["অনুমোদিত", commentCounts.approved, "text-lime"],
+                  ["প্রত্যাখ্যাত", commentCounts.rejected, "text-rose-300"],
+                  ["স্প্যাম", commentCounts.spam, "text-white/50"],
+                ] as const
+              ).map(([label, value, color]) => (
+                <div key={label} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <p className="text-[11px] text-white/45">{label}</p>
+                  <p className={`mt-1 font-serif-bn text-[26px] leading-none font-black ${color}`}>
+                    {toBn(value)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ads manager */}
+          <div className="mt-4">
+            <AdsPanel />
           </div>
 
           {/* vault */}

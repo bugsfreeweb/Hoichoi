@@ -39,9 +39,22 @@ const jbMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://hoichoi.example"),
   title: `${BRAND.bn} — অটো-কিউরেটেড সংবাদ ডেস্ক`,
   description: `${BRAND.tagline}. ${BRAND.pipeline}.`,
-  icons: { icon: "/favicon.svg" },
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/images/hoichoi-mark.png", type: "image/png" },
+    ],
+    apple: "/images/hoichoi-mark.png",
+  },
+  openGraph: {
+    title: `${BRAND.bn} — অটো-কিউরেটেড সংবাদ ডেস্ক`,
+    description: BRAND.tagline,
+    images: [{ url: "/images/hoichoi-mark.png", alt: BRAND.desk }],
+  },
+  twitter: { card: "summary", images: ["/images/hoichoi-mark.png"] },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -54,6 +67,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script
           dangerouslySetInnerHTML={{
             __html:
+              "var t=localStorage.getItem('hoichoi-theme');" +
+              "t=t||(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');" +
+              "document.documentElement.setAttribute('data-theme',t);" +
               "document.documentElement.classList.add('js');" +
               "document.documentElement.classList.add('reveal-armed');",
           }}

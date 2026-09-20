@@ -5,22 +5,23 @@ import {
   MapPin,
   Hash,
   Timer,
-  Globe2,
   AppWindow,
   Rss,
 } from "lucide-react";
 import Ticker from "@/components/ticker";
 import Reveal from "@/components/reveal";
 import ArticleGrid from "@/components/article-grid";
-import Logo from "@/components/logo";
+import SiteFooter from "@/components/site-footer";
 import AdSlot from "@/components/ad-slot";
 import Hero from "@/components/home/hero";
-import LiveStream from "@/components/home/live-stream";
+import LiveAnalytics from "@/components/home/live-analytics";
+import { HomeLiveProvider } from "@/components/home/live-data";
 import PulseFlow from "@/components/home/pulse-flow";
 import RewriteSlider from "@/components/home/rewrite-slider";
 import TiltCard from "@/components/home/tilt-card";
 import ScrollProgress from "@/components/home/scroll-progress";
 import { BRAND } from "@/lib/brand";
+import { ensureReady } from "@/lib/db-bootstrap";
 import {
   getArticles,
   getRuns,
@@ -35,6 +36,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  await ensureReady();
   const [articles, runs] = await Promise.all([getArticles(), getRuns()]);
   const published = articles.filter((a) => a.status === "published");
   const featured =
@@ -42,24 +44,15 @@ export default async function HomePage() {
   const rest = published.filter((a) => a.id !== featured?.id);
   const lastRun = runs[0] ?? null;
 
-  const collectedToday = runs.reduce((s, r) => s + r.collected, 0);
-  const dupToday = runs.reduce((s, r) => s + r.duplicates, 0);
-  const avgDur = runs.length
-    ? Math.round(runs.reduce((s, r) => s + r.durationSec, 0) / runs.length)
-    : 0;
+  const collectedToday = articles.length;
+  const dupToday = articles.filter(a => a.status === "duplicate").length;
 
-  const streamItems = articles.slice(0, 9).map((a) => ({
-    id: a.id,
-    title: a.title,
-    sourceName: a.sourceName,
-    ago: agoBn(a.collectedAt),
-    hash: a.hash,
-  }));
 
   const topPicks = rest.slice(0, 3);
+  const databaseReady = articles.length > 0;
 
   return (
-    <main className="bg-paper">
+    <HomeLiveProvider><main className="bg-paper">
       <ScrollProgress />
       <Ticker items={published.slice(0, 6).map((a) => a.title)} />
 
@@ -69,7 +62,6 @@ export default async function HomePage() {
         collected={collectedToday}
         published={published.length}
         dups={dupToday}
-        avgSec={avgDur}
         featuredImg={featured?.imageUrl ?? null}
         featuredTitle={featured?.title ?? null}
       />
@@ -79,12 +71,22 @@ export default async function HomePage() {
         <AdSlot variant="leaderboard" />
       </div>
 
-      {/* ======================= LIVE INTAKE ======================= */}
-      <section className="border-y border-white/10 bg-night text-paper">
-        <div className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
-          <LiveStream items={streamItems} />
-        </div>
-      </section>
+      {/* Real database-backed charts refresh every 10 seconds. */}
+      <LiveAnalytics />
+
+      {!databaseReady && (
+        <section className="mx-auto max-w-[1400px] px-4 py-16 md:px-8">
+          <div className="border-[1.5px] border-ink bg-paper-deep/50 p-8 text-center">
+            <h2 className="font-serif-bn text-[24px] font-black">এখনো কোনো কনটেন্ট নেই</h2>
+            <p className="mx-auto mt-3 max-w-xl text-[13.5px] leading-relaxed text-ink-soft">
+              ডাটাবেস সংযুক্ত, তবে <code className="font-mono-x text-[12px]">hoichoi_articles</code> টেবিলে কোনো
+              প্রতিবেদন নেই। ডেমো কনটেন্ট যোগ করতে <code className="font-mono-x text-[12px]">/api/setup</code> চালান
+              (Web-এ <code className="font-mono-x text-[12px]">x-setup-key</code> হেডারসহ), অথবা ডেস্কটপ কালেক্টর
+              দিয়ে নতুন কনটেন্ট সংগ্রহ করুন।
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* ======================= FEATURED STORY ======================= */}
       {featured && (
@@ -96,7 +98,7 @@ export default async function HomePage() {
                   ▚ LEAD STORY · এই সিঙ্কের প্রধান কনটেন্ট
                 </p>
                 <h2 className="mt-2 font-serif-bn text-[34px] font-black text-ink md:text-[44px]">
-                  আজকের প্রধান হইচই
+                  আজকের প্রধান হৈচৈ
                 </h2>
               </div>
               <span className="font-mono-x text-[10px] tracking-[0.2em] text-ink-soft uppercase">
@@ -105,7 +107,7 @@ export default async function HomePage() {
             </div>
           </Reveal>
 
-          <div className="mt-10 grid items-start gap-12 lg:grid-cols-12">
+          <div className="grid items-start gap-12 lg:grid-cols-12">
             {/* image with tilt */}
             <Reveal className="lg:col-span-7">
               <Link href={`/news/${featured.id}`} className="group block">
@@ -122,7 +124,7 @@ export default async function HomePage() {
                     <span className="absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full bg-ink/80 px-3 py-1.5 font-mono-x text-[9.5px] tracking-[0.16em] text-paper uppercase backdrop-blur-sm">
                       <Rss size={9.5} /> SOURCE · FACEBOOK ARCHIVE
                     </span>
-                    <span className="absolute top-3 left-3 flex items-center gap-1.5 bg-alizarin px-2.5 py-1 text-[10px] font-bold text-white">
+                    <span className="absolute top-3 left-3 flex items-center gap-1.5 bg-alizarin-deep px-2.5 py-1 text-[10px] font-bold text-white">
                       <Flame size={10} /> FACT-CHECKED
                     </span>
                   </div>
@@ -222,7 +224,7 @@ export default async function HomePage() {
       )}
 
       {/* ======================= PULSE PIPELINE ======================= */}
-      <section className="bg-ink text-paper">
+      <section className="bg-band text-bandline">
         <div className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
           <Reveal>
             <div className="flex flex-wrap items-end justify-between gap-4">
@@ -233,7 +235,7 @@ export default async function HomePage() {
                 <h2 className="mt-2 font-serif-bn text-[30px] font-black md:text-[42px]">
                   ফিড থেকে লাইভ — ছয় ধাপ, <span className="text-lime">শূন্য ছোঁয়া।</span>
                 </h2>
-                <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-white/50">
+                <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-bandline/55">
                   আলোর বিন্দুটি রাস্তাটা দেখিয়ে দিচ্ছে — প্রতিটি রানে ডেটা ঠিক এই
                   পথ ধরে এগোয়: সোর্স থেকে শট, শট থেকে হ্যাশ, হ্যাশ পেরোলে লেখা,
                   লেখা শেষে সোজা প্রোডাকশনে।
@@ -272,7 +274,7 @@ export default async function HomePage() {
                   </h2>
                   <p className="mt-3 max-w-xl text-[13.5px] leading-relaxed text-ink-soft">
                     বামে: ফিডের কাঁচা অবস্থা — হুটোপাটো ক্যাপশন, বানান-ভুল, আধমাথা
-                    তথ্য। ডানে: হইচইর ফ্যাক্ট-গেট পার হওয়া পুনর্লিখন। হাতলটি ধরে
+                    তথ্য। ডানে: হৈচৈর ফ্যাক্ট-গেট পার হওয়া পুনর্লিখন। হাতলটি ধরে
                     টেনে নিজেই বিচার করুন।
                   </p>
                 </div>
@@ -284,7 +286,7 @@ export default async function HomePage() {
                 </Link>
               </div>
             </Reveal>
-            <div className="mt-10">
+            <div>
               <RewriteSlider
                 raw={featured.fbExcerpt}
                 headline={featured.title}
@@ -322,7 +324,7 @@ export default async function HomePage() {
       <section className="mx-auto max-w-[1400px] px-4 pb-16 md:px-8">
         <Link
           href="/desk"
-          className="group relative flex flex-col items-start justify-between gap-6 overflow-hidden border-[1.5px] border-ink bg-ink p-7 text-paper md:flex-row md:items-center md:p-10"
+          className="group relative flex flex-col items-start justify-between gap-6 overflow-hidden border-[1.5px] border-band bg-band p-7 text-bandline md:flex-row md:items-center md:p-10"
         >
           <div className="drift pointer-events-none absolute -top-24 right-10 h-64 w-64 rounded-full bg-lime/10 blur-[80px]" />
           <div className="relative flex items-start gap-4">
@@ -334,12 +336,12 @@ export default async function HomePage() {
             />
             <div>
               <p className="font-mono-x text-[10px] tracking-[0.26em] text-lime uppercase">
-                OPTION A · TAURI 2 NATIVE CONTROLLER
+                TAURI DESK · NATIVE CONTROLLER
               </p>
               <h3 className="mt-1 font-serif-bn text-[26px] font-black md:text-[32px]">
                 {BRAND.desk} খুলুন
               </h3>
-              <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-white/55">
+              <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-bandline/60">
                 এই সাইটের প্রতিটি লাইনের পেছনে ওই একটাই ইঞ্জিন — ওয়াচলিস্ট,
                 কালেক্টর, ডুপ্লিকেট গেট, API ভল্ট ও দুই-ঘণ্টার ক্রন। ওয়েব শুধু
                 ছাপে; অ্যাপই চালায়।
@@ -358,66 +360,8 @@ export default async function HomePage() {
         <AdSlot variant="strip" />
       </div>
 
-      {/* ======================= FOOTER ======================= */}
-      <footer className="border-t-2 border-ink">
-        <div className="mx-auto max-w-[1400px] px-4 py-12 md:px-8">
-          <div className="grid gap-10 md:grid-cols-12">
-            <div className="md:col-span-5">
-              <Logo href="/" size="lg" />
-              <p className="mt-4 max-w-xs text-[12.5px] leading-relaxed text-ink-soft">
-                {BRAND.tagline} — স্বয়ংক্রিয় সংবাদ কিউরেশন ডেস্কের কারিগরি
-                প্রদর্শনী: ডেস্কটপ কালেক্টর, পুনর্লিখন ইঞ্জিন, GitHub-ভিত্তিক
-                প্রকাশনা ও Vercel ডিপ্লয়লাইনের পূর্ণ প্রবাহ।
-              </p>
-            </div>
-            <div className="md:col-span-3">
-              <p className="font-mono-x text-[10px] tracking-[0.24em] text-ink-soft uppercase">
-                বিভাগসমূহ
-              </p>
-              <ul className="mt-4 space-y-2.5 text-[13px] font-medium">
-                {Object.values(CATEGORY_LABEL).map((c) => (
-                  <li key={c} className="flex items-center gap-2">
-                    <span className="h-1 w-1 rotate-45 bg-alizarin" />
-                    {c}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="md:col-span-4">
-              <p className="font-mono-x text-[10px] tracking-[0.24em] text-ink-soft uppercase">
-                সিস্টেম মানচিত্র
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {[
-                  { href: "/desk", label: "ডেস্কটপ অ্যাপ" },
-                  { href: "/admin", label: "ওয়েব অ্যাডমিন" },
-                  { href: "/system", label: "সিস্টেম ব্লুপ্রিন্ট" },
-                ].map((l) => (
-                  <Link
-                    key={l.href}
-                    href={l.href}
-                    className="border border-ink/30 px-4 py-2 text-[12px] font-bold transition-all duration-300 hover:border-ink hover:bg-ink hover:text-paper"
-                  >
-                    {l.label} →
-                  </Link>
-                ))}
-              </div>
-              <p className="mt-6 text-[10.5px] leading-relaxed text-ink-soft/80">
-                ছবি: Pexels ফটোগ্রাফারগণ · এটি একটি প্রযুক্তি প্রদর্শনী (মকআপ) —
-                সব চরিত্র ও ঘটনাবহুল কাল্পনিক এবং কেবল সচেতনতামূলক বিন্যাসে রচিত।
-              </p>
-            </div>
-          </div>
-          <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-ink/15 pt-6 font-mono-x text-[10px] tracking-[0.16em] text-ink-soft uppercase">
-            <span>
-              © {toBn(2026)} {BRAND.en} DESK · OPTION B HOME · BUILD 3.2
-            </span>
-            <span className="flex items-center gap-2">
-              <Globe2 size={11} /> DHAKA · ASIA/UTC+6 · EDGE CACHE ON
-            </span>
-          </div>
-        </div>
-      </footer>
-    </main>
+                  {/* ======================= FOOTER ======================= */}
+      <SiteFooter context="OPTION B HOME" />
+    </main></HomeLiveProvider>
   );
 }

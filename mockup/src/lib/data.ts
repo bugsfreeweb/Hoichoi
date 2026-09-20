@@ -1,14 +1,11 @@
-import { db } from "@/db";
-import {
-  articles,
-  apiKeys,
-  pipelineRuns,
-  sources,
-  collectorLogs,
-  comments,
-} from "@/db/schema";
-import { desc, eq, sql } from "drizzle-orm";
+import { db, tables } from "@/db";
+import { and, count, desc, eq } from "drizzle-orm";
+import type { ReportStatus } from "./moderation-types";
 
+const { articles, apiKeys, pipelineRuns, sources, collectorLogs, comments, reports } =
+  tables;
+
+/* re-export pure helpers so server components can use one import site */
 export * from "./format";
 
 export type Article = typeof articles.$inferSelect;
@@ -18,6 +15,7 @@ export type Source = typeof sources.$inferSelect;
 export type CollectorLog = typeof collectorLogs.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
 
+/** Serializable article shape for client components (Dates -> ISO strings). */
 export type ArticleLite = Omit<Article, "collectedAt" | "publishedAt"> & {
   collectedAt: string;
   publishedAt: string | null;
@@ -31,6 +29,8 @@ export type SourceLite = Omit<Source, "lastChecked" | "lastPostAt"> & {
 };
 
 export type LogLite = Omit<CollectorLog, "ts"> & { ts: string };
+
+export type CommentLite = Omit<Comment, "createdAt"> & { createdAt: string };
 
 export const lite = (a: Article): ArticleLite => ({
   ...a,
@@ -54,12 +54,33 @@ export const logLite = (l: CollectorLog): LogLite => ({
   ts: l.ts.toISOString(),
 });
 
-export type CommentLite = Omit<Comment, "createdAt"> & { createdAt: string };
-
-export const commentLite = (c: Comment): CommentLite => ({
-  ...c,
+export const commentLite = (c: Comment) => ({
+  id: c.id, articleId: c.articleId, author: c.author, body: c.body,
   createdAt: c.createdAt.toISOString(),
 });
+
+export type ReportLite = {
+  id: number; articleId: number; reporterName: string; reporterEmail: string;
+  reason: string; details: string; status: ReportStatus; createdAt: string;
+};
+
+/** Reader reports for the /admin/reports queue (newest first, newest 200). */
+export async function getReports(): Promise<ReportLite[]> {
+  try {
+    const rows = await db.select({
+      id: reports.id, articleId: reports.articleId, reporterName: reports.reporterName,
+      reporterEmail: reports.reporterEmail, reason: reports.reason, details: reports.details,
+      status: reports.status, createdAt: reports.createdAt,
+    }).from(reports).orderBy(desc(reports.createdAt)).limit(200);
+    return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }));
+  } catch {
+    return [];
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* queries — every call is fault tolerant so the mockup still renders  */
+/* ------------------------------------------------------------------ */
 
 export async function getArticles(): Promise<Article[]> {
   try {
@@ -139,7 +160,7 @@ export async function getComments(articleId: number): Promise<Comment[]> {
     return await db
       .select()
       .from(comments)
-      .where(eq(comments.articleId, articleId))
+      .where(and(eq(comments.articleId, articleId), eq(comments.status, "approved")))
       .orderBy(desc(comments.createdAt))
       .limit(200);
   } catch {
@@ -147,4 +168,33 @@ export async function getComments(articleId: number): Promise<Comment[]> {
   }
 }
 
-export const sqlNow = sql`NOW()`;
+/** Moderation queue counts by status — fault tolerant, numbers only. */
+export async function getCommentStatusCounts(): Promise<{
+  pending: number;
+  approved: number;
+  rejected: number;
+  spam: number;
+}> {
+  const fallback = { pending: 0, approved: 0, rejected: 0, spam: 0 };
+  try {
+    const rows = await db
+      .select({ status: comments.status, n: count() })
+      .from(comments)
+      .groupBy(comments.status);
+    const out = { ...fallback };
+    for (const r of rows) {
+      if (r.status === "pending") out.pending = Number(r.n);
+      else if (r.status === "approved") out.approved = Number(r.n);
+      else if (r.status === "rejected") out.rejected = Number(r.n);
+      else if (r.status === "spam") out.spam = Number(r.n);
+    }
+    return out;
+  } catch {
+    return fallback;
+  }
+}
+
+/** Canonical moderation constants live in one module — re-exported for callers
+ *  that import everything from "@/lib/data". */
+export { COMMENT_STATUSES, COMMENT_LABELS, type CommentStatus } from "./moderation-types";
+

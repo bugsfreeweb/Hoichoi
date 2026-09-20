@@ -410,8 +410,8 @@ export default function Settings({
   };
 
   return (
-    <div className="scroll-slim h-full overflow-auto">
-      <div className="mx-auto max-w-3xl p-8">
+    <div className="flex h-full flex-col">
+      <div className="mx-auto w-full max-w-3xl px-8 pt-8">
         <p className="font-mono-x text-[9.5px] tracking-[0.26em] text-lime uppercase">
           DESKTOP CONTROLLER · LOCAL PREFERENCES
         </p>
@@ -439,7 +439,10 @@ export default function Settings({
             );
           })}
         </div>
+      </div>
 
+      <div className="scroll-slim flex-1 overflow-auto">
+        <div className="mx-auto w-full max-w-3xl px-8 py-8">
         {tab === "pref" && (
           <div className="panel mt-5">
             <p className="panel-title">ডেস্ক প্রেফারেন্স · local</p>
@@ -839,9 +842,10 @@ export default function Settings({
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+          ))}
+        </div>
+      )}
+        </div>
       </div>
     </div>
   );
