@@ -249,73 +249,135 @@ export async function ensureSchema(client: Client): Promise<void> {
  * copies the exact original schema (PRAGMA table_info) minus the category CHECK,
  * keeping every other constraint/default/index/view intact. Idempotent.
  *
- * Views that reference the rebuilt table are re-created afterwards from the
- * canonical 003/001 definitions, since `DROP TABLE` invalidates them.
+ * The rebuild intentionally does NOT use `PRAGMA foreign_keys` or an explicit
+ * BEGIN/COMMIT/ROLLBACK: over the libsql HTTP protocol (Turso / Vercel) those
+ * are unreliable and the rollback can mask the real error. Each statement
+ * auto-commits, and any child rows that ON DELETE CASCADE/SET NULL removes when
+ * the parent is dropped are saved to shadow tables first and restored afterwards
+ * (`INSERT OR IGNORE`, so the set of rows is correct whether or not foreign keys
+ * are actually enabled on the server).
  */
 export async function ensureNoStaticCategoryChecks(client: Client): Promise<void> {
-const viewRes = await client.execute("SELECT name, sql FROM sqlite_master WHERE type = 'view'");
-    const views = (viewRes.rows as unknown as Array<{ name: string; sql: string }>).filter((v) => v.sql);
+  const viewRes = await client.execute("SELECT name, sql FROM sqlite_master WHERE type = 'view'");
+  const views = (viewRes.rows as unknown as Array<{ name: string; sql: string }>).filter((v) => v.sql);
 
-  for (const table of ["sources", "posts", "submitted_pages"]) {
-    const got = await client.execute({
-      sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
-      args: [table],
-    });
-    const sql = String(got.rows[0]?.sql ?? "");
-    if (!/CHECK\s*\(\s*category\s+IN\s*\(/i.test(sql)) continue;
+  // Direct FK children of each rebuild target (from 001_init.sql) — their rows
+  // are saved/restored so the drop never loses data.
+  const cascadeChildren: Record<string, string[]> = {
+    sources: ["raw_posts", "source_categories", "posts"],
+    posts: ["comments", "reader_reports"],
+    submitted_pages: [],
+  };
+  const TARGETS = ["sources", "posts", "submitted_pages"] as const;
 
-    const info = await client.execute(`PRAGMA table_info(${table})`);
-    const rows = info.rows as unknown as Array<{
-      name: string;
-      type: string;
-      notnull: number;
-      dflt_value: string | null;
-      pk: number;
-    }>;
-    const pkCols = rows
-      .filter((r) => r.pk > 0)
-      .sort((a, b) => a.pk - b.pk)
-      .map((r) => `"${r.name}"`);
-    const colDefs = rows.map((r) => {
-      const parts = [`"${r.name}"`, r.type];
-      if (r.notnull) parts.push("NOT NULL");
-      if (r.dflt_value !== null) parts.push(`DEFAULT ${r.dflt_value}`);
-      if (r.pk > 0 && pkCols.length === 1) parts.push("PRIMARY KEY");
-      return parts.join(" ");
-    });
-    const colList = rows.map((r) => `"${r.name}"`).join(", ");
-    const createSql = `CREATE TABLE "${table}" (${colDefs.join(", ")}${
-      pkCols.length > 1 ? `, PRIMARY KEY (${pkCols.join(", ")})` : ""
-    })`;
+  const colListOf = async (t: string): Promise<string> => {
+    const info = await client.execute(`PRAGMA table_info(${t})`);
+    const cols = info.rows as unknown as Array<{ name: string }>;
+    return cols.map((r) => `"${r.name}"`).join(", ");
+  };
+  const shadow = async (t: string): Promise<void> => {
+    const cols = await colListOf(t);
+    await client.execute(`DROP TABLE IF EXISTS "__r_${t}"`);
+    await client.execute(`CREATE TABLE "__r_${t}" AS SELECT ${cols} FROM ${t}`);
+  };
+  const unshadow = async (t: string): Promise<void> => {
+    await client.execute(`DROP TABLE IF EXISTS "__r_${t}"`);
+  };
 
-    // SQLite cannot drop a CHECK; we re-create the table without it. The rebuild
-    // must NOT use ALTER RENAME (RENAME validates tokens in other objects, and
-    // with the old table dropped the dependent views/foreign keys fail that
-    // check), so we double-copy into the final table name.
-    await client.execute("PRAGMA foreign_keys = OFF");
-    await client.execute("BEGIN");
-    try {
-      await client.execute(`CREATE TABLE "__rebuild" AS SELECT ${colList} FROM ${table}`);
+  try {
+    for (const table of ["sources", "posts", "submitted_pages"] as const) {
+      const got = await client.execute({
+        sql: "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+        args: [table],
+      });
+      const sql = String(got.rows[0]?.sql ?? "");
+      if (!/CHECK\s*\(\s*category\s+IN\s*\(/i.test(sql)) continue;
+
+      const info = await client.execute(`PRAGMA table_info(${table})`);
+      const rows = info.rows as unknown as Array<{
+        name: string;
+        type: string;
+        notnull: number;
+        dflt_value: string | null;
+        pk: number;
+      }>;
+      const pkCols = rows
+        .filter((r) => r.pk > 0)
+        .sort((a, b) => a.pk - b.pk)
+        .map((r) => `"${r.name}"`);
+      const colDefs = rows.map((r) => {
+        const parts = [`"${r.name}"`, r.type];
+        if (r.notnull) parts.push("NOT NULL");
+        if (r.dflt_value !== null) parts.push(`DEFAULT ${r.dflt_value}`);
+        if (r.pk > 0 && pkCols.length === 1) parts.push("PRIMARY KEY");
+        return parts.join(" ");
+      });
+      const colList = rows.map((r) => `"${r.name}"`).join(", ");
+      const createSql = `CREATE TABLE "${table}" (${colDefs.join(", ")}${
+        pkCols.length > 1 ? `, PRIMARY KEY (${pkCols.join(", ")})` : ""
+      })`;
+
+      const children = cascadeChildren[table] ?? [];
+      // 1) snapshot the target and every FK child that could lose rows.
+      await shadow(table);
+      for (const c of children) {
+        try {
+          await shadow(c);
+        } catch {
+          /* child table may not exist on this schema */
+        }
+      }
+      // 2) drop the constrained table (child rows cascade/null — restored below).
       await client.execute(`DROP TABLE ${table}`);
+      // 3) re-create it without the category CHECK.
       await client.execute(createSql);
-      await client.execute(`INSERT INTO ${table} (${colList}) SELECT ${colList} FROM "__rebuild"`);
-      await client.execute(`DROP TABLE "__rebuild"`);
-      await client.execute("COMMIT");
-    } catch (err) {
-      await client.execute("ROLLBACK");
-      throw err;
-    } finally {
-      await client.execute("PRAGMA foreign_keys = ON");
+      // 4) restore row-for-row from the shadow.
+      await client.execute(
+        `INSERT INTO ${table} (${colList}) SELECT ${colList} FROM "__r_${table}"`,
+      );
+      // 5) restore CASCADE-deleted children (IGNORE keeps untouched rows intact).
+      for (const c of children) {
+        const childCols = await colListOf(c);
+        await client.execute(
+          `INSERT OR IGNORE INTO ${c} (${childCols}) SELECT ${childCols} FROM "__r_${c}"`,
+        );
+      }
+      // A SET NULL child survives the drop but its reference column is nulled;
+      // repair it from the shadow where NULL (only `posts.source_id` uses SET NULL).
+      if (table === "sources" && (await hasTable(client, "posts"))) {
+        await client.execute(
+          `UPDATE posts SET source_id = COALESCE(
+             (SELECT "__r_posts".source_id FROM "__r_posts" WHERE "__r_posts".id = posts.id),
+             posts.source_id
+           ) WHERE posts.source_id IS NULL AND EXISTS (
+             SELECT 1 FROM "__r_posts" WHERE "__r_posts".id = posts.id
+           )`,
+        );
+      }
+      // 6) rebuild the target's indexes (child indexes were never dropped).
+      if (table === "sources") {
+        await client.execute("CREATE INDEX IF NOT EXISTS idx_sources_active ON sources (is_active, category)");
+      } else if (table === "posts") {
+        await client.execute("CREATE INDEX IF NOT EXISTS idx_posts_window ON posts (status, archived_at, published_at)");
+        await client.execute("CREATE INDEX IF NOT EXISTS idx_posts_category ON posts (category, status, published_at)");
+        await client.execute("CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts (slug)");
+      } else if (table === "submitted_pages") {
+        await client.execute("CREATE INDEX IF NOT EXISTS idx_submitted_status ON submitted_pages (status, created_at)");
+      }
+      // 7) drop the shadows — data has been fully restored.
+      await unshadow(table);
+      for (const c of children) await unshadow(c);
     }
-
-    if (table === "sources") {
-      await client.execute("CREATE INDEX IF NOT EXISTS idx_sources_active ON sources (is_active, category)");
-    } else if (table === "posts") {
-      await client.execute("CREATE INDEX IF NOT EXISTS idx_posts_window ON posts (status, archived_at, published_at)");
-      await client.execute("CREATE INDEX IF NOT EXISTS idx_posts_category ON posts (category, status, published_at)");
-      await client.execute("CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts (slug)");
-    } else if (table === "submitted_pages") {
-      await client.execute("CREATE INDEX IF NOT EXISTS idx_submitted_status ON submitted_pages (status, created_at)");
+  } finally {
+    // Best-effort cleanup of any shadow left by an interrupted earlier run.
+    for (const childList of Object.values(cascadeChildren)) {
+      for (const t of ["sources", "posts", "submitted_pages", ...childList]) {
+        try {
+          await unshadow(t);
+        } catch {
+          /* ignore */
+        }
+      }
     }
   }
 
@@ -323,6 +385,14 @@ const viewRes = await client.execute("SELECT name, sql FROM sqlite_master WHERE 
     await client.execute(`DROP VIEW IF EXISTS "${v.name}"`);
     await client.execute((v.sql as string).replace(/^CREATE\s+VIEW\s+/i, "CREATE VIEW IF NOT EXISTS "));
   }
+}
+
+async function hasTable(client: Client, table: string): Promise<boolean> {
+  const got = await client.execute({
+    sql: "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+    args: [table],
+  });
+  return got.rows.length > 0;
 }
 
 /**
