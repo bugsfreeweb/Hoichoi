@@ -16,19 +16,27 @@ export interface ResolverOptions {
   keyStore?: KeyStore;
   /** Cooldown after a rate-limit/network failure, default 5 minutes. */
   cooldownMs?: number;
+  /** Per-provider health probe timeout before a rewrite, default 10s. */
+  probeTimeoutMs?: number;
 }
 
-/** Reads llm_providers and walks them in priority order with failure fallback. */
+/** Reads llm_providers and walks them FREE-tier-first with failure fallback. */
 export class Resolver {
   private readonly cooldowns = new Map<string, number>();
   private readonly history = new Map<string, { ok: number; fail: number }>();
+  /** Probe cache per run — a provider is health-checked at most once. */
+  private readonly probed = new Set<string>();
+  /** Skip a provider that keeps failing until this window from its last write passes. */
+  private static readonly PERSISTED_DOWN_MS = 5 * 60_000;
 
   constructor(private readonly opts: ResolverOptions = {}) {}
 
   async activeProviders(operation: Operation): Promise<ActiveProvider[]> {
     const client = getClient();
     const res = await client.execute(
-      "SELECT * FROM llm_providers WHERE is_active = 1 AND (supports_rewrite = 1 OR supports_embeddings = 1) ORDER BY priority ASC",
+      // Free tiers first (so a paid fallback never shadows a usable free one,
+      // regardless of admin priorities), then priority within each tier.
+      "SELECT * FROM llm_providers WHERE is_active = 1 AND (supports_rewrite = 1 OR supports_embeddings = 1) ORDER BY is_free_tier DESC, priority ASC",
     );
     const rows = res.rows.map((r) => mapProvider(r as Record<string, unknown>));
     return rows
@@ -43,13 +51,39 @@ export class Resolver {
       .filter((p): p is ActiveProvider => p !== null);
   }
 
-  /** First provider in priority order that has a key and is not cooling down. */
+  /** First provider (free-first, priority) that is keyed, not cooling down and
+   *  not still down from a recent persisted failure. For rewrites the provider
+   *  is also health-probed once per run so a retired model never dead-ends the
+   *  chain — we find the provider that actually answers *now*. */
   async next(operation: Operation): Promise<ActiveProvider | null> {
     const active = await this.activeProviders(operation);
     for (const ap of active) {
       if (this.isCoolingDown(ap.row.id)) continue;
+      if (this.isPersistentlyDown(ap.row)) continue;
       const key = this.resolveKey(ap.row);
       if (!key && ap.provider.providerKey !== "ollama") continue;
+      if (operation === "rewrite" && !this.probed.has(ap.row.id)) {
+        this.probed.add(ap.row.id);
+        try {
+          const hc = await ap.provider.healthCheck?.(
+            AbortSignal.timeout(this.opts.probeTimeoutMs ?? 10_000),
+          );
+          if (!hc?.ok) {
+            throw new ProviderError(
+              (hc as unknown as { kind?: ProviderError["kind"] }).kind ?? "network",
+              hc?.error ?? `health check failed (${ap.row.display_name})`,
+            );
+          }
+          this.markSuccess(ap.row.id, ap.row.display_name);
+        } catch (err) {
+          const e = err as ProviderError | Error;
+          this.markFailure(
+            ap.row.id,
+            e instanceof ProviderError ? e.kind : "network",
+          );
+          continue;
+        }
+      }
       return ap;
     }
     return null;
@@ -100,9 +134,21 @@ export class Resolver {
     return until !== undefined && until > Date.now();
   }
 
+  /** True when the provider's last recorded attempt failed and the failure is
+   *  still inside the skip window (persisted across runs). A later successful
+   *  write (last_ok_at newer) clears it, so recovered providers come back. */
+  private isPersistentlyDown(row: LLMProviderRow): boolean {
+    const errAt = row.last_error_at ? Date.parse(row.last_error_at) : NaN;
+    if (!Number.isFinite(errAt)) return false;
+    const okAt = row.last_ok_at ? Date.parse(row.last_ok_at) : NaN;
+    if (Number.isFinite(okAt) && okAt >= errAt) return false;
+    return Date.now() - errAt < Resolver.PERSISTED_DOWN_MS;
+  }
+
   markSuccess(id: string, _name: string): void {
     this.cooldowns.delete(id);
     this.bump(id, true);
+    this.persist(id, { ok: true });
   }
 
   markFailure(id: string, kind: ProviderError["kind"]): void {
@@ -110,6 +156,25 @@ export class Resolver {
     // rate limits: longer cooldown (N min); network/auth: 5 min.
     const ms = kind === "rate_limit" ? 4 * 60_000 : kind === "auth" ? 0 : 5 * 60_000;
     if (ms > 0) this.cooldowns.set(id, Date.now() + ms);
+    this.persist(id, { ok: false });
+  }
+
+  /** Write liveness back to llm_providers so future runs skip/resume correctly.
+   *  NOTE: uses raw string SQL — the bundled @libsql/client HTTP (Turso) driver
+   *  crashes on object-form `execute({ sql, args })`, which the cloud desktop
+   *  build hits on every run. Values are internal row ids / timestamps only. */
+  private persist(id: string, outcome: { ok: boolean }): void {
+    const when = new Date().toISOString();
+    const q = (v: string) => `'${v.replaceAll("'", "''")}'`;
+    const sql = outcome.ok
+      ? `UPDATE llm_providers SET last_ok_at = ${q(when)}, last_error_at = NULL, error_count = 0, updated_at = ${q(when)} WHERE id = ${q(id)}`
+      : `UPDATE llm_providers SET last_error_at = ${q(when)}, error_count = COALESCE(error_count, 0) + 1, updated_at = ${q(when)} WHERE id = ${q(id)}`;
+    try {
+      const client = getClient();
+      void client.execute(sql);
+    } catch {
+      /* health tracking is best-effort; never break the run over it */
+    }
   }
 
   stats(id: string): { ok: number; fail: number } {

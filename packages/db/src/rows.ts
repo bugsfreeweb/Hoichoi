@@ -125,6 +125,9 @@ export function mapProvider(row: Record<string, unknown>): LLMProviderRow {
     supports_embeddings: yesNo(row.supports_embeddings),
     rate_limit_rpm: (row.rate_limit_rpm as number | null) ?? null,
     config: parseJson<Record<string, unknown> | null>(row.config as string, null),
+    last_ok_at: (row.last_ok_at as string | null | undefined) ?? null,
+    last_error_at: (row.last_error_at as string | null | undefined) ?? null,
+    error_count: Number((row.error_count as number | null | undefined) ?? 0),
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
   };

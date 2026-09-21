@@ -90,7 +90,7 @@ CREATE INDEX IF NOT EXISTS idx_submitted_status ON submitted_pages (status, crea
 -- 5) LLM provider configurations (metadata only — KEYS LIVE IN STRONGHOLD / ENV)
 CREATE TABLE IF NOT EXISTS llm_providers (
   id TEXT PRIMARY KEY,
-  provider_key TEXT NOT NULL CHECK (provider_key IN ('google','groq','openrouter','ollama','anthropic','openai','mistral','custom')),
+  provider_key TEXT NOT NULL,
   display_name TEXT NOT NULL,
   base_url TEXT,
   model_name TEXT NOT NULL,
@@ -102,10 +102,14 @@ CREATE TABLE IF NOT EXISTS llm_providers (
   supports_embeddings INTEGER NOT NULL DEFAULT 0,
   rate_limit_rpm INTEGER,
   config TEXT,
+  last_ok_at TEXT,
+  last_error_at TEXT,
+  error_count INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_providers_active ON llm_providers (is_active, priority);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_llm_providers_provider_key ON llm_providers (provider_key);
 
 -- 6) Admin users + sessions (self-contained auth; Turso has no auth built in)
 CREATE TABLE IF NOT EXISTS admin_users (

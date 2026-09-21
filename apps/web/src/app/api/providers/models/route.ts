@@ -11,6 +11,7 @@ const DEFAULTS: Record<string, string> = {
   anthropic: "https://api.anthropic.com",
   openai: "https://api.openai.com",
   mistral: "https://api.mistral.ai",
+  github: "https://api.githubcopilot.com",
   custom: "",
 };
 

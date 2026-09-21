@@ -4,8 +4,13 @@ import type { Client } from "@libsql/client";
 import { CATEGORY_SEED } from "./rows";
 const { hashSync } = bcrypt;
 
-/** Default LLM provider presets (see ai-provider-strategy.md). */
-const DEFAULT_PROVIDERS: Array<{
+/**
+ * Default LLM provider presets (see ai-provider-strategy.md). The resolver
+ * walks these FREE-tier-first (then priority) and falls through on failure, so
+ * the order below is also the fallback chain on fresh installs. Every provider
+ * only activates when its key/env is present (except local Ollama).
+ */
+export const DEFAULT_PROVIDERS: Array<{
   key: string;
   name: string;
   model: string;
@@ -16,10 +21,18 @@ const DEFAULT_PROVIDERS: Array<{
   embed: boolean;
   base?: string;
 }> = [
-  { key: "google", name: "Google Gemini 2.0 Flash", model: "gemini-2.0-flash", env: "GOOGLE_API_KEY", priority: 1, free: true, rewrite: true, embed: true },
-  { key: "groq", name: "Groq Llama 3.3 70B", model: "llama-3.3-70b-versatile", env: "GROQ_API_KEY", priority: 2, free: true, rewrite: true, embed: false },
+  { key: "google", name: "Google Gemini 3.6 Flash", model: "gemini-3.6-flash", env: "GOOGLE_API_KEY", priority: 1, free: true, rewrite: true, embed: true },
+  { key: "groq", name: "Groq GPT-OSS 120B", model: "openai/gpt-oss-120b", env: "GROQ_API_KEY", priority: 2, free: true, rewrite: true, embed: false },
   { key: "openrouter", name: "OpenRouter Free", model: "google/gemma-4-31b-it:free", env: "OPENROUTER_API_KEY", priority: 3, free: true, rewrite: true, embed: false },
-  { key: "ollama", name: "Ollama (local)", model: "llama3.2", env: "OLLAMA_BASE_URL", priority: 4, free: true, rewrite: true, embed: false, base: "http://localhost:11434/v1" },
+  // GitHub Copilot chat-completions endpoint (OpenAI-compatible). Only usable
+  // when a Copilot token is present; the resolver skips it otherwise.
+  { key: "github", name: "GitHub Copilot", model: "gpt-4o-mini", env: "GITHUB_COPILOT_TOKEN", priority: 4, free: true, rewrite: true, embed: false },
+  { key: "ollama", name: "Ollama (local)", model: "llama3.2", env: "OLLAMA_BASE_URL", priority: 5, free: true, rewrite: true, embed: false, base: "http://localhost:11434/v1" },
+  // Paid fallbacks — the resolver tries them only after every free tier fails.
+  { key: "openai", name: "OpenAI GPT-4o mini", model: "gpt-4o-mini", env: "OPENAI_API_KEY", priority: 6, free: false, rewrite: true, embed: false },
+  { key: "mistral", name: "Mistral Small", model: "mistral-small-latest", env: "MISTRAL_API_KEY", priority: 7, free: true, rewrite: true, embed: false },
+  // Manifest AI proxy (BYO provider keys, routes to the best available model).
+  { key: "custom", name: "Manifest AI", model: "manifest/auto", env: "MANIFEST_API_KEY", priority: 8, free: false, rewrite: true, embed: false, base: "https://app.manifest.build/v1" },
 ];
 
 /** Redaction blocklist (child PII defense-in-depth). */

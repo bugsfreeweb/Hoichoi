@@ -46,6 +46,7 @@ export type ProviderKey =
   | "anthropic"
   | "openai"
   | "mistral"
+  | "github"
   | "custom";
 
 /** Per-category behavior flags stored in category_configs.config (JSON). */
@@ -170,6 +171,10 @@ export interface LLMProviderRow {
   supports_embeddings: boolean;
   rate_limit_rpm: number | null;
   config: Record<string, unknown> | null;
+  /** Runtime health: set by the resolver on every attempt (free-first picking). */
+  last_ok_at?: string | null;
+  last_error_at?: string | null;
+  error_count?: number;
   created_at: string;
   updated_at: string;
 }

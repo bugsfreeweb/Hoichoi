@@ -12,7 +12,8 @@ const TIERS: Record<string, { order: number }> = {
   anthropic: { order: 5 },
   openai: { order: 6 },
   mistral: { order: 7 },
-  custom: { order: 8 },
+  github: { order: 8 },
+  custom: { order: 9 },
 };
 
 export default async function AdminProvidersPage() {

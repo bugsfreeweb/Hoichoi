@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { applyMigration, getClient, databaseUrl, nowIso, ensureBrandingColumns, ensureCommentsTable, ensureNoStaticCategoryChecks, ensureCategoryDotColumn } from "../src/client";
+import { applyMigration, getClient, databaseUrl, nowIso, ensureBrandingColumns, ensureCommentsTable, ensureNoStaticCategoryChecks, ensureCategoryDotColumn, ensureProviderHealthColumns, ensureDynamicProviderKeys, ensureRuntimeProviders } from "../src/client";
 import { seedDefaults } from "../src/seed";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -39,6 +39,12 @@ const seeded = await seedDefaults(client, nowIso());
   console.log("hoichoi:db — category dot column ensured");
   await ensureNoStaticCategoryChecks(client);
   console.log("hoichoi:db — static category CHECKs removed (dynamic categories enabled)");
+  await ensureProviderHealthColumns(client);
+  console.log("hoichoi:db — provider health columns ensured");
+  await ensureDynamicProviderKeys(client);
+  console.log("hoichoi:db — provider_key CHECK removed (custom providers enabled)");
+  await ensureRuntimeProviders(client);
+  console.log("hoichoi:db — free-first provider chain ensured");
   await client.close();
 }
 

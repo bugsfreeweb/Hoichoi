@@ -166,6 +166,13 @@ const demoPosts: DemoPost[] = [
 ];
 
 async function main() {
+  const url = process.env.TURSO_DATABASE_URL ?? "";
+  if (url.startsWith("libsql://")) {
+    console.error(
+      "refusing to seed demo content into the shared cloud DB — point TURSO_DATABASE_URL at a file: URL (or unset it) and retry.",
+    );
+    process.exit(1);
+  }
   const client = getClient();
   const now = nowIso();
 

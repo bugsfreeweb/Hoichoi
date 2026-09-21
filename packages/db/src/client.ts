@@ -265,6 +265,9 @@ export async function ensureSchema(client: Client): Promise<void> {
   await ensureCommentsTable(client);
   await ensureCommentsEmailColumn(client);
   await ensureProviderApiKeyColumn(client);
+  await ensureProviderHealthColumns(client);
+  await ensureDynamicProviderKeys(client);
+  await ensureRuntimeProviders(client);
   await ensureReaderReportsTable(client);
   await ensureAdminLoginCodesTable(client);
   await ensureDeskColumns(client);
@@ -465,6 +468,121 @@ export async function ensureProviderApiKeyColumn(client: Client): Promise<void> 
   if (!existing.has("api_key")) {
     await client.execute("ALTER TABLE llm_providers ADD COLUMN api_key TEXT");
   }
+}
+
+/** Adds llm_providers runtime health columns + the provider_key uniqueness
+ *  guard. The resolver persists last ok/error timestamps here so a dead
+ *  provider (retired model, bad key) is skipped on the next run instead of
+ *  burning the whole fallback chain. Idempotent. */
+export async function ensureProviderHealthColumns(client: Client): Promise<void> {
+  const info = await client.execute("PRAGMA table_info(llm_providers)");
+  const existing = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));
+  if (!existing.has("last_ok_at")) await client.execute("ALTER TABLE llm_providers ADD COLUMN last_ok_at TEXT");
+  if (!existing.has("last_error_at")) await client.execute("ALTER TABLE llm_providers ADD COLUMN last_error_at TEXT");
+  if (!existing.has("error_count")) {
+    await client.execute("ALTER TABLE llm_providers ADD COLUMN error_count INTEGER NOT NULL DEFAULT 0");
+  }
+  await client.execute(
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_llm_providers_provider_key ON llm_providers (provider_key)",
+  );
+}
+
+/**
+ * Drops the legacy `provider_key IN (...)` CHECK from llm_providers so the
+ * admin can register any OpenAI-compatible provider key. Mirrors the proven
+ * ensureNoStaticCategoryChecks rebuild: shadow → drop → recreate → restore,
+ * keeping every column/default/index intact. No table references llm_providers,
+ * so no child rows to conserve.
+ */
+export async function ensureDynamicProviderKeys(client: Client): Promise<void> {
+  const got = await client.execute(
+    "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'llm_providers'",
+  );
+  const sql = String(got.rows[0]?.sql ?? "");
+  if (!/CHECK\s*\(\s*provider_key\s+IN\s*\(/i.test(sql)) return;
+
+  const info = await client.execute("PRAGMA table_info(llm_providers)");
+  const rows = info.rows as unknown as Array<{
+    name: string;
+    type: string;
+    notnull: number;
+    dflt_value: string | null;
+    pk: number;
+  }>;
+  const pkCols = rows
+    .filter((r) => r.pk > 0)
+    .sort((a, b) => a.pk - b.pk)
+    .map((r) => `"${r.name}"`);
+  const colDefs = rows.map((r) => {
+    const parts = [`"${r.name}"`, r.type];
+    if (r.notnull) parts.push("NOT NULL");
+    if (r.dflt_value !== null) parts.push(`DEFAULT ${r.dflt_value}`);
+    if (r.pk > 0 && pkCols.length === 1) parts.push("PRIMARY KEY");
+    return parts.join(" ");
+  });
+  const colList = rows.map((r) => `"${r.name}"`).join(", ");
+  const createSql = `CREATE TABLE "llm_providers" (${colDefs.join(", ")}${
+    pkCols.length > 1 ? `, PRIMARY KEY (${pkCols.join(", ")})` : ""
+  })`;
+
+  await client.execute('DROP TABLE IF EXISTS "__r_llm_providers"');
+  await client.execute('CREATE TABLE "__r_llm_providers" AS SELECT * FROM llm_providers');
+  try {
+    await client.execute("DROP TABLE llm_providers");
+    await client.execute(createSql);
+    await client.execute(
+      `INSERT INTO llm_providers (${colList}) SELECT ${colList} FROM "__r_llm_providers"`,
+    );
+  } finally {
+    await client.execute('DROP TABLE IF EXISTS "__r_llm_providers"');
+  }
+  await client.execute("CREATE INDEX IF NOT EXISTS idx_providers_active ON llm_providers (is_active, priority)");
+  await client.execute(
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_llm_providers_provider_key ON llm_providers (provider_key)",
+  );
+}
+
+/**
+ * Extends the free-first fallback chain on existing databases (seedDefaults only
+ * inserts on fresh DBs). INSERT OR IGNORE is idempotent via the provider_key
+ * unique index; the manifest repair only touches an obviously-broken custom row.
+ */
+export async function ensureRuntimeProviders(client: Client): Promise<void> {
+  await client.executeMultiple(`
+INSERT OR IGNORE INTO llm_providers
+  (id, provider_key, display_name, base_url, model_name, api_key_env_var,
+   priority, is_active, is_free_tier, supports_rewrite, supports_embeddings,
+   created_at, updated_at)
+VALUES
+  ('prov-github-copilot', 'github', 'GitHub Copilot',
+   'https://api.githubcopilot.com', 'gpt-4o-mini',
+   'GITHUB_COPILOT_TOKEN', 4, 1, 1, 1, 0,
+   strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  ('prov-openai-mini', 'openai', 'OpenAI GPT-4o mini',
+   NULL, 'gpt-4o-mini',
+   'OPENAI_API_KEY', 6, 1, 0, 1, 0,
+   strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  ('prov-mistral-small', 'mistral', 'Mistral Small',
+   NULL, 'mistral-small-latest',
+   'MISTRAL_API_KEY', 7, 1, 1, 1, 0,
+   strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  ('prov-manifest-ai', 'custom', 'Manifest AI',
+   'https://app.manifest.build/v1', 'manifest/auto',
+   'MANIFEST_API_KEY', 8, 1, 0, 1, 0,
+   strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+`);
+  await client.execute(`
+    UPDATE llm_providers
+      SET base_url = COALESCE(NULLIF(base_url, ''), 'https://app.manifest.build/v1'),
+          display_name = 'Manifest AI',
+          model_name = 'manifest/auto',
+          api_key_env_var = 'MANIFEST_API_KEY',
+          is_free_tier = 0,
+          priority = 8,
+          updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+      WHERE provider_key = 'custom'
+        AND model_name LIKE 'manifest%'
+  `);
 }
 
 /** Reader report queue (public form → admin). Idempotent. */

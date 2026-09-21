@@ -3,7 +3,7 @@ import { getClient, nowIso, mapProvider } from "@hoichoi/db";
 import type { ProviderKey } from "@hoichoi/shared-types";
 import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
 
-const KEYS: ProviderKey[] = ["google", "groq", "openrouter", "ollama", "anthropic", "openai", "mistral", "custom"];
+const KEYS: ProviderKey[] = ["google", "groq", "openrouter", "ollama", "anthropic", "openai", "mistral", "github", "custom"];
 
 export async function GET() {
   const client = getClient();
