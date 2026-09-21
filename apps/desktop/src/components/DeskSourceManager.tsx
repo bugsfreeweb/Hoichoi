@@ -21,6 +21,7 @@ import {
   type DeskCategory,
 } from "../lib/tauri";
 import { getRunEnv } from "../lib/vault";
+import { autoPush } from "../lib/autosync";
 import { bnTime, toBn } from "../lib/format";
 
 interface Form {
@@ -99,6 +100,7 @@ export default function DeskSourceManager() {
       setForm(EMPTY);
       setOpen(false);
       await refresh();
+      await autoPush();
       flash("ok", "সোর্স যোগ হয়েছে — পরের পাইপলাইন রানে এটিই প্রথমে স্ক্র্যাপ হবে");
     } catch (e) {
       flash("err", e instanceof Error ? e.message : "সোর্স যোগ ব্যর্থ");
@@ -112,6 +114,7 @@ export default function DeskSourceManager() {
     try {
       await deskToggleSource(await getRunEnv(), s.id);
       await refresh();
+      await autoPush();
     } catch (e) {
       flash("err", e instanceof Error ? e.message : "টগল ব্যর্থ");
     } finally {
@@ -125,6 +128,7 @@ export default function DeskSourceManager() {
     try {
       await deskRemoveSource(await getRunEnv(), s.id);
       await refresh();
+      await autoPush();
       flash("ok", "সোর্স মুছে ফেলা হয়েছে");
     } catch (e) {
       flash("err", e instanceof Error ? e.message : "মুছতে ব্যর্থ");

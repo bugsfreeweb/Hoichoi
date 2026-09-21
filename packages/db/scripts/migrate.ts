@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { applyMigration, getClient, databaseUrl, nowIso, ensureBrandingColumns, ensureCommentsTable, ensureNoStaticCategoryChecks } from "../src/client";
+import { applyMigration, getClient, databaseUrl, nowIso, ensureBrandingColumns, ensureCommentsTable, ensureNoStaticCategoryChecks, ensureCategoryDotColumn } from "../src/client";
 import { seedDefaults } from "../src/seed";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -35,6 +35,8 @@ const seeded = await seedDefaults(client, nowIso());
   console.log("hoichoi:db — branding columns ensured");
   await ensureCommentsTable(client);
   console.log("hoichoi:db — comments table ensured");
+  await ensureCategoryDotColumn(client);
+  console.log("hoichoi:db — category dot column ensured");
   await ensureNoStaticCategoryChecks(client);
   console.log("hoichoi:db — static category CHECKs removed (dynamic categories enabled)");
   await client.close();

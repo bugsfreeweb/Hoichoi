@@ -65,8 +65,8 @@ export async function seedDefaults(
     await client.execute({
       sql: `INSERT OR IGNORE INTO category_configs
         (slug, display_name_bn, display_name_en, description_bn, description_en,
-         is_active, sort_order, config, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
+         is_active, sort_order, dot, config, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
       args: [
         cat.slug,
         cat.displayNameBn,
@@ -74,6 +74,7 @@ export async function seedDefaults(
         cat.descriptionBn,
         cat.descriptionEn,
         i + 1,
+        `#${cat.dot}`,
         JSON.stringify(cat.config),
         now,
         now,

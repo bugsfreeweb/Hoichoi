@@ -227,8 +227,18 @@ export const CATEGORY_SEED: CategoryMeta[] = [
   },
 ];
 
+/** Normalize a category dot to CSS-ready `#hex` (legacy seed values stored
+ *  without the `#` prefix, e.g. "2563eb"). */
+function normalizeDot(value: unknown, fallback: string): string {
+  const raw = String(value ?? "").trim();
+  if (/^#[0-9a-fA-F]{3,8}$/.test(raw)) return raw;
+  if (/^[0-9a-fA-F]{3,8}$/.test(raw)) return `#${raw}`;
+  return fallback;
+}
+
 export function mapCategory(row: Record<string, unknown>): CategoryMeta {
   const base = CATEGORY_SEED.find((c) => c.slug === row.slug);
+  const dot = normalizeDot(row.dot, base?.dot ? `#${base.dot}` : "#4a4a4a");
   return {
     slug: row.slug as CategorySlug,
     displayNameBn: String(row.display_name_bn),
@@ -237,7 +247,7 @@ export function mapCategory(row: Record<string, unknown>): CategoryMeta {
     descriptionEn: (row.description_en as string) ?? "",
     isActive: Boolean(row.is_active),
     sortOrder: Number(row.sort_order ?? 0),
-    dot: base?.dot ?? "4a4a4a",
+    dot,
     config: parseJson<CategoryConfig>(
       row.config as string,
       base?.config ?? ({} as CategoryConfig),

@@ -36,6 +36,7 @@ import {
   type CreatedAdminLoginCode,
 } from "../lib/tauri";
 import { pushGithubSecret } from "../lib/github";
+import { autoPull, autoPush } from "../lib/autosync";
 import DeskCategoryManager from "../components/DeskCategoryManager";
 import DeskSourceManager from "../components/DeskSourceManager";
 
@@ -163,6 +164,7 @@ export default function Settings({
       show(`শিডিউল সংরক্ষিত — pipeline_hours = ${m[1]} (${prefs.cron})`);
       setErr(null);
       await loadBrand();
+      await autoPush();
     } catch (e) {
       fail(e);
     }
@@ -253,6 +255,7 @@ export default function Settings({
       setAdSlotsMsg("সংরক্ষিত — web ও desktop-এ তাৎক্ষণিক কার্যকর");
       setAdSlotsErr(null);
       await refreshBrand();
+      await autoPush();
     } catch (e) {
       setAdSlotsErr(String(e));
     }
@@ -277,6 +280,9 @@ export default function Settings({
     void loadBrand();
     void loadAdminCodes();
     void loadAdSlots();
+    // Local-only mode: pull web-side config (categories/sources/branding)
+    // down to the desk so both admin surfaces show the same data.
+    void autoPull();
   }, []);
 
   const loadAdminCodes = async () => {
@@ -329,6 +335,7 @@ export default function Settings({
       // Tell the parent (App) to re-load branding so the sidebar + other screens
       // pick up the new site_name / slogan immediately.
       await refreshBrand();
+      await autoPush();
     } catch (e) {
       setBrandErr(String(e));
     }
@@ -569,9 +576,16 @@ export default function Settings({
           </div>
         )}
 
-        {tab === "sources" && <DeskSourceManager />}
+        {/* Sources / Categories stay mounted: data loads once when Settings
+            opens, and switching tabs is instant (CSS visibility only) instead
+            of respawning a runner subprocess + re-fetch on every tab switch. */}
+        <div className={tab === "sources" ? "" : "hidden"}>
+          <DeskSourceManager />
+        </div>
 
-        {tab === "categories" && <DeskCategoryManager />}
+        <div className={tab === "categories" ? "" : "hidden"}>
+          <DeskCategoryManager />
+        </div>
 
         {tab === "sync" && (
           <>
@@ -602,6 +616,11 @@ export default function Settings({
               <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
                 Shared Turso DB-এ পরিবর্তন merge করুন। Conflict সমাধান: updated_at time-based
                 (newer wins)। এখন source_categories, comments ও reader_reports-ও সিঙ্ক হয়।
+              </p>
+              <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+                Local-only মোডে স্বয়ংক্রিয় সিঙ্ক চালু: সেটিংস খুললেই Pull, এবং সোর্স/বিভাগ/
+                ব্র্যান্ডিং পরিবর্তন করলে Push — web অ্যাডমিন ও ডেস্কটপ একই কনফিগার দেখাবে।
+                Cloud sync মোডে একই DB ব্যবহার হয় বলে অতিরিক্ত সিঙ্ক লাগে না।
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button className="btn" onClick={() => void doSync("push")}>

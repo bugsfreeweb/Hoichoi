@@ -13,7 +13,8 @@
     "scrape": "pnpm --filter scraper scrape",
     "db:migrate": "pnpm --filter db migrate",
     "db:seed": "pnpm --filter db seed",
-    "db:demo": "pnpm --filter db demo"
+    "db:demo": "pnpm --filter db demo",
+    "db:clean": "pnpm --filter db run clean"
   },
   "devDependencies": {
     "turbo": "^2.3.3",

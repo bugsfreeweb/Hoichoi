@@ -197,6 +197,38 @@ export async function ensureDeskColumns(client: Client): Promise<void> {
   }
 }
 
+/** Seed dot colors for the three built-in categories (#hex, CSS-ready). */
+const CATEGORY_DOT_DEFAULTS: Record<string, string> = {
+  "child-sexual-abuse": "#2563eb",
+  "extramarital-crime": "#d2202c",
+  "missing-children": "#0d9488",
+};
+
+/**
+ * Upgrade helper: adds `category_configs.dot` (category accent color). The
+ * column was missing from 001_init.sql, yet every create/update path sends it,
+ * so category edits on the desk AND web admin failed with "no such column:
+ * dot". Idempotent — safe on databases where 005_category_dot.sql already
+ * ran. Backfills seed colors and normalizes any unprefixed hex (e.g. the old
+ * "2563eb" seed fallback) to CSS-ready `#hex`.
+ */
+export async function ensureCategoryDotColumn(client: Client): Promise<void> {
+  const info = await client.execute("PRAGMA table_info(category_configs)");
+  const existing = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));
+  if (!existing.has("dot")) {
+    await client.execute("ALTER TABLE category_configs ADD COLUMN dot TEXT");
+  }
+  for (const [slug, hex] of Object.entries(CATEGORY_DOT_DEFAULTS)) {
+    await client.execute({
+      sql: "UPDATE category_configs SET dot = ? WHERE slug = ? AND (dot IS NULL OR dot = '' OR substr(dot, 1, 1) != '#')",
+      args: [hex, slug],
+    });
+  }
+  await client.execute(
+    "UPDATE category_configs SET dot = '#' || dot WHERE dot IS NOT NULL AND dot != '' AND substr(dot, 1, 1) != '#'",
+  );
+}
+
 /**
  * Upgrade helper: creates the `source_categories` junction (multi-category
  * sources). Only `db:migrate` applied it before, so fresh DBs created through
@@ -237,6 +269,7 @@ export async function ensureSchema(client: Client): Promise<void> {
   await ensureAdminLoginCodesTable(client);
   await ensureDeskColumns(client);
   await ensureSourceCategoriesTable(client);
+  await ensureCategoryDotColumn(client);
   await ensureNoStaticCategoryChecks(client);
   await seedDefaults(client, nowIso());
 }

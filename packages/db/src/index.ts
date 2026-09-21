@@ -169,6 +169,18 @@ export async function categoriesWithCounts(): Promise<Array<{ category: Category
     .filter((c) => c.count > 0);
 }
 
+/** Normalize a dot color for storage as CSS-ready `#hex` (UI sends `#…`;
+ *  legacy seed/defaults may arrive unprefixed). */
+function normalizeCategoryDot(value: string | undefined): string | null {
+  if (!value || !value.trim()) return null;
+  const raw = value.trim();
+  return /^#[0-9a-fA-F]{3,8}$/.test(raw)
+    ? raw
+    : /^[0-9a-fA-F]{3,8}$/.test(raw)
+      ? `#${raw}`
+      : raw;
+}
+
 /** Create a new category (admin). */
 export async function createCategory(input: {
   slug: string;
@@ -196,8 +208,8 @@ export async function createCategory(input: {
     ...(input.config ?? {}),
   };
   await client.execute({
-    sql: `INSERT INTO category_configs (slug, display_name_bn, display_name_en, description_bn, description_en, is_active, sort_order, config, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
+    sql: `INSERT INTO category_configs (slug, display_name_bn, display_name_en, description_bn, description_en, is_active, sort_order, dot, config, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
     args: [
       input.slug,
       input.displayNameBn,
@@ -205,6 +217,7 @@ export async function createCategory(input: {
       input.descriptionBn ?? "",
       input.descriptionEn ?? "",
       input.sortOrder ?? 99,
+      normalizeCategoryDot(input.dot),
       JSON.stringify(defaultConfig),
       now,
       now,
@@ -234,7 +247,7 @@ export async function updateCategory(slug: string, fields: Partial<{
   if (fields.descriptionEn !== undefined) { sets.push("description_en = ?"); args.push(fields.descriptionEn); }
   if (fields.isActive !== undefined) { sets.push("is_active = ?"); args.push(fields.isActive ? 1 : 0); }
   if (fields.sortOrder !== undefined) { sets.push("sort_order = ?"); args.push(fields.sortOrder); }
-  if (fields.dot !== undefined) { sets.push("dot = ?"); args.push(fields.dot); }
+  if (fields.dot !== undefined) { sets.push("dot = ?"); args.push(normalizeCategoryDot(fields.dot)); }
   if (fields.config !== undefined) {
     // Merge with existing config
     const existing = await getCategory(slug);

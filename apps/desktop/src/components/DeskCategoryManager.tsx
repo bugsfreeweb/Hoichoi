@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Check, FolderPlus, Pencil, RefreshCw, Tags, Trash2, X } from "lucide-react";
 import { deskAddCategory, deskUpdateCategory, deskDeleteCategory, deskCategories, type DeskCategory } from "../lib/tauri";
 import { getRunEnv } from "../lib/vault";
+import { autoPush } from "../lib/autosync";
 
 interface Form {
   slug: string;
@@ -72,6 +73,7 @@ export default function DeskCategoryManager() {
       });
       resetForm();
       await refresh();
+      await autoPush();
       flash("ok", "বিভাগ তৈরি হয়েছে");
     } catch (e) {
       flash("err", e instanceof Error ? e.message : "তৈরি ব্যর্থ");
@@ -106,6 +108,7 @@ export default function DeskCategoryManager() {
       setEditingSlug(null);
       setEditForm(null);
       await refresh();
+      await autoPush();
       flash("ok", "আপডেট হয়েছে");
     } catch (e) {
       flash("err", e instanceof Error ? e.message : "আপডেট ব্যর্থ");
@@ -120,6 +123,7 @@ export default function DeskCategoryManager() {
     try {
       await deskDeleteCategory(await getRunEnv(), cat.slug);
       await refresh();
+      await autoPush();
       flash("ok", "মুছে ফেলা হয়েছে");
     } catch (e) {
       flash("err", e instanceof Error ? e.message : "মুছতে ব্যর্থ");

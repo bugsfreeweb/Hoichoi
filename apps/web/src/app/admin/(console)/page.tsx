@@ -3,6 +3,7 @@ import { statsSnapshot, recentPipelineRuns, getAllComments, listPosts } from "@h
 import type { RecentPipelineRun } from "@hoichoi/db";
 import Countdown from "@/components/admin/Countdown";
 import ContentQueue from "@/components/admin/ContentQueue";
+import { ManualRun } from "@/components/admin/ManualRun";
 
 export const dynamic = "force-dynamic";
 
@@ -183,10 +184,7 @@ export default async function AdminDashboardPage() {
               </span>
             ))}
           </div>
-          <button className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-lime py-3 text-[12.5px] font-bold text-night transition-all duration-300 hover:brightness-110 active:scale-[0.99]">
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>
-            এখনই ম্যানুয়াল রান করুন
-          </button>
+          <ManualRun initialRuns={runs} />
           <div className="mt-4 space-y-2.5">
             {[
               { label: "স্ক্রিনশট আর্কাইভ", on: true },
