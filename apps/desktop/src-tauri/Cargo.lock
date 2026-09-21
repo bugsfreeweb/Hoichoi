@@ -1536,6 +1536,7 @@ name = "hoichoi-desk"
 version = "1.0.0"
 dependencies = [
  "aes-gcm",
+ "dunce",
  "rand 0.8.8",
  "serde",
  "serde_json",

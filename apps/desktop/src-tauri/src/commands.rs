@@ -1,10 +1,18 @@
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use tauri::{AppHandle, Emitter, Manager};
+
+/// Normalize a path for child-process argv/env on Windows: strip a leading
+/// `\\?\` verbatim (extended-length) prefix, e.g. from `resource_dir()`.
+/// Node ≥22.20 crashes (`EISDIR … lstat 'C:'`) when the script path is
+/// verbatim, so the bundled runner must always receive plain Win32 paths.
+fn win32_path(p: &Path) -> PathBuf {
+    dunce::simplified(p).to_path_buf()
+}
 
 /// Prevent a spawned console tool (node/pnpm/cmd/taskkill) from flashing a
 /// separate cmd window: a GUI (windows-subsystem) app that spawns a console
@@ -36,7 +44,7 @@ pub async fn repo_root() -> String {
 /// Absolute path of the bundled (standalone) pipeline runner, if staged:
 /// `<resource_dir>/runner/{node.exe, app/cli.cjs, node_modules}`.
 fn bundled_runner(app: &AppHandle) -> Option<(PathBuf, PathBuf)> {
-    let root = app.path().resource_dir().ok()?.join("runner");
+    let root = win32_path(&app.path().resource_dir().ok()?.join("runner"));
     let node = if std::env::consts::OS == "windows" {
         root.join("node.exe")
     } else {
@@ -112,12 +120,12 @@ pub async fn run_pipeline(
             .unwrap_or_default();
         cmd.env("HOICHOI_MIGRATIONS_DIR", app_dir.join("migrations"));
         if !envs.contains_key("HOICHOI_MEDIA_ROOT") {
-            cmd.env("HOICHOI_MEDIA_ROOT", data_dir.join("media"));
+            cmd.env("HOICHOI_MEDIA_ROOT", win32_path(&data_dir.join("media")));
         }
         if !envs.contains_key("TURSO_DATABASE_URL") && !envs.contains_key("DATABASE_URL") {
             cmd.env(
                 "TURSO_DATABASE_URL",
-                format!("file:{}", data_dir.join("hoichoi.db").display()),
+                format!("file:{}", win32_path(&data_dir.join("hoichoi.db")).display()),
             );
         }
     }
@@ -332,7 +340,7 @@ fn run_runner(
     if !env.contains_key("TURSO_DATABASE_URL") && !env.contains_key("DATABASE_URL") {
         cmd.env(
             "TURSO_DATABASE_URL",
-            format!("file:{}", data_dir.join("hoichoi.db").display()),
+            format!("file:{}", win32_path(&data_dir.join("hoichoi.db")).display()),
         );
     }
 
@@ -429,7 +437,7 @@ pub async fn backup_import(
     let mut env = env.unwrap_or_default();
     env.insert("HOICHOI_BACKUP_PASS".to_string(), pass);
     let file = match path {
-        Some(p) if !p.trim().is_empty() => p,
+        Some(p) if !p.trim().is_empty() => win32_path(Path::new(&p)).display().to_string(),
         _ => {
             let dir = data_dir(&app)?;
             let mut candidates: Vec<PathBuf> = std::fs::read_dir(&dir)
@@ -447,8 +455,9 @@ pub async fn backup_import(
             candidates
                 .pop()
                 .ok_or_else(|| "no backup file found — export first".to_string())?
-                .display()
-                .to_string()
+                .to_str()
+                .map(|p| win32_path(Path::new(p)).display().to_string())
+                .unwrap_or_default()
         }
     };
     let args = vec!["backup", "import"];
@@ -490,7 +499,10 @@ pub async fn sync_db(
     if config.get("TURSO_AUTH_TOKEN").is_none() {
         return Err("no Turso auth token configured in the keychain".to_string());
     }
-    let local = format!("file:{}", data_dir(&app)?.join("hoichoi.db").display());
+    let local = format!(
+        "file:{}",
+        win32_path(&data_dir(&app)?.join("hoichoi.db")).display()
+    );
     let args: Vec<&str> = if direction == "push" {
         vec!["sync", "push", "--from", &local, "--to", &cloud]
     } else {
