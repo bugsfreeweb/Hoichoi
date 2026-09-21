@@ -37,6 +37,26 @@ export interface PipelineStats {
   errors: string[];
 }
 
+/**
+ * Pick the category config used to rewrite a source's posts.
+ * Prefers the source's primary category, then any of its multi-categories, then
+ * any config available in the DB — so a source added against a category that is
+ * not present in this database still produces content instead of erroring out.
+ */
+function resolveCategoryConfig(
+  source: Pick<Source, "category" | "categories">,
+  cats: Map<CategorySlug, ReturnType<typeof mapCategory>>,
+): ReturnType<typeof mapCategory> | null {
+  const primary = cats.get(source.category);
+  if (primary) return primary;
+  for (const slug of source.categories ?? []) {
+    const c = cats.get(slug);
+    if (c) return c;
+  }
+  for (const c of cats.values()) return c;
+  return null;
+}
+
 export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineStats> {
   const log = opts.log ?? ((s: string) => console.log(s));
   const client = getClient();
@@ -78,6 +98,23 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
   const sources = srcRes.rows
     .map((r) => mapSource(r as Record<string, unknown>))
     .slice(0, opts.maxSources ?? 30);
+
+  // Multi-category membership (source_categories) — feeds the config fallback
+  // and keeps the source's own category list accurate for the rewrite step.
+  try {
+    const scRes = await client.execute("SELECT source_id, category_slug FROM source_categories");
+    const scMap = new Map<string, CategorySlug[]>();
+    for (const r of scRes.rows) {
+      const row = r as Record<string, unknown>;
+      const sid = String(row.source_id);
+      const list = scMap.get(sid) ?? [];
+      list.push(String(row.category_slug));
+      scMap.set(sid, list);
+    }
+    for (const s of sources) s.categories = scMap.get(s.id) ?? [s.category];
+  } catch {
+    for (const s of sources) s.categories = [s.category];
+  }
 
   // Session cookie for logged-in FB scraping (optional)
   const sessionCookie = process.env.FB_SESSION_COOKIE ?? null;
@@ -205,8 +242,13 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       // STEP 5: rewrite + embedding (only when we have text).
       if (!sp.rawText) continue;
       try {
-        const config = cats.get(source.category)?.config;
-        if (!config) throw new Error("no category config");
+        // Resolve a category config for the source. A freshly added source may use
+        // a category that does not exist in THIS database yet (e.g. a custom web
+        // category on a desktop-local DB). Falling back keeps the source producing
+        // content instead of silently failing every post with "no category config".
+        const resolved = resolveCategoryConfig(source, cats);
+        if (!resolved) throw new Error(`no category config — category_configs is empty`);
+        const config = resolved.config;
         const outcome = await rewritePost({
           rawText: sp.rawText,
           sourceName: source.id,

@@ -12,6 +12,7 @@ import {
   UserCog,
   Archive,
   KeyRound,
+  Rss,
 } from "lucide-react";
 import {
   getCredential,
@@ -36,9 +37,11 @@ import {
 } from "../lib/tauri";
 import { pushGithubSecret } from "../lib/github";
 import DeskCategoryManager from "../components/DeskCategoryManager";
+import DeskSourceManager from "../components/DeskSourceManager";
 
 const TABS = [
   { id: "pref", icon: Sliders, label: "প্রেফারেন্স" },
+  { id: "sources", icon: Rss, label: "সোর্স" },
   { id: "categories", icon: Tags, label: "বিভাগ" },
   { id: "sync", icon: Database, label: "ক্লাউড সিঙ্ক" },
   { id: "site", icon: Palette, label: "সাইট ও বিজ্ঞাপন" },
@@ -411,20 +414,25 @@ export default function Settings({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="mx-auto w-full max-w-3xl px-8 pt-8">
-        <p className="font-mono-x text-[9.5px] tracking-[0.26em] text-lime uppercase">
-          DESKTOP CONTROLLER · LOCAL PREFERENCES
-        </p>
-        <h2 className="mt-1 font-serif-bn text-[30px] font-black text-white">সেটিংস</h2>
-        <p className="mt-1 text-[12.5px] text-white/50">
-          মানগুলো Stronghold-এ এনক্রিপ্টেড; UI-তে কখনো প্লেইনটেক্সট দেখানো হয় না। নিচের
-          বিভাগগুলো ট্যাবে সাজানো — প্রতিটি ট্যাব একেকটি সেটিংস গ্রুপ।
-        </p>
+      <div className="w-full border-b border-white/8 px-6">
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 pt-6">
+          <div className="min-w-0">
+            <p className="font-mono-x text-[9.5px] tracking-[0.26em] text-lime uppercase">
+              DESKTOP CONTROLLER · LOCAL PREFERENCES
+            </p>
+            <h2 className="mt-1 font-serif-bn text-[28px] font-black text-white">সেটিংস</h2>
+            <p className="mt-1 max-w-3xl text-[12.5px] text-white/50">
+              মানগুলো Stronghold-এ এনক্রিপ্টেড; UI-তে কখনো প্লেইনটেক্সট দেখানো হয় না। প্রতিটি
+              ট্যাব একেকটি সেটিংস গ্রুপ।
+            </p>
+          </div>
+          <div className="flex min-w-56 shrink-0 flex-col items-stretch gap-2">
+            {msg && <p className="rounded-lg bg-lime px-3 py-2 text-[11.5px] font-bold text-night">✓ {msg}</p>}
+            {err && <p className="rounded-lg bg-alizarin px-3 py-2 text-[11.5px] font-bold text-paper">✕ {err}</p>}
+          </div>
+        </div>
 
-        {msg && <p className="mt-3 bg-lime px-3 py-2 text-[12px] font-bold">✓ {msg}</p>}
-        {err && <p className="mt-3 bg-alizarin px-3 py-2 text-[12px] font-bold text-paper">✕ {err}</p>}
-
-        <div className="settings-tabs">
+        <div className="settings-tabs pb-3">
           {TABS.map((t) => {
             const Icon = t.icon;
             return (
@@ -442,11 +450,11 @@ export default function Settings({
       </div>
 
       <div className="scroll-slim flex-1 overflow-auto">
-        <div className="mx-auto w-full max-w-3xl px-8 py-8">
+        <div className="w-full px-6 pb-8">
         {tab === "pref" && (
           <div className="panel mt-5">
             <p className="panel-title">ডেস্ক প্রেফারেন্স · local</p>
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <div className="mt-4 grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
               <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
                 <p className="flex items-center gap-2 text-[13px] font-bold text-white">
                   <Timer size={14} className="text-amberx" /> শিডিউল
@@ -561,6 +569,8 @@ export default function Settings({
           </div>
         )}
 
+        {tab === "sources" && <DeskSourceManager />}
+
         {tab === "categories" && <DeskCategoryManager />}
 
         {tab === "sync" && (
@@ -617,12 +627,12 @@ export default function Settings({
           <>
             <div className="panel mt-5">
               <p className="panel-title">Site branding · web & desktop</p>
-              <div className="mt-3 grid gap-3">
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
                 {BRAND_FIELDS.map((f) => (
-                  <label key={f.key} className="flex items-center gap-3">
-                    <span className="w-48 shrink-0 text-[11px] font-bold uppercase tracking-wide text-ink-soft">{f.label}</span>
+                  <label key={f.key} className="block">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">{f.label}</span>
                     <input
-                      className="field flex-1"
+                      className="field mt-1 w-full"
                       value={brand[f.key] ?? ""}
                       onChange={(e) => setBrand((prev) => ({ ...prev, [f.key]: e.target.value }))}
                     />
@@ -646,12 +656,12 @@ export default function Settings({
               <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
                 প্রতিটি স্লটে আপনার অ্যাড নেটওয়ার্কের (AdSense, Adsterra ইত্যাদি) HTML/JS কোড পেস্ট করুন। খালি থাকলে ডিফল্ট স্পন্সর কার্ড দেখাবে।
               </p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
                 {AD_SLOTS.map((s) => (
                   <label key={s.key} className="flex flex-col gap-1.5">
                     <span className="text-[11px] font-bold text-ink-soft uppercase tracking-wide">{s.label}</span>
                     <textarea
-                      className="field h-20 resize-none font-mono text-[10px]"
+                      className="field h-24 resize-none font-mono text-[10px]"
                       placeholder={s.placeholder}
                       value={adSlots[s.key] ?? ""}
                       onChange={(e) => setAdSlots((prev) => ({ ...prev, [s.key]: e.target.value }))}
