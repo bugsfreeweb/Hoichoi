@@ -144,27 +144,60 @@ pnpm --filter @hoichoi/web build
   (`components/home/live-data.tsx`) polls it every 10 s with pause / range /
   refresh controls. Because the page has `revalidate = 300`, users see a
   stale-safe snapshot instantly on load, then the graph goes live after hydration.
+- **Visitor announcements (bell + banner)** — a `notices` table (migration
+  `008_notices.sql`, created by `ensureNoticesTable` and `pnpm db:migrate`) drives two
+  public surfaces: the **NotificationsBell** in the TopBar (dropdown of every active,
+  un-expired notice — dismissible, remembered in `localStorage["hoichoi.notice.read"]`)
+  and the **NoticeBanner** above the masthead for the single *pinned* notice
+  ("special notice", dismiss-cached in `localStorage["hoichoi.notice.dismissed"]`, both
+  keyed by `updated_at`). Notices carry a tone (`info|success|warn|alert`), optional
+  `url` and `expires_at`. Managed from the web admin **`/admin/notices`** page
+  (`AdminNotices` + tone chips) via **`GET/POST /api/notices`** and
+  **`PATCH/DELETE /api/notices/[id]`** (admin-only), or from the desktop app's
+  Settings → নোটিশ tab (runner `notice` CLI, `created_by: "desktop"`). The
+  `Notice`/`NoticeTone` types live in `@hoichoi/shared-types`.
+- **Web-visibility gating (`settings.app_config_json`)** — the `settings` row carries a
+  JSON `SiteAppConfig` (fields `show_hero`, `show_live_graph`, `show_categories`,
+  `show_ads`, `show_rewrite_engine`, `show_desk_cta`, `show_footer`,
+  `theme_default`, `surge_threshold`) parsed with `parseAppConfig` in `@hoichoi/db`
+  and honored by the public homepage — it gates the hero, the lead story, all three
+  ad slots + the infeed (`ArticleGrid ads={cfg.show_ads}`), the live-analytics strip,
+  the category chips, the pipeline/rewrite showcase band, the desk-download CTA and
+  the footer. "Off" hides the section entirely (ads included — not just the default
+  sponsor card). Edited from the web admin settings page (`VisibilityPanel`, PATCH
+  `/api/settings`) or the desktop's সাইট ও বিজ্ঞাপন tab; both persist the same
+  `app_config_json` to the shared settings row.
 - **Breaking-news ticker** reuses the mockup marquee: `.ticker-track` in
   `apps/web/src/app/globals.css` is `display:flex; width:max-content` with a
   52 s linear loop (hover pauses) so the headline strip scrolls seamlessly.
-- **Theme toggle** — both web and desktop now implement a dark/light theme
-  switch (`localStorage["hoichoi-theme"]` = `dark`/`light`, honors
+- **Theme toggle + default seeding** — both web and desktop now implement a
+  dark/light theme switch (`localStorage["hoichoi-theme"]` = `dark`/`light`, honors
   `prefers-color-scheme: light` by default). The web uses CSS variables on
   `:root` / `html[data-theme="dark"]` (palette from `mockup/public/option-a.css`)
-  and injects a no-FOUC inline script in `apps/web/src/app/layout.tsx`; a
-  `ThemeToggle` component sits in the TopBar. The desktop mirrors the same
-  variable-based tokens (`apps/desktop/src/index.css` `:root` + `html[data-theme="light"]`)
-  with a toggle in the TitleBar; legacy hard-coded surfaces (`bg-[#...]`) flip via
-  a light-mode override block. Admin console remains dark-only by design.
+  and injects a no-FOUC inline script in `apps/web/src/app/(site)/layout.tsx`; a
+  `ThemeToggle` component sits in the TopBar and in the admin TopBar. The **default
+  theme is seeded** from `settings.app_config_json` (`theme_default`) whenever the
+  visitor has no saved theme — the inline script sets `data-theme` from that setting,
+  and `ThemeToggle` prefers an existing `data-theme` attribute over the OS preference.
+  The desktop mirrors the same variable-based tokens
+  (`apps/desktop/src/index.css` `:root` + `html[data-theme="light"]`) with a toggle
+  in the TitleBar. Contrast: the bright `--lime #c8f65d` / `--amberx #f5b800` accents
+  are replaced in **light** mode by web (`:root` → `#5f8f0e` / `#b45309`) and desktop
+  (`.text-lime` / `.text-amberx` overrides) so green/amber chips stay readable on
+  cream paper. Admin console remains dark-only by design.
 - **Single admin link** — only one admin-console link exists (TopBar nav);
   the footer chip and the live-analytics footnote link were removed to satisfy
   the "one link" rule.
 - **Admin console shell** — `/admin/*` renders inside a persistent `AdminShell`
-  sidebar (dashboard, sources, moderation, providers, submissions, removals,
-  reports, settings, archive, logs, posts, backup, categories). `/admin` is the
-  dashboard home with live stat tiles; the shell mirrors the desktop desk chrome.
-  Reader reports from `/api/reports` (public post) land in the `/admin/reports`
-  queue with open → reviewed/dismissed transitions.
+  sidebar (dashboard, sources, moderation, posts, providers, **notices**, submissions,
+  removals, reports, archive, backup, logs, settings — with quick "নোটিশ ও ঘোষণা" and
+  "মন্তব্য মডারেশন" jump links on top); the category editor lives on a standalone
+  `/admin/categories` page (same `CategoryManager` component the desktop desk uses).
+  `/admin` is the
+  dashboard home with live stat tiles; the shell mirrors the desktop desk chrome and
+  its TopBar has the `ThemeToggle` + logout. Reader reports from `/api/reports`
+  (public post) land in the `/admin/reports` queue with open → reviewed/dismissed
+  transitions.
 - **Public report + comments parity** — the post page uses the mockup reader
   report form (nobody but the admin queue sees it) and the mockup comments block;
   the `/api/reports` route validates the shared `REPORT_REASONS` list; `/api/comments`

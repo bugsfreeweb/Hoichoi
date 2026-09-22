@@ -287,7 +287,7 @@ The desktop UI mirrors the `mockup/` desk controller exactly:
 - **Scroll** — every tab scrolls independently (all roots are `scroll-slim
   overflow-auto`); Vault and Settings got root scroll containers too.
 - **Watchlist** — real source CRUD against the runner
-  (`sources list|add|toggle|remove`), search + kind filter + add form, health bars,
+  (`sources list|add|update|toggle|remove`), search + kind filter + add form, health bars,
   watching/paused states (`screens/Watchlist.tsx`). The add row offers **per-category
   chips + "সব বিভাগ"** (stored through the runner CLI's `--categories` into the
   `source_categories` junction, returned by `sources list` thanks to a new
@@ -306,27 +306,60 @@ The desktop UI mirrors the `mockup/` desk controller exactly:
 - **Settings** — mockup preference panels (cron `0 */N * * *` → `pipeline_hours` via
   `settingsSet`, model/temp/gate/toggles persisted to `localStorage`) above the real
   functional panels (cloud sync, branding, admin codes, backup/reset/sync)
-  (`screens/Settings.tsx`). The screen is organized into **7 pill tabs**
+  (`screens/Settings.tsx`). The screen is organized into **10 pill tabs**
   (`.settings-tabs`, mirroring `.mtabs`) so the long settings page no longer
   scrolls endlessly:
   1. **প্রেফারেন্স** (Sliders) — cron, model, temperature, toggles (stateless —
      reads `localStorage` / runner env).
-  2. **বিভাগ** (Tags) — inline category CRUD via `<DeskCategoryManager />`:
+  2. **সোর্স** (Rss) — inline source editing via `<DeskSourceManager />` (see below);
+     the dedicated Watchlist screen still handles add/search.
+  3. **বিভাগ** (Tags) — inline category CRUD via `<DeskCategoryManager />`:
      create (slug / Bn / En / description / dot color), edit, confirm-delete.
      Runs through the runner's `categories` CLI (`add`, `update`, `delete`,
      `list`).
-  3. **ক্লাউড সিঙ্ক** (Database) — cloud/local toggle (`use_cloud` keychain
+  4. **AI প্রোভাইডার** (Cpu) — `<DeskProviderManager />` (see below).
+  5. **নোটিশ** (Bell) — `<DeskNoticeManager />` — visitor announcements (see below).
+  6. **ক্লাউড সিঙ্ক** (Database) — cloud/local toggle (`use_cloud` keychain
      entry) + One-Click Sync (`sync push` / `sync pull`). Push/pull now
      transfers **`source_categories`**, **`comments`** and **`reader_reports`**
      in addition to the original 10 tables (`CONTENT_TABLES` in
      `packages/db/src/transfer.ts`).
-  4. **সাইট ও বিজ্ঞাপন** (Palette) — branding fields + four ad-slot HTML
-     textareas (same as the old inline section).
-  5. **অ্যাডমিন** (UserCog) — one-time login codes (unchanged).
-  6. **ব্যাকআপ** (Archive) — backup / reset / resync (unchanged).
-  7. **API ভল্ট** (KeyRound) — vault fields table (unchanged).
+  7. **সাইট ও বিজ্ঞাপন** (Palette) — branding fields + four ad-slot HTML
+     textareas (same as the old inline section) **+ the shared ওয়েব ভিজিবিলিটি ও থিম
+     panel** (`app_config_json`) — see below.
+  8. **অ্যাডমিন** (UserCog) — one-time login codes (unchanged).
+  9. **ব্যাকআপ** (Archive) — backup / reset / resync (unchanged).
+  10. **API ভল্ট** (KeyRound) — vault fields table (unchanged).
 - **Moderation** — comment queue with pending/approved/blocked tabs and approve/block
   actions through the runner (`moderation list|set`) (`screens/Moderation.tsx`).
+- **Inline source editing (`DeskSourceManager`)** — the Settings → সোর্স tab lets an
+  editor open any existing source and edit its name, URL, kind, primary category,
+  topics and Facebook id **in place** without re-creating the row (runs through the
+  runner `sources update`); a `--is-active` flag soft-stops scraping. The Watchlist
+  screen's add form remains the create path.
+- **AI provider manager (`DeskProviderManager`)** — Settings → AI প্রোভাইডার mirrors
+  the web admin provider table on the desk: list, add/upsert (preset key, display
+  name, model, optional base-URL override, `api_key_env_var`, optional DB-stored key
+  override, priority, free-tier/rewrite/embed flags, active toggle), enable/disable
+  and delete. An **অটো-ফেচ** button probes the provider's `/v1/models` (Google's
+  `v1beta/models`, OpenRouter filtered to `:free`) through the runner
+  `providers models` and fills the model field — the identical flow to the web
+  admin (see `ai-provider-strategy.md`).
+- **Visitor announcement manager (`DeskNoticeManager`)** — Settings → নোটিশ CRUDs the
+  shared `notices` table via the runner `notice` CLI (`add`/`update`/`toggle`/`remove`,
+  tones `info|success|warn|alert`, optional link `--url`, auto-hide `--expires-at`).
+  Pinned + active notices become the public site's header **special-notice banner**;
+  all active notices feed the visitor **bell dropdown** — the same rows the web admin
+  `/admin/notices` edits. Desktop-created notices set `created_by: "desktop"`. Requires
+  migration `008_notices.sql` (bundled with the runner).
+- **Web-visibility panel (`app_config_json`)** — the Settings → সাইট ও বিজ্ঞাপন tab
+  includes a *ওয়েব ভিজিবিলিটি ও থিম* toggle grid (`show_hero`, `show_live_graph`,
+  `show_categories`, `show_ads`, `show_rewrite_engine`, `show_desk_cta`, `show_footer`)
+  plus `theme_default` (`light`|`dark`) and `surge_threshold`. Saving writes the whole
+  `SiteAppConfig` JSON to the shared `settings.app_config_json` through
+  `settingsSet { app_config_json: … }`, so the public web home sections switch
+  instantly (and its sibling `VisibilityPanel` sits on the web admin settings page).
+  Default theme seeds the site before hydration so first-time visitors don't flash.
 - **Runner desk CLI** — new subcommands `stats`, `sources`, `queue`, `moderation`
   (all `apps/scraper/src/cli.ts`). Backend passthrough `desk_call` (Rust) +
   wrapper `deskCall`/`deskSources`/`deskQueue`/`deskStats`/`deskModeration`/
@@ -342,7 +375,24 @@ pnpm --filter @hoichoi/desktop bundle:runner  # stage self-contained runner → 
 pnpm --filter @hoichoi/desktop tauri build    # NSIS + MSI into src-tauri/target/release/bundle
 ```
 
-Copy the three artifacts from `src-tauri/target/release/` into `releases/`
-(`Hoichoi Desk.exe`, `..._x64-setup.exe`, `..._x64_en-US.msi`). The installer
-now bundles the runner (≈225 MB) and needs **no** `SODIUM_DIST_DIR` — libsodium
-is no longer a dependency since the AES-256-GCM vault replaced Stronghold.
+> **Re-run `bundle:runner` whenever `packages/db/migrations/` changes.** The EXE and
+> installers embed a snapshot of the runner **and its migrations** (e.g.
+> `008_notices.sql`); a stale snapshot ships without the newest schema.
+
+Copy the artifacts from `src-tauri/target/release/` into `releases/` (at the repo
+root, gitignored) and upload the same set to the GitHub release:
+
+- `Hoichoi Desk.exe` — the portable launcher (run from a folder that contains
+  `runner/`; `bundled_runner()` resolves `<resource_dir>/runner`).
+- `..._x64-setup.exe` — NSIS installer (per-user / machine-wide).
+- `..._x64_en-US.msi` — MSI installer.
+- **Portable package** — a `..._x64-portable/` folder containing `Hoichoi Desk.exe`
+  **next to** its `runner/` directory, zipped as `..._x64-portable.zip`. Non-installed
+  EXEs resolve the runner from their own folder, so the folder + zip is the
+  "no-install" distribution.
+
+> GitHub's release API stores asset names with spaces converted to dots
+> (`Hoichoi.Desk_..._x64-setup.exe`); the local files keep the spaced names.
+
+The installer bundles the runner (≈225 MB) and needs **no** `SODIUM_DIST_DIR` —
+libsodium is no longer a dependency since the AES-256-GCM vault replaced Stronghold.

@@ -142,6 +142,13 @@ The admin **Provider** form (web) has an "⚡ মডেল তালিকা �
 - **OpenRouter is always filtered to `:free` / free-priced models.**
 - The returned list fills the model-name field (one click). The key used for the probe is transient — this route never persists keys; `/api/providers` (POST) and `/api/providers/[id]` (PATCH) handle the optional `api_key` override storage.
 
+**The desktop app mirrors all of this** (`apps/desktop`): Settings → **AI প্রোভাইডার**
+embeds `DeskProviderManager`, which talks to the shared `llm_providers` rows through
+the bundled runner CLI `providers list|upsert|toggle|remove|models` (same probe:
+`/v1/models`, Gemini `v1beta/models`, OpenRouter filtered to free, key used
+transiently). So provider editing happens identically from the web admin or the desk;
+both write the same Turso table and the pipeline picks changes up on the next run.
+
 ---
 
 ## What if all providers go down simultaneously?

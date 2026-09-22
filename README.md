@@ -8,10 +8,14 @@ window. Every post is archived or purged by policy.
 Live site: <https://hoichoifeed.vercel.app> · Source: <https://github.com/bugsfreeweb/Hoichoi> (private)
 
 ```
-Web (apps/web)      Next.js 15 public site (SSR feed, /sitemap, OG images) + admin shell
-                      (/moderation, /reports queue, /providers), /desk preview, live /api/stats
+Web (apps/web)      Next.js 15 public site (SSR feed, /sitemap, OG images, visitor
+                      announcement bell + pinned banner) + admin shell (/notices, /moderation,
+                      /posts, /providers, /reports…), /desk preview, live /api/stats.
+                      Home sections are gated by settings.app_config_json (show_hero / show_ads / …).
 Scraper             Collection pipeline: scrape → dedup → rewrite → moderate → publish
-Desktop (apps/desktop)  Tauri 2 desktop admin + local collector controller
+Desktop (apps/desktop)  Tauri 2 desktop admin + local collector controller — Settings has 10
+                      pill tabs incl. inline সোর্স editing, AI প্রোভাইডার, নোটিশ and a shared
+                      ওয়েব ভিজিবিলিটি ও থিম (app_config_json) panel
 DB/LLM/Types        packages/db (Turso/libSQL), packages/llm (multi-provider resolver), shared-types
 ```
 
@@ -90,9 +94,16 @@ pnpm --filter @hoichoi/desktop bundle:runner  # stage portable runner → resour
 pnpm --filter @hoichoi/desktop tauri build    # NSIS + MSI into src-tauri/target/release/bundle
 ```
 
-Copy the three artifacts from `src-tauri/target/release/` into `releases/`
-(`Hoichoi Desk.exe`, `…_x64-setup.exe`, `…_x64_en-US.msi`) and upload them to the
-GitHub release.
+Copy the artifacts from `src-tauri/target/release/` into `releases/`:
+`Hoichoi Desk.exe` (portable launcher), `…_x64-setup.exe` (NSIS), `…_x64_en-US.msi`,
+plus the **portable package** — a `…_x64-portable/` folder holding `Hoichoi Desk.exe`
+next to its `runner/` (and a matching `…_x64-portable.zip`). The portable EXE resolves
+the bundled runner from its own folder, so it runs without installing. Upload the same
+artifacts to the GitHub release (`releases/` at the repo root is gitignored).
+
+> After any change to `packages/db/migrations/` you **must** re-run `bundle:runner`
+> before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
+> (e.g. `008_notices.sql`).
 
 ## Editorial & safety
 

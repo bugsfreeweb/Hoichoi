@@ -330,4 +330,22 @@ Implemented in `apps/web` + `apps/desktop` (mockup = read-only new spec):
 - **Dark data band:** `--color-band #1a140d` / `--color-bandline #f3eee1` (post "তথ্য শৃঙ্খলা" band and rewrite-slider band read in both themes); web `:root` and desktop dark `:root` both carry them.
 - **Desktop `--ds-*` tokens:** `apps/desktop/src/index.css` aliases the desk console palette (`--ds-bg`, `--ds-panel`, `--ds-text`, `--ds-muted`, `--ds-border`, `--ds-ink`, `--ds-chip`, `--ds-watch`, `--ds-fb`) in both dark `:root` and `html[data-theme="light"]` so the Watchlist renders mockup-identical in either theme.
 - **Watchlist parity:** add-row offers per-category chips + "সব বিভাগ" (stores `source_categories` junction through the runner CLI's `--categories`), sources render their category sub-chips, dead sources (health `0`) show a red TriangleAlert pill, and the header uses the same `--ds-*` density as the mockup desk.
-- **Settings tabs:** `apps/desktop/src/screens/Settings.tsx` splits the long settings page into 7 pill tabs (প্রেফারেন্স / বিভাগ / ক্লাউড সিঙ্ক / সাইট ও বিজ্ঞাপন / অ্যাডমিন / ব্যাকআপ / API ভল্ট), styled by `.settings-tabs` in `apps/desktop/src/index.css` — a duplicate of the `.mtabs` pill recipe (rounded-full, active = `var(--active-bg)` background with `var(--active-tx)` ink-on-white text, mono-uppercase tracked labels) so tab switching matches the console chrome. The বিভাগ tab embeds the desk category manager (CRUD against `category_configs` via the runner `categories` CLI).
+- **Settings tabs:** `apps/desktop/src/screens/Settings.tsx` splits the long settings
+  page into **10 pill tabs** (প্রেফারেন্স / সোর্স / বিভাগ / AI প্রোভাইডার / নোটিশ /
+  ক্লাউড সিঙ্ক / সাইট ও বিজ্ঞাপন / অ্যাডমিন / ব্যাকআপ / API ভল্ট), styled by
+  `.settings-tabs` in `apps/desktop/src/index.css` — a duplicate of the `.mtabs` pill
+  recipe (rounded-full, active = `var(--active-bg)` background with `var(--active-tx)`
+  ink-on-white text, mono-uppercase tracked labels) so tab switching matches the
+  console chrome. The সোর্স / AI প্রোভাইডার / নোটিশ tabs embed the desk source /
+  provider / notice managers; বিভাগ embeds the desk category manager. The সাইট ও
+  বিজ্ঞাপন tab also hosts the ওয়েব ভিজিবিলিটি ও থিম toggle grid (`app_config_json`)
+  — see `DESKTOP.md`.
+- **Light-mode green/amber contrast:** the bright `--lime #c8f65d` / `--amberx #f5b800`
+  accents are unreadable on cream `--paper`. Web's light `:root` re-tokens them to
+  `#5f8f0e` / `#b45309` (`--color-lime` / `--color-amberx`; the bright values are
+  restored under `html[data-theme="dark"]` and the dark bands); the desktop does the
+  same via `.text-lime` / `.text-amberx` overrides in `apps/desktop/src/index.css`.
+- **Visitor notifications:** `NotificationsBell` (TopBar dropdown of active notices)
+  + `NoticeBanner` (pinned "special notice", above the masthead) use the shared tone
+  tokens (`info|success|warn|alert`) from `@hoichoi/shared-types`; managed from
+  `/admin/notices` (web) and the desk নোটিশ tab (desktop).
