@@ -12,6 +12,7 @@ const DEFAULTS: Record<string, string> = {
   openai: "https://api.openai.com",
   mistral: "https://api.mistral.ai",
   github: "https://api.githubcopilot.com",
+  "github-models": "https://models.github.ai",
   custom: "",
 };
 

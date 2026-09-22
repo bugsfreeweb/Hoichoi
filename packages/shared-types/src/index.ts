@@ -47,6 +47,7 @@ export type ProviderKey =
   | "openai"
   | "mistral"
   | "github"
+  | "github-models"
   | "custom";
 
 /** Per-category behavior flags stored in category_configs.config (JSON). */
@@ -297,6 +298,58 @@ export interface SiteSettings {
   ad_rect_html: string | null;
   ad_infeed_html: string | null;
   ad_strip_html: string | null;
+  /**
+   * Web-app visibility + behaviour knobs, serialized as JSON
+   * (see `SiteAppConfig`). Edited from the desktop app and the web admin.
+   */
+  app_config_json: string | null;
+}
+
+/** Web-app visibility + behaviour knobs (stored in settings.app_config_json). */
+export interface SiteAppConfig {
+  /** Masthead "newsroom in numbers" hero section. */
+  show_hero: boolean;
+  /** Live analytics graph strip. */
+  show_live_graph: boolean;
+  /** Category chips row under the hero. */
+  show_categories: boolean;
+  /** Ad slots (`false` = fully hide, not placeholder). */
+  show_ads: boolean;
+  /** Rewrite-engine showcase block. */
+  show_rewrite_engine: boolean;
+  /** Desktop app CTA banner. */
+  show_desk_cta: boolean;
+  /** Site footer. */
+  show_footer: boolean;
+  /** Default theme seeded before hydration (`light` | `dark`). */
+  theme_default: "light" | "dark";
+  /** New-posts surge threshold used by the live graph. */
+  surge_threshold: number;
+}
+
+/**
+ * Tone of an announcement. `alert` is the most urgent (used by the special
+ * notice); all map to the same tone tokens as the safety/status chips.
+ */
+export type NoticeTone = "info" | "success" | "warn" | "alert";
+
+/** An announcement/notification shown to web visitors (bell + banner). */
+export interface Notice {
+  id: string;
+  title: string;
+  body: string | null;
+  tone: NoticeTone;
+  /** Optional link opened when the visitor taps the notice. */
+  url: string | null;
+  /** Pinned notices promote to the header "special notice" banner. */
+  pinned: boolean;
+  is_active: boolean;
+  /** Auto-hide after this ISO time (null = no expiry). */
+  expires_at: string | null;
+  /** creator: "desktop" | "web". */
+  created_by: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface StatsSnapshot {

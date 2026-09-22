@@ -250,6 +250,18 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
 html[data-theme="light"] .text-alizarin {
   color: #c6302c !important;
 }
+.text-lime {
+  color: #c8f65d !important;
+}
+html[data-theme="light"] .text-lime {
+  color: #5f8f0e !important;
+}
+.text-amberx {
+  color: #f5b800 !important;
+}
+html[data-theme="light"] .text-amberx {
+  color: #b45309 !important;
+}
 .bg-ink {
   background-color: #0a0d12 !important;
 }

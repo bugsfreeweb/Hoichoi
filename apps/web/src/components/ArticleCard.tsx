@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Post } from "@hoichoi/shared-types";
 import { CATEGORY_LABEL, CATEGORY_TINT, toBn } from "@/lib/format";
 import { readMinutesBn, shortId } from "@/lib/bn";
+import { mediaUrl } from "@/lib/media";
 
 interface ArticleCardProps {
   post: Post;
@@ -32,7 +33,7 @@ export default function ArticleCard({ post, index }: ArticleCardProps) {
         <div className="aspect-[16/9.5] overflow-hidden bg-paper-deep">
           {post.media_path && post.media_kind !== "none" ? (
             <img
-              src={post.media_path}
+              src={mediaUrl({ media_path: post.media_path, media_kind: post.media_kind }) ?? undefined}
               alt={post.title_bn}
               className="photo-grade h-full w-full object-cover"
             />

@@ -12,6 +12,8 @@ function initialTheme(): "dark" | "light" {
   } catch {
     /* private mode */
   }
+  const cur = document.documentElement.getAttribute("data-theme");
+  if (cur === "dark" || cur === "light") return cur;
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 

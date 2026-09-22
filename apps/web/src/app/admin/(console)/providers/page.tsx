@@ -13,7 +13,8 @@ const TIERS: Record<string, { order: number }> = {
   openai: { order: 6 },
   mistral: { order: 7 },
   github: { order: 8 },
-  custom: { order: 9 },
+  "github-models": { order: 9 },
+  custom: { order: 10 },
 };
 
 export default async function AdminProvidersPage() {

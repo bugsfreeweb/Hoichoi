@@ -3,6 +3,7 @@ import {
   Check,
   ExternalLink,
   FolderPlus,
+  Pencil,
   Power,
   RefreshCw,
   Rss,
@@ -12,6 +13,7 @@ import {
 import {
   deskSources,
   deskAddSource,
+  deskUpdateSource,
   deskToggleSource,
   deskRemoveSource,
   deskCategories,
@@ -46,6 +48,8 @@ export default function DeskSourceManager() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Form | null>(null);
 
   const catMap = useMemo(() => new Map(categories.map((c) => [c.slug, c])), [categories]);
 
@@ -76,6 +80,61 @@ export default function DeskSourceManager() {
         ? f.selected.filter((s) => s !== slug)
         : [...f.selected, slug],
     }));
+  };
+
+  const toggleEditCat = (slug: string) => {
+    setEditForm((f) =>
+      f
+        ? {
+            ...f,
+            selected: f.selected.includes(slug)
+              ? f.selected.filter((s) => s !== slug)
+              : [...f.selected, slug],
+          }
+        : f,
+    );
+  };
+
+  const startEdit = (s: DeskSource) => {
+    setEditingId(s.id);
+    setEditForm({
+      pageUrl: s.page_url,
+      pageName: s.page_name,
+      kind: s.kind,
+      selected: s.categories?.length ? s.categories : s.category ? [s.category] : [],
+      topics: (s.topics ?? []).join(", "),
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId || !editForm) return;
+    if (!editForm.pageUrl.trim() || !editForm.pageName.trim()) {
+      flash("err", "পেজ URL ও নাম দুটোই দিতে হবে");
+      return;
+    }
+    if (!/facebook\.com/i.test(editForm.pageUrl)) {
+      flash("err", "URL টি facebook.com পেজ/গ্রুপের হতে হবে");
+      return;
+    }
+    setBusy(true);
+    try {
+      await deskUpdateSource(await getRunEnv(), editingId, {
+        pageUrl: editForm.pageUrl.trim(),
+        pageName: editForm.pageName.trim(),
+        kind: editForm.kind,
+        categories: editForm.selected,
+        topics: editForm.topics.trim() || undefined,
+      });
+      setEditingId(null);
+      setEditForm(null);
+      await refresh();
+      await autoPush();
+      flash("ok", "সোর্স হালনাগাদ হয়েছে");
+    } catch (e) {
+      flash("err", e instanceof Error ? e.message : "হালনাগাদ ব্যর্থ");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleCreate = async () => {
@@ -267,9 +326,86 @@ export default function DeskSourceManager() {
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         {sources.map((s) => {
+          const editing = editingId === s.id && editForm;
           const cats = (s.categories?.length ? s.categories : [s.category]).filter(Boolean);
           return (
             <div key={s.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+              {editing ? (
+                <div className="space-y-3">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <label className="block">
+                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">পেজ / গ্রুপ URL</span>
+                      <input
+                        className="field mt-1 w-full"
+                        value={editForm.pageUrl}
+                        onChange={(e) => setEditForm({ ...editForm, pageUrl: e.target.value })}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">নাম</span>
+                      <input
+                        className="field mt-1 w-full"
+                        value={editForm.pageName}
+                        onChange={(e) => setEditForm({ ...editForm, pageName: e.target.value })}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">ধরন</span>
+                      <select
+                        className="field mt-1 w-full"
+                        value={editForm.kind}
+                        onChange={(e) => setEditForm({ ...editForm, kind: e.target.value === "group" ? "group" : "page" })}
+                      >
+                        <option value="page">পেজ (page)</option>
+                        <option value="group">গ্রুপ (group)</option>
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">টপিক (কমা দিয়ে)</span>
+                      <input
+                        className="field mt-1 w-full"
+                        value={editForm.topics}
+                        onChange={(e) => setEditForm({ ...editForm, topics: e.target.value })}
+                      />
+                    </label>
+                  </div>
+                  <div>
+                    <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">বিভাগ</span>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {categories.map((c) => {
+                        const on = editForm.selected.includes(c.slug);
+                        return (
+                          <button
+                            key={c.slug}
+                            type="button"
+                            onClick={() => toggleEditCat(c.slug)}
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors ${
+                              on ? "border-lime/60 bg-lime/15 text-lime" : "border-white/12 text-white/60 hover:border-white/35 hover:text-white"
+                            }`}
+                          >
+                            <span className="h-2 w-2 rounded-full" style={{ background: c.dot }} />
+                            {c.displayNameBn}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      className="btn-ghost"
+                      onClick={() => {
+                        setEditingId(null);
+                        setEditForm(null);
+                      }}
+                    >
+                      বাতিল
+                    </button>
+                    <button className="btn" disabled={busy} onClick={() => void handleSaveEdit()}>
+                      <Check size={14} /> সংরক্ষণ
+                    </button>
+                  </div>
+                </div>
+              ) : (
               <div className="flex items-start gap-3">
                 <span
                   className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-[9px] font-bold uppercase ${
@@ -310,6 +446,14 @@ export default function DeskSourceManager() {
                 </div>
                 <div className="flex shrink-0 flex-col items-center gap-1.5">
                   <button
+                    onClick={() => startEdit(s)}
+                    disabled={busy}
+                    className="rounded-lg p-2 text-white/55 transition-colors hover:bg-white/10 hover:text-white"
+                    title="সম্পাদনা"
+                  >
+                    <Pencil size={13} />
+                  </button>
+                  <button
                     onClick={() => void handleToggle(s)}
                     disabled={busy}
                     className={`rounded-lg p-2 transition-colors ${
@@ -329,6 +473,7 @@ export default function DeskSourceManager() {
                   </button>
                 </div>
               </div>
+              )}
             </div>
           );
         })}

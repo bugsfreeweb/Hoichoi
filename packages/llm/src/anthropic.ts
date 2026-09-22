@@ -51,7 +51,7 @@ export class AnthropicProvider implements LLMProvider {
         model: this.row.model_name,
         system: getSystemPrompt(ctx),
         messages: [{ role: "user", content: user }],
-        max_tokens: 700,
+        max_tokens: 1600,
         temperature: 0.3,
       }),
     });

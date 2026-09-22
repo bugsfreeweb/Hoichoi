@@ -20,17 +20,54 @@ import type {
   CommentStatus,
   CommentWithPost,
   CurrentWindowPost,
+  Notice,
+  NoticeTone,
   Post,
   PostStatus,
   ReaderReport,
   ReaderReportStatus,
   ReaderReportWithPost,
+  SiteAppConfig,
   SiteSettings,
   StatsSnapshot,
 } from "@hoichoi/shared-types";
 import type { InValue } from "@libsql/client";
+import { randomUUID } from "node:crypto";
 import { getClient, nowIso } from "./client";
-import { mapCategory, mapPost, parseJson } from "./rows";
+import { mapCategory, mapNotice, mapPost, parseJson } from "./rows";
+
+/**
+ * Default web-app visibility knobs. Stored serialized on the settings row
+ * (`app_config_json`) so the desktop app and the web admin share one source.
+ */
+export const DEFAULT_APP_CONFIG: SiteAppConfig = {
+  show_hero: true,
+  show_live_graph: true,
+  show_categories: true,
+  show_ads: true,
+  show_rewrite_engine: true,
+  show_desk_cta: true,
+  show_footer: true,
+  theme_default: "light",
+  surge_threshold: 12,
+};
+
+export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
+  const merged: SiteAppConfig = { ...DEFAULT_APP_CONFIG };
+  if (!raw) return merged;
+  try {
+    const parsed = JSON.parse(raw) as Partial<SiteAppConfig>;
+    for (const k of Object.keys(merged) as Array<keyof SiteAppConfig>) {
+      const v = parsed[k];
+      if (v === undefined || v === null) continue;
+      if (typeof v === "boolean") (merged as unknown as Record<string, boolean>)[k] = v;
+      else if (typeof v === "string" || typeof v === "number") (merged as unknown as Record<string, string | number>)[k] = v;
+    }
+  } catch {
+    /* corrupt blob → defaults */
+  }
+  return merged;
+}
 
 /** Fallback branding used when no settings row exists / columns are absent. */
 export const DEFAULT_SETTINGS: SiteSettings = {
@@ -51,6 +88,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   ad_rect_html: null,
   ad_infeed_html: null,
   ad_strip_html: null,
+  app_config_json: JSON.stringify(DEFAULT_APP_CONFIG),
 };
 
 export function mapSettings(row: Record<string, unknown>): SiteSettings {
@@ -73,6 +111,7 @@ export function mapSettings(row: Record<string, unknown>): SiteSettings {
     ad_rect_html: (row.ad_rect_html as string | null) ?? null,
     ad_infeed_html: (row.ad_infeed_html as string | null) ?? null,
     ad_strip_html: (row.ad_strip_html as string | null) ?? null,
+    app_config_json: (row.app_config_json as string | null) ?? JSON.stringify(DEFAULT_APP_CONFIG),
   };
 }
 
@@ -104,6 +143,7 @@ export async function updateSettings(fields: Partial<SiteSettings>): Promise<voi
     "ad_rect_html",
     "ad_infeed_html",
     "ad_strip_html",
+    "app_config_json",
   ];
   if (fields.logo_url === "") fields.logo_url = null;
   if (fields.favicon_url === "") fields.favicon_url = null;
@@ -124,6 +164,123 @@ export async function updateSettings(fields: Partial<SiteSettings>): Promise<voi
   sets.push("updated_at = ?");
   args.push(nowIso());
   await client.execute({ sql: `UPDATE settings SET ${sets.join(", ")} WHERE id = 1`, args });
+}
+
+/* ---------- notices (announcements + special notice banner) ---------- */
+
+const NOTICE_TONES: NoticeTone[] = ["info", "success", "warn", "alert"];
+
+/** List notices, newest/pinned first. `activeOnly` hides expired rows too. */
+export async function listNotices(opts?: {
+  activeOnly?: boolean;
+  limit?: number;
+}): Promise<Notice[]> {
+  const client = getClient();
+  const { activeOnly = false, limit = 100 } = opts ?? {};
+  let sql = "SELECT * FROM notices";
+  const args: InValue[] = [];
+  if (activeOnly) {
+    sql += " WHERE is_active = 1 AND (expires_at IS NULL OR expires_at > ?)";
+    args.push(nowIso());
+  }
+  sql += " ORDER BY pinned DESC, updated_at DESC";
+  if (limit > 0) sql += ` LIMIT ${Math.floor(limit)}`;
+  const res = await client.execute({ sql, args });
+  return res.rows.map((r) => mapNotice(r as Record<string, unknown>));
+}
+
+export async function getNotice(id: string): Promise<Notice | null> {
+  const client = getClient();
+  const res = await client.execute({
+    sql: "SELECT * FROM notices WHERE id = ?",
+    args: [id],
+  });
+  if (res.rows.length === 0) return null;
+  return mapNotice(res.rows[0] as Record<string, unknown>);
+}
+
+export async function createNotice(input: {
+  title: string;
+  body?: string | null;
+  tone?: NoticeTone;
+  url?: string | null;
+  pinned?: boolean;
+  is_active?: boolean;
+  expires_at?: string | null;
+  created_by?: string;
+}): Promise<Notice> {
+  const client = getClient();
+  const id = randomUUID();
+  const now = nowIso();
+  const tone = input.tone && NOTICE_TONES.includes(input.tone) ? input.tone : "info";
+  await client.execute({
+    sql: `INSERT INTO notices
+      (id, title, body, tone, url, pinned, is_active, expires_at, created_by, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      id,
+      input.title,
+      input.body ?? null,
+      tone,
+      input.url ?? null,
+      input.pinned ? 1 : 0,
+      input.is_active === false ? 0 : 1,
+      input.expires_at ?? null,
+      input.created_by ?? "web",
+      now,
+      now,
+    ],
+  });
+  return (await getNotice(id)) as Notice;
+}
+
+export async function updateNotice(
+  id: string,
+  fields: Partial<
+    Pick<Notice, "title" | "body" | "tone" | "url" | "pinned" | "is_active" | "expires_at">
+  >,
+): Promise<Notice | null> {
+  const client = getClient();
+  const sets: string[] = [];
+  const args: InValue[] = [];
+  const put = (k: string, v: InValue) => {
+    sets.push(`${k} = ?`);
+    args.push(v);
+  };
+  if (fields.title !== undefined) put("title", fields.title);
+  if (fields.body !== undefined) put("body", fields.body ?? null);
+  if (fields.tone !== undefined && NOTICE_TONES.includes(fields.tone)) put("tone", fields.tone);
+  if (fields.url !== undefined) put("url", fields.url ?? null);
+  if (fields.pinned !== undefined) put("pinned", fields.pinned ? 1 : 0);
+  if (fields.is_active !== undefined) put("is_active", fields.is_active ? 1 : 0);
+  if (fields.expires_at !== undefined) put("expires_at", fields.expires_at ?? null);
+  if (sets.length === 0) return getNotice(id);
+  sets.push("updated_at = ?");
+  args.push(nowIso());
+  args.push(id);
+  await client.execute({
+    sql: `UPDATE notices SET ${sets.join(", ")} WHERE id = ?`,
+    args,
+  });
+  return getNotice(id);
+}
+
+export async function deleteNotice(id: string): Promise<void> {
+  const client = getClient();
+  await client.execute({ sql: "DELETE FROM notices WHERE id = ?", args: [id] });
+}
+
+/** The top pinned active notice → the header "special notice" banner. */
+export async function getSpecialNotice(): Promise<Notice | null> {
+  const client = getClient();
+  const res = await client.execute({
+    sql: `SELECT * FROM notices
+      WHERE is_active = 1 AND pinned = 1 AND (expires_at IS NULL OR expires_at > ?)
+      ORDER BY updated_at DESC LIMIT 1`,
+    args: [nowIso()],
+  });
+  if (res.rows.length === 0) return null;
+  return mapNotice(res.rows[0] as Record<string, unknown>);
 }
 
 export async function listCategories(): Promise<CategoryMeta[]> {

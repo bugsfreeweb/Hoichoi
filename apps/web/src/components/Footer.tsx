@@ -45,9 +45,6 @@ export function Footer() {
               সিস্টেম মানচিত্র
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Link href="/desk" className="border border-ink/30 px-4 py-2 text-[12px] font-bold transition-all duration-300 hover:border-ink hover:bg-ink hover:text-paper">
-                ডেস্কটপ অ্যাপ →
-              </Link>
               <Link href="/admin" className="border border-ink/30 px-4 py-2 text-[12px] font-bold transition-all duration-300 hover:border-ink hover:bg-ink hover:text-paper">
                 ওয়েব অ্যাডমিন →
               </Link>

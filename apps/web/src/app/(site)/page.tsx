@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { windowPosts, categoriesWithCounts } from "@hoichoi/db";
+import { windowPosts, categoriesWithCounts, parseAppConfig } from "@hoichoi/db";
 import { ScrollProgress } from "@/components/ScrollProgress";
 import Hero from "@/components/home/Hero";
 import LiveAnalytics from "@/components/home/live-analytics";
@@ -13,6 +13,7 @@ import { HomeLiveProvider } from "@/components/home/live-data";
 import { getSettings } from "@/lib/settings";
 import { timeBn, readMinutesBn, shortId, bnNum } from "@/lib/bn";
 import { CATEGORY_LABEL, CATEGORY_TINT, agoBn } from "@/lib/format";
+import { mediaUrl } from "@/lib/media";
 import { BRAND } from "@/lib/brand";
 
 export const revalidate = 300;
@@ -26,26 +27,32 @@ export default async function HomePage() {
   const featured = posts[0] ?? null;
   const rest = posts.filter((p) => p.id !== featured?.id);
   const topPicks = rest.slice(0, 3);
+  const cfg = parseAppConfig(settings.app_config_json);
 
   return (
     <HomeLiveProvider>
       <ScrollProgress />
 
+      {cfg.show_hero && (
       <Hero
         lastRunIso={featured?.created_at ?? null}
         collected={posts.length}
         published={posts.filter((p) => p.status === "published").length}
         dups={0}
-        featuredImg={featured?.media_path ?? null}
+        featuredImg={featured ? mediaUrl(featured) : null}
         featuredTitle={featured?.title_bn ?? null}
       />
+      )}
 
+      {cfg.show_ads && (
       <div className="mx-auto max-w-[1400px] px-4 pt-8 md:px-8">
         <AdSlot variant="leaderboard" html={settings.ad_leaderboard_html} />
       </div>
+      )}
 
-      <LiveAnalytics />
+      {cfg.show_live_graph && <LiveAnalytics />}
 
+      {cfg.show_categories && (
       <section className="border-y border-ink/15 bg-paper-deep/40">
         <div className="mx-auto max-w-[1400px] px-4 py-7 md:px-8">
           <div className="flex flex-wrap items-center gap-2.5">
@@ -76,8 +83,9 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+      )}
 
-      {featured && (
+      {cfg.show_hero && featured && (
         <section className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
           <Reveal>
             <div className="flex flex-wrap items-end justify-between gap-4">
@@ -103,7 +111,7 @@ export default async function HomePage() {
                     <div className="aspect-[16/9.5] overflow-hidden bg-paper-deep">
                       {featured.media_path && featured.media_kind !== "none" ? (
                         <img
-                          src={featured.media_path}
+                          src={mediaUrl(featured) ?? undefined}
                           alt={featured.title_bn}
                           className="photo-grade h-full w-full object-cover"
                         />
@@ -223,6 +231,7 @@ export default async function HomePage() {
         </section>
       )}
 
+      {cfg.show_rewrite_engine && (
       <section className="bg-band text-bandline">
         <div className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
           <Reveal>
@@ -268,8 +277,9 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+      )}
 
-      {featured && (
+      {cfg.show_rewrite_engine && featured && (
         <section className="border-y-2 border-ink bg-paper-deep/60">
           <div className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
             <Reveal>
@@ -326,9 +336,10 @@ export default async function HomePage() {
           </p>
         </div>
         </Reveal>
-        <ArticleGrid posts={rest} ads adInfeedHtml={settings.ad_infeed_html} />
+        <ArticleGrid posts={rest} ads={cfg.show_ads} adInfeedHtml={settings.ad_infeed_html} />
       </section>
 
+      {cfg.show_desk_cta && (
       <section className="mx-auto max-w-[1400px] px-4 pb-16 md:px-8">
         <Link
           href="/desk"
@@ -362,10 +373,13 @@ export default async function HomePage() {
           </span>
         </Link>
       </section>
+      )}
 
+      {cfg.show_ads && (
       <div className="mx-auto max-w-[1400px] px-4 pb-12 md:px-8">
         <AdSlot variant="strip" html={settings.ad_strip_html} />
       </div>
+      )}
     </HomeLiveProvider>
   );
 }

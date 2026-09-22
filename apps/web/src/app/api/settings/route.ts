@@ -32,6 +32,7 @@ export async function PATCH(req: NextRequest) {
     ad_rect_html: (body.ad_rect_html as string | null) ?? null,
     ad_infeed_html: (body.ad_infeed_html as string | null) ?? null,
     ad_strip_html: (body.ad_strip_html as string | null) ?? null,
+    app_config_json: body.app_config_json as string | undefined,
   });
   return NextResponse.json({ ok: true });
 }

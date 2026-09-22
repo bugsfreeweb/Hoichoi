@@ -6,6 +6,8 @@ import type {
   CategorySlug,
   LLMProviderRow,
   MediaKind,
+  Notice,
+  NoticeTone,
   PipelineRun,
   Post,
   PostStatus,
@@ -142,6 +144,22 @@ export function mapPipelineRun(row: Record<string, unknown>): PipelineRun {
     stats: parseJson<Record<string, unknown> | null>(row.stats as string, null),
     provider_used: (row.provider_used as string | null) ?? null,
     error: (row.error as string | null) ?? null,
+  };
+}
+
+export function mapNotice(row: Record<string, unknown>): Notice {
+  return {
+    id: String(row.id),
+    title: String(row.title),
+    body: (row.body as string | null) ?? null,
+    tone: (row.tone as NoticeTone) ?? "info",
+    url: (row.url as string | null) ?? null,
+    pinned: yesNo(row.pinned),
+    is_active: yesNo(row.is_active),
+    expires_at: (row.expires_at as string | null) ?? null,
+    created_by: String(row.created_by ?? "web"),
+    created_at: String(row.created_at),
+    updated_at: String(row.updated_at),
   };
 }
 

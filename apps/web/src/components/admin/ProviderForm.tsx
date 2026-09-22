@@ -11,6 +11,7 @@ const KEYS = [
   { v: "openai", label: "OpenAI" },
   { v: "mistral", label: "Mistral" },
   { v: "github", label: "GitHub Copilot" },
+  { v: "github-models", label: "GitHub Models" },
   { v: "custom", label: "Custom" },
 ];
 

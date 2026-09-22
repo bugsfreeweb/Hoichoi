@@ -8,6 +8,7 @@ const DEFAULT_BASE_URLS: Record<string, string> = {
   mistral: "https://api.mistral.ai/v1",
   ollama: "http://localhost:11434/v1",
   github: "https://api.githubcopilot.com",
+  "github-models": "https://models.github.ai/v1",
 };
 
 export function buildOpenAICompat(row: LLMProviderRow, key: string | null): OpenAICompatProvider {
@@ -29,9 +30,10 @@ export function buildOpenAICompat(row: LLMProviderRow, key: string | null): Open
     // Ollama accepts the key verbatim when its auth is enabled.
     opts.stripBearer = true;
   }
-  if (row.provider_key === "github") {
-    // GitHub Copilot chat-completions expects a Copilot OAuth token (ghu_...)
-    // as Bearer plus the editor context headers.
+  if (row.provider_key === "github" || row.provider_key === "github-models") {
+    // GitHub Copilot chat-completions (github) and GitHub Models
+    // (github-models) both expect a Copilot OAuth token (ghu_...) as Bearer
+    // plus the editor context headers.
     opts.extraHeaders = {
       "editor-version": "vscode/1.99.2",
       "user-agent": "hoichoi/1.0",

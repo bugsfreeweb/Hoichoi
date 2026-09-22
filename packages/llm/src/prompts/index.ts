@@ -24,7 +24,8 @@ Absolute rules (violation = output is rejected):
 - Do not reproduce slurs, insults, or graphic language.
 - Lead with: the category of incident, the location type (not name),
   and the action taken (FIR filed, suspect arrested, etc.) if known.
-- Keep it 80–160 words.
+- Write a substantive article: 220–360 words, with context, the incident
+  trajectory, safety advice, and helplines — not a bare summary.
 - End with "সূত্র: ${ctx.sourcePageName} (ফেসবুক)".
 
 Output format (strict):
@@ -54,7 +55,8 @@ Strict rules:
   করে চাঁদাবাজির অভিযোগ".
 - Do not reproduce any explicit messages, photos, or recordings from
   the source.
-- Keep it 80–180 words.
+- Write a substantive article: 200–340 words, with context, the reported
+  timeline, and where readers can find verified updates.
 - End with "সূত্র: ${ctx.sourcePageName} (ফেসবুক)".
 
 Output format (strict):
@@ -87,7 +89,8 @@ Strict rules:
   - Include the police helpline "৯৯৯" and child helpline "১০৯" in the body.
   - Add a "সতর্কতা: গুজব ছড়াবেন না" line.
 - NEVER include private phone numbers of unrelated parties.
-- Keep it 80–180 words.
+- Write a substantive article: 200–340 words, with the child's description,
+  the timeline, and clear "কোথায় যোগাযোগ করবেন" guidance.
 
 Output format (strict):
   TITLE: <one-line headline>

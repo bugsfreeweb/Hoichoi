@@ -69,16 +69,26 @@ export function getClient(): Client {
   return cached;
 }
 
-/** Transactional helper for multi-statement writes. */
+/**
+ * Transactional helper for multi-statement writes.
+ *
+ * libsql local (file://) connections honour real BEGIN/COMMIT/ROLLBACK
+ * transactions, but the HTTP driver (Turso / Vercel edge) executes each
+ * statement independently, so `COMMIT`/`ROLLBACK` after a failed run throw
+ * `cannot rollback - no transaction is active`. Those bookkeeping statements
+ * are best-effort — every write inside `fn` has already been applied — so the
+ * end/abort calls swallow the no-transaction error while still surfacing the
+ * real cause raised inside `fn`.
+ */
 export async function withTx<T>(fn: (tx: Client) => Promise<T>): Promise<T> {
   const client = getClient();
-  await client.execute("BEGIN");
+  await client.execute("BEGIN").catch(() => {});
   try {
     const out = await fn(client);
-    await client.execute("COMMIT");
+    await client.execute("COMMIT").catch(() => {});
     return out;
   } catch (err) {
-    await client.execute("ROLLBACK");
+    await client.execute("ROLLBACK").catch(() => {});
     throw err;
   }
 }
@@ -182,6 +192,35 @@ export async function ensureAdSlotColumns(client: Client): Promise<void> {
   }
 }
 
+/** settings.app_config_json — web-app visibility knobs (quiet JSON blob). */
+export async function ensureAppConfigColumn(client: Client): Promise<void> {
+  const info = await client.execute("PRAGMA table_info(settings)");
+  const existing = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));
+  if (!existing.has("app_config_json")) {
+    await client.execute("ALTER TABLE settings ADD COLUMN app_config_json TEXT");
+  }
+}
+
+/** Announcements/notifications shown to web visitors (bell + pinned banner). */
+export async function ensureNoticesTable(client: Client): Promise<void> {
+  await client.executeMultiple(`
+CREATE TABLE IF NOT EXISTS notices (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  body TEXT,
+  tone TEXT NOT NULL DEFAULT 'info',
+  url TEXT,
+  pinned INTEGER NOT NULL DEFAULT 0,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  expires_at TEXT,
+  created_by TEXT NOT NULL DEFAULT 'web',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_notices_active ON notices (is_active, pinned, updated_at DESC);
+  `);
+}
+
 /**
  * Upgrade helper: adds the desk-watchlist columns (`kind`, `fb_id`, `topics`,
  * `health`) to an existing `sources` table. Idempotent — safe on fresh DBs
@@ -262,6 +301,8 @@ export async function ensureSchema(client: Client): Promise<void> {
   await applyMigration(client, "001_init", sqlText);
   await ensureBrandingColumns(client);
   await ensureAdSlotColumns(client);
+  await ensureAppConfigColumn(client);
+  await ensureNoticesTable(client);
   await ensureCommentsTable(client);
   await ensureCommentsEmailColumn(client);
   await ensureProviderApiKeyColumn(client);
@@ -557,6 +598,10 @@ VALUES
   ('prov-github-copilot', 'github', 'GitHub Copilot',
    'https://api.githubcopilot.com', 'gpt-4o-mini',
    'GITHUB_COPILOT_TOKEN', 4, 1, 1, 1, 0,
+   strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  ('prov-github-models', 'github-models', 'GitHub Models',
+   'https://models.github.ai/v1', 'gpt-4o-mini',
+   'GITHUB_COPILOT_TOKEN', 5, 1, 1, 1, 0,
    strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   ('prov-openai-mini', 'openai', 'OpenAI GPT-4o mini',
    NULL, 'gpt-4o-mini',

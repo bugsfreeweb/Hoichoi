@@ -26,10 +26,20 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
+  listNotices,
+  getNotice,
+  createNotice,
+  updateNotice,
+  deleteNotice,
+  mapProvider,
+  nowIso,
   CONTENT_TABLES,
   type ExportBundle,
 } from "@hoichoi/db";
-import type { CategorySlug, SiteSettings } from "@hoichoi/shared-types";
+import type { CategorySlug, NoticeTone, ProviderKey, SiteSettings } from "@hoichoi/shared-types";
+
+/** Structural match for @libsql/client's InValue (avoids pulling the dep into scraper). */
+type SqlValue = null | string | number | bigint | Uint8Array | ArrayBuffer;
 
 const program = new Command();
 
@@ -120,6 +130,7 @@ const SETTING_KEYS: Array<keyof SiteSettings> = [
   "ad_rect_html",
   "ad_infeed_html",
   "ad_strip_html",
+  "app_config_json",
 ];
 
 program
@@ -370,6 +381,81 @@ async function removeDeskSource(id: string) {
   await client.execute({ sql: "DELETE FROM sources WHERE id = ?", args: [id] });
 }
 
+async function updateDeskSource(
+  id: string,
+  opts: {
+    pageUrl?: string;
+    pageName?: string;
+    kind?: string;
+    category?: string;
+    categories?: string;
+    topics?: string;
+    fbId?: string;
+    isActive?: string;
+  },
+) {
+  const client = getClient();
+  const sets: string[] = [];
+  const args: SqlValue[] = [];
+  if (opts.pageName !== undefined) {
+    sets.push("page_name = ?");
+    args.push(opts.pageName.trim());
+  }
+  if (opts.pageUrl !== undefined) {
+    sets.push("page_url = ?");
+    args.push(opts.pageUrl.trim());
+  }
+  if (opts.fbId !== undefined) {
+    sets.push("fb_id = ?");
+    args.push(opts.fbId.trim() || null);
+  }
+  if (opts.kind !== undefined) {
+    sets.push("kind = ?");
+    args.push(opts.kind === "group" ? "group" : "page");
+  }
+  if (opts.category !== undefined) {
+    sets.push("category = ?");
+    args.push(opts.category.trim());
+  }
+  if (opts.isActive !== undefined) {
+    sets.push("is_active = ?");
+    args.push(opts.isActive === "true" ? 1 : 0);
+  }
+  if (opts.topics !== undefined) {
+    const topics = opts.topics
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    sets.push("topics = ?");
+    args.push(JSON.stringify(topics));
+  }
+  if (sets.length > 0) {
+    args.push(id);
+    await client.execute({
+      sql: `UPDATE sources SET ${sets.join(", ")} WHERE id = ?`,
+      args,
+    });
+  }
+  if (opts.categories !== undefined) {
+    const categories = opts.categories
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean);
+    await client.execute({
+      sql: "DELETE FROM source_categories WHERE source_id = ?",
+      args: [id],
+    });
+    if (categories.length > 0) {
+      const values = categories.map(() => "(?, ?)").join(", ");
+      await client.execute({
+        sql: `INSERT INTO source_categories (source_id, category_slug) VALUES ${values}`,
+        args: categories.flatMap((c) => [id, c]),
+      });
+    }
+  }
+  return (await listDeskSources()).find((s: { id: string }) => s.id === id) ?? null;
+}
+
 function deskQueueRow(row: Record<string, unknown>) {
   return {
     id: String(row.id),
@@ -397,15 +483,16 @@ async function listDeskQueue(status?: string) {
 
 program
   .command("sources <action>")
-  .description("desk watchlist: list / add / toggle / remove")
-  .option("--page-url <url>", "page URL (add)")
-  .option("--page-name <name>", "page name (add)")
-  .option("--kind <kind>", "page | group (add)")
-  .option("--category <slug>", "category slug (add)")
-  .option("--topics <csv>", "comma-separated topics (add)")
-  .option("--fb-id <id>", "facebook id (add)")
-  .option("--categories <csv>", "comma-separated category slugs (add)")
-  .option("--id <id>", "source id (toggle/remove)")
+  .description("desk watchlist: list / add / update / toggle / remove")
+  .option("--page-url <url>", "page URL (add/update)")
+  .option("--page-name <name>", "page name (add/update)")
+  .option("--kind <kind>", "page | group (add/update)")
+  .option("--category <slug>", "category slug (add/update)")
+  .option("--topics <csv>", "comma-separated topics (add/update)")
+  .option("--fb-id <id>", "facebook id (add/update)")
+  .option("--categories <csv>", "comma-separated category slugs (add/update)")
+  .option("--id <id>", "source id (update/toggle/remove)")
+  .option("--is-active <bool>", "true | false (update)")
   .action(async (action: string, opts: Record<string, string | undefined>) => {
     try {
       await ensureSchema(getClient());
@@ -421,6 +508,19 @@ program
           categories: opts.categories,
           topics: opts.topics,
           fbId: opts.fbId,
+        });
+        console.log(JSON.stringify({ ok: true, source }, null, 2));
+      } else if (action === "update") {
+        if (!opts.id) throw new Error("--id required");
+        const source = await updateDeskSource(opts.id, {
+          pageUrl: opts.pageUrl,
+          pageName: opts.pageName,
+          kind: opts.kind,
+          category: opts.category,
+          categories: opts.categories,
+          topics: opts.topics,
+          fbId: opts.fbId,
+          isActive: opts.isActive,
         });
         console.log(JSON.stringify({ ok: true, source }, null, 2));
       } else if (action === "toggle") {
@@ -533,6 +633,249 @@ program
         if (!opts.slug) throw new Error("--slug is required");
         await deleteCategory(opts.slug);
         console.log(JSON.stringify({ ok: true, deleted: opts.slug }));
+      } else {
+        throw new Error(`unknown action: ${action}`);
+      }
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+/* ------------------------------------------------------------------ *
+ * LLM provider management (desktop + CLI)                             *
+ * ------------------------------------------------------------------ */
+
+const PROVIDER_KEYS: ProviderKey[] = [
+  "google", "groq", "openrouter", "ollama", "anthropic", "openai",
+  "mistral", "github", "github-models", "custom",
+];
+
+const PROVIDER_BASE_DEFAULTS: Record<string, string> = {
+  google: "https://generativelanguage.googleapis.com",
+  groq: "https://api.groq.com/openai",
+  openrouter: "https://openrouter.ai/api",
+  ollama: "http://localhost:11434",
+  anthropic: "https://api.anthropic.com",
+  openai: "https://api.openai.com",
+  mistral: "https://api.mistral.ai",
+  github: "https://api.githubcopilot.com",
+  "github-models": "https://models.github.ai",
+  custom: "",
+};
+
+async function listProviderRows() {
+  const client = getClient();
+  const res = await client.execute("SELECT * FROM llm_providers ORDER BY priority ASC");
+  return res.rows.map((r) => mapProvider(r as Record<string, unknown>));
+}
+
+interface ProviderUpsert {
+  id?: string;
+  key?: string;
+  name?: string;
+  model?: string;
+  base?: string;
+  env?: string;
+  apiKey?: string;
+  priority?: string;
+  free?: string;
+  rewrite?: string;
+  embed?: string;
+  isActive?: string;
+}
+
+async function upsertProvider(o: ProviderUpsert) {
+  const client = getClient();
+  const key = o.key?.trim();
+  if (o.id) {
+    const sets: string[] = [];
+    const args: SqlValue[] = [];
+    const put = (col: string, val: SqlValue) => {
+      sets.push(`${col} = ?`);
+      args.push(val);
+    };
+    if (o.name !== undefined) put("display_name", o.name.trim());
+    if (o.model !== undefined) put("model_name", o.model.trim());
+    if (o.base !== undefined) put("base_url", o.base.trim() || null);
+    if (o.env !== undefined) put("api_key_env_var", o.env.trim());
+    if (o.apiKey !== undefined) put("api_key", o.apiKey.trim() || null);
+    if (o.priority !== undefined) put("priority", Number(o.priority));
+    if (o.free !== undefined) put("is_free_tier", o.free === "true" ? 1 : 0);
+    if (o.rewrite !== undefined) put("supports_rewrite", o.rewrite === "true" ? 1 : 0);
+    if (o.embed !== undefined) put("supports_embeddings", o.embed === "true" ? 1 : 0);
+    if (o.isActive !== undefined) put("is_active", o.isActive === "true" ? 1 : 0);
+    if (sets.length > 0) {
+      sets.push("updated_at = ?");
+      args.push(nowIso());
+      args.push(o.id);
+      await client.execute({ sql: `UPDATE llm_providers SET ${sets.join(", ")} WHERE id = ?`, args });
+    }
+    const row = await client.execute({ sql: "SELECT * FROM llm_providers WHERE id = ?", args: [o.id] });
+    return mapProvider(row.rows[0] as Record<string, unknown>);
+  }
+  if (!key) throw new Error("--key required (or --id to edit)");
+  if (!PROVIDER_KEYS.includes(key as ProviderKey)) throw new Error(`unknown provider_key: ${key}`);
+  const now = nowIso();
+  const existing = await client.execute({ sql: "SELECT id FROM llm_providers WHERE provider_key = ?", args: [key] });
+  const rowId = existing.rows[0]?.id ?? crypto.randomUUID();
+  await client.execute({
+    sql: `INSERT INTO llm_providers (
+      id, provider_key, display_name, base_url, model_name, api_key_env_var, api_key,
+      priority, is_active, is_free_tier, supports_rewrite, supports_embeddings, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
+    args: [
+      rowId, key, o.name?.trim() || key, o.base?.trim() || null,
+      o.model?.trim() || "", o.env?.trim() || `${key.toUpperCase().replace(/-/g, "_")}_API_KEY`,
+      o.apiKey?.trim() || null, Number(o.priority ?? 100),
+      o.free === "false" ? 0 : 1, o.rewrite === "false" ? 0 : 1, o.embed === "true" ? 1 : 0, now, now,
+    ],
+  });
+  const row = await client.execute({ sql: "SELECT * FROM llm_providers WHERE id = ?", args: [rowId] });
+  return mapProvider(row.rows[0] as Record<string, unknown>);
+}
+
+/** Probe a provider's model list (mirrors the web /api/providers/models route). */
+async function probeProviderModels(key: string, base?: string, apiKey?: string) {
+  if (!PROVIDER_KEYS.includes(key as ProviderKey)) throw new Error(`unknown provider_key: ${key}`);
+  const baseUrl = (base ?? "").trim().replace(/\/+$/, "") || PROVIDER_BASE_DEFAULTS[key] || "";
+  const token = (apiKey ?? "").trim();
+  interface M { id: string; label: string }
+  if (key === "google") {
+    if (!token) throw new Error("অটো-ফেচের জন্য API key দিন");
+    const res = await fetch(`${baseUrl}/v1beta/models?key=${encodeURIComponent(token)}`, {
+      cache: "no-store", signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) throw new Error(`provider status ${res.status}`);
+    const data = (await res.json()) as { models?: Array<{ name: string; displayName?: string }> };
+    const models: M[] = (data.models ?? [])
+      .map((m) => ({ id: m.name.split("/").slice(-1)[0] ?? m.name, label: m.displayName ?? m.name }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    return models;
+  }
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (key !== "ollama" && token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(`${baseUrl}/v1/models`, {
+    headers, cache: "no-store", signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) throw new Error(`provider status ${res.status}`);
+  const data = (await res.json()) as { data?: Array<{ id: string; name?: string }> };
+  let models: M[] = (data.data ?? [])
+    .map((m) => ({ id: m.id, label: m.name ?? m.id }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  if (key === "openrouter") {
+    models = models.filter((m) => m.id.endsWith(":free") || m.id.includes("/free"));
+  }
+  return models;
+}
+
+program
+  .command("providers <action>")
+  .description("AI providers: list / upsert / toggle / remove / models")
+  .option("--id <id>", "provider id (upsert edit / toggle / remove)")
+  .option("--key <key>", "provider_key (upsert)")
+  .option("--name <name>", "display name (upsert)")
+  .option("--model <model>", "model name (upsert)")
+  .option("--base <url>", "base url override — blank clears preset (upsert)")
+  .option("--env <var>", "api key env var (upsert)")
+  .option("--api-key <key>", "DB-stored api key override (upsert)")
+  .option("--priority <n>", "priority order (upsert)")
+  .option("--free <bool>", "true | false free tier (upsert)")
+  .option("--rewrite <bool>", "true | false rewrite support (upsert)")
+  .option("--embed <bool>", "true | false embeddings support (upsert)")
+  .option("--is-active <bool>", "true | false active (upsert)")
+  .option("--active-only", "list only active (list)")
+  .action(async (action: string, opts: Record<string, string | undefined>) => {
+    try {
+      await ensureSchema(getClient());
+      if (action === "list") {
+        const providers = await listProviderRows();
+        const out = opts.activeOnly ? providers.filter((p) => p.is_active) : providers;
+        console.log(JSON.stringify({ ok: true, providers: out }, null, 2));
+      } else if (action === "upsert") {
+        const provider = await upsertProvider({ ...opts, key: opts.key, name: opts.name, model: opts.model, base: opts.base, env: opts.env, apiKey: opts.apiKey, priority: opts.priority, free: opts.free, rewrite: opts.rewrite, embed: opts.embed, isActive: opts.isActive });
+        console.log(JSON.stringify({ ok: true, provider }, null, 2));
+      } else if (action === "toggle") {
+        if (!opts.id) throw new Error("--id required");
+        const client = getClient();
+        await client.execute({ sql: "UPDATE llm_providers SET is_active = CASE is_active WHEN 1 THEN 0 ELSE 1 END, updated_at = ? WHERE id = ?", args: [nowIso(), opts.id] });
+        console.log(JSON.stringify({ ok: true }));
+      } else if (action === "remove") {
+        if (!opts.id) throw new Error("--id required");
+        const client = getClient();
+        await client.execute({ sql: "DELETE FROM llm_providers WHERE id = ?", args: [opts.id] });
+        console.log(JSON.stringify({ ok: true }));
+      } else if (action === "models") {
+        if (!opts.key) throw new Error("--key required");
+        const models = await probeProviderModels(opts.key, opts.base, opts.apiKey);
+        console.log(JSON.stringify({ ok: true, models }));
+      } else {
+        throw new Error(`unknown action: ${action}`);
+      }
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+/* ------------------------------------------------------------------ *
+ * Notices / announcements (web visitors see these).                   *
+ * ------------------------------------------------------------------ */
+
+program
+  .command("notice <action>")
+  .description("announcements + special notice: list / add / update / toggle / remove")
+  .option("--id <id>", "notice id (update/toggle/remove)")
+  .option("--title <text>", "notice title (add/update)")
+  .option("--body <text>", "notice body — blank to clear (add/update)")
+  .option("--tone <tone>", "info | success | warn | alert (add/update)")
+  .option("--url <url>", "optional link taget — blank to clear (add/update)")
+  .option("--pinned <bool>", "true pins to the header 'special notice' banner (add/update)")
+  .option("--active <bool>", "true | false (add/update)")
+  .option("--expires-at <iso>", "auto-hide after this time — blank to clear (add/update)")
+  .option("--active-only", "list only active + not expired (list)")
+  .action(async (action: string, opts: Record<string, string | undefined>) => {
+    try {
+      await ensureSchema(getClient());
+      if (action === "list") {
+        const notices = await listNotices({ activeOnly: Boolean(opts.activeOnly), limit: 200 });
+        console.log(JSON.stringify({ ok: true, notices }, null, 2));
+      } else if (action === "add") {
+        if (!opts.title) throw new Error("--title required");
+        const notice = await createNotice({
+          title: opts.title.trim(),
+          body: opts.body ?? undefined,
+          tone: opts.tone as NoticeTone | undefined,
+          url: opts.url ?? undefined,
+          pinned: opts.pinned === "true",
+          is_active: opts.active !== "false",
+          expires_at: opts.expiresAt ?? undefined,
+          created_by: "desktop",
+        });
+        console.log(JSON.stringify({ ok: true, notice }, null, 2));
+      } else if (action === "update") {
+        if (!opts.id) throw new Error("--id required");
+        const fields: Parameters<typeof updateNotice>[1] = {};
+        if (opts.title !== undefined) fields.title = opts.title.trim();
+        if (opts.body !== undefined) fields.body = opts.body.trim() || null;
+        if (opts.tone !== undefined) fields.tone = opts.tone as NoticeTone;
+        if (opts.url !== undefined) fields.url = opts.url.trim() || null;
+        if (opts.pinned !== undefined) fields.pinned = opts.pinned === "true";
+        if (opts.active !== undefined) fields.is_active = opts.active === "true";
+        if (opts.expiresAt !== undefined) fields.expires_at = opts.expiresAt.trim() || null;
+        if (Object.keys(fields).length === 0) throw new Error("at least one field --title/--body/--tone/--url/--pinned/--active/--expires-at required");
+        const notice = await updateNotice(opts.id, fields);
+        console.log(JSON.stringify({ ok: true, notice }, null, 2));
+      } else if (action === "toggle") {
+        if (!opts.id) throw new Error("--id required");
+        const cur = await getNotice(opts.id);
+        if (!cur) throw new Error("not found");
+        const notice = await updateNotice(opts.id, { is_active: !cur.is_active });
+        console.log(JSON.stringify({ ok: true, notice }, null, 2));
+      } else if (action === "remove") {
+        if (!opts.id) throw new Error("--id required");
+        await deleteNotice(opts.id);
+        console.log(JSON.stringify({ ok: true }));
       } else {
         throw new Error(`unknown action: ${action}`);
       }

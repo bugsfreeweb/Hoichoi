@@ -212,6 +212,33 @@ export async function deskToggleSource(env: Record<string, string>, id: string):
   await deskCall(["sources", "toggle", "--id", id], env);
 }
 
+export async function deskUpdateSource(
+  env: Record<string, string>,
+  id: string,
+  fields: {
+    pageUrl?: string;
+    pageName?: string;
+    kind?: string;
+    category?: string;
+    categories?: string[];
+    topics?: string;
+    fbId?: string | null;
+    isActive?: boolean;
+  },
+): Promise<DeskSource | null> {
+  const args = ["sources", "update", "--id", id];
+  if (fields.pageUrl !== undefined) args.push("--page-url", fields.pageUrl);
+  if (fields.pageName !== undefined) args.push("--page-name", fields.pageName);
+  if (fields.kind !== undefined) args.push("--kind", fields.kind);
+  if (fields.category !== undefined) args.push("--category", fields.category);
+  if (fields.categories !== undefined) args.push("--categories", fields.categories.join(","));
+  if (fields.topics !== undefined) args.push("--topics", fields.topics);
+  if (fields.fbId !== undefined) args.push("--fb-id", fields.fbId ?? "");
+  if (fields.isActive !== undefined) args.push("--is-active", fields.isActive ? "true" : "false");
+  const res = await deskCall(args, env);
+  return (res.source as DeskSource | null) ?? null;
+}
+
 export async function deskRemoveSource(env: Record<string, string>, id: string): Promise<void> {
   await deskCall(["sources", "remove", "--id", id], env);
 }
@@ -310,4 +337,175 @@ export async function deskModerationSet(
   status: "approved" | "blocked",
 ): Promise<void> {
   await deskCall(["moderation", "set", id, status], env);
+}
+
+/* ------------------------------------------------------------------ *
+ * LLM provider management (desktop → runner `providers`)              *
+ * ------------------------------------------------------------------ */
+
+export interface DeskProvider {
+  id: string;
+  provider_key: string;
+  display_name: string;
+  base_url: string | null;
+  model_name: string;
+  api_key_env_var: string;
+  api_key: string | null;
+  priority: number;
+  is_active: boolean;
+  is_free_tier: boolean;
+  supports_rewrite: boolean;
+  supports_embeddings: boolean;
+  last_ok_at: string | null;
+  last_error_at: string | null;
+  error_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function deskProviders(env: Record<string, string>): Promise<DeskProvider[]> {
+  const res = await deskCall(["providers", "list"], env);
+  return (res.providers as DeskProvider[]) ?? [];
+}
+
+export interface DeskProviderInput {
+  id?: string;
+  providerKey?: string;
+  displayName?: string;
+  baseUrl?: string;
+  modelName?: string;
+  envVar?: string;
+  apiKey?: string;
+  priority?: number;
+  free?: boolean;
+  rewrite?: boolean;
+  embed?: boolean;
+  isActive?: boolean;
+}
+
+export async function deskUpsertProvider(
+  env: Record<string, string>,
+  input: DeskProviderInput,
+): Promise<DeskProvider> {
+  const args = ["providers", "upsert"];
+  if (input.id) args.push("--id", input.id);
+  if (input.providerKey) args.push("--key", input.providerKey);
+  if (input.displayName !== undefined) args.push("--name", input.displayName);
+  if (input.baseUrl !== undefined) args.push("--base", input.baseUrl);
+  if (input.modelName !== undefined) args.push("--model", input.modelName);
+  if (input.envVar !== undefined) args.push("--env", input.envVar);
+  if (input.apiKey !== undefined) args.push("--api-key", input.apiKey);
+  if (input.priority !== undefined) args.push("--priority", String(input.priority));
+  if (input.free !== undefined) args.push("--free", input.free ? "true" : "false");
+  if (input.rewrite !== undefined) args.push("--rewrite", input.rewrite ? "true" : "false");
+  if (input.embed !== undefined) args.push("--embed", input.embed ? "true" : "false");
+  if (input.isActive !== undefined) args.push("--is-active", input.isActive ? "true" : "false");
+  const res = await deskCall(args, env);
+  return res.provider as DeskProvider;
+}
+
+export async function deskToggleProvider(env: Record<string, string>, id: string): Promise<void> {
+  await deskCall(["providers", "toggle", "--id", id], env);
+}
+
+export async function deskRemoveProvider(env: Record<string, string>, id: string): Promise<void> {
+  await deskCall(["providers", "remove", "--id", id], env);
+}
+
+export interface DeskProviderModel {
+  id: string;
+  label: string;
+}
+
+export async function deskProviderModels(
+  env: Record<string, string>,
+  input: { providerKey: string; baseUrl?: string; apiKey?: string },
+): Promise<DeskProviderModel[]> {
+  const args = ["providers", "models", "--key", input.providerKey];
+  if (input.baseUrl) args.push("--base", input.baseUrl);
+  if (input.apiKey) args.push("--api-key", input.apiKey);
+  const res = await deskCall(args, env);
+  return (res.models as DeskProviderModel[]) ?? [];
+}
+
+/* ------------------------------------------------------------------ *
+ * Notices / announcements (desktop → runner `notice`)                 *
+ * ------------------------------------------------------------------ */
+
+export type DeskNoticeTone = "info" | "success" | "warn" | "alert";
+
+export interface DeskNotice {
+  id: string;
+  title: string;
+  body: string | null;
+  tone: DeskNoticeTone;
+  url: string | null;
+  pinned: boolean;
+  is_active: boolean;
+  expires_at: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function deskNotices(
+  env: Record<string, string>,
+  activeOnly = false,
+): Promise<DeskNotice[]> {
+  const args = ["notice", "list"];
+  if (activeOnly) args.push("--active-only");
+  const res = await deskCall(args, env);
+  return (res.notices as DeskNotice[]) ?? [];
+}
+
+export interface DeskNoticeInput {
+  id?: string;
+  title?: string;
+  body?: string | null;
+  tone?: DeskNoticeTone;
+  url?: string | null;
+  pinned?: boolean;
+  active?: boolean;
+  expiresAt?: string | null;
+}
+
+export async function deskAddNotice(
+  env: Record<string, string>,
+  input: DeskNoticeInput,
+): Promise<DeskNotice> {
+  const args = ["notice", "add", "--title", input.title ?? ""];
+  if (input.body !== undefined) args.push("--body", input.body ?? "");
+  if (input.tone) args.push("--tone", input.tone);
+  if (input.url !== undefined) args.push("--url", input.url ?? "");
+  if (input.pinned !== undefined) args.push("--pinned", input.pinned ? "true" : "false");
+  if (input.active !== undefined) args.push("--active", input.active ? "true" : "false");
+  if (input.expiresAt !== undefined) args.push("--expires-at", input.expiresAt ?? "");
+  const res = await deskCall(args, env);
+  return res.notice as DeskNotice;
+}
+
+export async function deskUpdateNotice(
+  env: Record<string, string>,
+  id: string,
+  fields: DeskNoticeInput,
+): Promise<DeskNotice | null> {
+  const args = ["notice", "update", "--id", id];
+  if (fields.title !== undefined) args.push("--title", fields.title);
+  if (fields.body !== undefined) args.push("--body", fields.body ?? "");
+  if (fields.tone !== undefined) args.push("--tone", fields.tone);
+  if (fields.url !== undefined) args.push("--url", fields.url ?? "");
+  if (fields.pinned !== undefined) args.push("--pinned", fields.pinned ? "true" : "false");
+  if (fields.active !== undefined) args.push("--active", fields.active ? "true" : "false");
+  if (fields.expiresAt !== undefined) args.push("--expires-at", fields.expiresAt ?? "");
+  const res = await deskCall(args, env);
+  return (res.notice as DeskNotice | null) ?? null;
+}
+
+export async function deskToggleNotice(env: Record<string, string>, id: string): Promise<DeskNotice | null> {
+  const res = await deskCall(["notice", "toggle", "--id", id], env);
+  return (res.notice as DeskNotice | null) ?? null;
+}
+
+export async function deskRemoveNotice(env: Record<string, string>, id: string): Promise<void> {
+  await deskCall(["notice", "remove", "--id", id], env);
 }

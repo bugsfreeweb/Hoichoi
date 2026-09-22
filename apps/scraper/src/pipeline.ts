@@ -17,6 +17,17 @@ import { processVideo } from "./video";
 import { makeSlug, rewritePost } from "./rewrite";
 import { captureScreenshot } from "./screenshot";
 
+/** Shared fetch options for CDN media: some providers 403 on the bare Node
+ *  user-agent, so present a normal browser UA + image accept header. */
+const MEDIA_FETCH_INIT: RequestInit = {
+  headers: {
+    "user-agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+    accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+  },
+  signal: AbortSignal.timeout(20_000),
+};
+
 export interface PipelineOptions {
   mock?: boolean;
   maxSources?: number;
@@ -42,6 +53,9 @@ export interface PipelineStats {
  * Prefers the source's primary category, then any of its multi-categories, then
  * any config available in the DB — so a source added against a category that is
  * not present in this database still produces content instead of erroring out.
+ * The last-resort fallback skips `auto_pending_review` configs: a source whose
+ * category is missing here then auto-publishes instead of silently parking
+ * every post in the moderation queue.
  */
 function resolveCategoryConfig(
   source: Pick<Source, "category" | "categories">,
@@ -52,6 +66,9 @@ function resolveCategoryConfig(
   for (const slug of source.categories ?? []) {
     const c = cats.get(slug);
     if (c) return c;
+  }
+  for (const c of cats.values()) {
+    if (!c.config.auto_pending_review) return c;
   }
   for (const c of cats.values()) return c;
   return null;
@@ -186,7 +203,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
             }
           } else {
             const rel = randomMediaName("img", "webp");
-            const bufRes = await fetch(firstMedia);
+            const bufRes = await fetch(firstMedia, MEDIA_FETCH_INIT);
             if (bufRes.ok) {
               const buf = Buffer.from(await bufRes.arrayBuffer());
               await processImage(buf, rel, { maxWidthPx: 1280 });
@@ -224,7 +241,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       try {
         const firstMedia = sp.mediaUrls?.[0];
         if (firstMedia && !isVideoUrl(firstMedia)) {
-          const bufRes = await fetch(firstMedia);
+          const bufRes = await fetch(firstMedia, MEDIA_FETCH_INIT);
           if (bufRes.ok) {
             phash = await imagePhash(Buffer.from(await bufRes.arrayBuffer()));
             if (phash) {

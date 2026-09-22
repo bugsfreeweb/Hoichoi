@@ -1,6 +1,7 @@
 import { getSettings } from "@/lib/settings";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 import { RunPipelineButton } from "@/components/admin/RunPipelineButton";
+import { VisibilityPanel } from "@/components/admin/VisibilityPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function AdminSettingsPage() {
             <RunPipelineButton />
           </div>
         </div>
+        <VisibilityPanel />
         <SettingsForm initial={settings} />
       </div>
     </div>

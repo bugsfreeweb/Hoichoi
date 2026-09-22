@@ -13,6 +13,9 @@ import {
   Archive,
   KeyRound,
   Rss,
+  Cpu,
+  Bell,
+  LayoutDashboard,
 } from "lucide-react";
 import {
   getCredential,
@@ -39,11 +42,15 @@ import { pushGithubSecret } from "../lib/github";
 import { autoPull, autoPush } from "../lib/autosync";
 import DeskCategoryManager from "../components/DeskCategoryManager";
 import DeskSourceManager from "../components/DeskSourceManager";
+import DeskProviderManager from "../components/DeskProviderManager";
+import DeskNoticeManager from "../components/DeskNoticeManager";
 
 const TABS = [
   { id: "pref", icon: Sliders, label: "প্রেফারেন্স" },
   { id: "sources", icon: Rss, label: "সোর্স" },
   { id: "categories", icon: Tags, label: "বিভাগ" },
+  { id: "providers", icon: Cpu, label: "AI প্রোভাইডার" },
+  { id: "notices", icon: Bell, label: "নোটিশ" },
   { id: "sync", icon: Database, label: "ক্লাউড সিঙ্ক" },
   { id: "site", icon: Palette, label: "সাইট ও বিজ্ঞাপন" },
   { id: "admin", icon: UserCog, label: "অ্যাডমিন" },
@@ -79,6 +86,40 @@ const AD_SLOTS: Array<{ key: string; label: string; placeholder: string }> = [
   { key: "ad_infeed_html", label: "In-feed (গ্রিড প্রতি ৪য়)", placeholder: "<!-- In-feed ad code -->" },
   { key: "ad_strip_html", label: "Strip (হোমপেজ নিচে)", placeholder: "<!-- Strip ad code -->" },
 ];
+
+const VIS_ITEMS: Array<{ key: keyof SiteAppConfig; label: string; hint: string }> = [
+  { key: "show_hero", label: "হিরো সেকশন", hint: "শীর্ষের বড় ক্যাটাগরি-কার্ড" },
+  { key: "show_live_graph", label: "Live Analytics গ্রাফ", hint: "প্রবন্ধ-card-এর উপরে ট্রেন্ডগ্রাফ" },
+  { key: "show_categories", label: "বিভাগ স্ট্রিপ", hint: "হোমপেজ গ্রিডের আগে ক্যাটাগরি-বোতাম" },
+  { key: "show_ads", label: "বিজ্ঞাপন স্লট", hint: "সব ad slot জায়গা" },
+  { key: "show_rewrite_engine", label: "রিরাইট ইঞ্জিন ব্যাজ", hint: "ডেস্কটপ অ্যাপ প্রচার-কার্ড" },
+  { key: "show_desk_cta", label: "Desktop App CTA", hint: "হোমপেজে ডেস্কটপ-অ্যাপ ডাউনলোড বক্স" },
+  { key: "show_footer", label: "ফুটার", hint: "নিচের ফুটার প্যানেল" },
+];
+
+interface SiteAppConfig {
+  show_hero: boolean;
+  show_live_graph: boolean;
+  show_categories: boolean;
+  show_ads: boolean;
+  show_rewrite_engine: boolean;
+  show_desk_cta: boolean;
+  show_footer: boolean;
+  theme_default: "light" | "dark";
+  surge_threshold: number;
+}
+
+const VIS_DEFAULTS: SiteAppConfig = {
+  show_hero: true,
+  show_live_graph: true,
+  show_categories: true,
+  show_ads: true,
+  show_rewrite_engine: true,
+  show_desk_cta: true,
+  show_footer: true,
+  theme_default: "light",
+  surge_threshold: 12,
+};
 
 const PREF_DEFAULTS = {
   cron: "0 */2 * * *",
@@ -136,6 +177,11 @@ export default function Settings({
   const [adSlots, setAdSlots] = useState<Record<string, string>>({});
   const [adSlotsMsg, setAdSlotsMsg] = useState<string | null>(null);
   const [adSlotsErr, setAdSlotsErr] = useState<string | null>(null);
+
+  const [vis, setVis] = useState<SiteAppConfig>(VIS_DEFAULTS);
+  const [visLoaded, setVisLoaded] = useState(false);
+  const [visMsg, setVisMsg] = useState<string | null>(null);
+  const [visErr, setVisErr] = useState<string | null>(null);
 
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [syncErr, setSyncErr] = useState<string | null>(null);
@@ -241,8 +287,32 @@ export default function Settings({
       }
       setAdSlots(rec);
       setAdSlotsErr(null);
+
+      const raw = s.app_config_json;
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw as string) as Partial<SiteAppConfig>;
+          setVis({ ...VIS_DEFAULTS, ...parsed });
+        } catch {
+          setVis(VIS_DEFAULTS);
+        }
+      } else {
+        setVis(VIS_DEFAULTS);
+      }
+      setVisLoaded(true);
     } catch {
       setAdSlotsErr("Ad slots লোড ব্যর্থ");
+    }
+  };
+
+  const saveVis = async () => {
+    try {
+      await settingsSet(await getRunEnv(), { app_config_json: JSON.stringify(vis) });
+      setVisMsg("সংরক্ষিত — web সাইট এখনই নতুন ভিজিবিলিটি/থিম ব্যবহার করবে");
+      setVisErr(null);
+      await autoPush();
+    } catch (e) {
+      setVisErr(String(e));
     }
   };
 
@@ -587,6 +657,14 @@ export default function Settings({
           <DeskCategoryManager />
         </div>
 
+        <div className={tab === "providers" ? "" : "hidden"}>
+          <DeskProviderManager />
+        </div>
+
+        <div className={tab === "notices" ? "" : "hidden"}>
+          <DeskNoticeManager />
+        </div>
+
         {tab === "sync" && (
           <>
             <div className="panel mt-5">
@@ -698,6 +776,74 @@ export default function Settings({
               </div>
               {adSlotsMsg && <p className="mt-2 text-[11.5px] font-bold text-ink">✓ {adSlotsMsg}</p>}
               {adSlotsErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {adSlotsErr}</p>}
+            </div>
+
+            <div className="panel mt-5">
+              <p className="flex items-center gap-2 panel-title">
+                <LayoutDashboard size={14} className="text-lime" /> ওয়েব ভিজিবিলিটি ও থিম · app_config_json
+              </p>
+              <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+                কোন সেকশন ওয়েবসাইটে দেখাবে, না দেখাবে — তা ঠিক করুন। Web অ্যাডমিনের settings
+                পেজ এই একই কনফিগ নিয়ন্ত্রণ করে; দুদিক থেকেই একই JSON আপডেট হয়। ডিফল্ট থিম
+                প্রথম লোডে দর্শকের ব্রাউজারে বসে (localStorage পছন্দ থাকলে সেটি জিতে)।
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {VIS_ITEMS.map((v) => (
+                  <label key={v.key} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5">
+                    <span className="min-w-0">
+                      <span className="block text-[12.5px] font-bold text-white">{v.label}</span>
+                      <span className="block text-[10.5px] text-white/40">{v.hint}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setVis({ ...vis, [v.key]: !vis[v.key] })}
+                      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${vis[v.key] ? "bg-lime" : "bg-white/15"}`}
+                    >
+                      <span
+                        className="absolute top-0.5 h-4 w-4 rounded-full bg-night transition-all"
+                        style={{ left: vis[v.key] ? 18 : 2 }}
+                      />
+                    </button>
+                  </label>
+                ))}
+              </div>
+              <div className="mt-3 flex flex-wrap items-end gap-3">
+                <label className="block">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">ডিফল্ট থিম</span>
+                  <select
+                    className="field mt-1 w-44"
+                    value={vis.theme_default}
+                    onChange={(e) => setVis({ ...vis, theme_default: e.target.value as "light" | "dark" })}
+                  >
+                    <option value="light">light</option>
+                    <option value="dark">dark</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">Surge threshold</span>
+                  <input
+                    type="number"
+                    className="field mt-1 w-32"
+                    value={vis.surge_threshold}
+                    onChange={(e) => setVis({ ...vis, surge_threshold: Number(e.target.value) })}
+                  />
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button className="btn" onClick={() => void saveVis()}>
+                    💾 Save visibility & theme
+                  </button>
+                  <button className="btn-ghost" onClick={() => void loadAdSlots()}>
+                    Load current
+                  </button>
+                </div>
+              </div>
+              {visMsg && <p className="mt-2 text-[11.5px] font-bold text-ink">✓ {visMsg}</p>}
+              {visErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {visErr}</p>}
+              {!visLoaded && (
+                <p className="mt-2 text-[11.5px] text-ink-soft/60">
+                  ⟳ লোড হচ্ছে… settings-এ ক্লিক করলে ডিফল্ট মান দেখাবে।
+                </p>
+              )}
             </div>
           </>
         )}

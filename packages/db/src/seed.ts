@@ -27,12 +27,15 @@ export const DEFAULT_PROVIDERS: Array<{
   // GitHub Copilot chat-completions endpoint (OpenAI-compatible). Only usable
   // when a Copilot token is present; the resolver skips it otherwise.
   { key: "github", name: "GitHub Copilot", model: "gpt-4o-mini", env: "GITHUB_COPILOT_TOKEN", priority: 4, free: true, rewrite: true, embed: false },
-  { key: "ollama", name: "Ollama (local)", model: "llama3.2", env: "OLLAMA_BASE_URL", priority: 5, free: true, rewrite: true, embed: false, base: "http://localhost:11434/v1" },
+  // GitHub Models — GitHub's free-tier hosting of OpenAI/gemma/llama/etc.
+  // Same Copilot token; base url preset lives in the llm package.
+  { key: "github-models", name: "GitHub Models", model: "gpt-4o-mini", env: "GITHUB_COPILOT_TOKEN", priority: 5, free: true, rewrite: true, embed: false },
+  { key: "ollama", name: "Ollama (local)", model: "llama3.2", env: "OLLAMA_BASE_URL", priority: 6, free: true, rewrite: true, embed: false, base: "http://localhost:11434/v1" },
   // Paid fallbacks — the resolver tries them only after every free tier fails.
-  { key: "openai", name: "OpenAI GPT-4o mini", model: "gpt-4o-mini", env: "OPENAI_API_KEY", priority: 6, free: false, rewrite: true, embed: false },
-  { key: "mistral", name: "Mistral Small", model: "mistral-small-latest", env: "MISTRAL_API_KEY", priority: 7, free: true, rewrite: true, embed: false },
+  { key: "openai", name: "OpenAI GPT-4o mini", model: "gpt-4o-mini", env: "OPENAI_API_KEY", priority: 7, free: false, rewrite: true, embed: false },
+  { key: "mistral", name: "Mistral Small", model: "mistral-small-latest", env: "MISTRAL_API_KEY", priority: 8, free: true, rewrite: true, embed: false },
   // Manifest AI proxy (BYO provider keys, routes to the best available model).
-  { key: "custom", name: "Manifest AI", model: "manifest/auto", env: "MANIFEST_API_KEY", priority: 8, free: false, rewrite: true, embed: false, base: "https://app.manifest.build/v1" },
+  { key: "custom", name: "Manifest AI", model: "manifest/auto", env: "MANIFEST_API_KEY", priority: 9, free: false, rewrite: true, embed: false, base: "https://app.manifest.build/v1" },
 ];
 
 /** Redaction blocklist (child PII defense-in-depth). */
