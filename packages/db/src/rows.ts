@@ -197,6 +197,7 @@ export const CATEGORY_SEED: CategoryMeta[] = [
       allow_identifying_details: false,
       publish_age_gate: false,
     },
+    showInFooter: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -219,6 +220,7 @@ export const CATEGORY_SEED: CategoryMeta[] = [
       allow_identifying_details: true,
       use_allegation_language: true,
     },
+    showInFooter: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -243,6 +245,7 @@ export const CATEGORY_SEED: CategoryMeta[] = [
       share_widely_cta: true,
       include_helpline_numbers: true,
     },
+    showInFooter: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -275,5 +278,6 @@ export function mapCategory(row: Record<string, unknown>): CategoryMeta {
     ),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
+    showInFooter: (row as Record<string, unknown>).show_in_footer === undefined ? true : Boolean(row.show_in_footer),
   };
 }

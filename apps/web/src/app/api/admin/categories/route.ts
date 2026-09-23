@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const user = await requireApiUser();
   if (!user) return unauthorized();
   const body = await request.json();
-  const { slug, displayNameBn, displayNameEn, descriptionBn, descriptionEn, dot, sortOrder } = body;
+  const { slug, displayNameBn, displayNameEn, descriptionBn, descriptionEn, dot, sortOrder, showInFooter } = body;
 
   if (!slug || !displayNameBn || !displayNameEn) {
     return NextResponse.json({ ok: false, error: "slug, displayNameBn, displayNameEn are required" }, { status: 400 });
@@ -27,6 +27,7 @@ export async function POST(request: Request) {
     descriptionEn,
     dot: dot || "#d2202c",
     sortOrder: sortOrder ?? 99,
+    showInFooter,
   });
 
   return NextResponse.json({ ok: true });

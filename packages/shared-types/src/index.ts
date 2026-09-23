@@ -78,6 +78,8 @@ export interface CategoryMeta {
   config: CategoryConfig;
   createdAt: string;
   updatedAt: string;
+  /** Whether this category appears in the public site footer nav. */
+  showInFooter: boolean;
 }
 
 export interface Source {
@@ -293,6 +295,8 @@ export interface SiteSettings {
   favicon_url: string | null;
   /** Branding — accent color (hex) for masthead/footer brand elements. */
   accent_color: string;
+  /** Branding — footer "about this site" paragraph (blank = site default). */
+  footer_about_bn: string | null;
   /** Advertisement slots (raw ad-network HTML/JS). Empty = placeholder sponsor card. */
   ad_leaderboard_html: string | null;
   ad_rect_html: string | null;
@@ -327,11 +331,29 @@ export interface SiteAppConfig {
   surge_threshold: number;
 }
 
-/**
- * Tone of an announcement. `alert` is the most urgent (used by the special
+/** Tone of an announcement. `alert` is the most urgent (used by the special
  * notice); all map to the same tone tokens as the safety/status chips.
  */
 export type NoticeTone = "info" | "success" | "warn" | "alert";
+
+/** A single admin sign-in attempt (web code login). */
+export interface AdminLoginLog {
+  id: string;
+  email: string;
+  ok: boolean;
+  ip: string | null;
+  user_agent: string | null;
+  message: string | null;
+  created_at: string;
+}
+
+/** Paginated slice of the admin login log. */
+export interface LoginLogPage {
+  rows: AdminLoginLog[];
+  total: number;
+  page: number;
+  pages: number;
+}
 
 /** An announcement/notification shown to web visitors (bell + banner). */
 export interface Notice {

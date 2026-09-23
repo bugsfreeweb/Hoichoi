@@ -1,5 +1,7 @@
 import { Command } from "commander";
-import { readFile } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
+import path from "node:path";
+import os from "node:os";
 import { runPipeline, type PipelineOptions } from "./pipeline";
 import { runArchivePass } from "./archive";
 import {
@@ -31,6 +33,11 @@ import {
   createNotice,
   updateNotice,
   deleteNotice,
+  updatePostStatus,
+  getPostById,
+  listLoginLog,
+  deleteLoginLog,
+  clearLoginLog,
   mapProvider,
   nowIso,
   CONTENT_TABLES,
@@ -461,22 +468,28 @@ function deskQueueRow(row: Record<string, unknown>) {
     id: String(row.id),
     slug: String(row.slug),
     title_bn: String(row.title_bn),
+    summary_bn: (row.summary_bn as string) ?? "",
+    body_bn: (row.body_bn as string) ?? "",
     source_name: String(row.source_name),
+    source_url: (row.source_url as string) ?? "",
     category: row.category as CategorySlug,
     status: String(row.status),
+    media_kind: String(row.media_kind ?? "none"),
+    media_path: (row.media_path as string) ?? "",
     created_at: String(row.created_at),
   };
 }
 
 async function listDeskQueue(status?: string) {
   const client = getClient();
+  const cols = "id, slug, title_bn, summary_bn, body_bn, source_name, source_url, category, status, media_kind, media_path, created_at";
   const res = status
     ? await client.execute({
-        sql: "SELECT id, slug, title_bn, source_name, category, status, created_at FROM posts WHERE status = ? ORDER BY created_at DESC LIMIT 80",
+        sql: `SELECT ${cols} FROM posts WHERE status = ? ORDER BY created_at DESC LIMIT 80`,
         args: [status],
       })
     : await client.execute(
-        "SELECT id, slug, title_bn, source_name, category, status, created_at FROM posts ORDER BY created_at DESC LIMIT 80",
+        `SELECT ${cols} FROM posts ORDER BY created_at DESC LIMIT 80`,
       );
   return res.rows.map((r) => deskQueueRow(r as Record<string, unknown>));
 }
@@ -541,14 +554,36 @@ program
   });
 
 program
-  .command("queue <action>")
-  .description("desk content queue: list")
+  .command("queue <action> [id] [status]")
+  .description("desk content queue: list [--status s] / set <id> <approved|rejected|published>")
   .option("--status <s>", "filter by post status")
-  .action(async (action: string, opts: { status?: string }) => {
+  .action(async (action: string, id: string | undefined, status: string | undefined, opts: { status?: string }) => {
     try {
       await ensureSchema(getClient());
-      if (action !== "list") throw new Error(`unknown action: ${action}`);
-      console.log(JSON.stringify({ ok: true, rows: await listDeskQueue(opts.status) }, null, 2));
+      if (action === "list") {
+        console.log(JSON.stringify({ ok: true, rows: await listDeskQueue(opts.status) }, null, 2));
+      } else if (action === "set") {
+        if (!id || !status) throw new Error("id and status required");
+        const allowed = ["approved", "rejected", "published"];
+        if (!allowed.includes(status)) throw new Error(`status must be one of: ${allowed.join(", ")}`);
+        const post = await getPostById(id);
+        if (!post) throw new Error(`post not found: ${id}`);
+        if (status === "approved") {
+          const cat = await getCategory(post.category);
+          const needsDouble = Boolean(cat?.config.requires_double_approval) && post.status !== "approved";
+          await updatePostStatus(id, needsDouble ? "approved" : "published", { publishedAt: !needsDouble });
+          // eslint-disable-next-line no-console
+          console.log(JSON.stringify({ ok: true, status: needsDouble ? "approved" : "published" }));
+        } else if (status === "rejected") {
+          await updatePostStatus(id, "rejected");
+          console.log(JSON.stringify({ ok: true, status: "rejected" }));
+        } else {
+          await updatePostStatus(id, "published", { publishedAt: true });
+          console.log(JSON.stringify({ ok: true, status: "published" }));
+        }
+      } else {
+        throw new Error(`unknown action: ${action}`);
+      }
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -590,6 +625,7 @@ program
   .option("--desc-en <text>", "English description (add/update)")
   .option("--dot <hex>", "dot color hex, omit to keep seed default (add/update)")
   .option("--sort <n>", "sort order (add/update)")
+  .option("--footer <bool>", "true | false — show in the public site footer (add/update)")
   .action(async (action: string, opts: Record<string, string | undefined>) => {
     try {
       await ensureSchema(getClient());
@@ -613,6 +649,7 @@ program
           descriptionEn: opts.descEn?.trim() || undefined,
           dot: opts.dot?.trim() || undefined,
           sortOrder: opts.sort !== undefined ? Number(opts.sort) : undefined,
+          showInFooter: opts.footer === undefined ? undefined : opts.footer === "true" || opts.footer === "1",
         });
         console.log(JSON.stringify({ ok: true, category: await getCategory(slug) }, null, 2));
       } else if (action === "update") {
@@ -624,8 +661,9 @@ program
         if (opts.descEn !== undefined) fields.descriptionEn = opts.descEn.trim();
         if (opts.dot !== undefined) fields.dot = opts.dot.trim();
         if (opts.sort !== undefined) fields.sortOrder = Number(opts.sort);
+        if (opts.footer !== undefined) fields.showInFooter = opts.footer === "true" || opts.footer === "1";
         if (Object.keys(fields).length === 0) {
-          throw new Error("at least one field required (--name-bn, --name-en, --desc-bn, --desc-en, --dot, --sort)");
+          throw new Error("at least one field required (--name-bn, --name-en, --desc-bn, --desc-en, --dot, --sort, --footer)");
         }
         await updateCategory(opts.slug, fields);
         console.log(JSON.stringify({ ok: true, category: await getCategory(opts.slug) }, null, 2));
@@ -884,6 +922,91 @@ program
       process.exitCode = 1;
     }
   });
+
+program
+  .command("loginlog <action>")
+  .description("desk admin login log: list [--page N] / delete --id / clear")
+  .option("--page <n>", "page number (list)", "1")
+  .option("--per-page <n>", "rows per page (list, max 100)", "10")
+  .option("--id <id>", "log entry id (delete)")
+  .action(async (action: string, opts: { page?: string; perPage?: string; id?: string }) => {
+    try {
+      await ensureSchema(getClient());
+      if (action === "list") {
+        const page = await listLoginLog(
+          opts.page !== undefined ? Number(opts.page) : 1,
+          opts.perPage !== undefined ? Number(opts.perPage) : 10,
+        );
+        console.log(JSON.stringify({ ok: true, ...page }, null, 2));
+      } else if (action === "delete") {
+        if (!opts.id) throw new Error("--id required");
+        await deleteLoginLog(opts.id);
+        console.log(JSON.stringify({ ok: true, deleted: opts.id }));
+      } else if (action === "clear") {
+        const rows = await clearLoginLog();
+        console.log(JSON.stringify({ ok: true, cleared: rows }));
+      } else {
+        throw new Error(`unknown action: ${action}`);
+      }
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("cleanup <action>")
+  .description("desk cache/temp cleaner: temp (frees app-data temp space)")
+  .action(async (action: string) => {
+    try {
+      await ensureSchema(getClient());
+      if (action !== "temp") throw new Error(`unknown action: ${action}`);
+      const mediaRoot = process.env.HOICHOI_MEDIA_ROOT;
+      const appData = mediaRoot ? path.dirname(mediaRoot) : null;
+      const targets = appData
+        ? [path.join(appData, "tmp"), path.join(appData, ".cache")]
+        : [];
+      let bytes = 0;
+      const removed: string[] = [];
+      for (const dir of targets) {
+        bytes += await dirSize(dir);
+        try {
+          await rm(dir, { recursive: true, force: true });
+          removed.push(dir);
+        } catch (err) {
+          console.error("[warn] could not remove", dir, (err as Error).message);
+        }
+      }
+      const osTmp = path.join(os.tmpdir(), "hoichoi-ffmpeg");
+      bytes += await dirSize(osTmp);
+      await rm(osTmp, { recursive: true, force: true });
+      removed.push(osTmp);
+      console.log(JSON.stringify({ ok: true, bytes_freed: bytes, dirs: removed }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+async function dirSize(dir: string): Promise<number> {
+  const { readdir, stat } = await import("node:fs/promises");
+  let total = 0;
+  try {
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const p = path.join(dir, entry.name);
+      try {
+        if (entry.isDirectory()) total += await dirSize(p);
+        else total += (await stat(p)).size;
+      } catch {
+        /* file vanished mid-walk */
+      }
+    }
+  } catch {
+    /* dir does not exist */
+  }
+  return total;
+}
 
 program.parseAsync(process.argv).catch((err) => {
   console.error("[fatal]", (err as Error).message);

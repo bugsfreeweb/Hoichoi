@@ -9,13 +9,15 @@ Live site: <https://hoichoifeed.vercel.app> · Source: <https://github.com/bugsf
 
 ```
 Web (apps/web)      Next.js 15 public site (SSR feed, /sitemap, OG images, visitor
-                      announcement bell + pinned banner) + admin shell (/notices, /moderation,
-                      /posts, /providers, /reports…), /desk preview, live /api/stats.
+                      announcement bell + pinned banner, DB-driven footer) + admin shell
+                      (/notices, /moderation, /posts, /providers, /reports, /logs incl. login
+                      log…), /desk preview, live /api/stats.
                       Home sections are gated by settings.app_config_json (show_hero / show_ads / …).
 Scraper             Collection pipeline: scrape → dedup → rewrite → moderate → publish
 Desktop (apps/desktop)  Tauri 2 desktop admin + local collector controller — Settings has 10
-                      pill tabs incl. inline সোর্স editing, AI প্রোভাইডার, নোটিশ and a shared
-                      ওয়েব ভিজিবিলিটি ও থিম (app_config_json) panel
+                      pill tabs incl. inline সোর্স editing, AI প্রোভাইডার, নোটিশ, a shared
+                      ওয়েব ভিজিবিলিটি ও থিম (app_config_json) panel, footer branding + per-category
+                      footer visibility, and an admin লগইন লগ panel
 DB/LLM/Types        packages/db (Turso/libSQL), packages/llm (multi-provider resolver), shared-types
 ```
 
@@ -103,7 +105,7 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 
 > After any change to `packages/db/migrations/` you **must** re-run `bundle:runner`
 > before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
-> (e.g. `008_notices.sql`).
+> (latest e.g. `009_footer_loginlog.sql`).
 
 ## Editorial & safety
 

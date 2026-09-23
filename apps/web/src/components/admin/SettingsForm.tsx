@@ -17,6 +17,7 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
     logo_url: initial.logo_url ?? "",
     favicon_url: initial.favicon_url ?? "",
     accent_color: initial.accent_color,
+    footer_about_bn: initial.footer_about_bn ?? "",
     ad_leaderboard_html: initial.ad_leaderboard_html ?? "",
     ad_rect_html: initial.ad_rect_html ?? "",
     ad_infeed_html: initial.ad_infeed_html ?? "",
@@ -73,6 +74,9 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
             </div>
           </Field>
         </div>
+        <Field label="ফুটার “সম্পর্কে” অনুচ্ছেদ (footer_about_bn — খালি = সাইট ডিফল্ট)">
+          <textarea rows={3} className={`${field} resize-y leading-relaxed`} value={form.footer_about_bn} onChange={(e) => setForm({ ...form, footer_about_bn: e.target.value })} placeholder="সাইট/এই ডেস্ক about-অনুচ্ছেদ…" />
+        </Field>
         <Field label="Contact email">
           <input type="email" className={field} value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} />
         </Field>

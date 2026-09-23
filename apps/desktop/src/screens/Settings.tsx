@@ -34,6 +34,10 @@ import {
   resetDb,
   syncDb,
   adminCodes,
+  deskLoginLog,
+  deskLoginLogDelete,
+  deskLoginLogClear,
+  type DeskLoginLogPage,
   type AdminLoginCode,
   type AdminCodeList,
   type CreatedAdminLoginCode,
@@ -71,13 +75,14 @@ const FIELDS: Array<{ name: CredentialName; label: string; secret: boolean }> = 
   { name: "OLLAMA_BASE_URL", label: "Ollama base URL", secret: false },
 ];
 
-const BRAND_FIELDS: Array<{ key: string; label: string; secret?: boolean }> = [
+const BRAND_FIELDS: Array<{ key: string; label: string; secret?: boolean; multiline?: boolean }> = [
   { key: "site_name", label: "সাইট নাম / App name" },
   { key: "slogan_bn", label: "স্লোগান (slogan)" },
   { key: "tagline", label: "ট্যাগলাইন (tagline)" },
   { key: "logo_url", label: "Logo URL (empty = text)" },
   { key: "favicon_url", label: "Favicon URL (empty = default)" },
   { key: "accent_color", label: "Accent color (hex)" },
+  { key: "footer_about_bn", label: "ফুটার \"সম্পর্কে\" অনুচ্ছেদ", multiline: true },
 ];
 
 const AD_SLOTS: Array<{ key: string; label: string; placeholder: string }> = [
@@ -173,6 +178,11 @@ export default function Settings({
   const [newCode, setNewCode] = useState<string | null>(null);
   const [admMsg, setAdmMsg] = useState<string | null>(null);
   const [admErr, setAdmErr] = useState<string | null>(null);
+
+  const [logLog, setLogLog] = useState<DeskLoginLogPage | null>(null);
+  const [logBusy, setLogBusy] = useState(false);
+  const [logMsg, setLogMsg] = useState<string | null>(null);
+  const [logErr, setLogErr] = useState<string | null>(null);
 
   const [adSlots, setAdSlots] = useState<Record<string, string>>({});
   const [adSlotsMsg, setAdSlotsMsg] = useState<string | null>(null);
@@ -350,6 +360,7 @@ export default function Settings({
     void loadBrand();
     void loadAdminCodes();
     void loadAdSlots();
+    void loadLoginLog();
     // Local-only mode: pull web-side config (categories/sources/branding)
     // down to the desk so both admin surfaces show the same data.
     void autoPull();
@@ -391,6 +402,47 @@ export default function Settings({
       setAdmMsg("কোড বাতিল হয়েছে।");
     } catch (e) {
       setAdmErr(String(e));
+    }
+  };
+
+  const loadLoginLog = async () => {
+    setLogBusy(true);
+    try {
+      setLogErr(null);
+      setLogLog(await deskLoginLog(await getRunEnv()));
+    } catch (e) {
+      setLogLog(null);
+      setLogErr(String(e));
+    } finally {
+      setLogBusy(false);
+    }
+  };
+
+  const removeLog = async (id: string) => {
+    if (!window.confirm("এই লগ-এন্ট্রিটি মুছবেন?")) return;
+    setLogBusy(true);
+    try {
+      await deskLoginLogDelete(await getRunEnv(), id);
+      await loadLoginLog();
+      setLogMsg("মুছে ফেলা হয়েছে।");
+    } catch (e) {
+      setLogErr(String(e));
+    } finally {
+      setLogBusy(false);
+    }
+  };
+
+  const clearLog = async () => {
+    if (!window.confirm("পুরো লগইন লগ মুছে ফেলবেন? এটি ফিরে পাওয়া যাবে না।")) return;
+    setLogBusy(true);
+    try {
+      const n = await deskLoginLogClear(await getRunEnv());
+      await loadLoginLog();
+      setLogMsg(`${n}টি এন্ট্রি মুছে ফেলা হয়েছে।`);
+    } catch (e) {
+      setLogErr(String(e));
+    } finally {
+      setLogBusy(false);
     }
   };
 
@@ -725,16 +777,20 @@ export default function Settings({
             <div className="panel mt-5">
               <p className="panel-title">Site branding · web & desktop</p>
               <div className="mt-3 grid gap-3 md:grid-cols-2">
-                {BRAND_FIELDS.map((f) => (
-                  <label key={f.key} className="block">
-                    <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">{f.label}</span>
-                    <input
-                      className="field mt-1 w-full"
-                      value={brand[f.key] ?? ""}
-                      onChange={(e) => setBrand((prev) => ({ ...prev, [f.key]: e.target.value }))}
-                    />
-                  </label>
-                ))}
+                {BRAND_FIELDS.map((f) => {
+                  const Render = "multiline" in f && f.multiline ? "textarea" : "input";
+                  return (
+                    <label key={f.key} className="block">
+                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">{f.label}</span>
+                      <Render
+                        className="field mt-1 w-full"
+                        rows={3}
+                        value={brand[f.key] ?? ""}
+                        onChange={(e) => setBrand((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                      />
+                    </label>
+                  );
+                })}
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button className="btn" onClick={() => void saveBrand()}>
@@ -950,6 +1006,78 @@ export default function Settings({
             )}
             {admMsg && <p className="mt-2 text-[11.5px] font-bold text-ink">✓ {admMsg}</p>}
             {admErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {admErr}</p>}
+
+            <div className="mt-8 border-t border-ink/15 pt-5">
+              <p className="flex items-center gap-2 text-[13px] font-bold text-white">
+                <ShieldCheck size={14} className="text-lime" /> লগইন লগ (কোন ইমেইল/আইপি থেকে ঢোকার চেষ্টা)
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-ink-soft">
+                ওয়েব অ্যাডমিন কনসোলে প্রতিটি সাইন-ইন attempt (সফল + ব্যর্থ) রেকর্ড হয়
+                (`loginlog list` রানারের একই তথ্য)। ডেস্কটপ ও ওয়েব একই টেবিল দেখে।
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button className="btn-ghost" disabled={logBusy} onClick={() => void loadLoginLog()}>
+                  ↻ রিফ্রেশ
+                </button>
+                <button className="text-[11px] font-bold text-alizarin underline" disabled={logBusy} onClick={() => void clearLog()}>
+                  সব মুছুন
+                </button>
+              </div>
+              {logErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {logErr}</p>}
+              {logMsg && <p className="mt-2 text-[11.5px] font-bold text-ink">✓ {logMsg}</p>}
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full text-left text-[11.5px]">
+                  <thead>
+                    <tr className="border-b border-ink/20 text-[10px] uppercase tracking-wider text-ink-soft">
+                      <th className="py-1 pr-2">state</th>
+                      <th className="py-1 pr-2">email</th>
+                      <th className="py-1 pr-2">IP</th>
+                      <th className="py-1 pr-2">বার্তা</th>
+                      <th className="py-1 pr-2">সময়</th>
+                      <th className="py-1 pr-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(logLog?.rows ?? []).map((row) => (
+                      <tr key={row.id} className="border-b border-ink/10">
+                        <td className="py-1 pr-2">
+                          <span
+                            className={`px-1.5 py-0.5 text-[10px] font-bold ${
+                              row.ok ? "bg-lime text-night" : "bg-alizarin text-paper"
+                            }`}
+                          >
+                            {row.ok ? "সফল" : "ব্যর্থ"}
+                          </span>
+                        </td>
+                        <td className="py-1 pr-2 font-mono text-[10.5px]">{row.email}</td>
+                        <td className="py-1 pr-2 font-mono text-[10.5px] text-ink-soft">{row.ip ?? "—"}</td>
+                        <td className="py-1 pr-2">{row.message ?? "—"}</td>
+                        <td className="py-1 pr-2 font-mono-x text-[10px] text-ink-soft">
+                          {row.created_at.slice(0, 16).replace("T", " ")}
+                        </td>
+                        <td className="py-1 pr-2 text-right">
+                          <button
+                            className="text-[10px] font-bold text-alizarin underline"
+                            disabled={logBusy}
+                            onClick={() => void removeLog(row.id)}
+                          >
+                            মুছুন
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {logLog && logLog.rows.length === 0 && (
+                  <p className="py-4 text-center text-[11.5px] text-ink-soft">কোনো লগইন এন্ট্রি নেই।</p>
+                )}
+              </div>
+              {logLog && logLog.total > 0 && (
+                <p className="mt-2 font-mono-x text-[10px] tracking-wide text-ink-soft uppercase">
+                  মোট {logLog.total} · পৃষ্ঠা {logLog.page}/{logLog.pages} · নতুন—পুরনো
+                </p>
+              )}
+            </div>
           </div>
         )}
 

@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { getClient } from "./client";
-import { ensureAdminLoginCodesTable } from "./client";
+import { ensureAdminLoginCodesTable, ensureLoginLogTable } from "./client";
+import type { AdminLoginLog, LoginLogPage } from "@hoichoi/shared-types";
 
 /** One-time codes are 8 chars from an unambiguous alphabet (no 0/O/1/I/L). */
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -101,4 +102,80 @@ export async function consumeAdminLoginCode(email: string, code: string): Promis
     args: [now, id],
   });
   return updated.rowsAffected === 1;
+}
+
+/* ---------- admin login log (who/when/how the admin console signs in) ---------- */
+
+/** Record one sign-in attempt (web code login); failures are logged too. */
+export async function logAdminLogin(opts: {
+  email: string;
+  ok: boolean;
+  ip?: string | null;
+  userAgent?: string | null;
+  message?: string | null;
+}): Promise<void> {
+  const client = getClient();
+  await ensureLoginLogTable(client);
+  await client.execute({
+    sql: "INSERT INTO admin_login_log (id, email, ok, ip, user_agent, message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    args: [
+      randomBytes(16).toString("hex"),
+      opts.email.trim().toLowerCase(),
+      opts.ok ? 1 : 0,
+      opts.ip ?? null,
+      opts.userAgent ?? null,
+      opts.message ?? null,
+      new Date().toISOString(),
+    ],
+  });
+}
+
+function mapLoginLogRow(row: Record<string, unknown>): AdminLoginLog {
+  return {
+    id: String(row.id),
+    email: String(row.email),
+    ok: Boolean(row.ok),
+    ip: (row.ip as string) ?? null,
+    user_agent: (row.user_agent as string) ?? null,
+    message: (row.message as string) ?? null,
+    created_at: String(row.created_at),
+  };
+}
+
+/** Paginated login log, newest first. `perPage` clamped to 1..100. */
+export async function listLoginLog(page = 1, perPage = 10): Promise<LoginLogPage> {
+  const client = getClient();
+  await ensureLoginLogTable(client);
+  const pageNum = Math.max(1, Math.floor(page));
+  const pageSize = Math.min(100, Math.max(1, Math.floor(perPage)));
+  const totalRes = await client.execute("SELECT COUNT(*) AS n FROM admin_login_log");
+  const total = Number((totalRes.rows[0] as Record<string, unknown>).n ?? 0);
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  const res = await client.execute({
+    sql: "SELECT * FROM admin_login_log ORDER BY created_at DESC LIMIT ? OFFSET ?",
+    args: [pageSize, (pageNum - 1) * pageSize],
+  });
+  return {
+    rows: res.rows.map((r) => mapLoginLogRow(r as Record<string, unknown>)),
+    total,
+    page: pageNum,
+    pages,
+  };
+}
+
+/** Delete one login-log entry. */
+export async function deleteLoginLog(id: string): Promise<void> {
+  const client = getClient();
+  await client.execute({
+    sql: "DELETE FROM admin_login_log WHERE id = ?",
+    args: [id],
+  });
+}
+
+/** Clear the whole login log; returns the number of removed rows. */
+export async function clearLoginLog(): Promise<number> {
+  const client = getClient();
+  await ensureLoginLogTable(client);
+  const res = await client.execute("DELETE FROM admin_login_log");
+  return res.rowsAffected;
 }

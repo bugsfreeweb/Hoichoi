@@ -28,6 +28,7 @@ interface NewCategoryForm {
   descriptionBn: string;
   descriptionEn: string;
   dot: string;
+  showInFooter: boolean;
 }
 
 export function CategoryManager({ initial }: { initial: CategoryMeta[] }) {
@@ -39,6 +40,7 @@ export function CategoryManager({ initial }: { initial: CategoryMeta[] }) {
     descriptionBn: "",
     descriptionEn: "",
     dot: "#d2202c",
+    showInFooter: true,
   });
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<NewCategoryForm | null>(null);
@@ -52,7 +54,7 @@ export function CategoryManager({ initial }: { initial: CategoryMeta[] }) {
   };
 
   const openCreate = () => {
-    setForm({ slug: "", displayNameBn: "", displayNameEn: "", descriptionBn: "", descriptionEn: "", dot: "#d2202c" });
+    setForm({ slug: "", displayNameBn: "", displayNameEn: "", descriptionBn: "", descriptionEn: "", dot: "#d2202c", showInFooter: true });
     dialogRef.current?.showModal();
   };
 
@@ -88,6 +90,7 @@ export function CategoryManager({ initial }: { initial: CategoryMeta[] }) {
       descriptionBn: cat.descriptionBn,
       descriptionEn: cat.descriptionEn,
       dot: cat.dot,
+      showInFooter: cat.showInFooter,
     });
   };
 
@@ -104,6 +107,7 @@ export function CategoryManager({ initial }: { initial: CategoryMeta[] }) {
           descriptionBn: editForm.descriptionBn,
           descriptionEn: editForm.descriptionEn,
           dot: editForm.dot,
+          showInFooter: editForm.showInFooter,
         }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -233,6 +237,15 @@ export function CategoryManager({ initial }: { initial: CategoryMeta[] }) {
                 placeholder="#fbbf24"
               />
             </label>
+            <label className="flex items-center gap-2 text-[13px] font-medium text-ink-700">
+              <input
+                type="checkbox"
+                checked={form.showInFooter}
+                onChange={(e) => setForm({ ...form, showInFooter: e.target.checked })}
+                className="h-4 w-4 accent-alizarin"
+              />
+              পাবলিক ফুটারে দেখান (footer nav)
+            </label>
           </div>
           <div className="mt-6 flex justify-end gap-2">
             <button
@@ -294,6 +307,15 @@ export function CategoryManager({ initial }: { initial: CategoryMeta[] }) {
                           onChange={(e) => setEditForm({ ...editForm, dot: e.target.value })}
                           className="h-8 w-8 cursor-pointer rounded border-0 p-0"
                         />
+                      </label>
+                      <label className="flex items-center gap-1.5 text-sm text-ink-700">
+                        <input
+                          type="checkbox"
+                          checked={editForm.showInFooter}
+                          onChange={(e) => setEditForm({ ...editForm, showInFooter: e.target.checked })}
+                          className="h-4 w-4 accent-alizarin"
+                        />
+                        ফুটারে দেখান
                       </label>
                       <span className="font-mono-x text-[10px] text-ink-soft">স্লাগ: {cat.slug}</span>
                     </div>

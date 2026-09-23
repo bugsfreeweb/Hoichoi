@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient, consumeAdminLoginCode } from "@hoichoi/db";
+import { getClient, consumeAdminLoginCode, logAdminLogin } from "@hoichoi/db";
 import { createSession, getUserByEmail } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 import { randomBytes, randomUUID } from "node:crypto";
@@ -10,8 +10,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "email and code required" }, { status: 400 });
   }
   const email = body.email.trim().toLowerCase();
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? null;
+  const userAgent = req.headers.get("user-agent") ?? null;
   const accepted = await consumeAdminLoginCode(email, body.code);
   if (!accepted) {
+    await logAdminLogin({ email, ok: false, ip, userAgent, message: "invalid, used, or expired code" });
     return NextResponse.json({ error: "invalid, used, or expired code" }, { status: 401 });
   }
   let user = await getUserByEmail(email);
@@ -33,8 +36,10 @@ export async function POST(req: NextRequest) {
     user = await getUserByEmail(email);
   }
   if (!user) {
+    await logAdminLogin({ email, ok: false, ip, userAgent, message: "no admin account for that email" });
     return NextResponse.json({ error: "no admin account for that email" }, { status: 401 });
   }
   await createSession(user);
+  await logAdminLogin({ email, ok: true, ip, userAgent });
   return NextResponse.json({ admin: user, ok: true });
 }

@@ -156,6 +156,23 @@ pnpm --filter @hoichoi/web build
   **`PATCH/DELETE /api/notices/[id]`** (admin-only), or from the desktop app's
   Settings → নোটিশ tab (runner `notice` CLI, `created_by: "desktop"`). The
   `Notice`/`NoticeTone` types live in `@hoichoi/shared-types`.
+- **Footer customization + admin login log (migration `009_footer_loginlog.sql`)** —
+  two new settings surfaces share the same `settings`/`category_configs`/`admin_login_log`
+  tables with the desktop app:
+  - `settings.footer_about_bn` (blank = site default paragraph) and a per-category
+    `category_configs.show_in_footer` flag drive the public site **Footer**: `<Footer />`
+    now renders `getSettings()` + `listFooterCategories()` instead of the hard-coded
+    category map, so editors can hide/show categories and rewrite the "about" blurb
+    without a deploy. Columns/toggles are editable from the web admin
+    (`SettingsForm` *ফুটার "সম্পর্কে" অনুচ্ছেদ*; `CategoryManager` *পাবলিক ফুটারে
+    দেখান*) and from the desktop Settings → সাইট/বিভাগ tabs (runner passes
+    `--footer`).
+  - `admin_login_log` records **every** web-admin sign-in attempt (email, ok/fail,
+    `x-forwarded-for`/`x-real-ip`, user-agent, message) from `POST /api/auth/login`
+    via `logAdminLogin` in `@hoichoi/db`. The web admin **লগ** page
+    (`/admin/logs`) gains a **LoginLogViewer** table (refresh / delete one / clear
+    all) wired to `GET`/`DELETE /api/admin/login-log`; the desktop Settings → অ্যাডমিন
+    tab reads the same rows through the runner `loginlog list|delete|clear`.
 - **Web-visibility gating (`settings.app_config_json`)** — the `settings` row carries a
   JSON `SiteAppConfig` (fields `show_hero`, `show_live_graph`, `show_categories`,
   `show_ads`, `show_rewrite_engine`, `show_desk_cta`, `show_footer`,

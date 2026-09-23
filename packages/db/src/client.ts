@@ -286,6 +286,40 @@ CREATE INDEX IF NOT EXISTS idx_source_categories_category ON source_categories (
   `);
 }
 
+/**
+ * Upgrade helper: adds `settings.footer_about_bn` (editable footer about text)
+ * and `category_configs.show_in_footer` (per-category footer visibility).
+ * Both are idempotent — safe on databases that already ran migration 009.
+ */
+export async function ensureFooterColumns(client: Client): Promise<void> {
+  const hasCol = async (table: string, col: string): Promise<boolean> => {
+    const info = await client.execute(`PRAGMA table_info(${table})`);
+    return new Set(info.rows.map((r) => String((r as Record<string, unknown>).name))).has(col);
+  };
+  if (!(await hasCol("settings", "footer_about_bn"))) {
+    await client.execute("ALTER TABLE settings ADD COLUMN footer_about_bn TEXT");
+  }
+  if (!(await hasCol("category_configs", "show_in_footer"))) {
+    await client.execute("ALTER TABLE category_configs ADD COLUMN show_in_footer INTEGER NOT NULL DEFAULT 1");
+  }
+}
+
+/** Admin login attempts (web + desktop), kept for the admin login-log console. */
+export async function ensureLoginLogTable(client: Client): Promise<void> {
+  await client.executeMultiple(`
+CREATE TABLE IF NOT EXISTS admin_login_log (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  ok INTEGER NOT NULL DEFAULT 0,
+  ip TEXT,
+  user_agent TEXT,
+  message TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_login_log_created ON admin_login_log (created_at DESC);
+  `);
+}
+
 /** Ensure schema exists, then seed base config on a fresh database. */
 export async function ensureSchema(client: Client): Promise<void> {
   // Desktop runtime: migrations live next to the bundled console (env override).
@@ -315,6 +349,8 @@ export async function ensureSchema(client: Client): Promise<void> {
   await ensureSourceCategoriesTable(client);
   await ensureCategoryDotColumn(client);
   await ensureNoStaticCategoryChecks(client);
+  await ensureFooterColumns(client);
+  await ensureLoginLogTable(client);
   await seedDefaults(client, nowIso());
 }
 

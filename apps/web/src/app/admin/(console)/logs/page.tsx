@@ -1,4 +1,5 @@
 import { recentPipelineRuns, getClient } from "@hoichoi/db";
+import LoginLogViewer from "@/components/admin/LoginLogViewer";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,12 @@ export default async function AdminLogsPage() {
                 <span className="font-mono-x text-[10.5px] text-ink-soft">{new Date(String(a.created_at)).toLocaleString("bn-BD")}</span>
               </div>
             ))}
+          </div>
+        </section>
+        <section>
+          <SectionTitle>অ্যাডমিন লগইন লগ (কোন ইমেইল/আইপি থেকে ঢোকার চেষ্টা)</SectionTitle>
+          <div className="mt-3">
+            <LoginLogViewer />
           </div>
         </section>
       </div>

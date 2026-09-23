@@ -327,7 +327,9 @@ The desktop UI mirrors the `mockup/` desk controller exactly:
   7. **সাইট ও বিজ্ঞাপন** (Palette) — branding fields + four ad-slot HTML
      textareas (same as the old inline section) **+ the shared ওয়েব ভিজিবিলিটি ও থিম
      panel** (`app_config_json`) — see below.
-  8. **অ্যাডমিন** (UserCog) — one-time login codes (unchanged).
+  8. **অ্যাডমিন** (UserCog) — one-time login codes **+ a লগইন লগ panel** (latest
+     sign-in attempts through the runner `loginlog list|delete|clear`, same rows the
+     web admin `/admin/logs` shows).
   9. **ব্যাকআপ** (Archive) — backup / reset / resync (unchanged).
   10. **API ভল্ট** (KeyRound) — vault fields table (unchanged).
 - **Moderation** — comment queue with pending/approved/blocked tabs and approve/block
@@ -352,6 +354,19 @@ The desktop UI mirrors the `mockup/` desk controller exactly:
   all active notices feed the visitor **bell dropdown** — the same rows the web admin
   `/admin/notices` edits. Desktop-created notices set `created_by: "desktop"`. Requires
   migration `008_notices.sql` (bundled with the runner).
+- **Footer branding + per-category footer visibility (migration `009_footer_loginlog.sql`)** —
+  the Settings → সাইট ও বিজ্ঞাপন tab's branding editor gained
+  `footer_about_bn` ("ফুটার `সম্পর্কে` অনুচ্ছেদ", multiline) and the Settings →
+  বিভাগ tab (`DeskCategoryManager`) gained a **পাবলিক ফুটারে দেখান** toggle that
+  passes `--footer true|false` to the runner `categories add|update`. Together they
+  drive the public site's Footer nav (which categories appear) and its about blurb,
+  exactly like the web admin's `SettingsForm`/`CategoryManager`.
+- **Admin login log (migration `009_footer_loginlog.sql`)** — Settings → অ্যাডমিন tab
+  lists the newest admin sign-in attempts (email, ok/fail, IP, message, time) read
+  from the shared `admin_login_log` table via the runner `loginlog list`, with per-row
+  delete and clear-all. Web-admin logins are recorded by `POST /api/auth/login`
+  (`logAdminLogin` in `@hoichoi/db`); the web console's `/admin/logs` shows the same
+  rows.
 - **Web-visibility panel (`app_config_json`)** — the Settings → সাইট ও বিজ্ঞাপন tab
   includes a *ওয়েব ভিজিবিলিটি ও থিম* toggle grid (`show_hero`, `show_live_graph`,
   `show_categories`, `show_ads`, `show_rewrite_engine`, `show_desk_cta`, `show_footer`)
@@ -360,10 +375,11 @@ The desktop UI mirrors the `mockup/` desk controller exactly:
   `settingsSet { app_config_json: … }`, so the public web home sections switch
   instantly (and its sibling `VisibilityPanel` sits on the web admin settings page).
   Default theme seeds the site before hydration so first-time visitors don't flash.
-- **Runner desk CLI** — new subcommands `stats`, `sources`, `queue`, `moderation`
-  (all `apps/scraper/src/cli.ts`). Backend passthrough `desk_call` (Rust) +
-  wrapper `deskCall`/`deskSources`/`deskQueue`/`deskStats`/`deskModeration`/
-  `deskModerationSet` (`src/lib/tauri.ts`). `sources` gained columns `kind`, `fb_id`,
+- **Runner desk CLI** — new subcommands `stats`, `sources`, `queue`, `moderation`,
+  `loginlog`, `cleanup temp` (all `apps/scraper/src/cli.ts`). Backend passthrough `desk_call`
+  (Rust) + wrappers `deskCall`/`deskSources`/`deskQueue`/`deskStats`/`deskModeration`/
+  `deskModerationSet`/`deskLoginLog`/`deskLoginLogDelete`/`deskLoginLogClear`
+  (`src/lib/tauri.ts`). `sources` gained columns `kind`, `fb_id`,
   `topics`, `health` (added idempotently by `ensureDeskColumns` in
   `packages/db/src/client.ts`).
 
@@ -376,8 +392,8 @@ pnpm --filter @hoichoi/desktop tauri build    # NSIS + MSI into src-tauri/target
 ```
 
 > **Re-run `bundle:runner` whenever `packages/db/migrations/` changes.** The EXE and
-> installers embed a snapshot of the runner **and its migrations** (e.g.
-> `008_notices.sql`); a stale snapshot ships without the newest schema.
+> installers embed a snapshot of the runner **and its migrations** (latest e.g.
+> `009_footer_loginlog.sql`); a stale snapshot ships without the newest schema.
 
 Copy the artifacts from `src-tauri/target/release/` into `releases/` (at the repo
 root, gitignored) and upload the same set to the GitHub release:

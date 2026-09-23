@@ -251,6 +251,8 @@ export interface DeskCategory {
   descriptionEn: string;
   dot: string;
   sortOrder: number;
+  /** Whether this category appears in the public site footer nav. */
+  showInFooter: boolean;
 }
 
 export async function deskCategories(env: Record<string, string>): Promise<DeskCategory[]> {
@@ -267,6 +269,7 @@ export async function deskAddCategory(
     descriptionBn?: string;
     descriptionEn?: string;
     dot?: string;
+    showInFooter?: boolean;
   },
 ): Promise<DeskCategory | null> {
   const args = [
@@ -278,6 +281,7 @@ export async function deskAddCategory(
   if (input.descriptionBn) args.push("--desc-bn", input.descriptionBn);
   if (input.descriptionEn) args.push("--desc-en", input.descriptionEn);
   if (input.dot) args.push("--dot", input.dot);
+  if (input.showInFooter !== undefined) args.push("--footer", input.showInFooter ? "true" : "false");
   const res = await deskCall(args, env);
   return (res.category as DeskCategory | null) ?? null;
 }
@@ -292,6 +296,7 @@ export async function deskUpdateCategory(
     descriptionEn?: string;
     dot?: string;
     sortOrder?: number;
+    showInFooter?: boolean;
   },
 ): Promise<DeskCategory | null> {
   const args = ["categories", "update", "--slug", slug];
@@ -301,6 +306,7 @@ export async function deskUpdateCategory(
   if (fields.descriptionEn !== undefined) args.push("--desc-en", fields.descriptionEn);
   if (fields.dot !== undefined) args.push("--dot", fields.dot);
   if (fields.sortOrder !== undefined) args.push("--sort", String(fields.sortOrder));
+  if (fields.showInFooter !== undefined) args.push("--footer", fields.showInFooter ? "true" : "false");
   const res = await deskCall(args, env);
   return (res.category as DeskCategory | null) ?? null;
 }
@@ -508,4 +514,47 @@ export async function deskToggleNotice(env: Record<string, string>, id: string):
 
 export async function deskRemoveNotice(env: Record<string, string>, id: string): Promise<void> {
   await deskCall(["notice", "remove", "--id", id], env);
+}
+
+/* ------------------------------------------------------------------ *
+ * Admin login log (desktop → runner `loginlog`)                       *
+ * ------------------------------------------------------------------ */
+
+export interface DeskLoginLogRow {
+  id: string;
+  email: string;
+  ok: boolean;
+  ip: string | null;
+  user_agent: string | null;
+  message: string | null;
+  created_at: string;
+}
+
+export interface DeskLoginLogPage {
+  rows: DeskLoginLogRow[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
+/** List admin sign-in attempts (newest first) through the bundled runner. */
+export async function deskLoginLog(
+  env: Record<string, string>,
+  page = 1,
+  perPage = 25,
+): Promise<DeskLoginLogPage> {
+  const args = ["loginlog", "list", "--page", String(page), "--per-page", String(perPage)];
+  const res = await deskCall(args, env);
+  return res as unknown as DeskLoginLogPage;
+}
+
+/** Delete one login-log entry. */
+export async function deskLoginLogDelete(env: Record<string, string>, id: string): Promise<void> {
+  await deskCall(["loginlog", "delete", "--id", id], env);
+}
+
+/** Clear the whole login log; returns the number of removed rows. */
+export async function deskLoginLogClear(env: Record<string, string>): Promise<number> {
+  const res = await deskCall(["loginlog", "clear"], env);
+  return Number((res as { cleared?: unknown }).cleared ?? 0);
 }

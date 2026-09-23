@@ -28,6 +28,7 @@ export async function PATCH(req: NextRequest) {
     logo_url: (body.logo_url as string | null) ?? null,
     favicon_url: (body.favicon_url as string | null) ?? null,
     accent_color: body.accent_color as string,
+    footer_about_bn: (body.footer_about_bn as string | null) ?? null,
     ad_leaderboard_html: (body.ad_leaderboard_html as string | null) ?? null,
     ad_rect_html: (body.ad_rect_html as string | null) ?? null,
     ad_infeed_html: (body.ad_infeed_html as string | null) ?? null,

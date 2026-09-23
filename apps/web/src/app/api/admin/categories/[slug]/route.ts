@@ -10,7 +10,7 @@ export async function PATCH(
   if (!user) return unauthorized();
   const { slug } = await params;
   const body = await request.json();
-  const { displayNameBn, displayNameEn, descriptionBn, descriptionEn, isActive, sortOrder, dot, config } = body;
+  const { displayNameBn, displayNameEn, descriptionBn, descriptionEn, isActive, sortOrder, dot, showInFooter, config } = body;
 
   await updateCategory(slug, {
     displayNameBn,
@@ -20,6 +20,7 @@ export async function PATCH(
     isActive,
     sortOrder,
     dot,
+    showInFooter,
     config,
   });
 

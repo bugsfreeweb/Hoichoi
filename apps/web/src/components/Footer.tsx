@@ -1,8 +1,15 @@
 import Link from "next/link";
-import { toBn, CATEGORY_LABEL } from "@/lib/format";
+import { toBn } from "@/lib/format";
 import { BRAND } from "@/lib/brand";
+import { listFooterCategories, getSettings } from "@hoichoi/db";
 
-export function Footer() {
+export async function Footer() {
+  const [categories, settings] = await Promise.all([listFooterCategories(), getSettings()]);
+  const footerLinks = categories.length > 0 ? categories : [];
+  const siteName = settings.site_name || BRAND.en;
+  const about =
+    settings.footer_about_bn ||
+    `${BRAND.tagline} — স্বয়ংক্রিয় সংবাদ কিউরেশন ডেস্কের কারিগরি প্রদর্শনী: ডেস্কটপ কালেক্টর, পুনর্লিখন ইঞ্জিন, AI Agent-ভিত্তিক প্রকাশনা ও Web ডিপ্লয়লাইনের পূর্ণ প্রবাহ।`;
   return (
     <footer className="page-chrome border-t-2 border-ink">
       <div className="mx-auto max-w-[1400px] px-4 py-12 md:px-8">
@@ -20,9 +27,7 @@ export function Footer() {
               </span>
             </span>
             <p className="mt-4 max-w-xs text-[12.5px] leading-relaxed text-ink-soft">
-              {BRAND.tagline} — স্বয়ংক্রিয় সংবাদ কিউরেশন ডেস্কের কারিগরি
-              প্রদর্শনী: ডেস্কটপ কালেক্টর, পুনর্লিখন ইঞ্জিন, AI Agent-ভিত্তিক
-              প্রকাশনা ও Web ডিপ্লয়লাইনের পূর্ণ প্রবাহ।
+              {about}
             </p>
           </div>
           <div className="md:col-span-3">
@@ -30,11 +35,11 @@ export function Footer() {
               বিভাগসমূহ
             </p>
             <ul className="mt-4 space-y-2.5 text-[13px] font-medium">
-              {Object.entries(CATEGORY_LABEL).map(([slug, label]) => (
-                <li key={slug} className="flex items-center gap-2">
+              {footerLinks.map((cat) => (
+                <li key={cat.slug} className="flex items-center gap-2">
                   <span className="h-1 w-1 rotate-45 bg-alizarin" />
-                  <Link href={`/category/${slug}`} className="hover:text-alizarin">
-                    {label}
+                  <Link href={`/category/${cat.slug}`} className="hover:text-alizarin">
+                    {cat.displayNameBn || cat.displayNameEn}
                   </Link>
                 </li>
               ))}
@@ -60,7 +65,7 @@ export function Footer() {
         </div>
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-ink/15 pt-6 font-mono-x text-[10px] tracking-[0.16em] text-ink-soft uppercase">
           <span>
-            © {toBn(2026)} {BRAND.en} DESK · BUILD 3.2
+            © {toBn(2026)} {siteName} DESK · BUILD 3.2
           </span>
           <span className="flex items-center gap-4">
             <Link href="/about">সম্পর্কে</Link>

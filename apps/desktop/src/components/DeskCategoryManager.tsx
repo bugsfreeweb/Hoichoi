@@ -11,6 +11,7 @@ interface Form {
   descriptionBn: string;
   descriptionEn: string;
   dot: string;
+  showInFooter: boolean;
 }
 
 const EMPTY: Form = {
@@ -20,6 +21,7 @@ const EMPTY: Form = {
   descriptionBn: "",
   descriptionEn: "",
   dot: "#d64541",
+  showInFooter: true,
 };
 
 /** Category CRUD for the desk — mirrors the web admin's CategoryManager, dark console styling. */
@@ -70,6 +72,7 @@ export default function DeskCategoryManager() {
         descriptionBn: form.descriptionBn || undefined,
         descriptionEn: form.descriptionEn || undefined,
         dot: form.dot || undefined,
+        showInFooter: form.showInFooter,
       });
       resetForm();
       await refresh();
@@ -91,6 +94,7 @@ export default function DeskCategoryManager() {
       descriptionBn: cat.descriptionBn ?? "",
       descriptionEn: cat.descriptionEn ?? "",
       dot: cat.dot ?? "#d64541",
+      showInFooter: cat.showInFooter ?? true,
     });
   };
 
@@ -104,6 +108,7 @@ export default function DeskCategoryManager() {
         descriptionBn: editForm.descriptionBn,
         descriptionEn: editForm.descriptionEn,
         dot: editForm.dot || undefined,
+        showInFooter: editForm.showInFooter,
       });
       setEditingSlug(null);
       setEditForm(null);
@@ -225,6 +230,15 @@ export default function DeskCategoryManager() {
               />
             </label>
           </div>
+          <label className="flex items-center gap-2 text-[12.5px] text-white/70">
+            <input
+              type="checkbox"
+              checked={form.showInFooter}
+              onChange={(e) => setForm({ ...form, showInFooter: e.target.checked })}
+              className="h-4 w-4 accent-[#c8f65d]"
+            />
+            পাবলিক ফুটারে দেখান (footer nav)
+          </label>
           <div className="flex flex-wrap justify-end gap-2">
             <button className="btn-ghost" onClick={() => setOpen(false)}>
               বাতিল
@@ -285,7 +299,16 @@ export default function DeskCategoryManager() {
                       onChange={(e) => setEditForm({ ...editForm, dot: e.target.value })}
                     />
                     <span className="font-mono-x text-[10px] text-white/50">{editForm.dot}</span>
-                    <span className="ml-auto font-mono-x text-[10px] text-ink-soft">স্লাগ: {cat.slug}</span>
+                    <label className="ml-auto flex items-center gap-1.5 text-[11px] text-white/60">
+                      <input
+                        type="checkbox"
+                        checked={editForm.showInFooter}
+                        onChange={(e) => setEditForm({ ...editForm, showInFooter: e.target.checked })}
+                        className="h-3.5 w-3.5 accent-[#c8f65d]"
+                      />
+                      ফুটারে দেখান
+                    </label>
+                    <span className="font-mono-x text-[10px] text-ink-soft">স্লাগ: {cat.slug}</span>
                   </div>
                   <div className="flex justify-end gap-2">
                     <button
@@ -317,6 +340,9 @@ export default function DeskCategoryManager() {
                         {cat.descriptionBn || cat.descriptionEn}
                       </p>
                     )}
+                    <p className="mt-1 font-mono-x text-[9px] tracking-wide text-white/35">
+                      {cat.showInFooter ? "FOOTER: দেখানো হচ্ছে" : "FOOTER: লুকানো"}
+                    </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     <button

@@ -84,6 +84,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   logo_url: null,
   favicon_url: null,
   accent_color: "#d64541",
+  footer_about_bn: null,
   ad_leaderboard_html: null,
   ad_rect_html: null,
   ad_infeed_html: null,
@@ -107,6 +108,7 @@ export function mapSettings(row: Record<string, unknown>): SiteSettings {
     logo_url: (row.logo_url as string | null) ?? null,
     favicon_url: (row.favicon_url as string | null) ?? null,
     accent_color: str(row.accent_color, DEFAULT_SETTINGS.accent_color),
+    footer_about_bn: (row.footer_about_bn as string | null) ?? null,
     ad_leaderboard_html: (row.ad_leaderboard_html as string | null) ?? null,
     ad_rect_html: (row.ad_rect_html as string | null) ?? null,
     ad_infeed_html: (row.ad_infeed_html as string | null) ?? null,
@@ -139,6 +141,7 @@ export async function updateSettings(fields: Partial<SiteSettings>): Promise<voi
     "logo_url",
     "favicon_url",
     "accent_color",
+    "footer_about_bn",
     "ad_leaderboard_html",
     "ad_rect_html",
     "ad_infeed_html",
@@ -147,6 +150,7 @@ export async function updateSettings(fields: Partial<SiteSettings>): Promise<voi
   ];
   if (fields.logo_url === "") fields.logo_url = null;
   if (fields.favicon_url === "") fields.favicon_url = null;
+  if (fields.footer_about_bn === "") fields.footer_about_bn = null;
   const adSlotKeys = ["ad_leaderboard_html", "ad_rect_html", "ad_infeed_html", "ad_strip_html"] as const;
   for (const k of adSlotKeys) {
     if (fields[k] === "") fields[k] = null;
@@ -156,7 +160,7 @@ export async function updateSettings(fields: Partial<SiteSettings>): Promise<voi
   for (const k of allowed) {
     const v = fields[k];
     if (v === undefined) continue;
-    if (v === null && k !== "logo_url" && k !== "favicon_url" && !adSlotKeys.includes(k as (typeof adSlotKeys)[number])) continue;
+    if (v === null && k !== "logo_url" && k !== "favicon_url" && k !== "footer_about_bn" && !adSlotKeys.includes(k as (typeof adSlotKeys)[number])) continue;
     sets.push(`${k} = ?`);
     args.push(v as InValue);
   }
@@ -326,6 +330,15 @@ export async function categoriesWithCounts(): Promise<Array<{ category: Category
     .filter((c) => c.count > 0);
 }
 
+/** Active categories opted in to the public site footer nav (editable from web + desk). */
+export async function listFooterCategories(): Promise<CategoryMeta[]> {
+  const client = getClient();
+  const res = await client.execute(
+    "SELECT * FROM category_configs WHERE is_active = 1 AND show_in_footer = 1 ORDER BY sort_order ASC, slug ASC",
+  );
+  return res.rows.map((r) => mapCategory(r as Record<string, unknown>));
+}
+
 /** Normalize a dot color for storage as CSS-ready `#hex` (UI sends `#…`;
  *  legacy seed/defaults may arrive unprefixed). */
 function normalizeCategoryDot(value: string | undefined): string | null {
@@ -348,6 +361,8 @@ export async function createCategory(input: {
   dot?: string;
   config?: Partial<CategoryConfig>;
   sortOrder?: number;
+  showInFooter?: boolean;
+  isActive?: boolean;
 }): Promise<void> {
   const client = getClient();
   const now = nowIso();
@@ -365,16 +380,18 @@ export async function createCategory(input: {
     ...(input.config ?? {}),
   };
   await client.execute({
-    sql: `INSERT INTO category_configs (slug, display_name_bn, display_name_en, description_bn, description_en, is_active, sort_order, dot, config, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO category_configs (slug, display_name_bn, display_name_en, description_bn, description_en, is_active, sort_order, dot, show_in_footer, config, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       input.slug,
       input.displayNameBn,
       input.displayNameEn,
       input.descriptionBn ?? "",
       input.descriptionEn ?? "",
+      input.isActive === undefined ? 1 : input.isActive ? 1 : 0,
       input.sortOrder ?? 99,
       normalizeCategoryDot(input.dot),
+      input.showInFooter === undefined ? 1 : input.showInFooter ? 1 : 0,
       JSON.stringify(defaultConfig),
       now,
       now,
@@ -391,6 +408,7 @@ export async function updateCategory(slug: string, fields: Partial<{
   isActive: boolean;
   sortOrder: number;
   dot: string;
+  showInFooter: boolean;
   config: Partial<CategoryConfig>;
 }>): Promise<void> {
   const client = getClient();
@@ -405,6 +423,7 @@ export async function updateCategory(slug: string, fields: Partial<{
   if (fields.isActive !== undefined) { sets.push("is_active = ?"); args.push(fields.isActive ? 1 : 0); }
   if (fields.sortOrder !== undefined) { sets.push("sort_order = ?"); args.push(fields.sortOrder); }
   if (fields.dot !== undefined) { sets.push("dot = ?"); args.push(normalizeCategoryDot(fields.dot)); }
+  if (fields.showInFooter !== undefined) { sets.push("show_in_footer = ?"); args.push(fields.showInFooter ? 1 : 0); }
   if (fields.config !== undefined) {
     // Merge with existing config
     const existing = await getCategory(slug);
@@ -901,6 +920,9 @@ export async function updatePost(id: string, fields: PostUpdateFields): Promise<
   const args: InValue[] = [];
 
   if (typeof fields.title_bn === "string") {
+    if (!fields.title_bn.trim()) {
+      throw new Error("title_bn must not be empty");
+    }
     sets.push("title_bn = ?");
     args.push(fields.title_bn);
   }

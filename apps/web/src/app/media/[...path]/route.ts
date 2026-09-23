@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { mediaRoot } from "@hoichoi/db";
+import { mediaRootCandidates } from "@hoichoi/db";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -20,20 +20,18 @@ const MIME: Record<string, string> = {
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
   const { path: parts } = await ctx.params;
   const rel = parts.join("/");
-  const root = mediaRoot();
-  const full = path.resolve(root, rel);
-  if (!full.startsWith(path.resolve(root))) {
-    return new NextResponse("Not found", { status: 404 });
+  for (const root of mediaRootCandidates()) {
+    const full = path.resolve(root, rel);
+    if (!full.startsWith(path.resolve(root))) continue;
+    if (!fs.existsSync(full)) continue;
+    const ext = path.extname(full).toLowerCase();
+    const buf = fs.readFileSync(full);
+    return new NextResponse(new Uint8Array(buf), {
+      headers: {
+        "content-type": MIME[ext] ?? "application/octet-stream",
+        "cache-control": CACHE,
+      },
+    });
   }
-  if (!fs.existsSync(full)) {
-    return new NextResponse("Not found", { status: 404 });
-  }
-  const ext = path.extname(full).toLowerCase();
-  const buf = fs.readFileSync(full);
-  return new NextResponse(new Uint8Array(buf), {
-    headers: {
-      "content-type": MIME[ext] ?? "application/octet-stream",
-      "cache-control": CACHE,
-    },
-  });
+  return new NextResponse("Not found", { status: 404 });
 }
