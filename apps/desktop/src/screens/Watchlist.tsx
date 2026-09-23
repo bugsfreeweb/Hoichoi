@@ -256,7 +256,9 @@ export default function Watchlist({
             {shown.map((s) => {
               const isError = s.health === 0;
               const st = isError ? "error" : s.is_active ? "watching" : "paused";
-              const slugs = s.categories.length ? s.categories : s.category ? [s.category] : [];
+              const slugs = [...new Set(s.categories.length ? s.categories : s.category ? [s.category] : [])];
+              const catName = (slug: string) =>
+                categories.find((c) => c.slug === slug)?.displayNameBn ?? slug;
               return (
                 <tr key={s.id} className="group hover:bg-[var(--ds-kb)]">
                   <td className="px-5 py-3.5">
@@ -271,7 +273,7 @@ export default function Watchlist({
                             key={slug}
                             className="rounded-full border border-[var(--ds-bd-2)] px-1.5 py-0.5 font-mono-x text-[8.5px] tracking-wide text-[var(--ds-t4)]"
                           >
-                            {slug}
+                            {catName(slug)}
                           </span>
                         ))}
                       </div>

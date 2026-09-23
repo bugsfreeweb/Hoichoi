@@ -50,6 +50,20 @@ export type ProviderKey =
   | "github-models"
   | "custom";
 
+/** Canonical env var each provider key maps to when no explicit env is set. */
+export const PROCESSOR_ENV_DEFAULTS: Record<ProviderKey, string> = {
+  google: "GOOGLE_API_KEY",
+  groq: "GROQ_API_KEY",
+  openrouter: "OPENROUTER_API_KEY",
+  ollama: "OLLAMA_BASE_URL",
+  anthropic: "ANTHROPIC_API_KEY",
+  openai: "OPENAI_API_KEY",
+  mistral: "MISTRAL_API_KEY",
+  github: "GITHUB_COPILOT_TOKEN",
+  "github-models": "GITHUB_COPILOT_TOKEN",
+  custom: "MANIFEST_API_KEY",
+};
+
 /** Per-category behavior flags stored in category_configs.config (JSON). */
 export interface CategoryConfig {
   requires_double_approval: boolean;

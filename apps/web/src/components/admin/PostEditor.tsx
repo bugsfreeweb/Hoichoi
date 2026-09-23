@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Post, PostStatus, CaseStatus, CategorySlug } from "@hoichoi/shared-types";
 
@@ -9,6 +9,11 @@ const CATEGORY_LABELS: Record<CategorySlug, string> = {
   "extramarital-crime": "অবৈধ সম্পর্ক ও ব্ল্যাকমেইল",
   "missing-children": "নিখোঁজ শিশু",
 };
+
+interface CatOption {
+  slug: CategorySlug;
+  label: string;
+}
 
 const CASE_LABELS: Array<{ value: CaseStatus; label: string }> = [
   { value: "active", label: "চলমান (active)" },
@@ -60,6 +65,35 @@ export function PostEditor({ post }: { post: Post }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [catOptions, setCatOptions] = useState<CatOption[] | null>(null);
+
+  // Dynamic categories come from the config table so admins can recategorize a
+  // post into any custom section, not just the three built-in slugs.
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/categories", { cache: "no-store" });
+        const j = (await res.json()) as {
+          categories?: Array<{ slug: string; display_name_bn: string }>;
+        };
+        const opts = (j.categories ?? []).map((c) => ({
+          slug: c.slug as CategorySlug,
+          label: CATEGORY_LABELS[c.slug as CategorySlug] ?? c.display_name_bn ?? c.slug,
+        }));
+        if (!opts.some((o) => o.slug === post.category)) {
+          opts.unshift({
+            slug: post.category,
+            label: CATEGORY_LABELS[post.category] ?? post.category,
+          });
+        }
+        setCatOptions(opts);
+      } catch {
+        setCatOptions([
+          { slug: post.category, label: CATEGORY_LABELS[post.category] ?? post.category },
+        ]);
+      }
+    })();
+  }, [post.category]);
 
   const save = async () => {
     setBusy("save");
@@ -159,9 +193,9 @@ export function PostEditor({ post }: { post: Post }) {
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="ক্যাটাগরি">
             <select className={field} value={category} onChange={(e) => setCategory(e.target.value as CategorySlug)}>
-              {(Object.keys(CATEGORY_LABELS) as CategorySlug[]).map((c) => (
-                <option key={c} value={c}>
-                  {CATEGORY_LABELS[c]}
+              {(catOptions ?? [{ slug: post.category, label: CATEGORY_LABELS[post.category] ?? post.category }]).map((c) => (
+                <option key={c.slug} value={c.slug}>
+                  {c.label}
                 </option>
               ))}
             </select>

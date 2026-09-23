@@ -9,6 +9,7 @@ import {
   deskSources,
   deskQueue,
   deskStats,
+  deskProviders,
   type DeskQueueRow,
   type DeskSource,
   type DeskStats,
@@ -162,8 +163,22 @@ export default function App() {
 
   const refresh = useCallback(async () => {
     try {
-      setConfigured(await listConfigured());
       const env = await getRunEnv();
+      // Merge DB provider key overrides into the vault "configured" map so
+      // keys stored via the provider panel (mistral/openai/manifest/copilot…)
+      // still surface as filled in the vault UI.
+      const configuredMap = await listConfigured();
+      try {
+        const provs = await deskProviders(env);
+        for (const p of provs) {
+          if (p.api_key && p.api_key_env_var) {
+            configuredMap[p.api_key_env_var as CredentialName] = true;
+          }
+        }
+      } catch {
+        /* provider list is optional */
+      }
+      setConfigured(configuredMap);
       const s = await settingsGet(env).catch(() => null);
       if (s && Number(s.pipeline_hours) > 0) setHours(Number(s.pipeline_hours));
       const [src, rows, stats] = await Promise.all([
@@ -420,7 +435,7 @@ export default function App() {
               </section>
 
               <section className="pane col" id="pane-collector" hidden={view !== "collector"}>
-                <Collector logs={logs} running={running} onStart={() => void runNow()} onStop={() => void stopNow()} />
+                <Collector logs={logs} running={running} onStart={() => void runNow()} onStop={() => void stopNow()} statsData={statsData} />
               </section>
 
               <section className="pane col" id="pane-vault" hidden={view !== "vault"}>

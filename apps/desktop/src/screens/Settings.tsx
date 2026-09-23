@@ -37,6 +37,7 @@ import {
   deskLoginLog,
   deskLoginLogDelete,
   deskLoginLogClear,
+  deskProviders,
   type DeskLoginLogPage,
   type AdminLoginCode,
   type AdminCodeList,
@@ -73,6 +74,10 @@ const FIELDS: Array<{ name: CredentialName; label: string; secret: boolean }> = 
   { name: "GROQ_API_KEY", label: "Groq API key", secret: true },
   { name: "OPENROUTER_API_KEY", label: "OpenRouter API key", secret: true },
   { name: "OLLAMA_BASE_URL", label: "Ollama base URL", secret: false },
+  { name: "MISTRAL_API_KEY", label: "Mistral API key", secret: true },
+  { name: "OPENAI_API_KEY", label: "OpenAI API key", secret: true },
+  { name: "MANIFEST_API_KEY", label: "Manifest API key", secret: true },
+  { name: "GITHUB_COPILOT_TOKEN", label: "GitHub Copilot token", secret: true },
 ];
 
 const BRAND_FIELDS: Array<{ key: string; label: string; secret?: boolean; multiline?: boolean }> = [
@@ -122,7 +127,7 @@ const VIS_DEFAULTS: SiteAppConfig = {
   show_rewrite_engine: true,
   show_desk_cta: true,
   show_footer: true,
-  theme_default: "light",
+  theme_default: "dark",
   surge_threshold: 12,
 };
 
@@ -361,10 +366,25 @@ export default function Settings({
     void loadAdminCodes();
     void loadAdSlots();
     void loadLoginLog();
+    void loadProviderKeys();
     // Local-only mode: pull web-side config (categories/sources/branding)
     // down to the desk so both admin surfaces show the same data.
     void autoPull();
   }, []);
+
+  const [providerKeys, setProviderKeys] = useState<Record<string, boolean>>({});
+  const loadProviderKeys = async () => {
+    try {
+      const provs = await deskProviders(await getRunEnv());
+      const map: Record<string, boolean> = {};
+      for (const p of provs) {
+        if (p.api_key_env_var && p.api_key) map[p.api_key_env_var] = true;
+      }
+      setProviderKeys(map);
+    } catch {
+      /* provider keys are optional */
+    }
+  };
 
   const loadAdminCodes = async () => {
     try {
@@ -524,7 +544,7 @@ export default function Settings({
 
   const Show = ({ name }: { name: CredentialName }) => {
     const [has, setHas] = useState<boolean | null>(null);
-    void getCredential(name).then((v) => setHas(v !== null));
+    void getCredential(name).then((v) => setHas(v !== null || Boolean(providerKeys[name])));
     return has === null ? (
       <span className="font-mono text-[10px] text-ink-soft/60">…</span>
     ) : has ? (

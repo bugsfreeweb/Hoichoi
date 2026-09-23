@@ -43,7 +43,7 @@ import {
   CONTENT_TABLES,
   type ExportBundle,
 } from "@hoichoi/db";
-import type { CategorySlug, NoticeTone, ProviderKey, SiteSettings } from "@hoichoi/shared-types";
+import { PROCESSOR_ENV_DEFAULTS, type CategorySlug, type NoticeTone, type ProviderKey, type SiteSettings } from "@hoichoi/shared-types";
 
 /** Structural match for @libsql/client's InValue (avoids pulling the dep into scraper). */
 type SqlValue = null | string | number | bigint | Uint8Array | ArrayBuffer;
@@ -303,8 +303,8 @@ function deskSourceRow(row: Record<string, unknown>) {
     topics,
     category: row.category as CategorySlug,
     categories: row.category_csv
-      ? String(row.category_csv).split(",").map((s) => s.trim()).filter(Boolean)
-      : row.category ? [String(row.category)] : [],
+      ? [...new Set(String(row.category_csv).split(",").map((s) => s.trim()).filter(Boolean))]
+      : row.category ? [...new Set([String(row.category)])] : [],
     is_active: Boolean(row.is_active),
     last_scraped_at: (row.last_scraped_at as string | null) ?? null,
     posts_today: Number(row.posts_today ?? 0),
@@ -702,6 +702,9 @@ const PROVIDER_BASE_DEFAULTS: Record<string, string> = {
   custom: "",
 };
 
+// Canonical env var each provider key maps to when no --env is given. Kept in
+// sync with the desktop vault + web provider route so API boxes stay filled.
+
 async function listProviderRows() {
   const client = getClient();
   const res = await client.execute("SELECT * FROM llm_providers ORDER BY priority ASC");
@@ -764,7 +767,7 @@ async function upsertProvider(o: ProviderUpsert) {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
     args: [
       rowId, key, o.name?.trim() || key, o.base?.trim() || null,
-      o.model?.trim() || "", o.env?.trim() || `${key.toUpperCase().replace(/-/g, "_")}_API_KEY`,
+      o.model?.trim() || "", o.env?.trim() || (PROCESSOR_ENV_DEFAULTS as Record<string, string>)[key] || `${key.toUpperCase().replace(/-/g, "_")}_API_KEY`,
       o.apiKey?.trim() || null, Number(o.priority ?? 100),
       o.free === "false" ? 0 : 1, o.rewrite === "false" ? 0 : 1, o.embed === "true" ? 1 : 0, now, now,
     ],

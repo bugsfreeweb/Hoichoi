@@ -327,7 +327,7 @@ export default function DeskSourceManager() {
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         {sources.map((s) => {
           const editing = editingId === s.id && editForm;
-          const cats = (s.categories?.length ? s.categories : [s.category]).filter(Boolean);
+          const cats = [...new Set((s.categories?.length ? s.categories : [s.category]).filter(Boolean))];
           return (
             <div key={s.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
               {editing ? (

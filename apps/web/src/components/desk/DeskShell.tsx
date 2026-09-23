@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import DeskSources from "@/components/desk/DeskSources";
 import type { Post, CommentWithPost } from "@hoichoi/shared-types";
 import type { RecentPipelineRun } from "@hoichoi/db";
 
@@ -250,7 +251,7 @@ export default function DeskShell({
                 </div>
               )}
 
-              {tab === "watchlist" && <Placeholder title="ওয়াচলিস্ট" desc="ডেস্কটপ অ্যাপে সোর্স ম্যানেজমেন্ট উপলব্ধ।" />}
+              {tab === "watchlist" && <DeskSources />}
               {tab === "queue" && <Placeholder title="কনটেন্ট সারি" desc={`${toBn(posts.length)} আইটেম — সম্পূর্ণ সারি ওয়েব অ্যাডমিনে দেখুন।`} />}
               {tab === "collector" && <Placeholder title="কালেক্টর" desc="স্ক্র্যাপার লগ ও রান হিস্ট্রি — ডেস্কটপে ফুল অ্যাক্সেস।" />}
               {tab === "vault" && <Placeholder title="API ভল্ট" desc="কী ম্যানেজমেন্ট — এনক্রিপশন ডেস্কটপ এনভায়রনমেন্টে।" />}

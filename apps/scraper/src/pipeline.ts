@@ -16,6 +16,8 @@ import { isVideoUrl, mediaRoot, processImage, randomMediaName } from "./media";
 import { processVideo } from "./video";
 import { makeSlug, rewritePost } from "./rewrite";
 import { captureScreenshot } from "./screenshot";
+import { classifyContent } from "./classify";
+import { uploadRemote } from "./storage";
 
 /** Shared fetch options for CDN media: some providers 403 on the bare Node
  *  user-agent, so present a normal browser UA + image accept header. */
@@ -179,41 +181,60 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         continue; // UNIQUE conflict from concurrent run
       }
 
-      // STEP 2: media handling (best-effort, never fatal).
+      // STEP 2: media handling (best-effort, never fatal). Tries every candidate
+      // URL scraped from the post — the video first for a video post, then any
+      // photos — so a failed video or 403'd image falls through to the next one.
       const media: { kind: "image" | "video" | "none"; path: string | null } = { kind: "none", path: null };
       try {
-        const firstMedia = sp.mediaUrls?.[0];
-        if (firstMedia) {
-          if (isVideoUrl(firstMedia)) {
-            const result = await processVideo({
-              inputUrl: firstMedia,
-              stampText: new Date().toLocaleString("bn-BD", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-              log,
-            });
-            if (result) {
-              await client.execute({
-                sql: "UPDATE raw_posts SET raw_meta = json_set(COALESCE(raw_meta,'{}'), '$.media_path', ?) WHERE id = ?",
-                args: [result.rel, rawId],
+        const candidates = sp.mediaUrls ?? [];
+        for (const mUrl of candidates) {
+          try {
+            if (isVideoUrl(mUrl)) {
+              const result = await processVideo({
+                inputUrl: mUrl,
+                stampText: new Date().toLocaleString("bn-BD", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+                log,
               });
-              media.kind = "video";
-              media.path = result.rel;
+              if (result) {
+                await client.execute({
+                  sql: "UPDATE raw_posts SET raw_meta = json_set(COALESCE(raw_meta,'{}'), '$.media_path', ?) WHERE id = ?",
+                  args: [result.rel, rawId],
+                });
+                media.kind = "video";
+                media.path = result.rel;
+                break;
+              }
+            } else {
+              const rel = randomMediaName("img", "webp");
+              const bufRes = await fetch(mUrl, MEDIA_FETCH_INIT);
+              if (bufRes.ok && bufRes.headers.get("content-length") !== "0") {
+                const buf = Buffer.from(await bufRes.arrayBuffer());
+                if (buf.length >= 1024) {
+                  await processImage(buf, rel, { maxWidthPx: 1280 });
+                  await client.execute({
+                    sql: "UPDATE raw_posts SET raw_meta = json_set(COALESCE(raw_meta,'{}'), '$.media_path', ?) WHERE id = ?",
+                    args: [rel, rawId],
+                  });
+                  media.kind = "image";
+                  media.path = rel;
+                  break;
+                }
+              }
             }
-          } else {
-            const rel = randomMediaName("img", "webp");
-            const bufRes = await fetch(firstMedia, MEDIA_FETCH_INIT);
-            if (bufRes.ok) {
-              const buf = Buffer.from(await bufRes.arrayBuffer());
-              await processImage(buf, rel, { maxWidthPx: 1280 });
-              await client.execute({
-                sql: "UPDATE raw_posts SET raw_meta = json_set(COALESCE(raw_meta,'{}'), '$.media_path', ?) WHERE id = ?",
-                args: [rel, rawId],
-              });
-              media.kind = "image";
-              media.path = rel;
-            }
+          } catch {
+            // keep trying the next candidate
+          }
+        }
+        // Push to remote storage when configured so the deployed web app can
+        // serve the file (serverless can't reach this machine's disk).
+        if (media.path && !/^https?:\/\//.test(media.path)) {
+          const pub = await uploadRemote(media.path);
+          if (pub) {
+            media.path = pub;
+            log(`[media] uploaded → ${pub}`);
           }
         }
       } catch (err) {
@@ -259,18 +280,30 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       // STEP 5: rewrite + embedding (only when we have text).
       if (!sp.rawText) continue;
       try {
+        // Content-based re-detection: a source pinned to one category (e.g. the
+        // CLI default "missing-children") may receive posts that clearly belong
+        // elsewhere. Only override when the text strongly matches another slug.
+        const detected = classifyContent(sp.rawText, [...cats.keys()], source.category);
+        const postCategory: CategorySlug = detected?.slug ?? source.category;
+        if (postCategory !== source.category) {
+          log(
+            `[classify] "${source.page_name}" → ${postCategory} (${detected!.confidence}% · ${detected!.matches.length} hits)`,
+          );
+        }
         // Resolve a category config for the source. A freshly added source may use
         // a category that does not exist in THIS database yet (e.g. a custom web
         // category on a desktop-local DB). Falling back keeps the source producing
         // content instead of silently failing every post with "no category config".
         const resolved = resolveCategoryConfig(source, cats);
         if (!resolved) throw new Error(`no category config — category_configs is empty`);
-        const config = resolved.config;
+        // Prefer the detected post's own category config when it exists here;
+        // otherwise the source's best-effort config (see resolveCategoryConfig).
+        const config = (cats.get(postCategory) ?? resolved).config;
         const outcome = await rewritePost({
           rawText: sp.rawText,
           sourceName: source.id,
           sourcePageName: source.page_name,
-          category: source.category,
+          category: postCategory,
           categoryConfig: config,
           originalAuthorName: sp.authorName ?? null,
           policeHelpline: String(setRow.police_helpline ?? "999"),
@@ -314,7 +347,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `,
             args: [
-              crypto.randomUUID(), rawId, source.id, source.category,
+              crypto.randomUUID(), rawId, source.id, postCategory,
               outcome.rewritten.title_bn, outcome.rewritten.body_bn, outcome.rewritten.summary_bn,
               media.path, media.kind,
               sp.fbPostUrl, source.page_name, slug, status,

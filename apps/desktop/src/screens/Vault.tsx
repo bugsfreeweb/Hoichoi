@@ -18,8 +18,10 @@ import {
 import {
   type CredentialName,
   getCredential,
+  getRunEnv,
   envNameFor,
 } from "../lib/vault";
+import { deskProviders } from "../lib/tauri";
 import { toBn } from "../lib/format";
 
 const SERVICE_ICON: Record<string, LucideIcon> = {
@@ -121,6 +123,18 @@ export default function Vault({
         const v = await getCredential(name);
         if (alive) map[name] = v ?? undefined;
       }
+      // Keys stored as DB provider overrides are real run-scoped secrets; merge
+      // them in so previously-saved boxes (mistral/openai/manifest/copilot…)
+      // show as filled even though they never lived in the Stronghold vault.
+      try {
+        const provs = await deskProviders(await getRunEnv());
+        for (const p of provs) {
+          const n = p.api_key_env_var as CredentialName;
+          if (alive && n && p.api_key && ORDER.includes(n)) map[n] = p.api_key;
+        }
+      } catch {
+        /* provider list is optional */
+      }
       if (alive) setValues(map);
     })();
     return () => {
@@ -197,7 +211,7 @@ export default function Vault({
                 const meta = META[name];
                 const Icon = SERVICE_ICON[meta.service] ?? KeyRound;
                 const v = values[name];
-                const has = Boolean(configured[name] && v);
+                const has = Boolean(configured[name] || v);
                 const scope = SCOPE[name];
                 const isOpen = Boolean(revealed[name]);
                 const isCopied = Boolean(copied[name]);

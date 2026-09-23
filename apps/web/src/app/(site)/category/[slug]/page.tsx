@@ -17,11 +17,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-const VALID: CategorySlug[] = ["child-sexual-abuse", "extramarital-crime", "missing-children"];
-
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  if (!VALID.includes(slug as CategorySlug)) notFound();
   const [cat, cats, posts, total] = await Promise.all([
     findCategory(slug),
     getCategories(),

@@ -889,6 +889,15 @@ export const CATEGORY_SLUGS: CategorySlug[] = [
   "missing-children",
 ];
 
+/**
+ * Category validation follows the config table, not the static whitelist above —
+ * admins may create dynamic categories and still recategorize posts into them.
+ */
+export async function categoryExists(slug: string): Promise<boolean> {
+  if (CATEGORY_SLUGS.includes(slug as CategorySlug)) return true;
+  return (await getCategory(slug)) !== null;
+}
+
 /** All posts, newest first (content-manager list + search space). */
 export async function listPosts(limit = 300): Promise<Post[]> {
   const client = getClient();
@@ -935,7 +944,7 @@ export async function updatePost(id: string, fields: PostUpdateFields): Promise<
     args.push(fields.summary_bn ?? null);
   }
   if (fields.category !== undefined) {
-    if (!CATEGORY_SLUGS.includes(fields.category)) {
+    if (!(await categoryExists(fields.category))) {
       throw new Error(`invalid category: ${fields.category}`);
     }
     sets.push("category = ?");

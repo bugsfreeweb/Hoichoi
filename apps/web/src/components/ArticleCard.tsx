@@ -32,11 +32,21 @@ export default function ArticleCard({ post, index }: ArticleCardProps) {
       <div className="frame-press relative overflow-hidden">
         <div className="aspect-[16/9.5] overflow-hidden bg-paper-deep">
           {post.media_path && post.media_kind !== "none" ? (
-            <img
-              src={mediaUrl({ media_path: post.media_path, media_kind: post.media_kind }) ?? undefined}
-              alt={post.title_bn}
-              className="photo-grade h-full w-full object-cover"
-            />
+            post.media_kind === "video" ? (
+              <video
+                src={mediaUrl({ media_path: post.media_path, media_kind: post.media_kind }) ?? undefined}
+                className="photo-grade h-full w-full object-cover"
+                muted
+                playsInline
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={mediaUrl({ media_path: post.media_path, media_kind: post.media_kind }) ?? undefined}
+                alt={post.title_bn}
+                className="photo-grade h-full w-full object-cover"
+              />
+            )
           ) : (
             <div className="flex h-full items-center justify-center px-6">
               <p className="text-center font-serif-bn text-[15px] font-bold leading-relaxed text-ink/40">

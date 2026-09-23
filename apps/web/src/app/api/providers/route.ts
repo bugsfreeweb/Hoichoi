@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient, nowIso, mapProvider } from "@hoichoi/db";
-import type { ProviderKey } from "@hoichoi/shared-types";
+import { PROCESSOR_ENV_DEFAULTS, type ProviderKey } from "@hoichoi/shared-types";
 import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
 
 const KEYS: ProviderKey[] = ["google", "groq", "openrouter", "ollama", "anthropic", "openai", "mistral", "github", "github-models", "custom"];
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       body.displayName?.trim() || body.providerKey,
       body.baseUrl?.trim() || null,
       body.modelName,
-      body.apiKeyEnvVar?.trim() || `${body.providerKey.toUpperCase().replace(/-/g, "_")}_API_KEY`,
+      body.apiKeyEnvVar?.trim() || PROCESSOR_ENV_DEFAULTS[body.providerKey],
       body.api_key?.trim() || null,
       Number(body.priority ?? 100),
       body.isFreeTier ? 1 : 0,

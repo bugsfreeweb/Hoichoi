@@ -171,17 +171,23 @@ export async function scrapePage(
         .first()
         .textContent()
         .catch(() => null);
-      const img = await page
-        .locator("img[src*='scontent'], img[alt*='photo'], video + img")
-        .first()
-        .getAttribute("src")
-        .catch(() => null);
       const hasVideo = (await page.locator("video").count()) > 0;
+      // Collect every media frame on the post — multiple photos plus the video
+      // poster when present. The poster is preferred for a video post; the
+      // pipeline still falls back to a plain image if the video fails.
+      const imgs = await page
+        .locator("img[src*='scontent'], img[alt*='photo'], img[src*='p16-sign-va']")
+        .evaluateAll((els) => els.map((e) => (e as HTMLImageElement).src))
+        .catch(() => [] as string[]);
+      const poster = hasVideo
+        ? await page.locator("video + img").first().getAttribute("src").catch(() => null)
+        : null;
+      const mediaUrls = [...new Set([...(poster ? [poster] : []), ...imgs].filter((u): u is string => Boolean(u && u.startsWith("http"))))].slice(0, 4);
       posts.push({
         fbPostId: id,
         fbPostUrl: url,
         rawText: rawText?.slice(0, 4000) ?? null,
-        mediaUrls: img ? [img] : [],
+        mediaUrls,
         postTimestamp: new Date().toISOString(),
         fbMediaIsVideo: hasVideo,
       });
