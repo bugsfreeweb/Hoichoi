@@ -74,3 +74,105 @@ export async function POST(req: NextRequest) {
   });
   return NextResponse.json({ ok: true });
 }
+
+export async function PUT(req: NextRequest) {
+  const user = await requireApiUser();
+  if (!user) return unauthorized();
+  if (user.role !== "admin" && user.role !== "editor") return forbidden();
+
+  const body = (await req.json().catch(() => null)) as {
+    sourceId?: string;
+    pageUrl?: string;
+    pageName?: string;
+    category?: CategorySlug;
+    categories?: CategorySlug[];
+    isVerified?: boolean;
+  } | null;
+  if (!body?.sourceId) {
+    return NextResponse.json({ error: "sourceId required" }, { status: 400 });
+  }
+
+  const client = getClient();
+  const active = (await listCategories()).map((c) => c.slug);
+  const sets: string[] = [];
+  const args: (string | number)[] = [];
+
+  if (body.pageUrl !== undefined) {
+    sets.push("page_url = ?");
+    args.push(body.pageUrl.trim());
+  }
+  if (body.pageName !== undefined) {
+    sets.push("page_name = ?");
+    args.push(body.pageName.trim());
+  }
+  if (body.category !== undefined || body.categories?.length) {
+    const requested = body.categories?.length ? body.categories : body.category ? [body.category] : [];
+    const chosen = active.filter((c) => requested.includes(c));
+    if (chosen.length === 0) {
+      return NextResponse.json({ error: "invalid category" }, { status: 400 });
+    }
+    if (body.category !== undefined) {
+      sets.push("category = ?");
+      args.push(body.category);
+    } else {
+      // multi-category: set category to first chosen
+      sets.push("category = ?");
+      args.push(chosen[0]);
+    }
+  }
+  if (body.isVerified !== undefined) {
+    sets.push("is_verified = ?");
+    args.push(body.isVerified ? 1 : 0);
+  }
+
+// $FlowFixMe $TS-ignore
+  // $FlowFixMe $TS-ignore
+  sets.push("updated_at = ?");
+  args.push(nowIso());
+  args.push((body.sourceId as string).trim());
+
+  try {
+    await client.execute({
+      sql: `UPDATE sources SET ${sets.join(", ")} WHERE id = ?`,
+      args,
+    });
+  } catch {
+    return NextResponse.json({ error: "source update failed" }, { status: 409 });
+  }
+
+  const row = await client.execute({ sql: "SELECT * FROM sources WHERE id = ?", args: [body.sourceId] });
+  const cats = await getSourceCategories(body.sourceId);
+  const updatedSource = mapSource(row.rows[0] as Record<string, unknown>, cats);
+  return NextResponse.json({ ok: true, source: updatedSource });
+}
+
+export async function DELETE(req: NextRequest) {
+  const user = await requireApiUser();
+  if (!user) return unauthorized();
+  if (user.role !== "admin" && user.role !== "editor") return forbidden();
+
+  const { searchParams } = new URL(req.url);
+  const sourceId = searchParams.get("sourceId");
+  if (!sourceId) {
+    return NextResponse.json({ error: "sourceId required" }, { status: 400 });
+  }
+
+  const client = getClient();
+  try {
+    await client.execute({
+      sql: "DELETE FROM sources WHERE id = ?",
+      args: [sourceId],
+    });
+    await client.execute({
+      sql: "DELETE FROM source_categories WHERE source_id = ?",
+      args: [sourceId],
+    });
+    await client.execute({
+      sql: "INSERT INTO admin_actions (id, admin_user_id, action, target_table, target_id, created_at) VALUES (?, ?, ?, 'sources', ?, ?)",
+      args: [crypto.randomUUID(), user.user_id, "source.delete", sourceId, nowIso()],
+    });
+  } catch {
+    return NextResponse.json({ error: "source delete failed" }, { status: 409 });
+  }
+  return NextResponse.json({ ok: true });
+}
