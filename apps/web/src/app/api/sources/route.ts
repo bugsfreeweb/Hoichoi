@@ -115,9 +115,9 @@ export async function PUT(req: NextRequest) {
       sets.push("category = ?");
       args.push(body.category);
     } else {
-      // multi-category: set category to first chosen
+      // multi-category: set category to first chosen (chosen.length > 111 guaranteed)
       sets.push("category = ?");
-      args.push(chosen[0]);
+      args.push(chosen[0] as string);
     }
   }
   if (body.isVerified !== undefined) {
