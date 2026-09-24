@@ -1,4 +1,4 @@
-import { getClient, mapCategory, mapSource, nowIso, withTx } from "@hoichoi/db";
+import { getClient, mapCategory, mapSource, nowIso, withTx, recordSourceError, clearSourceErrors } from "@hoichoi/db";
 import { newResolver } from "@hoichoi/llm";
 import type {
   CategorySlug,
@@ -154,6 +154,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       const msg = `[scrape] ${source.page_name}: ${(err as Error).message}`;
       log(msg);
       stats.errors.push(msg);
+      await recordSourceError(source.id, "scrape", (err as Error).message).catch(() => undefined);
       continue;
     }
 
@@ -376,11 +377,12 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       }
     }
 
-    // Mark source scraped.
+    // Mark source scraped (successful pass clears its error inbox).
     await client.execute({
       sql: "UPDATE sources SET last_scraped_at = ? WHERE id = ?",
       args: [nowIso(), source.id],
     });
+    await clearSourceErrors(source.id).catch(() => undefined);
   }
 
   // STEP 7: archive lifecycle (auto_rollover).

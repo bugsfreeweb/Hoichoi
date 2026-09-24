@@ -16,6 +16,8 @@ import {
   Cpu,
   Bell,
   LayoutDashboard,
+  Cloud,
+  RefreshCw,
 } from "lucide-react";
 import {
   getCredential,
@@ -31,6 +33,8 @@ import {
   settingsSet,
   backupExport,
   backupImport,
+  deskBackupAuto,
+  deskBackupVerify,
   resetDb,
   syncDb,
   adminCodes,
@@ -49,6 +53,8 @@ import DeskCategoryManager from "../components/DeskCategoryManager";
 import DeskSourceManager from "../components/DeskSourceManager";
 import DeskProviderManager from "../components/DeskProviderManager";
 import DeskNoticeManager from "../components/DeskNoticeManager";
+import MediaStoragePanel from "../components/MediaStoragePanel";
+import { SITE_URL } from "../lib/site";
 
 const TABS = [
   { id: "pref", icon: Sliders, label: "প্রেফারেন্স" },
@@ -60,6 +66,7 @@ const TABS = [
   { id: "site", icon: Palette, label: "সাইট ও বিজ্ঞাপন" },
   { id: "admin", icon: UserCog, label: "অ্যাডমিন" },
   { id: "backup", icon: Archive, label: "ব্যাকআপ" },
+  { id: "media", icon: Cloud, label: "মিডিয়া স্টোরেজ" },
   { id: "vault", icon: KeyRound, label: "API ভল্ট" },
 ] as const;
 
@@ -78,6 +85,17 @@ const FIELDS: Array<{ name: CredentialName; label: string; secret: boolean }> = 
   { name: "OPENAI_API_KEY", label: "OpenAI API key", secret: true },
   { name: "MANIFEST_API_KEY", label: "Manifest API key", secret: true },
   { name: "GITHUB_COPILOT_TOKEN", label: "GitHub Copilot token", secret: true },
+  { name: "github_branch", label: "GitHub branch (jsDelivr)", secret: false },
+  { name: "github_cdn_url", label: "GitHub CDN base URL (jsDelivr)", secret: false },
+  { name: "idrivee2_access_key", label: "IDrive e2 Access key", secret: true },
+  { name: "idrivee2_secret_key", label: "IDrive e2 Secret key", secret: true },
+  { name: "idrivee2_bucket", label: "IDrive e2 Bucket", secret: false },
+  { name: "idrivee2_endpoint", label: "IDrive e2 Endpoint URL", secret: false },
+  { name: "b2_access_key", label: "Backblaze B2 keyID", secret: true },
+  { name: "b2_secret_key", label: "Backblaze B2 applicationKey", secret: true },
+  { name: "b2_bucket", label: "Backblaze B2 bucket", secret: false },
+  { name: "b2_endpoint", label: "Backblaze B2 endpoint URL", secret: false },
+  { name: "revalidate_secret", label: "Revalidate secret (web)", secret: true },
 ];
 
 const BRAND_FIELDS: Array<{ key: string; label: string; secret?: boolean; multiline?: boolean }> = [
@@ -174,6 +192,16 @@ export default function Settings({
   const [brandErr, setBrandErr] = useState<string | null>(null);
 
   const [bkPass, setBkPass] = useState("");
+  const [bkAuto, setBkAuto] = useState(() => {
+    try {
+      const raw = localStorage.getItem("hoichoi.desk.autobk");
+      if (!raw) return { enabled: false, folder: "", keep: 7, pass: "" };
+      const p = JSON.parse(raw) as { enabled?: boolean; folder?: string; keep?: number; pass?: string } | null;
+      return { enabled: Boolean(p?.enabled), folder: p?.folder ?? "", keep: p?.keep ?? 7, pass: p?.pass ?? "" };
+    } catch {
+      return { enabled: false, folder: "", keep: 7, pass: "" };
+    }
+  });
   const [bkMsg, setBkMsg] = useState<string | null>(null);
   const [bkErr, setBkErr] = useState<string | null>(null);
 
@@ -200,6 +228,9 @@ export default function Settings({
 
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [syncErr, setSyncErr] = useState<string | null>(null);
+
+  const [webMsg, setWebMsg] = useState<string | null>(null);
+  const [webErr, setWebErr] = useState<string | null>(null);
 
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
   const updatePref = <K extends keyof Prefs>(k: K, v: Prefs[K]) => {
@@ -331,6 +362,26 @@ export default function Settings({
     }
   };
 
+  const doRefreshWeb = async () => {
+    setWebMsg(null);
+    setWebErr(null);
+    try {
+      const env = await getRunEnv();
+      const u = new URL("/api/revalidate", SITE_URL);
+      const secret = env["REVALIDATE_SECRET"];
+      if (secret) u.searchParams.set("secret", secret);
+      const res = await fetch(u.toString());
+      const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (res.ok && body?.ok) {
+        setWebMsg("ওয়েব ক্যাশ রিফ্রেশ হয়েছে — হোমপেজ ও ক্যাটাগরি পেজ এখন নতুন কনটেন্ট দেখাবে।");
+      } else {
+        setWebErr(body?.error ? body.error : `HTTP ${res.status}`);
+      }
+    } catch (e) {
+      setWebErr(String(e));
+    }
+  };
+
   const saveAdSlots = async () => {
     try {
       const fields: Record<string, string> = {};
@@ -420,6 +471,26 @@ export default function Settings({
       await adminCodes("revoke", await getRunEnv(), { id });
       await loadAdminCodes();
       setAdmMsg("কোড বাতিল হয়েছে।");
+    } catch (e) {
+      setAdmErr(String(e));
+    }
+  };
+
+  const logoutAllWebSessions = async () => {
+    const email = admEmail.trim();
+    if (!email) {
+      setAdmErr("ইমেইল দিতে হবে — কাকে লগ আউট করবেন (admin_users-এর মেলে)।");
+      return;
+    }
+    if (!window.confirm(`"${email}" ইমেইলের সব ওয়েব অ্যাডমিন সেশন + অপেক্ষমান কোড বাতিল করবেন? ব্রাউজার থেকে নতুন কোড ছাড়া ঢোকা যাবে না।`)) {
+      return;
+    }
+    try {
+      setAdmErr(null);
+      const res = (await adminCodes("logout-sessions", await getRunEnv(), { email })) as { ok: boolean };
+      if (!res.ok) throw new Error("runner did not acknowledge");
+      setAdmMsg(`ওয়েব লগ আউট হয়েছে — সেশন ও কোড বাতিল (${email})। ফেরার জন্য নতুন কোড তৈরি করুন।`);
+      await loadAdminCodes();
     } catch (e) {
       setAdmErr(String(e));
     }
@@ -524,19 +595,53 @@ export default function Settings({
   };
 
   const doReset = async () => {
-    const missing = needBkPass();
-    if (missing) {
-      setBkMsg(null);
-      setBkErr(missing);
-      return;
-    }
-    if (!window.confirm("সব কন্টেন্ট মুছে যাবে এবং settings/config default-এ ফিরবে (admin রাখা হবে)। নিশ্চিত?")) return;
     try {
       setBkMsg(null);
       setBkErr(null);
       await resetDb(await getRunEnv());
       setBkMsg("রিসেট সম্পন্ন — content wiped, settings default-এ।");
       await refresh();
+    } catch (e) {
+      setBkErr(String(e));
+    }
+  };
+
+  const saveBkAuto = (next: typeof bkAuto) => {
+    setBkAuto(next);
+    try {
+      localStorage.setItem("hoichoi.desk.autobk", JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const doAutoBackupNow = async () => {
+    if (!bkAuto.folder || !bkAuto.pass) {
+      setBkErr("স্বয়ংক্রিয় ব্যাকআপের জন্য ফোল্ডার ও পাসফ্রেজ দিতে হবে।");
+      return;
+    }
+    try {
+      setBkMsg(null);
+      setBkErr(null);
+      const res = await deskBackupAuto(bkAuto.pass, bkAuto.folder, bkAuto.keep, await getRunEnv());
+      setBkMsg(`স্বয়ংক্রিয় ব্যাকআপ সফল:\n${res.file} (kept ${res.kept}, pruned ${res.pruned})`);
+    } catch (e) {
+      setBkErr(String(e));
+    }
+  };
+
+  const doVerifyBackup = async () => {
+    if (!bkAuto.folder || !bkAuto.pass) {
+      setBkErr("যাচাইয়ের জন্য পাসফ্রেজ ও ব্যাকআপ ফোল্ডার নির্দিষ্ট করুন।");
+      return;
+    }
+    try {
+      setBkMsg(null);
+      setBkErr(null);
+      const pathPrompt = window.prompt("যাচাই করতে চাওয়া ব্যাকআপ ফাইলের পুরো পাথ দিন:", `${bkAuto.folder}\\hoichoi-backup.bak`);
+      if (!pathPrompt) return;
+      const res = await deskBackupVerify(bkAuto.pass, pathPrompt.trim(), await getRunEnv());
+      setBkMsg(`যাচাইকরণ সফল: ${JSON.stringify(res)}`);
     } catch (e) {
       setBkErr(String(e));
     }
@@ -921,6 +1026,28 @@ export default function Settings({
                 </p>
               )}
             </div>
+
+            <div className="panel mt-5">
+              <p className="flex items-center gap-2 panel-title">
+                <RefreshCw size={14} className="text-lime" /> ওয়েব রিফ্রেশ (revalidate)
+              </p>
+              <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+                ব্রাউজারের Vercel ক্যাশ দ্রুত ফুটিয়ে নতুন পোস্ট/এডিট তাৎক্ষণিক দেখাতে
+                <code className="text-lime"> /api/revalidate</code> কল করুন। secret খালি রাখলে শুধু
+                <code className="text-white"> secret </code> params ছাড়াই রান করবে (সাইট পাবলিক হলে
+                ঝুঁকি আছে — ভল্ট ট্যাবে <code className="text-lime">revalidate_secret</code> সেট করুন)।
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button onClick={() => void doRefreshWeb()} className="btn">
+                  <RefreshCw size={13} /> এখনই রিফ্রেশ করুন
+                </button>
+                <code className="rounded bg-white/[0.05] px-2 py-1 font-mono-x text-[10.5px] text-white/50">
+                  {SITE_URL}/api/revalidate?secret=…
+                </code>
+              </div>
+              {webMsg && <p className="mt-2 text-[11.5px] font-bold text-ink">✓ {webMsg}</p>}
+              {webErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {webErr}</p>}
+            </div>
           </>
         )}
 
@@ -949,6 +1076,9 @@ export default function Settings({
               </button>
               <button className="btn-ghost" onClick={() => void loadAdminCodes()}>
                 ↻ refresh
+              </button>
+              <button className="btn-ghost" onClick={() => void logoutAllWebSessions()}>
+                ⏻ সব ওয়েব সেশন লগ আউট
               </button>
             </div>
             {newCode && (
@@ -1102,44 +1232,106 @@ export default function Settings({
         )}
 
         {tab === "backup" && (
-          <div className="panel mt-5">
-            <p className="panel-title">ব্যাকআপ, রিসেট ও সিঙ্ক</p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <input
-                type="password"
-                className="field min-w-56 flex-1"
-                placeholder="backup passphrase (encryption key)"
-                value={bkPass}
-                onChange={(e) => setBkPass(e.target.value)}
-              />
+          <>
+            <div className="panel mt-5">
+              <p className="panel-title">ম্যানুয়াল ব্যাকআপ, রিসেট ও সিঙ্ক</p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <input
+                  type="password"
+                  className="field min-w-56 flex-1"
+                  placeholder="backup passphrase (encryption key)"
+                  value={bkPass}
+                  onChange={(e) => setBkPass(e.target.value)}
+                />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button className="btn" onClick={() => void doExport()}>
+                  ⬇ Export backup
+                </button>
+                <button className="btn-ghost" onClick={() => void doImport()}>
+                  ⬆ Restore backup
+                </button>
+                <button className="btn-ghost" onClick={() => void doReset()}>
+                  ⟲ Reset content
+                </button>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button className="btn" onClick={() => void doSync("push")}>
+                  ☁ Push local → cloud
+                </button>
+                <button className="btn-ghost" onClick={() => void doSync("pull")}>
+                  ⬇ Pull cloud → local
+                </button>
+              </div>
+              <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+                ব্যাকআপ ফাইল AES-256-GCM দিয়ে এনক্রিপ্ট হয়; passphrase কখনো ডিস্কে লেখা হয় না। Restore
+                আগের ডেটা REPLACE করে। Push = local file DB → shared Turso; Pull = cloud → local।
+              </p>
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button className="btn" onClick={() => void doExport()}>
-                ⬇ Export backup
-              </button>
-              <button className="btn-ghost" onClick={() => void doImport()}>
-                ⬆ Restore backup
-              </button>
-              <button className="btn-ghost" onClick={() => void doReset()}>
-                ⟲ Reset content
-              </button>
+
+            <div className="panel mt-5">
+              <p className="panel-title">স্বয়ংক্রিয় ব্যাকআপ ও রোটেশন (Auto Backup)</p>
+              <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+                পাইপলাইন সফলভাবে শেষ হলে নির্দিষ্ট ফোল্ডারে স্বয়ংক্রিয় ব্যাকআপ রাখা হয় এবং পুরনো ব্যাকআপ
+                ছাঁটাই (rotation) করা হয়।
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">ব্যাকআপ ফোল্ডার</span>
+                  <input
+                    className="field mt-1 w-full"
+                    placeholder="C:\Backups\Hoichoi"
+                    value={bkAuto.folder}
+                    onChange={(e) => saveBkAuto({ ...bkAuto, folder: e.target.value })}
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">সর্বোচ্চ সংখ্যা (Keep)</span>
+                  <input
+                    type="number"
+                    className="field mt-1 w-full"
+                    min={1}
+                    max={100}
+                    value={bkAuto.keep}
+                    onChange={(e) => saveBkAuto({ ...bkAuto, keep: Number(e.target.value) || 7 })}
+                  />
+                </label>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-[12px] font-bold text-white">রান শেষে অটো-ব্যাকআপ চালু</span>
+                  <button
+                    type="button"
+                    onClick={() => saveBkAuto({ ...bkAuto, enabled: !bkAuto.enabled })}
+                    className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${bkAuto.enabled ? "bg-lime" : "bg-white/15"}`}
+                  >
+                    <span className="absolute top-0.5 h-4 w-4 rounded-full bg-night transition-all" style={{ left: bkAuto.enabled ? 18 : 2 }} />
+                  </button>
+                </div>
+                <input
+                  type="password"
+                  className="field w-56 text-[11px]"
+                  placeholder="অটো-ব্যাকআপ পাসফ্রেজ"
+                  value={bkAuto.pass}
+                  onChange={(e) => saveBkAuto({ ...bkAuto, pass: e.target.value })}
+                />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button className="btn" onClick={() => void doAutoBackupNow()}>
+                  ⚡ এখনই ফোল্ডারে ব্যাকআপ নিন
+                </button>
+                <button className="btn-ghost" onClick={() => void doVerifyBackup()}>
+                  🔍 ব্যাকআপ ফাইল যাচাই (Verify)
+                </button>
+              </div>
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button className="btn" onClick={() => void doSync("push")}>
-                ☁ Push local → cloud
-              </button>
-              <button className="btn-ghost" onClick={() => void doSync("pull")}>
-                ⬇ Pull cloud → local
-              </button>
-            </div>
-            <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
-              ব্যাকআপ ফাইল AES-256-GCM দিয়ে এনক্রিপ্ট হয়; passphrase কখনো ডিস্কে লেখা হয় না। Restore
-              আগের ডেটা REPLACE করে। Push = local file DB → shared Turso; Pull = cloud → local।
-            </p>
-            {bkMsg && <p className="mt-2 whitespace-pre-line text-[11.5px] font-bold text-ink">✓ {bkMsg}</p>}
-            {bkErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {bkErr}</p>}
-          </div>
+
+            {bkMsg && <p className="mt-3 whitespace-pre-line text-[11.5px] font-bold text-ink">✓ {bkMsg}</p>}
+            {bkErr && <p className="mt-3 text-[11.5px] font-bold text-alizarin">✕ {bkErr}</p>}
+          </>
         )}
+
+        {tab === "media" && <MediaStoragePanel />}
 
         {tab === "vault" && (
           <div className="mt-5 space-y-3">

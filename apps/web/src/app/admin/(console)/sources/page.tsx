@@ -30,7 +30,11 @@ export default async function AdminSourcesPage() {
             <p className="border border-ink/20 p-5 text-[13px] text-ink-soft">কোনো সোর্স নেই।</p>
           )}
           {sources.map((s) => (
-            <SourceRow key={s.id} source={s} />
+            <SourceRow
+              key={s.id}
+              source={s}
+              categories={cats.map((c) => ({ slug: c.slug, label: c.displayNameBn }))}
+            />
           ))}
         </div>
       </div>

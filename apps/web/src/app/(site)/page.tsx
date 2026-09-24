@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { windowPosts, categoriesWithCounts, parseAppConfig } from "@hoichoi/db";
+import { windowPosts, countWindowPosts, categoriesWithCounts, parseAppConfig } from "@hoichoi/db";
 import { ScrollProgress } from "@/components/ScrollProgress";
 import Hero from "@/components/home/Hero";
 import LiveAnalytics from "@/components/home/live-analytics";
@@ -7,6 +7,7 @@ import PulseFlow from "@/components/home/PulseFlow";
 import RewriteSlider from "@/components/home/RewriteSlider";
 import TiltCard from "@/components/home/TiltCard";
 import ArticleGrid from "@/components/ArticleGrid";
+import { Pagination } from "@/components/Pagination";
 import { AdSlot } from "@/components/AdSlot";
 import { Reveal } from "@/components/Reveal";
 import { HomeLiveProvider } from "@/components/home/live-data";
@@ -18,14 +19,27 @@ import { BRAND } from "@/lib/brand";
 
 export const revalidate = 300;
 
-export default async function HomePage() {
-  const [posts, catStats, settings] = await Promise.all([
-    windowPosts({ limit: 30 }),
+/** Today's collection — max 25 posts per page (24 on page 1 after the
+ *  featured lead is pulled out), the rest paginated via `?page=N`. */
+const PAGE_SIZE = 25;
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const sp = await searchParams;
+  const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
+  const offset = (page - 1) * PAGE_SIZE;
+  const [posts, total, catStats, settings] = await Promise.all([
+    windowPosts({ limit: PAGE_SIZE, offset }),
+    countWindowPosts(),
     categoriesWithCounts(),
     getSettings(),
   ]);
-  const featured = posts[0] ?? null;
-  const rest = posts.filter((p) => p.id !== featured?.id);
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const featured = page === 1 ? (posts[0] ?? null) : null;
+  const rest = page === 1 ? posts.filter((p) => p.id !== featured?.id) : posts;
   const topPicks = rest.slice(0, 3);
   const cfg = parseAppConfig(settings.app_config_json);
 
@@ -33,10 +47,10 @@ export default async function HomePage() {
     <HomeLiveProvider>
       <ScrollProgress />
 
-      {cfg.show_hero && (
+      {cfg.show_hero && featured && (
       <Hero
         lastRunIso={featured?.created_at ?? null}
-        collected={posts.length}
+        collected={total}
         published={posts.filter((p) => p.status === "published").length}
         dups={0}
         featuredImg={featured ? mediaUrl(featured) : null}
@@ -337,6 +351,7 @@ export default async function HomePage() {
         </div>
         </Reveal>
         <ArticleGrid posts={rest} ads={cfg.show_ads} adInfeedHtml={settings.ad_infeed_html} />
+        <Pagination page={page} pageCount={pageCount} base="/" />
       </section>
 
       {cfg.show_desk_cta && (

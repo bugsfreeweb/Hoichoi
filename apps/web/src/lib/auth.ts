@@ -6,7 +6,9 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 export const SESSION_COOKIE = "hoichoi_session";
-const SESSION_TTL_MS = 7 * 24 * 3600 * 1000;
+/** Admin sessions persist until the browser clears site data (or the desktop
+ *  revokes them). Sliding — each active request extends the deadline. */
+const SESSION_MAX_AGE_MS = 365 * 24 * 3600 * 1000;
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -50,12 +52,12 @@ export async function getUserByEmail(email: string): Promise<AdminUser | null> {
   };
 }
 
-/** Create a session row + matching HttpOnly cookie. */
+/** Create a session row + matching HttpOnly cookie (persistent, no expiry gate). */
 export async function createSession(user: AdminUser): Promise<void> {
   const token = randomBytes(32).toString("hex");
   const client = getClient();
   const now = new Date();
-  const expires = new Date(now.getTime() + SESSION_TTL_MS);
+  const expires = new Date(now.getTime() + SESSION_MAX_AGE_MS);
   await client.execute({
     sql: "INSERT INTO admin_sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
     args: [hashToken(token), user.user_id, now.toISOString(), expires.toISOString()],
@@ -66,7 +68,7 @@ export async function createSession(user: AdminUser): Promise<void> {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    expires,
+    maxAge: SESSION_MAX_AGE_MS / 1000,
   });
 }
 
@@ -83,18 +85,27 @@ export async function destroySession(): Promise<void> {
   store.delete(SESSION_COOKIE);
 }
 
-/** Resolve current admin from cookie. */
+/** Resolve current admin from cookie; slides the DB deadline on each hit. */
 export async function currentUser(): Promise<AdminUser | null> {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const client = getClient();
   const res = await client.execute({
-    sql: "SELECT u.* FROM admin_sessions s JOIN admin_users u ON u.id = s.user_id WHERE token_hash = ? AND expires_at > ? LIMIT 1",
-    args: [hashToken(token), new Date().toISOString()],
+    sql: "SELECT u.* FROM admin_sessions s JOIN admin_users u ON u.id = s.user_id WHERE token_hash = ? LIMIT 1",
+    args: [hashToken(token)],
   });
   if (res.rows.length === 0) return null;
   const row = res.rows[0] as Record<string, unknown>;
+  // Sliding expiry — sessions only die when the browser forgets the cookie or
+  // the desktop revokes the email's sessions.
+  await client.execute({
+    sql: "UPDATE admin_sessions SET expires_at = ? WHERE token_hash = ?",
+    args: [
+      new Date(Date.now() + SESSION_MAX_AGE_MS).toISOString(),
+      hashToken(token),
+    ],
+  });
   const allowed = process.env.ADMIN_ALLOWED_EMAILS?.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
   const email = String(row.email);
   if (allowed && allowed.length > 0 && !allowed.includes(email)) return null;

@@ -1,12 +1,15 @@
 import { useMemo, useState, useEffect } from "react";
-import { Pause, Play, Plus, Radio, Search, Trash2, TriangleAlert } from "lucide-react";
+import { Pause, Play, Plus, Radio, Search, Trash2, TriangleAlert, Inbox, RefreshCw } from "lucide-react";
 import { agoBn, toBn } from "../lib/format";
 import {
   deskAddSource,
   deskRemoveSource,
   deskToggleSource,
   deskCategories,
+  deskSourceErrors,
+  deskSourceErrorSet,
   type DeskSource,
+  type DeskSourceError,
 } from "../lib/tauri";
 import { getRunEnv } from "../lib/vault";
 
@@ -55,7 +58,40 @@ export default function Watchlist({
         /* ignore */
       }
     })();
+    void loadErrors();
   }, []);
+
+  const [sourceErrors, setSourceErrors] = useState<DeskSourceError[]>([]);
+  const [errBusy, setErrBusy] = useState(false);
+
+  const loadErrors = async () => {
+    setErrBusy(true);
+    try {
+      const errs = await deskSourceErrors(await getRunEnv());
+      setSourceErrors(errs.filter((e) => e.status === "open"));
+    } catch {
+      /* ignore */
+    } finally {
+      setErrBusy(false);
+    }
+  };
+
+  const ignoreError = async (e: DeskSourceError) => {
+    setErrBusy(true);
+    try {
+      const src = sources.find((s) => s.id === e.source_id);
+      await deskSourceErrorSet(await getRunEnv(), e.id, "dismiss");
+      if (src && (!src.is_active || src.health === 0)) {
+        await deskToggleSource(await getRunEnv(), src.id).catch(() => {});
+      }
+      await refresh();
+      await loadErrors();
+    } catch {
+      /* ignore */
+    } finally {
+      setErrBusy(false);
+    }
+  };
 
   const shown = useMemo(
     () =>
@@ -177,6 +213,75 @@ export default function Watchlist({
       {err && (
         <div className="border-b border-[var(--ds-bd)] bg-[var(--ds-rose-soft)] px-5 py-2 text-[11.5px] font-semibold text-[var(--ds-rose)]">
           ✕ {err}
+        </div>
+      )}
+
+      {sourceErrors.length > 0 && (
+        <div className="border-b border-[var(--ds-bd)] bg-[var(--ds-amber-soft)] px-5 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="flex items-center gap-1.5 text-[12.5px] font-bold text-[var(--ds-amber)]">
+              <Inbox size={13} /> সোর্স ত্রুটি ইনবক্স
+              <span className="rounded-full bg-[var(--ds-amber-soft)] px-2 py-0.5 font-mono-x text-[10px] text-[var(--ds-amber)] ring-1 ring-[var(--ds-amber)]/30">
+                {toBn(sourceErrors.length)}
+              </span>
+            </p>
+            <button
+              onClick={() => void loadErrors()}
+              disabled={errBusy}
+              className="ml-auto flex items-center gap-1.5 rounded-lg border border-[var(--ds-bd-2)] px-2.5 py-1 text-[10.5px] font-semibold text-[var(--ds-t3)]"
+            >
+              <RefreshCw size={11} className={errBusy ? "animate-spin" : ""} /> পুনরায় লোড
+            </button>
+          </div>
+          <ul className="mt-2 space-y-1.5">
+            {sourceErrors.map((e) => {
+              const src = sources.find((s) => s.id === e.source_id);
+              return (
+                <li
+                  key={e.id}
+                  className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--ds-bd-2)] bg-[var(--ds-field)] px-3 py-2"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12px] font-semibold text-[var(--ds-t1)]">
+                      {src?.page_name ?? e.source_id}
+                    </span>
+                    <span className="block truncate font-mono-x text-[10px] text-[var(--ds-rose)]">
+                      {e.err_kind}: {e.message}
+                    </span>
+                    <span className="block font-mono-x text-[9.5px] text-[var(--ds-t5)]">
+                      {toBn(e.count)}× · {agoBn(e.last_seen_at)}
+                    </span>
+                  </span>
+                  <button
+                    onClick={() => void ignoreError(e)}
+                    disabled={errBusy}
+                    className="rounded-lg bg-[var(--ds-rose-soft)] px-2.5 py-1 text-[10.5px] font-bold text-[var(--ds-rose)]"
+                  >
+                    সূচিকে ফিরিয়ে দিন
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setErrBusy(true);
+                      try {
+                        await deskSourceErrorSet(await getRunEnv(), e.id, "dismiss");
+                        await loadErrors();
+                      } finally {
+                        setErrBusy(false);
+                      }
+                    }}
+                    disabled={errBusy}
+                    className="rounded-lg border border-[var(--ds-bd-2)] px-2.5 py-1 text-[10.5px] font-semibold text-[var(--ds-t4)]"
+                  >
+                    উপেক্ষা করুন
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-1.5 text-[10px] leading-relaxed text-[var(--ds-t5)]">
+            scrape ব্যর্থ হলে সোর্সের হেলথ শূন্য হয় এবং এখানে ত্রুটি জমা হয়। সব ঠিক হলে রান শেষে
+            সোর্সের ত্রুটিগুলো নিজে থেকে মুছে যায়।
+          </p>
         </div>
       )}
 

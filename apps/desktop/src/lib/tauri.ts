@@ -26,10 +26,18 @@ export async function openAdmin(url: string): Promise<void> {
 }
 
 /** Read site settings through the bundled runner (branding + cadence). */
+const settingsCache = new Map<string, { at: number; value: Record<string, unknown> }>();
+const SETTINGS_TTL_MS = 2000;
+
 export async function settingsGet(env: Record<string, string>) {
+  const key = JSON.stringify(env);
+  const cached = settingsCache.get(key);
+  if (cached && Date.now() - cached.at < SETTINGS_TTL_MS) return cached.value;
   const raw = await invoke<string>("settings_get", { env });
   const parsed = JSON.parse(raw) as { settings?: Record<string, unknown> };
-  return (parsed.settings ?? parsed) as Record<string, unknown>;
+  const value = (parsed.settings ?? parsed) as Record<string, unknown>;
+  settingsCache.set(key, { at: Date.now(), value });
+  return value;
 }
 
 /** Update site settings through the bundled runner. */
@@ -38,6 +46,7 @@ export async function settingsSet(
   fields: Record<string, string | number>,
 ): Promise<void> {
   await invoke("settings_set", { env, fields });
+  settingsCache.clear();
 }
 
 /** Encrypted full backup → returns the written backup file path. */
@@ -90,9 +99,11 @@ export interface AdminCodeList {
   codes: AdminLoginCode[];
 }
 
-/** Create / list / revoke one-time admin login codes via the bundled runner. */
+/** Create / list / revoke one-time admin login codes via the bundled runner.
+ *  `logout-sessions` boots every active web-admin session + pending codes for
+ *  `email` (desktop-controlled remote logout). */
 export async function adminCodes(
-  op: "create" | "list" | "revoke",
+  op: "create" | "list" | "revoke" | "logout-sessions",
   env: Record<string, string>,
   opts?: { email?: string; label?: string | null; id?: string | null },
 ): Promise<CreatedAdminLoginCode | AdminCodeList | { ok: boolean }> {
@@ -135,6 +146,8 @@ export interface DeskQueueRow {
   category: string;
   status: string;
   created_at: string;
+  summary_bn: string | null;
+  body_bn: string | null;
 }
 
 export interface DeskComment {
@@ -322,6 +335,31 @@ export async function deskQueue(env: Record<string, string>, status?: string | n
   return (res.rows as DeskQueueRow[]) ?? [];
 }
 
+export async function deskQueueUpdate(
+  env: Record<string, string>,
+  id: string,
+  fields: { title?: string; body?: string; summary?: string | null; category?: string },
+): Promise<void> {
+  const args = ["queue", "update", id];
+  if (fields.title !== undefined) args.push("--title", fields.title);
+  if (fields.body !== undefined) args.push("--body", fields.body);
+  if (fields.summary !== undefined) args.push("--summary", fields.summary === null ? "__CLEAR__" : fields.summary);
+  if (fields.category !== undefined) args.push("--category", fields.category);
+  await deskCall(args, env);
+}
+
+export async function deskQueueRemove(env: Record<string, string>, id: string): Promise<void> {
+  await deskCall(["queue", "remove", id], env);
+}
+
+export async function deskQueueSet(
+  env: Record<string, string>,
+  id: string,
+  status: "approved" | "rejected" | "published",
+): Promise<void> {
+  await deskCall(["queue", "set", id, status], env);
+}
+
 export async function deskStats(env: Record<string, string>): Promise<DeskStats> {
   const res = await deskCall(["stats"], env);
   return res as unknown as DeskStats;
@@ -343,6 +381,110 @@ export async function deskModerationSet(
   status: "approved" | "blocked",
 ): Promise<void> {
   await deskCall(["moderation", "set", id, status], env);
+}
+
+/* ------------------------------------------------------------------ *
+ * Remote media storage (adapter chain, retention cleanup)             *
+ * ------------------------------------------------------------------ */
+
+export interface DeskMediaStorage {
+  config: MediaStorageConfig;
+  registry: number;
+}
+
+export interface MediaStorageAdapterConfig {
+  kind: "github" | "s3";
+  enabled: boolean;
+  label: string;
+  provider?: "idrivee2" | "backblaze";
+  endpoint?: string;
+  bucket?: string;
+  region?: string;
+  prefix?: string;
+  branch?: string;
+  mediaPath?: string;
+}
+
+export interface MediaStorageConfig {
+  adapters: MediaStorageAdapterConfig[];
+  purge_local_after_upload: boolean;
+  retention_months: number;
+  cleanup_enabled: boolean;
+}
+
+export async function deskMediaStorage(
+  env: Record<string, string>,
+  cfgJson?: string,
+): Promise<DeskMediaStorage> {
+  const args = ["media", "storage"];
+  if (cfgJson) args.push("set", cfgJson);
+  const res = await deskCall(args, env);
+  return res as unknown as DeskMediaStorage;
+}
+
+export async function deskMediaCleanup(
+  env: Record<string, string>,
+  opts?: { dryRun?: boolean; months?: number },
+): Promise<{ dryRun: boolean; considered: number; removed: number; skipped: number; cutoff: string }> {
+  const args = ["media", "cleanup"];
+  if (opts?.dryRun) args.push("--dry-run");
+  if (opts?.months !== undefined) args.push("--months", String(opts.months));
+  const res = await deskCall(args, env);
+  return res as unknown as { dryRun: boolean; considered: number; removed: number; skipped: number; cutoff: string };
+}
+
+/* ------------------------------------------------------------------ *
+ * Source error inbox (scrape health)                                  *
+ * ------------------------------------------------------------------ */
+
+export interface DeskSourceError {
+  id: string;
+  source_id: string;
+  source_name: string | null;
+  err_kind: string;
+  message: string;
+  status: "open" | "dismissed";
+  count: number;
+  first_seen_at: string;
+  last_seen_at: string;
+}
+
+export async function deskSourceErrors(env: Record<string, string>): Promise<DeskSourceError[]> {
+  const res = await deskCall(["sources", "errors", "list"], env);
+  return (res.errors as DeskSourceError[]) ?? [];
+}
+
+export async function deskSourceErrorSet(
+  env: Record<string, string>,
+  id: string,
+  status: "dismiss" | "reopen",
+): Promise<void> {
+  await deskCall(["sources", "errors", status, id], env);
+}
+
+/* ------------------------------------------------------------------ *
+ * Backup: verify (dry-run) + auto (rotating folder)                   *
+ * ------------------------------------------------------------------ */
+
+export async function deskBackupVerify(
+  pass: string,
+  file: string,
+  env: Record<string, string>,
+): Promise<Record<string, unknown>> {
+  return deskCall(["backup", "verify", file], { ...env, HOICHOI_BACKUP_PASS: pass });
+}
+
+export async function deskBackupAuto(
+  pass: string,
+  dir: string,
+  keep: number,
+  env: Record<string, string>,
+): Promise<{ file: string; kept: number; pruned: number }> {
+  const res = await deskCall(["backup", "auto", dir, "--keep", String(keep)], {
+    ...env,
+    HOICHOI_BACKUP_PASS: pass,
+  });
+  return res as unknown as { file: string; kept: number; pruned: number };
 }
 
 /* ------------------------------------------------------------------ *

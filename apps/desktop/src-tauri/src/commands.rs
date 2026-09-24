@@ -1,8 +1,10 @@
 use std::collections::HashMap;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::process::{Child, ChildStdin, Command, Stdio};
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -361,6 +363,238 @@ fn run_runner(
     ))
 }
 
+/* ------------------------------------------------------------------ *
+ * Persistent runner daemon — the desktop keeps ONE bundled Node alive  *
+ * (commander `daemon` mode) and sends JSON-line requests on stdin      *
+ * `{"id","cmd","env"}` → `{"id","ok","data"}` / `{"id","ok":false,"error"}`. *
+ * Removes the ~cold Node boot + full CLI parse per desk operation.      *
+ * ------------------------------------------------------------------ */
+
+/// Live daemon process (None until first use, cleared when it crashes).
+static DAEMON: Mutex<Option<Arc<RunnerDaemon>>> = Mutex::new(None);
+
+struct RunnerDaemon {
+    /// Process handle; its stdin/stdout/stderr pipes are owned below.
+    child: Mutex<Child>,
+    /// Request stdin writer.
+    stdin: ChildStdin,
+    /// In-flight map: request id → reply channel (Arc so the reader thread
+    /// can drain leftover entries if the child dies).
+    pending: Arc<Mutex<HashMap<u64, std::sync::mpsc::Sender<Result<String, String>>>>>,
+    next_id: AtomicU64,
+}
+
+impl RunnerDaemon {
+    /// Whether the child is still running (try_wait returns Ok(None)).
+    fn alive(&self) -> bool {
+        matches!(self.child.lock().unwrap().try_wait(), Ok(None))
+    }
+
+    /// Send one request and wait for its reply line (300s cap — a migration
+    /// or ensureSchema over a slow Turso connection can legitimately stall).
+    fn call(&self, cmd: &[&str], env: &HashMap<String, String>) -> Result<String, String> {
+        if !self.alive() {
+            return Err("runner daemon is not running".to_string());
+        }
+        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.pending.lock().unwrap().insert(id, tx);
+        let req = serde_json::json!({ "id": id, "cmd": cmd, "env": env });
+        let mut line = serde_json::to_string(&req).map_err(|e| format!("encode request: {e}"))?;
+        line.push('\n');
+        let mut w = &self.stdin;
+        w.write_all(line.as_bytes())
+            .and_then(|_| w.flush())
+            .map_err(|e| format!("write to runner daemon: {e}"))?;
+        match rx.recv_timeout(Duration::from_secs(300)) {
+            Ok(res) => res,
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                self.pending.lock().unwrap().remove(&id);
+                Err("runner timed out after 300s".to_string())
+            }
+            Err(_) => Err("runner daemon died while processing request".to_string()),
+        }
+    }
+
+    fn shutdown(&self) {
+        let _ = self.child.lock().unwrap().kill();
+    }
+}
+
+/// Spawn the bundled runner in `daemon` mode with the same portable env rules
+/// as the one-shot path (migrations dir, media root, local-DB fallback).
+fn spawn_daemon(app: &AppHandle, local_db_url: &str) -> Result<Arc<RunnerDaemon>, String> {
+    let (node, cli) = bundled_runner(app).ok_or_else(|| "no bundled runner staged".to_string())?;
+    let mut cmd = Command::new(node);
+    cmd.arg(&cli).arg("daemon");
+    cmd.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+
+    let app_dir = cli.parent().map(|p| p.to_path_buf()).unwrap_or_default();
+    cmd.env("HOICHOI_MIGRATIONS_DIR", app_dir.join("migrations"));
+    cmd.env("HOICHOI_MEDIA_ROOT", {
+        let data_dir = app
+            .path()
+            .app_data_dir()
+            .map_err(|e| format!("app_data_dir failed: {e}"))?;
+        win32_path(&data_dir.join("media"))
+    });
+    cmd.env("HOICHOI_USE_SYSTEM_BROWSER", "1");
+    cmd.env("HOICHOI_LOCAL_DB_URL", local_db_url);
+    hide_console(&mut cmd);
+
+    let mut child = cmd.spawn().map_err(|e| format!("spawn daemon failed: {e}"))?;
+    let stdin = child.stdin.take().ok_or_else(|| "no daemon stdin".to_string())?;
+    let stdout = child.stdout.take().ok_or_else(|| "no daemon stdout".to_string())?;
+    let stderr = child.stderr.take().ok_or_else(|| "no daemon stderr".to_string())?;
+
+    // Reader thread: route each `{id,...}` line to its parked caller.
+    let pending: Arc<Mutex<HashMap<u64, std::sync::mpsc::Sender<Result<String, String>>>>> =
+        Arc::new(Mutex::new(HashMap::new()));
+    {
+        let pending = Arc::clone(&pending);
+        std::thread::spawn(move || {
+            for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+                let line = line.trim();
+                if line.is_empty() {
+                    continue;
+                }
+                let Ok(value) = serde_json::from_str::<serde_json::Value>(line) else {
+                    continue;
+                };
+                let id = value
+                    .get("id")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(u64::MAX);
+                let sender = pending.lock().unwrap().remove(&id);
+                let Some(sender) = sender else {
+                    continue;
+                };
+                let result = if value
+                    .get("ok")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false)
+                {
+                    Ok(value
+                        .get("data")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("")
+                        .to_string())
+                } else {
+                    Err(value
+                        .get("error")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("runner returned an error")
+                        .to_string())
+                };
+                let _ = sender.send(result);
+            }
+            // EOF (child died) — fail any caller still parked.
+            for (_, tx) in pending.lock().unwrap().drain() {
+                let _ = tx.send(Err("runner daemon exited unexpectedly".to_string()));
+            }
+        });
+    }
+
+    // Stderr drainer: prevents a full pipe blocking the child.
+    std::thread::spawn(move || {
+        for _line in BufReader::new(stderr).lines().map_while(Result::ok) {}
+    });
+
+    let daemon = Arc::new(RunnerDaemon {
+        child: Mutex::new(child),
+        stdin,
+        pending,
+        next_id: AtomicU64::new(1),
+    });
+
+    // Warm handshake: run `settings` once so the schema memo + client cache
+    // are warm before the desk's first real action.
+    daemon.call(&["settings"], &HashMap::new())?;
+    Ok(daemon)
+}
+
+/// Reuse a live daemon, or (re)spawn one. The whole spawn happens under the
+/// global lock, so concurrent warm-up + first call can never double-spawn.
+fn get_daemon(app: &AppHandle) -> Result<Arc<RunnerDaemon>, String> {
+    let mut guard = DAEMON.lock().unwrap();
+    if let Some(d) = guard.as_ref() {
+        if d.alive() {
+            return Ok(Arc::clone(d));
+        }
+    }
+    let data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("app_data_dir failed: {e}"))?;
+    let local_db_url = format!(
+        "file:{}",
+        win32_path(&data_dir.join("hoichoi.db")).display()
+    );
+    let daemon = spawn_daemon(app, &local_db_url)?;
+    *guard = Some(Arc::clone(&daemon));
+    Ok(daemon)
+}
+
+/// Forget the current daemon handle (crash recovery); the process is already
+/// gone or is killed to release its pipes.
+fn clear_daemon() {
+    if let Some(d) = DAEMON.lock().unwrap().take() {
+        d.shutdown();
+    }
+}
+
+/// Route a runner request through the persistent daemon when a bundled runner
+/// is staged; otherwise fall back to the one-shot spawn (dev without runner).
+fn runner_call(
+    app: &AppHandle,
+    args: &[&str],
+    env: &HashMap<String, String>,
+) -> Result<String, String> {
+    if bundled_runner(app).is_none() {
+        return run_runner(app, args, env);
+    }
+    // A dead daemon is respawned once; a healthy daemon's error response
+    // (a command-level failure like "unknown field") is returned verbatim.
+    let mut last_err = String::new();
+    for attempt in 0..2 {
+        let daemon = match get_daemon(app) {
+            Ok(d) => d,
+            Err(e) if attempt == 0 => {
+                last_err = e;
+                std::thread::sleep(Duration::from_millis(150));
+                continue;
+            }
+            Err(e) => return Err(e),
+        };
+        match daemon.call(args, env) {
+            Ok(out) => return Ok(out),
+            Err(e) if !daemon.alive() && attempt == 0 => {
+                last_err = e;
+                clear_daemon();
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    Err(format!("runner daemon failed: {last_err}"))
+}
+
+/// Warm the daemon during app setup (background thread — first desk call just
+/// works whether or not it's finished).
+pub fn warm_daemon(app: &AppHandle) {
+    if bundled_runner(app).is_none() {
+        return;
+    }
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let _ = runner_call(&app, &["settings"], &HashMap::new());
+    });
+}
+
+/// Kill the daemon on app exit so no orphaned node process lingers.
+pub fn shutdown_daemon(_app: &AppHandle) {
+    clear_daemon();
+}
+
 /// Read site settings through the runner (JSON output from `settings get`).
 #[tauri::command]
 pub async fn settings_get(
@@ -368,7 +602,7 @@ pub async fn settings_get(
     env: Option<HashMap<String, String>>,
 ) -> Result<String, String> {
     let env = env.unwrap_or_default();
-    run_runner(&app, &["settings"], &env)
+    runner_call(&app, &["settings"], &env)
 }
 
 /// Update site settings through the runner (`settings:set k=v k=...`).
@@ -384,7 +618,7 @@ pub async fn settings_set(
         args.push(format!("{k}={v}"));
     }
     let strs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    run_runner(&app, &strs, &env)?;
+    runner_call(&app, &strs, &env)?;
     Ok(())
 }
 
@@ -404,7 +638,7 @@ pub async fn backup_export(
 ) -> Result<String, String> {
     let mut env = env.unwrap_or_default();
     env.insert("HOICHOI_BACKUP_PASS".to_string(), pass);
-    let stdout = run_runner(&app, &["backup", "export"], &env)?;
+    let stdout = runner_call(&app, &["backup", "export"], &env)?;
     let trimmed = stdout.trim();
     if !trimmed.starts_with("{") {
         return Err(format!("unexpected runner output: {trimmed}"));
@@ -467,7 +701,7 @@ pub async fn backup_import(
         .collect::<Vec<String>>();
     args.push(file);
     let strs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    run_runner(&app, &strs, &env)?;
+    runner_call(&app, &strs, &env)?;
     Ok(())
 }
 
@@ -508,7 +742,7 @@ pub async fn sync_db(
     } else {
         vec!["sync", "pull", "--from", &cloud, "--to", &local]
     };
-    let stdout = run_runner(&app, &args, &config)?;
+    let stdout = runner_call(&app, &args, &config)?;
     Ok(format!(
         "sync {direction} done — {}",
         stdout.split_whitespace().collect::<String>()
@@ -539,7 +773,7 @@ pub async fn admin_codes(
         args.push(i);
     }
     let strs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    run_runner(&app, &strs, &env.unwrap_or_default())
+    runner_call(&app, &strs, &env.unwrap_or_default())
 }
 
 fn now_stamp() -> String {
@@ -560,5 +794,5 @@ pub async fn desk_call(
     env: Option<HashMap<String, String>>,
 ) -> Result<String, String> {
     let strs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    run_runner(&app, &strs, &env.unwrap_or_default())
+    runner_call(&app, &strs, &env.unwrap_or_default())
 }

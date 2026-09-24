@@ -25,12 +25,15 @@ export default function Moderation() {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [focusIdx, setFocusIdx] = useState(0);
 
   const load = async () => {
     try {
       setMsg(null);
       setErr(null);
       setRows(await deskModeration(await getRunEnv()));
+      setSelected(new Set());
     } catch (e) {
       setErr(String(e));
     }
@@ -53,6 +56,59 @@ export default function Moderation() {
       setBusy(null);
     }
   };
+
+  const bulkAct = async (status: "approved" | "blocked") => {
+    if (selected.size === 0) return;
+    if (!window.confirm(`${toBn(selected.size)}টি মন্তব্য ${status === "approved" ? "অনুমোদন" : "ব্লক"} করবেন?`)) return;
+    setBusy("bulk");
+    setErr(null);
+    try {
+      const env = await getRunEnv();
+      for (const id of selected) {
+        await deskModerationSet(env, id, status);
+      }
+      setMsg(`${toBn(selected.size)}টি মন্তব্য ${status === "approved" ? "অনুমোদিত" : "ব্লক"} হয়েছে।`);
+      await load();
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || t.closest("input, textarea, select"))) return;
+      const list = shown;
+      if (list.length === 0) return;
+      if (e.key === "j" || e.key === "J") {
+        const c = list[Math.min(focusIdx, list.length - 1)];
+        if (c && c.status !== "approved") void act(c, "approved");
+      } else if (e.key === "k" || e.key === "K") {
+        const c = list[Math.min(focusIdx, list.length - 1)];
+        if (c && c.status !== "blocked") void act(c, "blocked");
+      } else if (e.key === "ArrowDown" || e.key === "s") {
+        setFocusIdx((i) => Math.min(list.length - 1, i + 1));
+      } else if (e.key === "ArrowUp" || e.key === "w") {
+        setFocusIdx((i) => Math.max(0, i - 1));
+      } else if (e.key === " ") {
+        e.preventDefault();
+        const c = list[Math.min(focusIdx, list.length - 1)];
+        if (!c) return;
+        setSelected((prev) => {
+          const next = new Set(prev);
+          if (next.has(c.id)) next.delete(c.id);
+          else next.add(c.id);
+          return next;
+        });
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, focusIdx, filter]);
 
   const counts: Record<Filter, number> = {
     all: rows.length,
@@ -115,9 +171,64 @@ export default function Moderation() {
             <p className="text-[12.5px] text-white/35">কোনো মন্তব্য নেই — নতুন মন্তব্য ওয়েব সাইটে জমা হলে এখানে ধরা পড়বে।</p>
           </div>
         )}
+        <div className="flex flex-wrap items-center gap-2 border-b border-white/8 px-5 py-2">
+          <label className="flex items-center gap-1.5 text-[10.5px] font-semibold text-white/45">
+            <input
+              type="checkbox"
+              className="accent-lime"
+              checked={shown.length > 0 && shown.every((c) => selected.has(c.id))}
+              onChange={(e) =>
+                setSelected(
+                  e.target.checked ? new Set(shown.map((c) => c.id)) : new Set(),
+                )
+              }
+            />
+            সব নির্বাচন
+          </label>
+          <span className="font-mono-x text-[10px] text-white/35">{toBn(selected.size)} নির্বাচিত</span>
+          <div className="ml-auto flex items-center gap-2">
+            {selected.size > 0 && (
+              <>
+                <button
+                  onClick={() => void bulkAct("approved")}
+                  disabled={busy !== null}
+                  className="flex items-center gap-1 rounded-lg bg-lime px-3 py-1 text-[10.5px] font-bold text-night disabled:opacity-40"
+                >
+                  <Check size={11} /> বাল্ক অনুমোদন
+                </button>
+                <button
+                  onClick={() => void bulkAct("blocked")}
+                  disabled={busy !== null}
+                  className="flex items-center gap-1 rounded-lg bg-rose-500/80 px-3 py-1 text-[10.5px] font-bold text-white disabled:opacity-40"
+                >
+                  <Ban size={11} /> বাল্ক ব্লক
+                </button>
+              </>
+            )}
+            <span className="font-mono-x text-[9.5px] text-white/30">j=অনুমোদন · k=ব্লক · space=নির্বাচন · ↑↓/w-s=চালনা</span>
+          </div>
+        </div>
+
         <ul className="divide-y divide-white/6">
-          {shown.map((c) => (
-            <li key={c.id} className="flex items-start gap-3 px-5 py-3.5">
+          {shown.map((c, i) => (
+            <li
+              key={c.id}
+              className={`flex items-start gap-3 px-5 py-3.5 ${i === focusIdx ? "bg-white/[0.05]" : ""}`}
+            >
+              <input
+                type="checkbox"
+                className="mt-1 accent-lime"
+                checked={selected.has(c.id)}
+                onChange={() =>
+                  setSelected((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(c.id)) next.delete(c.id);
+                    else next.add(c.id);
+                    return next;
+                  })
+                }
+                onClick={(e) => e.stopPropagation()}
+              />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono-x text-[11px] font-bold text-white/80">{c.author}</span>

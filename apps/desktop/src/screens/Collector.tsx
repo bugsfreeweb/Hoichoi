@@ -12,15 +12,27 @@ export default function Collector({
   onStart,
   onStop,
   statsData,
+  nextRunAt,
+  autoRun,
+  onAutoRun,
 }: {
   logs: string[];
   running: boolean;
   onStart: () => void;
   onStop: () => void;
   statsData?: DeskStats | null;
+  nextRunAt?: number | null;
+  autoRun?: boolean;
+  onAutoRun?: (v: boolean) => void;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [live, setLive] = useState<Array<{ ts: string; stage: string; message: string; level: "ok" | "warn" | "err" | "info" }>>([]);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     setLive(logs.slice(-400).map((l) => parseLogLine(l)));
@@ -36,6 +48,11 @@ export default function Collector({
     ? `${Math.floor(stats.avgRunDurationSec / 60)}ম ${String(stats.avgRunDurationSec % 60).padStart(2, "0")}sce`
     : "—";
 
+  const cnt = nextRunAt ? Math.max(0, nextRunAt - now) : 0;
+  const countdown = cnt > 0
+    ? `${String(Math.floor(cnt / 3_600_000)).padStart(2, "0")}:${String(Math.floor((cnt % 3_600_000) / 60_000)).padStart(2, "0")}:${String(Math.floor((cnt % 60_000) / 1000)).padStart(2, "0")}`
+    : null;
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-wrap items-center gap-3 border-b border-white/8 px-5 py-3.5">
@@ -47,6 +64,26 @@ export default function Collector({
           PLAYWRIGHT · HASH · LLM · GIT
         </span>
         <div className="ml-auto flex items-center gap-2">
+          {autoRun != null && onAutoRun && (
+            <label className="flex items-center gap-2 text-[11px] text-white/50" title="প্রতি pipeline_hours ব্যবধানে স্বয়ংক্রিয় রান">
+              <span>অটো-রান</span>
+              <button
+                onClick={() => onAutoRun(!autoRun)}
+                className={`relative h-4.5 w-8 rounded-full transition-colors ${autoRun ? "bg-lime" : "bg-white/15"}`}
+                style={{ height: 18 }}
+              >
+                <span
+                  className="absolute top-0.5 h-3.5 w-3.5 rounded-full bg-night transition-all"
+                  style={{ left: autoRun ? 16 : 2 }}
+                />
+              </button>
+            </label>
+          )}
+          {countdown && !running && (
+            <span className="font-mono-x text-[10.5px] text-lime/90" title="পরবর্তী স্বয়ংক্রিয় রানের কাউন্টডাউন">
+              ⟳ পরবর্তী রান {countdown}
+            </span>
+          )}
           {running && (
             <span className="font-mono-x text-[10px] text-live">
               ● LIVE · রান চলছে

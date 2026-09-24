@@ -10,6 +10,9 @@ import {
   deskQueue,
   deskStats,
   deskProviders,
+  deskMediaStorage,
+  deskMediaCleanup,
+  deskBackupAuto,
   type DeskQueueRow,
   type DeskSource,
   type DeskStats,
@@ -44,6 +47,8 @@ export type View =
   | "ads";
 
 const ONBOARD_KEY = "hoichoi.desk.onboarded.v1";
+const AUTORUN_KEY = "hoichoi.desk.autoru";
+const AUTO_BACKUP_KEY = "hoichoi.desk.autobk";
 const VIEW_ORDER: View[] = [
   "dashboard",
   "watchlist",
@@ -80,6 +85,7 @@ let _win: null | {
   toggleMaximize: () => Promise<void>;
   close: () => Promise<void>;
   startDragging: () => Promise<void>;
+  setBadgeCount?: (n: number) => Promise<void>;
 } = null;
 
 /** Lazy-import the Tauri window API so titlebar buttons control the OS window. */
@@ -157,9 +163,96 @@ export default function App() {
   const [queueRows, setQueueRows] = useState<DeskQueueRow[]>([]);
   const [statsData, setStatsData] = useState<DeskStats | null>(null);
   const [hours, setHours] = useState(2);
+  const [autoRun, _setAutoRun] = useState(() => localStorage.getItem(AUTORUN_KEY) !== "0");
+  const [nextRunAt, setNextRunAt] = useState<number | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
   const [winMaximized, setWinMaximized] = useState(false);
   const [winMinimized, setWinMinimized] = useState(false);
   const winRef = useRef<HTMLDivElement>(null);
+
+  const setAutoRun = (v: boolean) => {
+    _setAutoRun(v);
+    try {
+      localStorage.setItem(AUTORUN_KEY, v ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const runningRef = useRef(running);
+  runningRef.current = running;
+  const hoursRef = useRef(hours);
+  hoursRef.current = hours;
+  const autoRunRef = useRef(autoRun);
+  autoRunRef.current = autoRun;
+  const nextRunAtRef = useRef(nextRunAt);
+  nextRunAtRef.current = nextRunAt;
+  const prevPendingRef = useRef(0);
+  const winMinimizedRef = useRef(winMinimized);
+  winMinimizedRef.current = winMinimized;
+
+  const notify = async (title: string, body: string) => {
+    try {
+      if (!isTauri()) {
+        if (typeof Notification === "undefined") return;
+        if (Notification.permission === "granted") {
+          new Notification(title, { body });
+        } else if (Notification.permission === "default") {
+          const p = await Notification.requestPermission();
+          if (p === "granted") new Notification(title, { body });
+        }
+        return;
+      }
+      const { isPermissionGranted, requestPermission, sendNotification } = await import("@tauri-apps/plugin-notification");
+      let granted = await isPermissionGranted();
+      if (!granted) granted = (await requestPermission()) === "granted";
+      if (granted) sendNotification({ title, body });
+    } catch {
+      /* notifications are optional */
+    }
+  };
+
+  const maybeAutoBackup = async () => {
+    try {
+      const raw = localStorage.getItem(AUTO_BACKUP_KEY);
+      if (!raw) return;
+      const cfg = JSON.parse(raw) as { enabled: boolean; folder: string; keep: number; pass: string } | null;
+      if (!cfg?.enabled || !cfg.folder || !cfg.pass) return;
+      const res = await deskBackupAuto(cfg.pass, cfg.folder, Math.max(1, cfg.keep || 7), await getRunEnv());
+      setLogs((prev) => [...prev, `[backup]auto → ${res.file} · kept ${res.kept} pruned ${res.pruned}`]);
+    } catch (e) {
+      setLogs((prev) => [...prev, `[backup]auto failed: ${String(e)}`]);
+    }
+  };
+
+  const maybeRevalidate = async () => {
+    try {
+      const env = await getRunEnv();
+      const u = new URL("/api/revalidate", SITE_URL);
+      const secret = env["REVALIDATE_SECRET"];
+      if (secret) u.searchParams.set("secret", secret);
+      const res = await fetch(u.toString());
+      if (res.ok) setLogs((prev) => [...prev, "[web]revalidate OK"]);
+    } catch {
+      /* offline: skip */
+    }
+  };
+
+  const maybeCleanup = async () => {
+    try {
+      const m = await deskMediaStorage(await getRunEnv());
+      if (!m.config?.cleanup_enabled) return;
+      const res = await deskMediaCleanup(await getRunEnv(), {
+        dryRun: false,
+        months: m.config.retention_months || 1,
+      });
+      setLogs(
+        (prev) => [...prev, `[media]cleanup → removed ${res.removed} · skipped ${res.skipped} (cutoff ${res.cutoff.slice(0, 10)})`],
+      );
+    } catch {
+      /* cleanup failure is non-fatal */
+    }
+  };
 
   const refresh = useCallback(async () => {
     try {
@@ -189,6 +282,13 @@ export default function App() {
       setSources(src);
       setQueueRows(rows);
       setStatsData(stats);
+      const pending = stats?.stats?.pendingReview ?? 0;
+      setPendingCount(pending);
+      void deskWin().then((w) => w?.setBadgeCount?.(pending));
+      if (pending > prevPendingRef.current && (document.hidden || winMinimizedRef.current)) {
+        void notify("হৈচৈ ডেস্ক — অপেক্ষমাণ মন্তব্য", `${toBn(pending)}টি মন্তব্য মডারেশনের অপেক্ষায় আছে।`);
+      }
+      prevPendingRef.current = pending;
     } catch {
       /* partial refresh failures are non-fatal */
     }
@@ -209,10 +309,14 @@ export default function App() {
     const unlog = listen<string>("pipeline://log", (e) => {
       setLogs((prev) => [...prev.slice(-399), e.payload]);
     });
-    const undone = listen<number>("pipeline://done", (e) => {
+    const undone = listen<number>("pipeline://done", async (e) => {
       setRunning(false);
       setLogs((prev) => [...prev, `── exit code ${e.payload} ──`]);
-      void refresh();
+      await refresh();
+      if (hoursRef.current > 0) setNextRunAt(Date.now() + hoursRef.current * 3_600_000);
+      void maybeAutoBackup();
+      void maybeRevalidate();
+      void maybeCleanup();
     });
     return () => {
       window.removeEventListener("keydown", onKey);
@@ -220,6 +324,27 @@ export default function App() {
       void undone.then((f) => f());
     };
   }, [refresh]);
+
+  useEffect(() => {
+    // Seed a first cadence point when auto-run is on and none is pending.
+    if (!autoRunRef.current || hoursRef.current <= 0) return;
+    if (nextRunAtRef.current != null) return;
+    setNextRunAt(Date.now() + hoursRef.current * 3_600_000);
+  }, [autoRun, nextRunAt]);
+
+  useEffect(() => {
+    if (!autoRunRef.current || hoursRef.current <= 0) return;
+    const t = setInterval(() => {
+      if (!autoRunRef.current || runningRef.current) return;
+      const at = nextRunAtRef.current;
+      if (at == null || Date.now() < at) return;
+      setNextRunAt(null);
+      void runNow();
+    }, 1000);
+    return () => clearInterval(t);
+    // runNow is stable by identity; scheduler fires on wall-clock only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const runNow = async () => {
     if (running) return;
@@ -398,6 +523,11 @@ export default function App() {
             <div className="side-foot">
               <p className="online"><span className="pulse-dot"></span>CONTROLLER ONLINE</p>
               <p className="watching" id="sideWatch">{toBn(watchingCount)} সোর্স সক্রিয়</p>
+              {pendingCount > 0 && (
+                <p className="watching pending-badge" id="sidePending">
+                  {toBn(pendingCount)} মন্তব্য মডারেশনে
+                </p>
+              )}
             </div>
           </aside>
 
@@ -435,7 +565,16 @@ export default function App() {
               </section>
 
               <section className="pane col" id="pane-collector" hidden={view !== "collector"}>
-                <Collector logs={logs} running={running} onStart={() => void runNow()} onStop={() => void stopNow()} statsData={statsData} />
+                <Collector
+                  logs={logs}
+                  running={running}
+                  onStart={() => void runNow()}
+                  onStop={() => void stopNow()}
+                  statsData={statsData}
+                  nextRunAt={nextRunAt}
+                  autoRun={autoRun}
+                  onAutoRun={setAutoRun}
+                />
               </section>
 
               <section className="pane col" id="pane-vault" hidden={view !== "vault"}>

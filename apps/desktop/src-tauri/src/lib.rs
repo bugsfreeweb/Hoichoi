@@ -5,6 +5,10 @@ mod vault;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
+        .setup(|app| {
+            commands::warm_daemon(app.handle());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::run_pipeline,
             commands::stop_pipeline,
@@ -23,6 +27,11 @@ pub fn run() {
             vault::vault_delete,
             vault::vault_names,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running hoichoi desk");
+        .build(tauri::generate_context!())
+        .expect("error while building hoichoi desk")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                commands::shutdown_daemon(app);
+            }
+        });
 }

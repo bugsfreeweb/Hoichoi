@@ -5,6 +5,17 @@ export const CREDENTIAL_NAMES = [
   "turso_token",
   "github_pat",
   "github_repo",
+  "github_branch",
+  "github_cdn_url",
+  "idrivee2_access_key",
+  "idrivee2_secret_key",
+  "idrivee2_bucket",
+  "idrivee2_endpoint",
+  "b2_access_key",
+  "b2_secret_key",
+  "b2_bucket",
+  "b2_endpoint",
+  "revalidate_secret",
   "GOOGLE_API_KEY",
   "GROQ_API_KEY",
   "OPENROUTER_API_KEY",
@@ -25,14 +36,55 @@ const ENV_MAP: Partial<Record<CredentialName, string>> = {
   turso_url: "TURSO_DATABASE_URL",
   turso_token: "TURSO_AUTH_TOKEN",
   fb_session_cookie: "FB_SESSION_COOKIE",
+  github_pat: "GITHUB_TOKEN",
+  github_repo: "GITHUB_REPO",
+  github_branch: "GITHUB_BRANCH",
+  github_cdn_url: "GITHUB_CDN_URL",
+  idrivee2_access_key: "IDRIVEE2_ACCESS_KEY",
+  idrivee2_secret_key: "IDRIVEE2_SECRET_KEY",
+  idrivee2_bucket: "IDRIVEE2_BUCKET",
+  idrivee2_endpoint: "IDRIVEE2_ENDPOINT",
+  b2_access_key: "B2_ACCESS_KEY",
+  b2_secret_key: "B2_SECRET_KEY",
+  b2_bucket: "B2_BUCKET",
+  b2_endpoint: "B2_ENDPOINT",
+  revalidate_secret: "REVALIDATE_SECRET",
 };
 
-/** Vault keys that are NOT pipeline envs (GitHub mirroring / metadata only). */
-const SKIP_ENV: CredentialName[] = ["github_pat", "github_repo", "fb_cookie_expires", "use_cloud"];
+/** Vault keys that are NOT pipeline envs (metadata only). */
+const SKIP_ENV: CredentialName[] = ["fb_cookie_expires", "use_cloud"];
 
 /** Cloud-sync mode lives in the vault; default on so desktop → web is shared. */
 export function cloudSyncDefault(): boolean {
   return true;
+}
+
+/* ------------------------------------------------------------------ *
+ * Credential snapshot — getEnvFromVault/getRunEnv/isCloudSync each ran
+ * ~15 vault_read invokes per call; a session snapshot makes the steady
+ * state a single in-memory read, and is busted on every store/remove.   *
+ * ------------------------------------------------------------------ */
+
+type Snapshot = Partial<Record<CredentialName, string | null>>;
+let snapshotCache: Snapshot | null = null;
+
+async function getSnapshot(): Promise<Snapshot> {
+  if (snapshotCache) return snapshotCache;
+  const snap: Snapshot = {};
+  for (const name of CREDENTIAL_NAMES) {
+    try {
+      snap[name] = await getCredential(name);
+    } catch {
+      snap[name] = null;
+    }
+  }
+  snapshotCache = snap;
+  return snap;
+}
+
+/** Forget the snapshot after any vault write so the next read is fresh. */
+function invalidateSnapshot(): void {
+  snapshotCache = null;
 }
 
 /**
@@ -41,15 +93,18 @@ export function cloudSyncDefault(): boolean {
  * were stored but never read as `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN`.
  */
 export async function getEnvFromVault(): Promise<Record<string, string>> {
+  const snap = await getSnapshot();
   const out: Record<string, string> = {};
   for (const name of CREDENTIAL_NAMES) {
     if (SKIP_ENV.includes(name)) continue;
-    try {
-      const v = await getCredential(name);
-      if (v) out[ENV_MAP[name] ?? name] = v;
-    } catch {
-      /* ignore vault errors per-key */
-    }
+    const v = snap[name];
+    if (v) out[ENV_MAP[name] ?? name] = v;
+  }
+  // Enable the GitHub media adapter when both repo credentials exist: every
+  // processed image/video is pushed to the repo and the deployed web serves
+  // the blobs from jsDelivr (the serverless app can't reach the desktop disk).
+  if (snap.github_pat && snap.github_repo) {
+    out.STORAGE_ADAPTER = "github";
   }
   return out;
 }
@@ -61,7 +116,7 @@ export async function getEnvFromVault(): Promise<Record<string, string>> {
  */
 export async function getRunEnv(): Promise<Record<string, string>> {
   const env = await getEnvFromVault();
-  const cloud = (await getCredential("use_cloud")) !== "0";
+  const cloud = (await getSnapshot()).use_cloud !== "0";
   if (!cloud) {
     delete env.TURSO_DATABASE_URL;
     delete env.TURSO_AUTH_TOKEN;
@@ -71,8 +126,8 @@ export async function getRunEnv(): Promise<Record<string, string>> {
 
 /** True when the desktop writes to the shared cloud DB (Turso) on pipeline runs. */
 export async function isCloudSync(): Promise<boolean> {
-  const env = await getEnvFromVault();
-  return Boolean(env.TURSO_DATABASE_URL) && (await getCredential("use_cloud")) !== "0";
+  const snap = await getSnapshot();
+  return Boolean(snap.turso_url) && snap.use_cloud !== "0";
 }
 
 let opening: Promise<void> | null = null;
@@ -110,6 +165,7 @@ export async function hasCredential(name: CredentialName): Promise<boolean> {
 export async function storeCredential(name: CredentialName, value: string): Promise<void> {
   await ensureOpen();
   await invoke("vault_set", { name, value });
+  invalidateSnapshot();
 }
 
 export async function removeCredential(name: CredentialName): Promise<void> {
@@ -119,6 +175,7 @@ export async function removeCredential(name: CredentialName): Promise<void> {
   } catch {
     /* key not present */
   }
+  invalidateSnapshot();
 }
 
 export async function listConfigured(): Promise<Record<CredentialName, boolean>> {

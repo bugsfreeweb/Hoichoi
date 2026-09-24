@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 const NAV: Array<{ href: string; emoji: string; label: string }> = [
   { href: "/admin", emoji: "📊", label: "ড্যাশবোর্ড" },
   { href: "/admin/sources", emoji: "📡", label: "সোর্স" },
+  { href: "/admin/categories", emoji: "🗂️", label: "বিভাগ" },
   { href: "/admin/moderation", emoji: "✅", label: "মডারেশন কিউ" },
   { href: "/admin/posts", emoji: "✏️", label: "পোস্ট এডিটর" },
   { href: "/admin/providers", emoji: "🤖", label: "AI প্রোভাইডার" },

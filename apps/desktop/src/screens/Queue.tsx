@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
-import { Search, RefreshCw, Eye, ExternalLink, CircleCheck, Clock3, Ban } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Search, RefreshCw, Eye, ExternalLink, CircleCheck, Clock3, Ban, Pencil, Trash2, X } from "lucide-react";
 import { CATEGORY_LABEL, CATEGORY_TINT, POST_STATUS_LABEL, bnTime, toBn } from "../lib/format";
-import type { DeskQueueRow } from "../lib/tauri";
-import { openAdmin, isTauri } from "../lib/tauri";
+import { deskCategories, deskQueueRemove, deskQueueSet, deskQueueUpdate, openAdmin, isTauri, type DeskCategory, type DeskQueueRow } from "../lib/tauri";
+import { getRunEnv } from "../lib/vault";
 import { SITE_URL } from "../lib/site";
 
 type Tab = "all" | "published" | "pending_review" | "duplicate";
@@ -20,6 +20,117 @@ const STATUS_STYLE: Record<string, { bg: string; tx: string; icon: typeof Circle
   rejected: { bg: "bg-rose-500/12", tx: "text-rose-300", icon: Ban, bn: "বাতিল" },
 };
 
+function EditModal({
+  row,
+  onClose,
+  onSaved,
+}: {
+  row: DeskQueueRow;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState(row.title_bn);
+  const [summary, setSummary] = useState(row.summary_bn ?? "");
+  const [body, setBody] = useState(row.body_bn ?? "");
+  const [category, setCategory] = useState(row.category);
+  const [cats, setCats] = useState<DeskCategory[] | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      try {
+        const env = await getRunEnv();
+        if (live) setCats(await deskCategories(env));
+      } catch {
+        if (live) setErr("ক্যাটাগরি লোড ব্যর্থ।");
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setErr(null);
+    try {
+      const env = await getRunEnv();
+      await deskQueueUpdate(env, row.id, {
+        title: title.trim(),
+        summary: summary.trim() === "" ? null : summary.trim(),
+        body,
+        category,
+      });
+      onSaved();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "সংরক্ষণ ব্যর্থ।");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const field =
+    "mt-1 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[12.5px] text-white/90 outline-none focus:border-amberx/50 placeholder:text-white/30";
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-night/70 p-4 backdrop-blur-sm">
+      <form
+        onSubmit={save}
+        className="scroll-slim flex max-h-[92vh] w-full max-w-xl flex-col overflow-auto rounded-2xl border border-white/12 bg-panel p-5"
+      >
+        <div className="flex items-center justify-between">
+          <p className="text-[14px] font-bold text-white">পোস্ট সম্পাদনা</p>
+          <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/60 hover:text-white">
+            <X size={13} />
+          </button>
+        </div>
+        <label className="mt-4 block">
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">শিরোনাম</span>
+          <input required className={field} value={title} onChange={(e) => setTitle(e.target.value)} />
+        </label>
+        <label className="mt-3 block">
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">সারাংশ (ফাঁকা = মুছবে)</span>
+          <textarea rows={2} className={field} value={summary} onChange={(e) => setSummary(e.target.value)} />
+        </label>
+        <label className="mt-3 block">
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">বিস্তারিত (body)</span>
+          <textarea rows={8} className={`${field} font-sans-bn`} value={body} onChange={(e) => setBody(e.target.value)} />
+        </label>
+        <label className="mt-3 block">
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">বিভাগ</span>
+          <select className={field} value={category} onChange={(e) => setCategory(e.target.value)}>
+            {(cats ?? [{ slug: row.category, displayNameBn: CATEGORY_LABEL[row.category] ?? row.category }]).map((c) => (
+              <option key={c.slug} value={c.slug} className="bg-panel text-white">
+                {c.displayNameBn}
+              </option>
+            ))}
+          </select>
+        </label>
+        {err && <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-300">{err}</p>}
+        <div className="mt-5 flex items-center gap-2.5">
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded-lg bg-lime px-4 py-2 text-[12px] font-bold text-night transition-colors hover:bg-lime/85 disabled:opacity-50"
+          >
+            ✓ সংরক্ষণ
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-white/12 px-4 py-2 text-[12px] font-semibold text-white/70 hover:text-white"
+          >
+            বাতিল
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export default function Queue({
   rows,
   refresh,
@@ -29,6 +140,88 @@ export default function Queue({
 }) {
   const [tab, setTab] = useState<Tab>("all");
   const [q, setQ] = useState("");
+  const [editing, setEditing] = useState<DeskQueueRow | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [focusIdx, setFocusIdx] = useState(0);
+
+  async function removeRow(r: DeskQueueRow) {
+    if (!window.confirm(`"${r.title_bn}" পোস্টটি মুছে ফেলবেন? এটি ফেরানো যাবে না।`)) return;
+    setBusyId(r.id);
+    try {
+      await deskQueueRemove(await getRunEnv(), r.id);
+      await refresh();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function setStatus(r: DeskQueueRow, status: "approved" | "rejected" | "published") {
+    setBusyId(r.id);
+    try {
+      await deskQueueSet(await getRunEnv(), r.id, status);
+      await refresh();
+    } catch {
+      /* non-fatal */
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function bulkAct(status: "approved" | "rejected" | "remove") {
+    if (selected.size === 0) return;
+    const label = status === "approved" ? "অনুমোদন" : status === "rejected" ? "বাতিল" : "মুছে ফেলা";
+    if (!window.confirm(`${toBn(selected.size)}টি আইটেম ${label} করবেন? ${status === "remove" ? "এটি ফেরানো যাবে না।" : ""}`)) return;
+    setBusyId("bulk");
+    try {
+      const env = await getRunEnv();
+      if (status === "remove") {
+        for (const id of selected) await deskQueueRemove(env, id);
+      } else {
+        for (const id of selected) await deskQueueSet(env, id, status);
+      }
+      await refresh();
+    } catch {
+      /* non-fatal */
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (editing) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || t.closest("input, textarea, select"))) return;
+      const list = shown;
+      if (list.length === 0) return;
+      const r = list[Math.min(focusIdx, list.length - 1)];
+      if (!r) return;
+      if (e.key === "j" || e.key === "J") {
+        if (r.status !== "published") void setStatus(r, "approved");
+      } else if (e.key === "k" || e.key === "K") {
+        void setStatus(r, "rejected");
+      } else if (e.key === "ArrowDown" || e.key === "s") {
+        setFocusIdx((i) => Math.min(list.length - 1, i + 1));
+      } else if (e.key === "ArrowUp" || e.key === "w") {
+        setFocusIdx((i) => Math.max(0, i - 1));
+      } else if (e.key === " ") {
+        e.preventDefault();
+        setSelected((prev) => {
+          const next = new Set(prev);
+          if (next.has(r.id)) next.delete(r.id);
+          else next.add(r.id);
+          return next;
+        });
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        if (e.key === "Backspace" && (e.metaKey || e.ctrlKey)) void removeRow(r);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, q, tab, focusIdx, editing]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: rows.length, published: 0, pending_review: 0, duplicate: 0 };
@@ -61,7 +254,7 @@ export default function Queue({
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
       <div className="flex flex-wrap items-center gap-3 border-b border-white/8 px-5 py-4">
         <p className="font-serif-bn text-[17px] font-bold text-white">কনটেন্ট সারি</p>
         <span className="font-mono-x text-[10px] tracking-[0.2em] text-white/35 uppercase">
@@ -108,6 +301,14 @@ export default function Queue({
         <table className="w-full min-w-[860px] text-left">
           <thead>
             <tr className="font-mono-x text-[9.5px] tracking-[0.18em] text-white/35 uppercase">
+              <th className="w-10 px-2 py-3 font-medium">
+                <input
+                  type="checkbox"
+                  className="accent-lime"
+                  checked={shown.length > 0 && shown.every((r) => selected.has(r.id))}
+                  onChange={(e) => setSelected(e.target.checked ? new Set(shown.map((r) => r.id)) : new Set())}
+                />
+              </th>
               <th className="px-5 py-3 font-medium"># আইটেম</th>
               <th className="px-3 py-3 font-medium">সোর্স</th>
               <th className="px-3 py-3 font-medium">সংগ্রহ</th>
@@ -124,11 +325,26 @@ export default function Queue({
                 </td>
               </tr>
             )}
-            {shown.map((r) => {
+            {shown.map((r, i) => {
               const s = STATUS_STYLE[r.status] ?? STATUS_STYLE.pending_review;
               const Icon = s.icon;
               return (
-                <tr key={r.id} className="group transition-colors duration-200 hover:bg-white/[0.035]">
+                <tr key={r.id} className={`group transition-colors duration-200 hover:bg-white/[0.035] ${i === focusIdx ? "bg-white/[0.04]" : ""}`}>
+                  <td className="px-2 py-3.5">
+                    <input
+                      type="checkbox"
+                      className="accent-lime"
+                      checked={selected.has(r.id)}
+                      onChange={() =>
+                        setSelected((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(r.id)) next.delete(r.id);
+                          else next.add(r.id);
+                          return next;
+                        })
+                      }
+                    />
+                  </td>
                   <td className="max-w-[340px] px-5 py-3.5">
                     <div className="flex items-center gap-3">
                       <span className="font-mono-x text-[10px] text-white/30">
@@ -179,6 +395,22 @@ export default function Queue({
                       >
                         <ExternalLink size={12} />
                       </button>
+                      <button
+                        onClick={() => setEditing(r)}
+                        disabled={busyId !== null}
+                        className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/70 transition-colors hover:border-lime/60 hover:text-lime disabled:opacity-40"
+                        title="সম্পাদনা"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        onClick={() => void removeRow(r)}
+                        disabled={busyId !== null}
+                        className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/70 transition-colors hover:border-rose-400/70 hover:text-rose-300 disabled:opacity-40"
+                        title="মুছুন"
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -187,6 +419,58 @@ export default function Queue({
           </tbody>
         </table>
       </div>
+
+      <div className="flex flex-wrap items-center gap-2 border-t border-white/8 px-5 py-2">
+        <label className="flex items-center gap-1.5 text-[10.5px] font-semibold text-white/45">
+          <input
+            type="checkbox"
+            className="accent-lime"
+            checked={shown.length > 0 && shown.every((r) => selected.has(r.id))}
+            onChange={(e) => setSelected(e.target.checked ? new Set(shown.map((r) => r.id)) : new Set())}
+          />
+          সব নির্বাচন
+        </label>
+        <span className="font-mono-x text-[10px] text-white/35">{toBn(selected.size)} নির্বাচিত</span>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {selected.size > 0 && (
+            <>
+              <button
+                onClick={() => void bulkAct("approved")}
+                disabled={busyId !== null}
+                className="flex items-center gap-1 rounded-lg bg-lime px-3 py-1 text-[10.5px] font-bold text-night disabled:opacity-40"
+              >
+                ✓ বাল্ক অনুমোদন
+              </button>
+              <button
+                onClick={() => void bulkAct("rejected")}
+                disabled={busyId !== null}
+                className="flex items-center gap-1 rounded-lg border border-rose-400/50 px-3 py-1 text-[10.5px] font-bold text-rose-300 disabled:opacity-40"
+              >
+                ✕ বাল্ক বাতিল
+              </button>
+              <button
+                onClick={() => void bulkAct("remove")}
+                disabled={busyId !== null}
+                className="flex items-center gap-1 rounded-lg bg-rose-500/80 px-3 py-1 text-[10.5px] font-bold text-white disabled:opacity-40"
+              >
+                <Trash2 size={11} /> বাল্ক ডিলিট
+              </button>
+            </>
+          )}
+          <span className="font-mono-x text-[9.5px] text-white/30">j=অনুমোদন · k=বাতিল · space=নির্বাচন · ↑↓/w-s=চালনা</span>
+        </div>
+      </div>
+
+      {editing && (
+        <EditModal
+          row={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            void refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,9 +1,11 @@
 import { Command } from "commander";
-import { readFile, rm } from "node:fs/promises";
+import { readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
+import { createInterface } from "node:readline";
 import { runPipeline, type PipelineOptions } from "./pipeline";
 import { runArchivePass } from "./archive";
+import { cleanupMedia, storageRegistryCount } from "./storage";
 import {
   getClient,
   ensureSchema,
@@ -16,9 +18,15 @@ import {
   resetContent,
   makeSyncClients,
   copyTables,
+  getMediaStorageConfig,
+  saveMediaStorageConfig,
+  listSourceErrors,
+  setSourceErrorStatus,
   createAdminLoginCode,
   listAdminLoginCodes,
   revokeAdminLoginCode,
+  revokeAdminSessionsByEmail,
+  revokeAdminLoginCodesByEmail,
   statsSnapshot,
   recentPipelineRuns,
   getAllComments,
@@ -35,6 +43,8 @@ import {
   deleteNotice,
   updatePostStatus,
   getPostById,
+  updatePost,
+  deletePost,
   listLoginLog,
   deleteLoginLog,
   clearLoginLog,
@@ -42,8 +52,9 @@ import {
   nowIso,
   CONTENT_TABLES,
   type ExportBundle,
+  type PostUpdateFields,
 } from "@hoichoi/db";
-import { PROCESSOR_ENV_DEFAULTS, type CategorySlug, type NoticeTone, type ProviderKey, type SiteSettings } from "@hoichoi/shared-types";
+import { PROCESSOR_ENV_DEFAULTS, type CategorySlug, type MediaStorageConfig, type NoticeTone, type ProviderKey, type SiteSettings } from "@hoichoi/shared-types";
 
 /** Structural match for @libsql/client's InValue (avoids pulling the dep into scraper). */
 type SqlValue = null | string | number | bigint | Uint8Array | ArrayBuffer;
@@ -185,6 +196,11 @@ program
         if (!opts.id) throw new Error("--id required");
         await revokeAdminLoginCode(opts.id);
         console.log(JSON.stringify({ ok: true }));
+      } else if (action === "logout-sessions") {
+        if (!email) throw new Error("email required");
+        const sessions = await revokeAdminSessionsByEmail(email);
+        const codes = await revokeAdminLoginCodesByEmail(email);
+        console.log(JSON.stringify({ ok: true, email, sessionsRevoked: sessions, codesRevoked: codes }));
       } else {
         throw new Error(`unknown action: ${action}`);
       }
@@ -234,6 +250,57 @@ backup
     }
   });
 
+backup
+  .command("verify <file>")
+  .description('decrypt + validate a backup without writing to the database — e.g. "backup verify hb.bak"')
+  .action(async (file: string) => {
+    try {
+      await ensureSchema(getClient());
+      const pass = backupPass();
+      const text = await readFile(file, "utf-8");
+      const parsed = JSON.parse(text) as { payload?: string };
+      const bundle = decryptJson(parsed.payload ?? text, pass) as ExportBundle;
+      const checks: Record<string, string | number> = {
+        version: bundle.version,
+        exported_at: bundle.exported_at,
+        tables: bundle.tables?.length ?? 0,
+        credentials: Object.keys(bundle.credentials ?? {}).length,
+      };
+      for (const t of bundle.tables ?? []) checks[`rows:${t.name}`] = t.rows.length;
+      console.log(JSON.stringify({ ok: true, valid: true, file, checks }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+backup
+  .command("auto <dir>")
+  .description('write an auto-backup into a folder and keep only the newest N files (rotating)')
+  .option("--keep <n>", "keep this many recent backups", "7")
+  .action(async (dir: string, opts: { keep: string }) => {
+    try {
+      await ensureSchema(getClient());
+      await import("node:fs/promises").then(({ mkdir }) => mkdir(dir, { recursive: true }));
+      const payload = encryptJson(await gatherExportBundle(getClient()), backupPass());
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19).replace("T", "_");
+      const file = path.join(dir, `hoichoi-backup-${stamp}.bak`);
+      await writeFile(file, JSON.stringify({ payload }, null, 2), "utf-8");
+      const keep = Math.max(1, Number(opts.keep) || 7);
+      const list = (await readdir(dir))
+        .filter((f) => f.startsWith("hoichoi-backup-") && f.endsWith(".bak"))
+        .sort()
+        .slice(0, -keep);
+      for (const old of list) {
+        await rm(path.join(dir, old), { force: true });
+      }
+      console.log(JSON.stringify({ ok: true, file, kept: keep, pruned: list.length }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
 program
   .command("reset")
   .description("wipe content + reset settings/config to defaults (admin account kept)")
@@ -259,7 +326,7 @@ program
         throw new Error("direction must be push or pull");
       }
       const { from, to } = makeSyncClients(opts.from, opts.to);
-      await ensureSchema(to);
+      await ensureSchema(to, opts.to);
       const written = await copyTables(from, to, CONTENT_TABLES);
       console.log(JSON.stringify({ ok: true, direction, written }, null, 2));
     } catch (err) {
@@ -275,6 +342,41 @@ program
     try {
       await ensureSchema(getClient());
       console.log(JSON.stringify({ ok: true, stats: await statsSnapshot(), runs: await recentPipelineRuns(8) }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+const media = program.command("media").description("remote media storage (adapter chain + retention policy)");
+media
+  .command("storage [json]")
+  .description('print the media-storage policy (or save a new JSON policy when passed)')
+  .action(async (json: string | undefined) => {
+    try {
+      await ensureSchema(getClient());
+      if (json) {
+        const cfg = JSON.parse(json) as MediaStorageConfig;
+        await saveMediaStorageConfig(cfg);
+      }
+      console.log(JSON.stringify({ ok: true, config: await getMediaStorageConfig(), registry: await storageRegistryCount() }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+media
+  .command("cleanup")
+  .description("delete remote blobs registered older than the retention window")
+  .option("--dry-run", "report only, touch nothing")
+  .option("--months <n>", "override the retention window (months)")
+  .action(async (opts: { dryRun?: boolean; months?: string }) => {
+    try {
+      await ensureSchema(getClient());
+      console.log(JSON.stringify({
+        ok: true,
+        ...(await cleanupMedia({ dryRun: opts.dryRun ?? false, months: opts.months !== undefined ? Number(opts.months) : undefined })),
+      }, null, 2));
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -1010,6 +1112,593 @@ async function dirSize(dir: string): Promise<number> {
   }
   return total;
 }
+
+/* ------------------------------------------------------------------ *
+ * Persistent daemon mode — the desktop keeps ONE runner process alive  *
+ * and sends `{"id","cmd","env"}` JSON lines on stdin; results come     *
+ * back as `{"id","ok","data"}` / `{"id","ok":false,"error"}` on stdout.*
+ * This removes the Node cold-start + full CLI boot per desk operation.  *
+ * ------------------------------------------------------------------ */
+
+interface DaemonRequest {
+  id?: number;
+  cmd?: string[];
+  env?: Record<string, string>;
+}
+
+/** env keys the daemon injects per-request; stale keys are removed on the
+ *  next request so a previous cloud/local mode switch can never leak a
+ *  TURSO_DATABASE_URL across requests. */
+const appliedEnvKeys: Record<string, string> = {};
+
+function applyDaemonEnv(env?: Record<string, string>): void {
+  const next = env ?? {};
+  for (const k of Object.keys(appliedEnvKeys)) {
+    if (!(k in next)) delete process.env[k];
+  }
+  for (const [k, v] of Object.entries(next)) {
+    process.env[k] = v;
+    appliedEnvKeys[k] = v;
+  }
+  if (!process.env.TURSO_DATABASE_URL && !process.env.DATABASE_URL) {
+    const local = process.env.HOICHOI_LOCAL_DB_URL;
+    if (local) process.env.TURSO_DATABASE_URL = local;
+  }
+}
+
+interface ParsedArgs {
+  positional: string[];
+  flags: Record<string, string>;
+  bools: Set<string>;
+}
+
+/** Faithful analogue of commander's `--flag value` / bare `--flag` parsing
+ *  so daemon dispatch matches the one-shot CLI arg-for-arg. */
+function parseArgs(args: string[]): ParsedArgs {
+  const positional: string[] = [];
+  const flags: Record<string, string> = {};
+  const bools = new Set<string>();
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === undefined) break;
+    if (a.startsWith("--")) {
+      const nxt = args[i + 1];
+      if (nxt !== undefined && !nxt.startsWith("--")) {
+        flags[a.slice(2)] = nxt;
+        i++;
+      } else {
+        bools.add(a.slice(2));
+      }
+    } else {
+      positional.push(a);
+    }
+  }
+  return { positional, flags, bools };
+}
+
+/** Run `fn`, buffering everything the handler prints to stdout/stderr so the
+ *  request's result can be shipped back as one JSON line. */
+async function runCaptured(
+  fn: () => Promise<void>,
+): Promise<{ out: string; err: string }> {
+  let out = "";
+  let err = "";
+  const ow = process.stdout.write;
+  const ew = process.stderr.write;
+  process.stdout.write = ((chunk: Uint8Array | string): boolean => {
+    out += String(chunk);
+    return true;
+  }) as typeof process.stdout.write;
+  process.stderr.write = ((chunk: Uint8Array | string): boolean => {
+    err += String(chunk);
+    return true;
+  }) as typeof process.stderr.write;
+  try {
+    await fn();
+  } finally {
+    process.stdout.write = ow;
+    process.stderr.write = ew;
+  }
+  return { out, err };
+}
+
+/** Mirror of the one-shot CLI handlers for every command the desktop issues,
+ *  reusing the exact same helper functions so behavior can't drift. */
+async function dispatchCmd(args: string[]): Promise<void> {
+  const cmd = args[0];
+  switch (cmd) {
+    case "settings": {
+      console.log(JSON.stringify({ settings: await getSettings() }, null, 2));
+      return;
+    }
+    case "settings:set": {
+      const fields: Partial<SiteSettings> = {};
+      for (const a of args.slice(1)) {
+        const eq = a.indexOf("=");
+        if (eq <= 0) throw new Error(`expected field=value, got: ${a}`);
+        const k = a.slice(0, eq) as keyof SiteSettings;
+        const v = a.slice(eq + 1);
+        if (!SETTING_KEYS.includes(k)) throw new Error(`unknown settings field: ${k}`);
+        if (k === "pipeline_hours" || k === "archive_visible_days" || k === "archive_retention_days") {
+          (fields as Record<string, number>)[k] = Number(v);
+        } else {
+          (fields as Record<string, string>)[k] = v;
+        }
+      }
+      await updateSettings(fields);
+      console.log(JSON.stringify({ ok: true, fields: Object.keys(fields) }, null, 2));
+      return;
+    }
+    case "admin-code": {
+      const action = args[1];
+      const { positional, flags } = parseArgs(args.slice(2));
+      if (action === "create") {
+        const email = positional[0];
+        if (!email) throw new Error("email required");
+        const created = await createAdminLoginCode({ email, label: flags.label });
+        console.log(JSON.stringify({ ok: true, ...created }));
+      } else if (action === "list") {
+        console.log(JSON.stringify({ ok: true, codes: await listAdminLoginCodes() }, null, 2));
+      } else if (action === "revoke") {
+        if (!flags.id) throw new Error("--id required");
+        await revokeAdminLoginCode(flags.id);
+        console.log(JSON.stringify({ ok: true }));
+      } else if (action === "logout-sessions") {
+        const email = positional[0];
+        if (!email) throw new Error("email required (admin-code logout-sessions <email>)");
+        const sessions = await revokeAdminSessionsByEmail(email);
+        const codes = await revokeAdminLoginCodesByEmail(email);
+        console.log(JSON.stringify({ ok: true, email, sessionsRevoked: sessions, codesRevoked: codes }));
+      } else {
+        throw new Error(`unknown action: ${action}`);
+      }
+      return;
+    }
+    case "backup": {
+      const sub = args[1];
+      if (sub === "export") {
+        const bundle = await gatherExportBundle(getClient());
+        const payload = encryptJson(bundle, backupPass());
+        console.log(JSON.stringify({ ok: true, payload }));
+      } else if (sub === "import") {
+        const file = args[2];
+        if (!file) throw new Error("file required");
+        const pass = backupPass();
+        const text = await readFile(file, "utf-8");
+        const parsed = JSON.parse(text) as { payload?: string };
+        const bundle = decryptJson(parsed.payload ?? text, pass) as ExportBundle;
+        const written = await applyImportBundle(getClient(), bundle);
+        console.log(JSON.stringify({ ok: true, written }, null, 2));
+      } else if (sub === "verify") {
+        const file = args[2];
+        if (!file) throw new Error("file required");
+        const pass = backupPass();
+        const text = await readFile(file, "utf-8");
+        const parsed = JSON.parse(text) as { payload?: string };
+        const bundle = decryptJson(parsed.payload ?? text, pass) as ExportBundle;
+        const checks: Record<string, string | number> = {
+          version: bundle.version,
+          exported_at: bundle.exported_at,
+          tables: bundle.tables?.length ?? 0,
+          credentials: Object.keys(bundle.credentials ?? {}).length,
+        };
+        for (const t of bundle.tables ?? []) checks[`rows:${t.name}`] = t.rows.length;
+        console.log(JSON.stringify({ ok: true, valid: true, file, checks }, null, 2));
+      } else if (sub === "auto") {
+        const dir = args[2];
+        if (!dir) throw new Error("dir required");
+        const { flags } = parseArgs(args.slice(3));
+        const { mkdir } = await import("node:fs/promises");
+        await mkdir(dir, { recursive: true });
+        const payload = encryptJson(await gatherExportBundle(getClient()), backupPass());
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19).replace("T", "_");
+        const file = path.join(dir, `hoichoi-backup-${stamp}.bak`);
+        await writeFile(file, JSON.stringify({ payload }, null, 2), "utf-8");
+        const keep = Math.max(1, Number(flags.keep) || 7);
+        const list = (await readdir(dir))
+          .filter((f) => f.startsWith("hoichoi-backup-") && f.endsWith(".bak"))
+          .sort()
+          .slice(0, -keep);
+        for (const old of list) {
+          await rm(path.join(dir, old), { force: true });
+        }
+        console.log(JSON.stringify({ ok: true, file, kept: keep, pruned: list.length }));
+      } else {
+        throw new Error(`unknown backup subcommand: ${String(sub)}`);
+      }
+      return;
+    }
+    case "reset": {
+      const { wiped } = await resetContent(getClient());
+      console.log(JSON.stringify({ ok: true, wiped }));
+      return;
+    }
+    case "sync": {
+      const direction = args[1];
+      if (direction !== "push" && direction !== "pull") throw new Error("direction must be push or pull");
+      const { flags } = parseArgs(args.slice(2));
+      if (!flags.from || !flags.to) throw new Error("--from and --to required");
+const { from, to } = makeSyncClients(flags.from, flags.to);
+      await ensureSchema(to, flags.to);
+      const written = await copyTables(from, to, CONTENT_TABLES);
+      console.log(JSON.stringify({ ok: true, direction, written }, null, 2));
+      return;
+    }
+    case "stats": {
+      console.log(JSON.stringify({ ok: true, stats: await statsSnapshot(), runs: await recentPipelineRuns(8) }, null, 2));
+      return;
+    }
+    case "media": {
+      const sub = args[1];
+      if (sub === "storage") {
+        const next = args[2];
+        if (next === "set") {
+          const json = args[3];
+          if (!json) throw new Error("json payload required (media storage set <json>)");
+          await saveMediaStorageConfig(JSON.parse(json) as MediaStorageConfig);
+        }
+        const config = await getMediaStorageConfig();
+        const registry = await storageRegistryCount();
+        if (next === "set") console.log(JSON.stringify({ ok: true, config, registry }));
+        else console.log(JSON.stringify({ ok: true, config, registry }, null, 2));
+      } else if (sub === "cleanup") {
+        const { flags, bools } = parseArgs(args.slice(2));
+        const result = await cleanupMedia({
+          dryRun: bools.has("dry-run"),
+          months: flags.months !== undefined ? Number(flags.months) : undefined,
+        });
+        console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+      } else {
+        throw new Error(`unknown media subcommand: ${String(sub)}`);
+      }
+      return;
+    }
+    case "sources": {
+      const action = args[1];
+      const { flags } = parseArgs(args.slice(2));
+      if (action === "list") {
+        console.log(JSON.stringify({ ok: true, sources: await listDeskSources() }, null, 2));
+      } else if (action === "add") {
+        if (!flags["page-url"] || !flags["page-name"]) throw new Error("--page-url and --page-name required");
+        const source = await addDeskSource({
+          pageUrl: flags["page-url"],
+          pageName: flags["page-name"],
+          kind: flags.kind,
+          category: flags.category,
+          categories: flags.categories,
+          topics: flags.topics,
+          fbId: flags["fb-id"],
+        });
+        console.log(JSON.stringify({ ok: true, source }, null, 2));
+      } else if (action === "update") {
+        if (!flags.id) throw new Error("--id required");
+        const source = await updateDeskSource(flags.id, {
+          pageUrl: flags["page-url"],
+          pageName: flags["page-name"],
+          kind: flags.kind,
+          category: flags.category,
+          categories: flags.categories,
+          topics: flags.topics,
+          fbId: flags["fb-id"],
+          isActive: flags["is-active"],
+        });
+        console.log(JSON.stringify({ ok: true, source }, null, 2));
+      } else if (action === "toggle") {
+        if (!flags.id) throw new Error("--id required");
+        await toggleDeskSource(flags.id);
+        console.log(JSON.stringify({ ok: true }));
+      } else if (action === "remove") {
+        if (!flags.id) throw new Error("--id required");
+        await removeDeskSource(flags.id);
+        console.log(JSON.stringify({ ok: true }));
+      } else if (action === "errors") {
+        const { positional } = parseArgs(args.slice(3));
+        const [sub, target] = positional;
+        if (sub === "list") {
+          console.log(JSON.stringify({ ok: true, errors: await listSourceErrors() }, null, 2));
+        } else if (sub === "dismiss") {
+          if (!target) throw new Error("error id required (sources errors dismiss <id>)");
+          await setSourceErrorStatus(target, "dismissed");
+          console.log(JSON.stringify({ ok: true, dismissed: target }));
+        } else if (sub === "reopen") {
+          if (!target) throw new Error("error id required (sources errors reopen <id>)");
+          await setSourceErrorStatus(target, "open");
+          console.log(JSON.stringify({ ok: true, reopened: target }));
+        } else {
+          throw new Error(`unknown sources errors action: ${String(sub)}`);
+        }
+      } else {
+        throw new Error(`unknown action: ${action}`);
+      }
+      return;
+    }
+    case "queue": {
+      const action = args[1];
+      if (action === "list") {
+        const { flags } = parseArgs(args.slice(2));
+        console.log(JSON.stringify({ ok: true, rows: await listDeskQueue(flags.status) }, null, 2));
+      } else if (action === "set") {
+        const id = args[2];
+        const status = args[3];
+        if (!id || !status) throw new Error("id and status required");
+        const allowed = ["approved", "rejected", "published"];
+        if (!allowed.includes(status)) throw new Error(`status must be one of: ${allowed.join(", ")}`);
+        const post = await getPostById(id);
+        if (!post) throw new Error(`post not found: ${id}`);
+        let finalStatus = status;
+        if (status === "approved") {
+          const cat = await getCategory(post.category);
+          const needsDouble = Boolean(cat?.config.requires_double_approval) && post.status !== "approved";
+          await updatePostStatus(id, needsDouble ? "approved" : "published", { publishedAt: !needsDouble });
+          finalStatus = needsDouble ? "approved" : "published";
+        } else if (status === "rejected") {
+          await updatePostStatus(id, "rejected");
+        } else {
+          await updatePostStatus(id, "published", { publishedAt: true });
+        }
+        console.log(JSON.stringify({ ok: true, status: finalStatus }));
+      } else if (action === "update") {
+        const id = args[2];
+        if (!id) throw new Error("id required (queue update <id> --title ... --body ... --summary ... --category ...)");
+        const existing = await getPostById(id);
+        if (!existing) throw new Error(`post not found: ${id}`);
+        const { flags } = parseArgs(args.slice(3));
+        const fields: PostUpdateFields = {};
+        if (flags.title !== undefined) fields.title_bn = flags.title;
+        if (flags.body !== undefined) fields.body_bn = flags.body;
+        if (flags.summary !== undefined) fields.summary_bn = flags.summary === "__CLEAR__" ? null : flags.summary;
+        if (flags.category !== undefined) fields.category = flags.category as CategorySlug;
+        if (Object.keys(fields).length === 0) {
+          throw new Error("at least one field required (--title, --body, --summary, --category)");
+        }
+        await updatePost(id, fields);
+        console.log(JSON.stringify({ ok: true, post: await getPostById(id) }, null, 2));
+      } else if (action === "remove") {
+        const id = args[2];
+        if (!id) throw new Error("id required (queue remove <id>)");
+        await deletePost(id);
+        console.log(JSON.stringify({ ok: true, removed: id }));
+      } else {
+        throw new Error(`unknown action: ${action}`);
+      }
+      return;
+    }
+    case "moderation": {
+      const action = args[1];
+      if (action === "list") {
+        const { flags } = parseArgs(args.slice(2));
+        const all = await getAllComments(300);
+        const filtered = flags.status ? all.filter((c) => c.status === flags.status) : all;
+        console.log(JSON.stringify({ ok: true, comments: filtered }, null, 2));
+      } else if (action === "set") {
+        const id = args[2];
+        const status = args[3];
+        if (!id || !status) throw new Error("id and status required (approved|blocked)");
+        if (status !== "approved" && status !== "blocked") throw new Error("status must be approved|blocked");
+        await setCommentStatus(id, status);
+        console.log(JSON.stringify({ ok: true }));
+      } else {
+        throw new Error(`unknown action: ${action}`);
+      }
+      return;
+    }
+    case "categories": {
+      const action = args[1];
+      const { flags } = parseArgs(args.slice(2));
+      if (action === "list") {
+        console.log(JSON.stringify({ ok: true, categories: await listCategories() }, null, 2));
+      } else if (action === "add") {
+        if (!flags.slug || !flags["name-bn"] || !flags["name-en"]) {
+          throw new Error("--slug, --name-bn and --name-en are required");
+        }
+        const slug = flags.slug.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
+        if (!slug) throw new Error("invalid slug — use lowercase letters, numbers and dashes");
+        await createCategory({
+          slug,
+          displayNameBn: flags["name-bn"].trim(),
+          displayNameEn: flags["name-en"].trim(),
+          descriptionBn: flags["desc-bn"]?.trim() || undefined,
+          descriptionEn: flags["desc-en"]?.trim() || undefined,
+          dot: flags.dot?.trim() || undefined,
+          sortOrder: flags.sort !== undefined ? Number(flags.sort) : undefined,
+          showInFooter: flags.footer === undefined ? undefined : flags.footer === "true" || flags.footer === "1",
+        });
+        console.log(JSON.stringify({ ok: true, category: await getCategory(slug) }, null, 2));
+      } else if (action === "update") {
+        if (!flags.slug) throw new Error("--slug is required");
+        const fields: Parameters<typeof updateCategory>[1] = {};
+        if (flags["name-bn"] !== undefined) fields.displayNameBn = flags["name-bn"].trim();
+        if (flags["name-en"] !== undefined) fields.displayNameEn = flags["name-en"].trim();
+        if (flags["desc-bn"] !== undefined) fields.descriptionBn = flags["desc-bn"].trim();
+        if (flags["desc-en"] !== undefined) fields.descriptionEn = flags["desc-en"].trim();
+        if (flags.dot !== undefined) fields.dot = flags.dot.trim();
+        if (flags.sort !== undefined) fields.sortOrder = Number(flags.sort);
+        if (flags.footer !== undefined) fields.showInFooter = flags.footer === "true" || flags.footer === "1";
+        if (Object.keys(fields).length === 0) {
+          throw new Error("at least one field required (--name-bn, --name-en, --desc-bn, --desc-en, --dot, --sort, --footer)");
+        }
+        await updateCategory(flags.slug, fields);
+        console.log(JSON.stringify({ ok: true, category: await getCategory(flags.slug) }, null, 2));
+      } else if (action === "delete") {
+        if (!flags.slug) throw new Error("--slug is required");
+        await deleteCategory(flags.slug);
+        console.log(JSON.stringify({ ok: true, deleted: flags.slug }));
+      } else {
+        throw new Error(`unknown action: ${action}`);
+      }
+      return;
+    }
+    case "providers": {
+      const action = args[1];
+      const { bools, flags } = parseArgs(args.slice(2));
+      if (action === "list") {
+        const providers = await listProviderRows();
+        const out = bools.has("active-only") ? providers.filter((p) => p.is_active) : providers;
+        console.log(JSON.stringify({ ok: true, providers: out }, null, 2));
+      } else if (action === "upsert") {
+        const provider = await upsertProvider({
+          id: flags.id,
+          key: flags.key,
+          name: flags.name,
+          model: flags.model,
+          base: flags.base,
+          env: flags.env,
+          apiKey: flags["api-key"],
+          priority: flags.priority,
+          free: flags.free,
+          rewrite: flags.rewrite,
+          embed: flags.embed,
+          isActive: flags["is-active"],
+        });
+        console.log(JSON.stringify({ ok: true, provider }, null, 2));
+      } else if (action === "toggle") {
+        if (!flags.id) throw new Error("--id required");
+        const client = getClient();
+        await client.execute({
+          sql: "UPDATE llm_providers SET is_active = CASE is_active WHEN 1 THEN 0 ELSE 1 END, updated_at = ? WHERE id = ?",
+          args: [nowIso(), flags.id],
+        });
+        console.log(JSON.stringify({ ok: true }));
+      } else if (action === "remove") {
+        if (!flags.id) throw new Error("--id required");
+        await getClient().execute({ sql: "DELETE FROM llm_providers WHERE id = ?", args: [flags.id] });
+        console.log(JSON.stringify({ ok: true }));
+      } else if (action === "models") {
+        if (!flags.key) throw new Error("--key required");
+        const models = await probeProviderModels(flags.key, flags.base, flags["api-key"]);
+        console.log(JSON.stringify({ ok: true, models }));
+      } else {
+        throw new Error(`unknown action: ${action}`);
+      }
+      return;
+    }
+    case "notice": {
+      const action = args[1];
+      const { bools, flags } = parseArgs(args.slice(2));
+      if (action === "list") {
+        const notices = await listNotices({ activeOnly: bools.has("active-only"), limit: 200 });
+        console.log(JSON.stringify({ ok: true, notices }, null, 2));
+      } else if (action === "add") {
+        if (!flags.title) throw new Error("--title required");
+        const notice = await createNotice({
+          title: flags.title.trim(),
+          body: flags.body ?? undefined,
+          tone: flags.tone as NoticeTone | undefined,
+          url: flags.url ?? undefined,
+          pinned: flags.pinned === "true",
+          is_active: flags.active !== "false",
+          expires_at: flags["expires-at"] ?? undefined,
+          created_by: "desktop",
+        });
+        console.log(JSON.stringify({ ok: true, notice }, null, 2));
+      } else if (action === "update") {
+        if (!flags.id) throw new Error("--id required");
+        const fields: Parameters<typeof updateNotice>[1] = {};
+        if (flags.title !== undefined) fields.title = flags.title.trim();
+        if (flags.body !== undefined) fields.body = flags.body.trim() || null;
+        if (flags.tone !== undefined) fields.tone = flags.tone as NoticeTone;
+        if (flags.url !== undefined) fields.url = flags.url.trim() || null;
+        if (flags.pinned !== undefined) fields.pinned = flags.pinned === "true";
+        if (flags.active !== undefined) fields.is_active = flags.active === "true";
+        if (flags["expires-at"] !== undefined) fields.expires_at = flags["expires-at"].trim() || null;
+        if (Object.keys(fields).length === 0) throw new Error("at least one field --title/--body/--tone/--url/--pinned/--active/--expires-at required");
+        const notice = await updateNotice(flags.id, fields);
+        console.log(JSON.stringify({ ok: true, notice }, null, 2));
+      } else if (action === "toggle") {
+        if (!flags.id) throw new Error("--id required");
+        const cur = await getNotice(flags.id);
+        if (!cur) throw new Error("not found");
+        const notice = await updateNotice(flags.id, { is_active: !cur.is_active });
+        console.log(JSON.stringify({ ok: true, notice }, null, 2));
+      } else if (action === "remove") {
+        if (!flags.id) throw new Error("--id required");
+        await deleteNotice(flags.id);
+        console.log(JSON.stringify({ ok: true }));
+      } else {
+        throw new Error(`unknown action: ${action}`);
+      }
+      return;
+    }
+    case "loginlog": {
+      const action = args[1];
+      const { flags } = parseArgs(args.slice(2));
+      if (action === "list") {
+        const page = await listLoginLog(
+          flags.page !== undefined ? Number(flags.page) : 1,
+          flags["per-page"] !== undefined ? Number(flags["per-page"]) : 10,
+        );
+        console.log(JSON.stringify({ ok: true, ...page }, null, 2));
+      } else if (action === "delete") {
+        if (!flags.id) throw new Error("--id required");
+        await deleteLoginLog(flags.id);
+        console.log(JSON.stringify({ ok: true, deleted: flags.id }));
+      } else if (action === "clear") {
+        const rows = await clearLoginLog();
+        console.log(JSON.stringify({ ok: true, cleared: rows }));
+      } else {
+        throw new Error(`unknown action: ${action}`);
+      }
+      return;
+    }
+    case "cleanup": {
+      const action = args[1];
+      if (action !== "temp") throw new Error(`unknown action: ${action}`);
+      const mediaRoot = process.env.HOICHOI_MEDIA_ROOT;
+      const appData = mediaRoot ? path.dirname(mediaRoot) : null;
+      const targets = appData ? [path.join(appData, "tmp"), path.join(appData, ".cache")] : [];
+      let bytes = 0;
+      const removed: string[] = [];
+      for (const dir of targets) {
+        bytes += await dirSize(dir);
+        try {
+          await rm(dir, { recursive: true, force: true });
+          removed.push(dir);
+        } catch (err) {
+          console.error("[warn] could not remove", dir, (err as Error).message);
+        }
+      }
+      const osTmp = path.join(os.tmpdir(), "hoichoi-ffmpeg");
+      bytes += await dirSize(osTmp);
+      await rm(osTmp, { recursive: true, force: true });
+      removed.push(osTmp);
+      console.log(JSON.stringify({ ok: true, bytes_freed: bytes, dirs: removed }, null, 2));
+      return;
+    }
+    default:
+      throw new Error(`unknown runner command: ${String(cmd)}`);
+  }
+}
+
+program
+  .command("daemon")
+  .description("persistent JSON-RPC runner — read {id,cmd,env} lines on stdin, write results on stdout")
+  .action(() => {
+    const rl = createInterface({ input: process.stdin, crlfDelay: Infinity });
+    rl.on("line", (raw: string) => {
+      const line = raw.trim();
+      if (!line) return;
+      void (async () => {
+        let req: DaemonRequest | undefined;
+        try {
+          req = JSON.parse(line) as DaemonRequest;
+          if (!req) throw new Error("malformed request");
+          const id = req.id ?? 0;
+          const cmd = req.cmd ?? [];
+          const env = req.env;
+          applyDaemonEnv(env);
+          await ensureSchema(getClient());
+          const captured = await runCaptured(() => dispatchCmd(cmd));
+          if (process.exitCode && process.exitCode !== 0) {
+            process.exitCode = 0;
+            throw new Error(captured.err.trim() || "runner command failed");
+          }
+          process.stdout.write(JSON.stringify({ id, ok: true, data: captured.out }) + "\n");
+        } catch (err) {
+          process.stdout.write(JSON.stringify({ id: req?.id ?? 0, ok: false, error: (err as Error).message }) + "\n");
+        }
+      })();
+    });
+  });
 
 program.parseAsync(process.argv).catch((err) => {
   console.error("[fatal]", (err as Error).message);

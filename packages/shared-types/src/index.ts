@@ -321,6 +321,64 @@ export interface SiteSettings {
    * (see `SiteAppConfig`). Edited from the desktop app and the web admin.
    */
   app_config_json: string | null;
+  /**
+   * Remote media storage configuration (multiprovider fallback chain +
+   * retention), serialized as JSON (see `MediaStorageConfig`). Driven by the
+   * desktop "মিডিয়া স্টোরেজ" settings panel; consumed by the runner pipeline.
+   */
+  media_storage_json: string | null;
+}
+
+/* ------------------------- media storage config ------------------------- */
+
+/** Provider kinds supported by the media uploader. */
+export type MediaStorageKind = "github" | "s3";
+
+/** One entry in the uploader's fallback chain. */
+export interface MediaStorageAdapterConfig {
+  kind: MediaStorageKind;
+  /** `false` = excluded from the upload/cleanup chain. */
+  enabled: boolean;
+  /** Human label shown in settings (e.g. "GitHub", "IDrive e2", "Backblaze B2"). */
+  label: string;
+  /** S3-compatible providers. */
+  provider?: "idrivee2" | "backblaze";
+  /** S3 endpoint (e.g. https://idrivee2.com / https://s3.us-west-004.backblazeb2.com). */
+  endpoint?: string;
+  /** S3 bucket name. */
+  bucket?: string;
+  /** S3 signing region (default auto-us-east-1 for both providers). */
+  region?: string;
+  /** Object key prefix inside the bucket (default `media/`). */
+  prefix?: string;
+  /** GitHub-only: branch to push to (default `main`). */
+  branch?: string;
+  /** GitHub-only: repo path prefix (default `media/`). */
+  mediaPath?: string;
+}
+
+/** Full remote-media storage policy (stored in settings.media_storage_json). */
+export interface MediaStorageConfig {
+  /** Adapters in priority order — index 0 is the primary upload target. */
+  adapters: MediaStorageAdapterConfig[];
+  /** Delete local copies after a successful remote upload. */
+  purge_local_after_upload: boolean;
+  /** Delete remote objects older than this many months during cleanup. */
+  retention_months: number;
+  /** Whether scheduled cleanup is enabled (monthly pass in the runner). */
+  cleanup_enabled: boolean;
+}
+
+/** One scrape/upload failure row surfaced by the error inbox. */
+export interface SourceError {
+  id: string;
+  source_id: string;
+  err_kind: string;
+  message: string;
+  status: "open" | "dismissed";
+  count: number;
+  first_seen_at: string;
+  last_seen_at: string;
 }
 
 /** Web-app visibility + behaviour knobs (stored in settings.app_config_json). */

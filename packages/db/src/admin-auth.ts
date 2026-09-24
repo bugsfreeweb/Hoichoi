@@ -82,6 +82,30 @@ export async function revokeAdminLoginCode(id: string): Promise<void> {
   });
 }
 
+/** Revoke every outstanding (unused) login code for an email — desktop
+ *  "lock the web admin out" action. Returns the number revoked. */
+export async function revokeAdminLoginCodesByEmail(email: string): Promise<number> {
+  const client = getClient();
+  const res = await client.execute({
+    sql: "UPDATE admin_login_codes SET revoked_at = ? WHERE email = ? AND used_at IS NULL AND revoked_at IS NULL",
+    args: [new Date().toISOString(), email.trim().toLowerCase()],
+  });
+  return res.rowsAffected;
+}
+
+/** Hard-delete all web admin sessions for an email — forces the browser(s)
+ *  out immediately; a fresh desktop-minted code is required to sign back in. */
+export async function revokeAdminSessionsByEmail(email: string): Promise<number> {
+  const client = getClient();
+  const res = await client.execute({
+    sql: `DELETE FROM admin_sessions WHERE user_id IN (
+            SELECT id FROM admin_users WHERE email = ?
+          )`,
+    args: [email.trim().toLowerCase()],
+  });
+  return res.rowsAffected;
+}
+
 /**
  * Atomically consume a code: must match email, be unused, unrevoked and
  * unexpired. Only one request can win (guarded UPDATE), so a code is truly

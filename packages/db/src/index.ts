@@ -8,6 +8,8 @@ export * from "./archive";
 export * from "./media";
 export * from "./transfer";
 export * from "./admin-auth";
+export * from "./source-errors";
+export * from "./media-objects";
 
 import type {
   AnalyticsRange,
@@ -20,6 +22,7 @@ import type {
   CommentStatus,
   CommentWithPost,
   CurrentWindowPost,
+  MediaStorageConfig,
   Notice,
   NoticeTone,
   Post,
@@ -35,6 +38,29 @@ import type { InValue } from "@libsql/client";
 import { randomUUID } from "node:crypto";
 import { getClient, nowIso } from "./client";
 import { mapCategory, mapNotice, mapPost, parseJson } from "./rows";
+
+/** Fallback remote-media storage policy (settings.media_storage_json). */
+export const DEFAULT_MEDIA_STORAGE: MediaStorageConfig = {
+  adapters: [],
+  purge_local_after_upload: false,
+  retention_months: 1,
+  cleanup_enabled: false,
+};
+
+export function parseMediaStorage(raw: string | null | undefined): MediaStorageConfig {
+  const merged: MediaStorageConfig = { ...DEFAULT_MEDIA_STORAGE };
+  if (!raw) return merged;
+  try {
+    const parsed = JSON.parse(raw) as Partial<MediaStorageConfig>;
+    if (Array.isArray(parsed.adapters)) merged.adapters = parsed.adapters;
+    if (typeof parsed.purge_local_after_upload === "boolean") merged.purge_local_after_upload = parsed.purge_local_after_upload;
+    if (typeof parsed.retention_months === "number" && Number.isFinite(parsed.retention_months)) merged.retention_months = parsed.retention_months;
+    if (typeof parsed.cleanup_enabled === "boolean") merged.cleanup_enabled = parsed.cleanup_enabled;
+  } catch {
+    /* corrupt blob → defaults */
+  }
+  return merged;
+}
 
 /**
  * Default web-app visibility knobs. Stored serialized on the settings row
@@ -69,6 +95,17 @@ export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
   return merged;
 }
 
+/** Read the live media-storage policy from settings (parsed + defaulted). */
+export async function getMediaStorageConfig(): Promise<MediaStorageConfig> {
+  const s = await getSettings();
+  return parseMediaStorage(s.media_storage_json);
+}
+
+/** Persist the media-storage policy as settings.media_storage_json. */
+export async function saveMediaStorageConfig(cfg: MediaStorageConfig): Promise<void> {
+  await updateSettings({ media_storage_json: JSON.stringify(cfg) });
+}
+
 /** Fallback branding used when no settings row exists / columns are absent. */
 export const DEFAULT_SETTINGS: SiteSettings = {
   id: 1,
@@ -90,6 +127,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   ad_infeed_html: null,
   ad_strip_html: null,
   app_config_json: JSON.stringify(DEFAULT_APP_CONFIG),
+  media_storage_json: JSON.stringify(DEFAULT_MEDIA_STORAGE),
 };
 
 export function mapSettings(row: Record<string, unknown>): SiteSettings {
@@ -114,6 +152,7 @@ export function mapSettings(row: Record<string, unknown>): SiteSettings {
     ad_infeed_html: (row.ad_infeed_html as string | null) ?? null,
     ad_strip_html: (row.ad_strip_html as string | null) ?? null,
     app_config_json: (row.app_config_json as string | null) ?? JSON.stringify(DEFAULT_APP_CONFIG),
+    media_storage_json: (row.media_storage_json as string | null) ?? JSON.stringify(DEFAULT_MEDIA_STORAGE),
   };
 }
 
@@ -147,10 +186,12 @@ export async function updateSettings(fields: Partial<SiteSettings>): Promise<voi
     "ad_infeed_html",
     "ad_strip_html",
     "app_config_json",
+    "media_storage_json",
   ];
   if (fields.logo_url === "") fields.logo_url = null;
   if (fields.favicon_url === "") fields.favicon_url = null;
   if (fields.footer_about_bn === "") fields.footer_about_bn = null;
+  if (fields.media_storage_json === "") fields.media_storage_json = null;
   const adSlotKeys = ["ad_leaderboard_html", "ad_rect_html", "ad_infeed_html", "ad_strip_html"] as const;
   for (const k of adSlotKeys) {
     if (fields[k] === "") fields[k] = null;
@@ -975,10 +1016,14 @@ export async function updatePost(id: string, fields: PostUpdateFields): Promise<
   });
 }
 
-/** Hard-delete a post (content manager); caller handles audit logging. */
+/** Hard-delete a post (content manager); caller handles audit logging.
+ *  Throws when the id doesn't exist so callers can't silently no-op. */
 export async function deletePost(id: string): Promise<void> {
   const client = getClient();
-  await client.execute({ sql: "DELETE FROM posts WHERE id = ?", args: [id] });
+  const res = await client.execute({ sql: "DELETE FROM posts WHERE id = ?", args: [id] });
+  if (res.rowsAffected === 0) {
+    throw new Error(`post not found: ${id}`);
+  }
 }
 
 /* ------------------------------------------------------------------ *

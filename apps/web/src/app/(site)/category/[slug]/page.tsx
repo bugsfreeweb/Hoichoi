@@ -3,9 +3,13 @@ import { notFound } from "next/navigation";
 import { windowPosts, countWindowPosts } from "@hoichoi/db";
 import { findCategory, getCategories } from "@/lib/categories-server";
 import { CollectionGrid } from "@/components/CollectionGrid";
+import { Pagination } from "@/components/Pagination";
 import type { CategorySlug } from "@hoichoi/shared-types";
 
 export const dynamic = "force-dynamic";
+
+/** Per-page cap for category (department) pages. */
+const PAGE_SIZE = 30;
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -17,15 +21,25 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function CategoryPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ page?: string }>;
+}) {
   const { slug } = await params;
+  const sp = await searchParams;
+  const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
+  const offset = (page - 1) * PAGE_SIZE;
   const [cat, cats, posts, total] = await Promise.all([
     findCategory(slug),
     getCategories(),
-    windowPosts({ category: slug as CategorySlug, limit: 60 }),
+    windowPosts({ category: slug as CategorySlug, limit: PAGE_SIZE, offset }),
     countWindowPosts(slug as CategorySlug),
   ]);
   if (!cat) notFound();
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const color = cat.dot ? `#${cat.dot}` : "#0a0c10";
 
   return (
@@ -43,6 +57,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       <div className="mt-10">
         <CollectionGrid posts={posts} cats={cats} />
       </div>
+      <Pagination page={page} pageCount={pageCount} base={`/category/${slug}`} />
     </section>
   );
 }

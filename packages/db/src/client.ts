@@ -320,18 +320,76 @@ CREATE INDEX IF NOT EXISTS idx_login_log_created ON admin_login_log (created_at 
   `);
 }
 
-/** Ensure schema exists, then seed base config on a fresh database. */
-export async function ensureSchema(client: Client): Promise<void> {
-  // Desktop runtime: migrations live next to the bundled console (env override).
-  const override = process.env.HOICHOI_MIGRATIONS_DIR;
-  let dir: string;
-  if (override) {
-    dir = override;
-  } else {
-    const here = path.dirname(fileURLToPath(import.meta.url));
-    dir = path.join(here, "..", "migrations");
+/** Scrape/upload failures per source — the error-inbox backing table. */
+export async function ensureSourceErrorsTable(client: Client): Promise<void> {
+  await client.executeMultiple(`
+CREATE TABLE IF NOT EXISTS source_errors (
+  id TEXT PRIMARY KEY,
+  source_id TEXT NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+  err_kind TEXT NOT NULL,
+  message TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  count INTEGER NOT NULL DEFAULT 1,
+  first_seen_at TEXT NOT NULL,
+  last_seen_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_source_errors_status ON source_errors (status, last_seen_at DESC);
+CREATE INDEX IF NOT EXISTS idx_source_errors_source ON source_errors (source_id);
+  `);
+}
+
+/** Settings column holding the serialized media-storage policy (JSON). */
+export async function ensureMediaStorageColumn(client: Client): Promise<void> {
+  const info = await client.execute("PRAGMA table_info(settings)");
+  const existing = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));
+  if (!existing.has("media_storage_json")) {
+    await client.execute("ALTER TABLE settings ADD COLUMN media_storage_json TEXT");
   }
-  const sqlText = fs.readFileSync(path.join(dir, "001_init.sql"), "utf-8");
+}
+
+/**
+ * Remote media object registry — one row per uploaded blob so the monthly
+ * retention job can delete old objects even after their `posts` row is gone.
+ */
+export async function ensureMediaObjectsTable(client: Client): Promise<void> {
+  await client.executeMultiple(`
+CREATE TABLE IF NOT EXISTS media_objects (
+  id TEXT PRIMARY KEY,
+  adapter TEXT NOT NULL,
+  key TEXT NOT NULL,
+  url TEXT NOT NULL,
+  post_id TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_media_objects_adapter ON media_objects (adapter, created_at);
+CREATE INDEX IF NOT EXISTS idx_media_objects_url ON media_objects (url);
+  `);
+}
+
+let lastSchemaSig: string | null = null;
+
+/**
+ * Ensure schema exists, then seed base config on a fresh database.
+ *
+ * Memoized: the full migration set is only re-run when the target database
+ * (URL) or the migrations directory changes. The desktop keeps ONE runner
+ * process alive and calls this before every desk action, so skipping the
+ * idempotent PRAGMA/ALTER/INSERT storm (many HTTP round-trips over libsql)
+ * turns the hot path from ~100s of network calls into a single local compare.
+ *
+ * `externalUrl` lets callers vouch for a DIFFERENT database than the one
+ * `process.env` currently points at (e.g. the `sync` target client); without
+ * it the signature would be computed from the live env and wrongly skip/fire
+ * against the local database.
+ */
+export async function ensureSchema(client: Client, externalUrl?: string): Promise<void> {
+  const override = process.env.HOICHOI_MIGRATIONS_DIR;
+  const sig = `${externalUrl ?? resolveDatabaseUrl()}::${override ?? ""}`;
+  if (lastSchemaSig === sig) return;
+  const resolvedDir = override
+    ? override
+    : path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations");
+  const sqlText = fs.readFileSync(path.join(resolvedDir, "001_init.sql"), "utf-8");
   await applyMigration(client, "001_init", sqlText);
   await ensureBrandingColumns(client);
   await ensureAdSlotColumns(client);
@@ -351,7 +409,11 @@ export async function ensureSchema(client: Client): Promise<void> {
   await ensureNoStaticCategoryChecks(client);
   await ensureFooterColumns(client);
   await ensureLoginLogTable(client);
+  await ensureSourceErrorsTable(client);
+  await ensureMediaStorageColumn(client);
+  await ensureMediaObjectsTable(client);
   await seedDefaults(client, nowIso());
+  lastSchemaSig = sig;
 }
 
 /**
