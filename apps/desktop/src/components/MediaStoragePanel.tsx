@@ -39,7 +39,11 @@ export default function MediaStoragePanel() {
     setErr(null);
     try {
       const res = await deskMediaStorage(await getRunEnv());
-      setCfg(res.config && res.config.adapters ? res.config : EMPTY);
+      setCfg(
+        res.config && Array.isArray(res.config.adapters) && res.config.adapters.length > 0
+          ? res.config
+          : EMPTY,
+      );
       setRegistry(res.registry ?? 0);
     } catch (e) {
       setErr(String(e));
