@@ -140,6 +140,20 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "source update failed" }, { status: 409 });
   }
 
+  // Sync multi-category membership if categories provided
+  if (body.category !== undefined || body.categories?.length) {
+    const requested = body.categories?.length ? body.categories : body.category ? [body.category] : [];
+    const active = (await listCategories()).map((c) => c.slug);
+    const chosen = active.filter((c) => requested.includes(c));
+    // Clear existing and re-insert
+    await client.execute({ sql: "DELETE FROM source_categories WHERE source_id = ?", args: [body.sourceId] });
+    if (chosen.length > 0) {
+      const values = chosen.map(() => "(?, ?)").join(", ");
+      const catArgs = chosen.flatMap((c) => [body.sourceId as string, c]);
+      await client.execute({ sql: `INSERT INTO source_categories (source_id, category_slug) VALUES ${values}`, args: catArgs });
+    }
+  }
+
   const row = await client.execute({ sql: "SELECT * FROM sources WHERE id = ?", args: [body.sourceId] });
   const cats = await getSourceCategories(body.sourceId);
   const updatedSource = mapSource(row.rows[0] as Record<string, unknown>, cats);
