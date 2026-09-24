@@ -67,7 +67,7 @@ export default async function HomePage({
       {cfg.show_live_graph && <LiveAnalytics />}
 
       {cfg.show_categories && (
-      <section className="border-y border-ink/15 bg-ink/5 dark:bg-paper-deep/40">
+      <section className="border-y border-ink/15 bg-ink/12 dark:bg-paper-deep/40">
         <div className="mx-auto max-w-[1400px] px-4 py-7 md:px-8">
           <div className="flex flex-wrap items-center gap-2.5">
             <span className="mr-1 font-mono-x text-[10px] tracking-[0.28em] text-ink-soft uppercase">
@@ -294,7 +294,7 @@ export default async function HomePage({
       )}
 
       {cfg.show_rewrite_engine && featured && (
-        <section className="border-y-2 border-ink bg-ink/5 dark:bg-paper-deep/60">
+        <section className="border-y-2 border-ink bg-ink/12 dark:bg-paper-deep/60">
           <div className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
             <Reveal>
             <div className="flex flex-wrap items-end justify-between gap-4">
