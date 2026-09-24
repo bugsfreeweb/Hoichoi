@@ -366,6 +366,20 @@ media
     }
   });
 media
+  .command("storage:set <json>")
+  .description('save a new JSON policy (daemon-compatible)')
+  .action(async (json: string) => {
+    try {
+      await ensureSchema(getClient());
+      const cfg = JSON.parse(json) as MediaStorageConfig;
+      await saveMediaStorageConfig(cfg);
+      console.log(JSON.stringify({ ok: true, config: await getMediaStorageConfig(), registry: await storageRegistryCount() }));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+media
   .command("cleanup")
   .description("delete remote blobs registered older than the retention window")
   .option("--dry-run", "report only, touch nothing")

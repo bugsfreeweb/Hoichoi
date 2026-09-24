@@ -233,14 +233,14 @@ function PostContent({
             </blockquote>
           )}
 
-          <div className="flex items-center gap-2 border border-ink/25 bg-paper-deep/60 px-4 py-3 text-[11.5px] text-ink-soft">
+          <div className="flex items-center gap-2 border border-ink/25 bg-ink/5 dark:bg-paper-deep/60 px-4 py-3 text-[11.5px] text-ink-soft">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-alizarin"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1 1 0 0 1 1.52 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
             এই প্রতিবেদনটি ফেসবুকের উন্মুক্ত পোস্ট অবলম্বনে সংবাদ শৈলীতে
             পুনর্লিখিত; মূল পোস্টের স্ক্রিনশট আর্কাইভে সংরক্ষিত আছে।
           </div>
 
           {showHelplines && (
-            <div className="mt-8 border border-ink/15 bg-paper-deep p-4">
+            <div className="mt-8 border border-ink/15 bg-ink/5 dark:bg-paper-deep p-4">
               <p className="text-[13px] font-bold text-ink">🆘 জরুরি সহায়তা</p>
               <p className="mt-2 text-[13px] text-ink-soft">
                 <Link
