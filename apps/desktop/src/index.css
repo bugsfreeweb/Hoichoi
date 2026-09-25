@@ -1001,3 +1001,47 @@ html[data-theme="light"] .titlebar {
   background: #f6f3eb;
   border-bottom-color: rgba(26, 20, 13, 0.1);
 }
+
+/* ---------------------------------------------------------------- *
+ * Top-center toast stack — every save/sync/refresh surfaces here.   *
+ * ---------------------------------------------------------------- */
+.toast-stack {
+  position: fixed;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(460px, 92vw);
+  pointer-events: none;
+}
+
+.toast-item {
+  pointer-events: auto;
+  animation: toast-pop 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.toast-item:nth-child(2) {
+  animation-delay: 0.04s;
+}
+.toast-item:nth-child(3) {
+  animation-delay: 0.08s;
+}
+
+@keyframes toast-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.94);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(2px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

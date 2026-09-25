@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Cloud, GitBranch, HardDrive, Server, RotateCw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Cloud, GitBranch, HardDrive, Server, RotateCw, Check, Loader2, X } from "lucide-react";
 import { getRunEnv } from "../lib/vault";
 import {
   deskMediaStorage,
@@ -7,6 +7,7 @@ import {
   type MediaStorageConfig,
   type MediaStorageAdapterConfig,
 } from "../lib/tauri";
+import { toast } from "../lib/toast";
 
 const DEFAULT_ADAPTERS: MediaStorageAdapterConfig[] = [
   { kind: "github", enabled: false, label: "GitHub" },
@@ -31,14 +32,48 @@ export default function MediaStoragePanel() {
   const [cfg, setCfg] = useState<MediaStorageConfig | null>(null);
   const [registry, setRegistry] = useState<number>(0);
   const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedTick, setSavedTick] = useState(0);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMounted = useRef(true);
+
+  const persist = async (next: MediaStorageConfig, silent = false) => {
+    setSaving(true);
+    setErr(null);
+    try {
+      await deskMediaStorage(await getRunEnv(), JSON.stringify(next));
+      setSavedTick((t) => t + 1);
+      if (!silent) {
+        setMsg("মিডিয়া স্টোরেজ নীতি সংরক্ষিত হয়েছে — পরের রানে অ্যাডাপ্টার চেইন কার্যকর হবে।");
+        toast.ok("স্টোরেজ নীতি সংরক্ষিত", "পরের রান থেকেই অ্যাডাপ্টার চেইন কার্যকর হবে।");
+      }
+    } catch (e) {
+      setSaving(false);
+      setErr(String(e));
+      toast.err("স্টোরেজ সংরক্ষণ ব্যর্থ", String(e));
+      return false;
+    }
+    setSaving(false);
+    return true;
+  };
+
+  // Auto-save after every edit so toggles never get lost when the panel remounts.
+  const enqueuePersist = (next: MediaStorageConfig) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      void persist(next, true);
+    }, 800);
+  };
 
   const load = async () => {
+    if (!isMounted.current) return;
     setBusy(true);
     setErr(null);
     try {
       const res = await deskMediaStorage(await getRunEnv());
+      if (!isMounted.current) return;
       setCfg(
         res.config && Array.isArray(res.config.adapters) && res.config.adapters.length > 0
           ? res.config
@@ -46,38 +81,33 @@ export default function MediaStoragePanel() {
       );
       setRegistry(res.registry ?? 0);
     } catch (e) {
-      setErr(String(e));
+      if (isMounted.current) setErr(String(e));
     } finally {
-      setBusy(false);
+      if (isMounted.current) setBusy(false);
     }
   };
 
   useEffect(() => {
+    isMounted.current = true;
     void load();
+    return () => {
+      isMounted.current = false;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, []);
 
   const patch = (i: number, p: Partial<MediaStorageAdapterConfig>) => {
     if (!cfg) return;
-    setCfg({ ...cfg, adapters: cfg.adapters.map((a, k) => (k === i ? { ...a, ...p } : a)) });
+    const next = { ...cfg, adapters: cfg.adapters.map((a, k) => (k === i ? { ...a, ...p } : a)) };
+    setCfg(next);
+    enqueuePersist(next);
   };
 
-  const save = async () => {
+  const patchGlobal = (p: Partial<MediaStorageConfig>) => {
     if (!cfg) return;
-    if (cfg.adapters.every((a) => !a.enabled)) {
-      setErr("কমপক্ষে একটি অ্যাডাপ্টার চালু করুন — GitHub, IDrive e2 বা Backblaze B2।");
-      return;
-    }
-    setBusy(true);
-    setErr(null);
-    try {
-      await deskMediaStorage(await getRunEnv(), JSON.stringify(cfg));
-      setMsg("মিডিয়া স্টোরেজ নীতি সংরক্ষিত হয়েছে — পরের রানে অ্যাডাপ্টার চেইন কার্যকর হবে।");
-      await load();
-    } catch (e) {
-      setErr(String(e));
-    } finally {
-      setBusy(false);
-    }
+    const next = { ...cfg, ...p };
+    setCfg(next);
+    enqueuePersist(next);
   };
 
   const dryRunCleanup = async () => {
@@ -86,14 +116,17 @@ export default function MediaStoragePanel() {
     try {
       const r = await deskMediaCleanup(await getRunEnv(), { dryRun: true });
       setMsg(`ক্লিনআপ (dry-run): ${r.considered}টি পুরনো ব্লব মুছে ফেলা হবে (${r.cutoff.slice(0, 10)}-এর আগে)।`);
+      toast.info("ক্লিনআপ (dry-run)", `${toBn(r.considered)}টি ব্লব ডিলিট-প্রস্তাবিত · cutoff ${r.cutoff.slice(0, 10)}`);
     } catch (e) {
       setErr(String(e));
+      toast.err("ক্লিনআপ ব্যর্থ", String(e));
     } finally {
       setBusy(false);
     }
   };
 
   const enabledCount = cfg?.adapters.filter((a) => a.enabled).length ?? 0;
+  const hasEnabled = (cfg?.adapters.some((a) => a.enabled) ?? false);
 
   return (
     <div className="panel mt-5">
@@ -104,6 +137,21 @@ export default function MediaStoragePanel() {
         <span className="rounded-full bg-white/5 px-2 py-1 font-mono-x text-[10px] text-white/45">
           {enabledCount} চালু · {toBn(registry)} ফাইল registry
         </span>
+        {saving && (
+          <span className="flex items-center gap-1.5 rounded-full bg-sky-400/15 px-2.5 py-1 font-mono-x text-[10px] text-sky-300">
+            <Loader2 size={11} className="animate-spin" /> সংরক্ষণ হচ্ছে…
+          </span>
+        )}
+        {!saving && cfg && savedTick > 0 && hasEnabled && (
+          <span className="flex items-center gap-1.5 rounded-full bg-lime/15 px-2.5 py-1 font-mono-x text-[10px] text-lime">
+            <Check size={11} /> সংরক্ষিত ✓
+          </span>
+        )}
+        {!saving && cfg && !hasEnabled && (
+          <span className="flex items-center gap-1.5 rounded-full bg-amber-400/15 px-2.5 py-1 font-mono-x text-[10px] text-amber-300">
+            <X size={11} /> কোনো অ্যাডাপ্টার চালু নেই
+          </span>
+        )}
       </div>
       <p className="mt-2 text-[11.5px] leading-relaxed text-white/50">
         প্রতিটি মিডিয়া ফাইল প্রথমে চালু অ্যাডাপ্টারগুলোর মধ্যে প্রথমটিতে আপলোড হয়; ব্যর্থ হলে পরেরটি
@@ -221,7 +269,7 @@ export default function MediaStoragePanel() {
           <label className="flex items-center justify-between gap-3">
             <span className="text-[12px] font-bold text-white">আপলোডের পর লোকাল কপি মুছে ফেলুন</span>
             <button
-              onClick={() => setCfg({ ...cfg, purge_local_after_upload: !cfg.purge_local_after_upload })}
+              onClick={() => patchGlobal({ purge_local_after_upload: !cfg.purge_local_after_upload })}
               className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${cfg.purge_local_after_upload ? "bg-lime" : "bg-white/15"}`}
             >
               <span className="absolute top-0.5 h-4 w-4 rounded-full bg-night transition-all" style={{ left: cfg.purge_local_after_upload ? 18 : 2 }} />
@@ -236,14 +284,14 @@ export default function MediaStoragePanel() {
               min={1}
               max={120}
               value={cfg.retention_months}
-              onChange={(e) => setCfg({ ...cfg, retention_months: Math.max(1, Number(e.target.value) || 1) })}
+              onChange={(e) => patchGlobal({ retention_months: Math.max(1, Number(e.target.value) || 1) })}
               className="mt-1 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-2.5 py-1.5 font-mono-x text-[12px] text-white outline-none"
             />
           </label>
           <label className="flex items-center justify-between gap-3">
             <span className="text-[12px] font-bold text-white">ক্লিনআপ (সূচি) চালু</span>
             <button
-              onClick={() => setCfg({ ...cfg, cleanup_enabled: !cfg.cleanup_enabled })}
+              onClick={() => patchGlobal({ cleanup_enabled: !cfg.cleanup_enabled })}
               className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${cfg.cleanup_enabled ? "bg-lime" : "bg-white/15"}`}
             >
               <span className="absolute top-0.5 h-4 w-4 rounded-full bg-night transition-all" style={{ left: cfg.cleanup_enabled ? 18 : 2 }} />
@@ -253,18 +301,19 @@ export default function MediaStoragePanel() {
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <button onClick={() => void save()} disabled={busy || !cfg} className="btn">
+        <button onClick={() => void persist(cfg!)} disabled={busy || saving || !cfg} className="btn">
           💾 স্টোরেজ নীতি সংরক্ষণ
         </button>
-        <button onClick={() => void dryRunCleanup()} disabled={busy || !cfg} className="btn-ghost" title="শুধু দেখাবে, কিছু মুছবে না">
+        <button onClick={() => void dryRunCleanup()} disabled={busy || saving || !cfg} className="btn-ghost" title="শুধু দেখাবে, কিছু মুছবে না">
           <RotateCw size={12} /> ক্লিনআপ (dry-run)
         </button>
-        <button onClick={() => void load()} disabled={busy} className="btn-ghost">
+        <button onClick={() => void load()} disabled={busy || saving} className="btn-ghost">
           Load current
         </button>
       </div>
       <p className="mt-3 text-[10.5px] text-white/35">
-        Access keys vault ট্যাবে: IDRIVEE2_ACCESS_KEY/SECRET_KEY/BUCKET/ENDPOINT, B2_ACCESS_KEY/SECRET_KEY/BUCKET/ENDPOINT,
+        টগল বদলালেই অটো-সংরক্ষিত হয় — ট্যাব পাল্টালেও সেটিং হারাবে না। Access keys vault ট্যাবে:
+        IDRIVEE2_ACCESS_KEY/SECRET_KEY/BUCKET/ENDPOINT, B2_ACCESS_KEY/SECRET_KEY/BUCKET/ENDPOINT,
         GitHub PAT + repo। চলমান <code className="text-lime">media cleanup --dry-run --months N</code> ডি-লিটের প্রিভিউ দেয়।
       </p>
     </div>

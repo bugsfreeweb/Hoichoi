@@ -35,6 +35,8 @@ import Moderation from "./screens/Moderation";
 import Ads from "./screens/Ads";
 import ThemeToggle from "./components/ThemeToggle";
 import DeskSyncBar from "./components/DeskSyncBar";
+import { ToastHost } from "./components/ToastHost";
+import { toast } from "./lib/toast";
 
 export type View =
   | "dashboard"
@@ -220,8 +222,10 @@ export default function App() {
       if (!cfg?.enabled || !cfg.folder || !cfg.pass) return;
       const res = await deskBackupAuto(cfg.pass, cfg.folder, Math.max(1, cfg.keep || 7), await getRunEnv());
       setLogs((prev) => [...prev, `[backup]auto → ${res.file} · kept ${res.kept} pruned ${res.pruned}`]);
+      toast.ok("অটো-ব্যাকআপ সম্পন্ন", `${res.file} · kept ${res.kept}`);
     } catch (e) {
       setLogs((prev) => [...prev, `[backup]auto failed: ${String(e)}`]);
+      toast.err("অটো-ব্যাকআপ ব্যর্থ", String(e));
     }
   };
 
@@ -232,7 +236,12 @@ export default function App() {
       const secret = env["REVALIDATE_SECRET"];
       if (secret) u.searchParams.set("secret", secret);
       const res = await fetch(u.toString());
-      if (res.ok) setLogs((prev) => [...prev, "[web]revalidate OK"]);
+      if (res.ok) {
+        setLogs((prev) => [...prev, "[web]revalidate OK"]);
+        toast.ok("ওয়েব ক্যাশ রিফ্রেশ হয়েছে", "হোমপেজ ও ক্যাটাগরি পেজ নতুন কনটেন্ট দেখাবে।");
+      } else {
+        toast.err("ওয়েব রিফ্রেশ ব্যর্থ", `HTTP ${res.status}`);
+      }
     } catch {
       /* offline: skip */
     }
@@ -603,6 +612,8 @@ export default function App() {
           <StatusClock />
         </footer>
       </div>
+
+      <ToastHost />
     </div>
   );
 }

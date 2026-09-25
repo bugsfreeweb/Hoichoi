@@ -23,7 +23,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
     <div className="page-chrome">
       <script
         dangerouslySetInnerHTML={{
-          __html: `(function(){try{if(!localStorage.getItem("hoichoi-theme")){document.documentElement.setAttribute("data-theme","${themeDefault}")}}catch(e){}})();`,
+          __html: `(function(){try{if(localStorage.getItem("hoichoi-theme-explicit")!=="1"){document.documentElement.setAttribute("data-theme","${themeDefault}")}}catch(e){}})();`,
         }}
       />
       <TopBar />

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { ShieldCheck, Check, Ban, RefreshCw, MessageSquareText } from "lucide-react";
+import { ShieldCheck, Check, Ban, RefreshCw, MessageSquareText, Loader2, Database } from "lucide-react";
 import { toBn, bnTime } from "../lib/format";
 import { deskModeration, deskModerationSet, type DeskComment } from "../lib/tauri";
-import { getRunEnv } from "../lib/vault";
+import { getRunEnv, isCloudSync } from "../lib/vault";
+import { toast } from "../lib/toast";
 
 type Filter = "all" | "pending" | "approved" | "blocked";
 
@@ -23,24 +24,42 @@ export default function Moderation() {
   const [rows, setRows] = useState<DeskComment[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const [busy, setBusy] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [driver, setDriver] = useState<"cloud" | "local" | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [focusIdx, setFocusIdx] = useState(0);
 
   const load = async () => {
+    setLoading(true);
+    setMsg(null);
+    setErr(null);
     try {
-      setMsg(null);
-      setErr(null);
-      setRows(await deskModeration(await getRunEnv()));
+      const env = await getRunEnv();
+      const cloud = await isCloudSync();
+      setDriver(cloud ? "cloud" : "local");
+      const comments = await deskModeration(env);
+      setRows(comments);
       setSelected(new Set());
     } catch (e) {
       setErr(String(e));
+      toast.err("মন্তব্য লোড ব্যর্থ", String(e));
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     void load();
+    const timer = setInterval(() => {
+      // Auto-pull so new site comments surface without a manual refresh.
+      void getRunEnv()
+        .then((env) => deskModeration(env))
+        .then((comments) => setRows(comments))
+        .catch(() => {});
+    }, 20000);
+    return () => clearInterval(timer);
   }, []);
 
   const act = async (c: DeskComment, status: "approved" | "blocked") => {
@@ -49,9 +68,11 @@ export default function Moderation() {
     try {
       await deskModerationSet(await getRunEnv(), c.id, status);
       setMsg(status === "approved" ? `মন্তব্যটি অনুমোদিত হয়েছে।` : `মন্তব্যটি ব্লক হয়েছে।`);
+      toast.ok(status === "approved" ? "মন্তব্য অনুমোদিত" : "মন্তব্য ব্লক", c.author);
       await load();
     } catch (e) {
       setErr(String(e));
+      toast.err(status === "approved" ? "অনুমোদন ব্যর্থ" : "ব্লক ব্যর্থ", String(e));
     } finally {
       setBusy(null);
     }
@@ -68,9 +89,11 @@ export default function Moderation() {
         await deskModerationSet(env, id, status);
       }
       setMsg(`${toBn(selected.size)}টি মন্তব্য ${status === "approved" ? "অনুমোদিত" : "ব্লক"} হয়েছে।`);
+      toast.ok(`আইটেম ${toBn(selected.size)}টির ${status === "approved" ? "অনুমোদন" : "ব্লক"} সম্পন্ন`, "মডারেশন অবস্থা হালনাগাদ");
       await load();
     } catch (e) {
       setErr(String(e));
+      toast.err("বাল্ক অ্যাকশন ব্যর্থ", String(e));
     } finally {
       setBusy(null);
     }
@@ -128,6 +151,14 @@ export default function Moderation() {
         <span className="font-mono-x text-[9.5px] tracking-[0.2em] text-white/35 uppercase">
           PENDING → APPROVED · BLOCKED
         </span>
+        <span
+          className={`flex items-center gap-1 rounded-full px-2 py-1 font-mono-x text-[9.5px] ${
+            driver === "cloud" ? "bg-lime/15 text-lime" : "bg-sky-400/12 text-sky-300"
+          }`}
+          title={driver === "cloud" ? "Turso ক্লাউড DB — সাইটের সাথে শেয়ারড" : "লোকাল file DB"}
+        >
+          <Database size={10} /> {driver === "cloud" ? "CLOUD SYNC" : "LOCAL DB"}
+        </span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {(Object.keys(FILTER_BN) as Filter[]).map((f) => (
             <button
@@ -145,10 +176,11 @@ export default function Moderation() {
           ))}
           <button
             onClick={() => void load()}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/70 hover:border-lime/50 hover:text-lime"
+            disabled={loading}
+            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/70 hover:border-lime/50 hover:text-lime disabled:opacity-50"
             title="রিফ্রেশ"
           >
-            <RefreshCw size={12} />
+            {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
           </button>
         </div>
       </div>

@@ -120,6 +120,17 @@ const ORDER: CredentialName[] = [
   "fb_session_cookie",
   "fb_cookie_expires",
   "use_cloud",
+  "github_branch",
+  "github_cdn_url",
+  "revalidate_secret",
+  "idrivee2_access_key",
+  "idrivee2_secret_key",
+  "idrivee2_bucket",
+  "idrivee2_endpoint",
+  "b2_access_key",
+  "b2_secret_key",
+  "b2_bucket",
+  "b2_endpoint",
 ];
 
 const mask = (v: string) => "•".repeat(Math.max(6, Math.min(12, v.length)));

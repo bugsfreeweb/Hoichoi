@@ -3,12 +3,25 @@
 import { useEffect, useState } from "react";
 
 const KEY = "hoichoi-theme";
+const KEY_EXPLICIT = "hoichoi-theme-explicit";
+
+// Only a visitor who EXPLICITLY picked a theme (real toggle click) is exempt
+// from the admin's `theme_default`. OS-preference / stale auto-saves are overridden.
+function hasExplicitChoice(): boolean {
+  try {
+    return localStorage.getItem(KEY_EXPLICIT) === "1";
+  } catch {
+    return false;
+  }
+}
 
 function initialTheme(): "dark" | "light" {
   if (typeof window === "undefined") return "light";
   try {
-    const stored = localStorage.getItem(KEY);
-    if (stored === "dark" || stored === "light") return stored;
+    if (hasExplicitChoice()) {
+      const stored = localStorage.getItem(KEY);
+      if (stored === "dark" || stored === "light") return stored;
+    }
   } catch {
     /* private mode */
   }
@@ -22,15 +35,24 @@ export function ThemeToggle() {
   const [theme, setTheme] = useState<"dark" | "light">(initialTheme);
 
   useEffect(() => {
+    // Only keep the theme the visitor EXPLICITLY chose — never persist the
+    // OS-derived default on mount, or admin's theme_default can never win.
     document.documentElement.setAttribute("data-theme", theme);
-    try {
-      localStorage.setItem(KEY, theme);
-    } catch {
-      /* private mode */
-    }
   }, [theme]);
 
   const dark = theme === "dark";
+
+  const toggle = () => {
+    const next = dark ? "light" : "dark";
+    setTheme(next);
+    document.documentElement.setAttribute("data-theme", next);
+    try {
+      localStorage.setItem(KEY, next);
+      localStorage.setItem(KEY_EXPLICIT, "1");
+    } catch {
+      /* private mode */
+    }
+  };
 
   return (
     <button
@@ -39,7 +61,7 @@ export function ThemeToggle() {
       aria-checked={dark}
       aria-label="থিম পরিবর্তন"
       title={dark ? "ডার্ক মোড — লাইটে যান" : "লাইট মোড — ডার্কে যান"}
-      onClick={() => setTheme(dark ? "light" : "dark")}
+      onClick={toggle}
       className="relative flex h-5 w-9 items-center rounded-full border border-white/20 bg-white/10 px-[3px] transition-colors hover:border-white/40"
     >
       <span
