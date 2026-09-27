@@ -27,6 +27,57 @@ fn hide_console(c: &mut Command) {
 #[cfg(not(windows))]
 fn hide_console(_c: &mut Command) {}
 
+/// Quote one argv token for a command line that is parsed by
+/// `cmd.exe` *and then* by the child's C runtime (node/pnpm).
+///
+/// The dev fallback pipes `runner_call` arguments through `cmd /D /S /C`, so
+/// every token goes through two parsers:
+///   1. cmd.exe — honours double quotes, and (inside a quoted run) a doubled
+///      `""` collapses to one literal `"` that is *kept* in the line it hands on;
+///   2. the C runtime of the child — strips the outer quotes and turns the
+///      doubled `""` back into a single `"`.
+///
+/// So a JSON payload such as `{"adapters":[]}` must be wrapped as
+/// `"{""adapters"":[]}"`. Simply *dropping* the inner quotes (the previous
+/// behaviour) corrupted every quoted payload — e.g. `media storage set '{"…":…}'`
+/// arrived as `{adapters:[]}` and made the runner fail with
+/// `Expected property name or '}' in JSON at position 1`.
+#[cfg(windows)]
+fn quote_cmd_arg(a: &str) -> String {
+    if a.is_empty() {
+        return "\"\"".to_string();
+    }
+    let needs_quotes = a
+        .chars()
+        .any(|c| matches!(c, ' ' | '\t' | '"' | '&' | '^' | '|' | '<' | '>' | '(' | ')'));
+    if !needs_quotes {
+        return a.to_string();
+    }
+    // Double the quotes for cmd, and double any run of backslashes that
+    // precedes a quote / the closing quote so the C runtime round-trips them.
+    let mut out = String::with_capacity(a.len() + 8);
+    out.push('"');
+    let mut slashes = 0usize;
+    for ch in a.chars() {
+        match ch {
+            '\\' => slashes += 1,
+            '"' => {
+                out.push_str(&"\\".repeat(slashes * 2));
+                out.push_str("\"\"");
+                slashes = 0;
+            }
+            _ => {
+                out.push_str(&"\\".repeat(slashes));
+                slashes = 0;
+                out.push(ch);
+            }
+        }
+    }
+    out.push_str(&"\\".repeat(slashes * 2));
+    out.push('"');
+    out
+}
+
 /// PID of the currently running pipeline child (0 = none). Used by
 /// `stop_pipeline` to let the user abort a collector run from the UI.
 static PIPELINE_PID: AtomicU32 = AtomicU32::new(0);
@@ -283,22 +334,7 @@ fn run_runner(
         #[cfg(windows)]
         let c = {
             use std::os::windows::process::CommandExt;
-            let tokens: Vec<String> = args
-                .iter()
-                .map(|a| {
-                    if a.is_empty() {
-                        "\"\"".to_string()
-                    } else if a.contains(' ')
-                        || a.contains('"')
-                        || a.contains('&')
-                        || a.contains('^')
-                    {
-                        format!("\"{}\"", a.replace('"', ""))
-                    } else {
-                        a.to_string()
-                    }
-                })
-                .collect();
+            let tokens: Vec<String> = args.iter().map(|a| quote_cmd_arg(a)).collect();
             let mut c = Command::new("cmd");
             c.current_dir(repo_root_dir());
             let inner = format!(

@@ -13,6 +13,7 @@ import { isExactDuplicate } from "./dedup";
 import { scrapePage, type ScrapedPost } from "./facebook";
 import { imagePhash } from "./hash";
 import { isVideoUrl, mediaRoot, processImage, randomMediaName } from "./media";
+import { mirrorMediaFile } from "./media-backfill";
 import { processVideo } from "./video";
 import { makeSlug, rewritePost } from "./rewrite";
 import { captureScreenshot } from "./screenshot";
@@ -230,12 +231,18 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           }
         }
         // Push to remote storage when configured so the deployed web app can
-        // serve the file (serverless can't reach this machine's disk).
+        // serve the file (serverless can't reach this machine's disk). When no
+        // adapter is configured the local copy stays in media_path, so mirror
+        // it into the web app's public folder as well - that folder is what the
+        // deployed site actually serves.
         if (media.path && !/^https?:\/\//.test(media.path)) {
           const pub = await uploadRemote(media.path);
           if (pub) {
             media.path = pub;
             log(`[media] uploaded → ${pub}`);
+          } else {
+            const mirrored = mirrorMediaFile(media.path);
+            if (mirrored.length > 0) log(`[media] mirrored → ${mirrored[0]}`);
           }
         }
       } catch (err) {

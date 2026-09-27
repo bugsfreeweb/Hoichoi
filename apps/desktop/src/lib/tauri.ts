@@ -441,8 +441,12 @@ export async function deskMediaStorage(
   cfgJson?: string,
 ): Promise<DeskMediaStorage> {
   const args = ["media", "storage"];
-  if (cfgJson) args.push(cfgJson);
-  const res = await deskCall(args, env);
+  // Hand the policy over as an env var, never as an argv token: JSON contains
+  // double quotes and every shell hop (cmd.exe + C runtime) on the dev path
+  // used to strip them, which made the runner fail JSON.parse. The runner
+  // still accepts the positional form for CLI users.
+  const callEnv = cfgJson ? { ...env, HOICHOI_MEDIA_STORAGE_JSON: cfgJson } : env;
+  const res = await deskCall(args, callEnv);
   return res as unknown as DeskMediaStorage;
 }
 

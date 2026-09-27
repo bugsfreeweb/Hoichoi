@@ -183,7 +183,9 @@ interface GitHubConfig {
 }
 
 const legacyGithub: GitHubConfig = (() => {
-  const token = process.env.GITHUB_TOKEN ?? "";
+  // Accept both spellings: the runner/CLI docs and Actions use GITHUB_TOKEN, the
+  // desktop .env ships GITHUB_PAT. Same secret, so resolve either.
+  const token = process.env.GITHUB_TOKEN ?? process.env.GITHUB_PAT ?? "";
   const repo = process.env.GITHUB_REPO ?? "";
   const branch = process.env.GITHUB_BRANCH ?? "main";
   const mediaPath = process.env.GITHUB_MEDIA_PATH ?? "media/";
@@ -196,30 +198,37 @@ function githubMediaUrl(key: string, cfg: GitHubConfig): string {
   return `${base}/${key}`;
 }
 
-async function ghApi(path: string, init?: RequestInit): Promise<Response> {
-  return fetch(`https://api.github.com/repos/${legacyGithub.repo}${path}`, {
+async function ghApi(cfg: GitHubConfig, path: string, init?: RequestInit): Promise<Response> {
+  return fetch(`https://api.github.com/repos/${cfg.repo}${path}`, {
     ...init,
     headers: {
-      Authorization: `token ${legacyGithub.token}`,
+      Authorization: `token ${cfg.token}`,
       Accept: "application/vnd.github+json",
       ...(init?.headers ?? {}),
     },
   });
 }
 
-async function ghGetSha(repoPath: string): Promise<string | null> {
-  const res = await ghApi(`/contents/${repoPath}`);
+async function ghGetSha(cfg: GitHubConfig, repoPath: string): Promise<string | null> {
+  const res = await ghApi(cfg, `/contents/${repoPath}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
   const data = (await res.json()) as { sha: string };
   return data.sha;
 }
 
-async function ghUpload(key: string, body: Buffer): Promise<string> {
-  if (!legacyGithub.token || !legacyGithub.repo) throw new Error("GitHub: creds missing");
-  const sha = await ghGetSha(key);
-  const payload = JSON.stringify({ message: `media: ${key} · ${new Date().toISOString()}`, ...(sha ? { sha } : {}) });
-  const res = await ghApi(`/contents/${key}`, {
+async function ghUpload(cfg: GitHubConfig, key: string, body: Buffer): Promise<string> {
+  if (!cfg.token || !cfg.repo) throw new Error("GitHub: creds missing");
+  const sha = await ghGetSha(cfg, key);
+  // The contents API wants the file inline as base64; without it GitHub happily
+  // creates a 0-byte "successful" upload, which is what the images were before.
+  const payload = JSON.stringify({
+    message: `media: ${key} · ${new Date().toISOString()}`,
+    content: body.toString("base64"),
+    encoding: "base64",
+    ...(sha ? { sha } : {}),
+  });
+  const res = await ghApi(cfg, `/contents/${key}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: payload,
@@ -227,14 +236,14 @@ async function ghUpload(key: string, body: Buffer): Promise<string> {
   if (!res.ok) {
     throw new Error(`GitHub upload failed: ${res.status} ${(await res.text()).slice(0, 300)}`);
   }
-  return githubMediaUrl(key, legacyGithub);
+  return githubMediaUrl(key, cfg);
 }
 
-async function ghDelete(key: string): Promise<void> {
-  if (!legacyGithub.token || !legacyGithub.repo) return;
-  const sha = await ghGetSha(key);
+async function ghDelete(cfg: GitHubConfig, key: string): Promise<void> {
+  if (!cfg.token || !cfg.repo) return;
+  const sha = await ghGetSha(cfg, key);
   if (!sha) return;
-  const res = await ghApi(`/contents/${key}`, {
+  const res = await ghApi(cfg, `/contents/${key}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message: `media delete: ${key} · ${new Date().toISOString()}`, sha }),
@@ -242,6 +251,17 @@ async function ghDelete(key: string): Promise<void> {
   if (!res.ok && res.status !== 404) {
     throw new Error(`GitHub delete failed: ${res.status} ${(await res.text()).slice(0, 300)}`);
   }
+}
+
+/** Project a resolved adapter back onto the GitHub client config. */
+function ghConfig(a: ResolvedAdapter): GitHubConfig {
+  return {
+    token: a.token ?? "",
+    repo: a.repo ?? "",
+    branch: a.branch ?? "main",
+    mediaPath: a.mediaPath ?? "media/",
+    baseUrl: a.baseUrl ?? null,
+  };
 }
 
 /* ------------------------------------------------------------------ *
@@ -295,7 +315,7 @@ export async function buildAdapters(): Promise<ResolvedAdapter[]> {
   for (const a of cfg.adapters) {
     if (!a.enabled) continue;
     if (a.kind === "github") {
-      const token = process.env.GITHUB_TOKEN ?? "";
+      const token = process.env.GITHUB_TOKEN ?? process.env.GITHUB_PAT ?? "";
       const repo = process.env.GITHUB_REPO ?? "";
       adapters.push({
         id: "github",
@@ -351,7 +371,7 @@ export async function buildAdapters(): Promise<ResolvedAdapter[]> {
 
 export function remoteStorageEnabled(): boolean {
   return Boolean(
-    (process.env.STORAGE_ADAPTER === "github" && process.env.GITHUB_TOKEN && process.env.GITHUB_REPO) ||
+    (process.env.STORAGE_ADAPTER === "github" && legacyGithub.token && process.env.GITHUB_REPO) ||
       process.env.B2_BUCKET ||
       process.env.IDRIVEE2_BUCKET,
   );
@@ -359,7 +379,7 @@ export function remoteStorageEnabled(): boolean {
 
 /** True when the pipeline should try to push media to GitHub. */
 export function githubStorageEnabled(): boolean {
-  return Boolean(process.env.STORAGE_ADAPTER === "github" && process.env.GITHUB_TOKEN && process.env.GITHUB_REPO);
+  return Boolean(process.env.STORAGE_ADAPTER === "github" && legacyGithub.token && process.env.GITHUB_REPO);
 }
 
 export function storageRegistryCount(): Promise<number> {
@@ -373,7 +393,7 @@ function adapterKey(a: ResolvedAdapter, rel: string): string {
 
 async function deleteOnAdapter(a: ResolvedAdapter, key: string): Promise<void> {
   if (a.id === "github") {
-    await ghDelete(key);
+    await ghDelete(ghConfig(a), key);
   } else {
     await s3Delete(a, key);
   }
@@ -393,7 +413,7 @@ export async function uploadRemote(rel: string, postId?: string | null): Promise
     try {
       const key = adapterKey(a, rel);
       const url =
-        a.id === "github" ? await ghUpload(key, body) : await s3Upload(a, key, body);
+        a.id === "github" ? await ghUpload(ghConfig(a), key, body) : await s3Upload(a, key, body);
       await recordMediaObject({ adapter: a.id, key, url, post_id: postId ?? null });
       const cfg = await getMediaStorageConfig();
       if (cfg.purge_local_after_upload) {

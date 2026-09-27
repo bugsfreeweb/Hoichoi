@@ -6,6 +6,7 @@ import { createInterface } from "node:readline";
 import { runPipeline, type PipelineOptions } from "./pipeline";
 import { runArchivePass } from "./archive";
 import { cleanupMedia, storageRegistryCount } from "./storage";
+import { backfillMissingMedia, recoverOrphanedMedia, syncExistingMediaToWeb } from "./media-backfill";
 import {
   getClient,
   ensureSchema,
@@ -61,6 +62,28 @@ import { PROCESSOR_ENV_DEFAULTS, type CategorySlug, type MediaStorageConfig, typ
 type SqlValue = null | string | number | bigint | Uint8Array | ArrayBuffer;
 
 const program = new Command();
+
+/**
+ * Read stdin, but only when something is actually piped into us. A TTY or an
+ * empty/closed pipe resolves to `null` so callers can fall back to argv/env
+ * without hanging.
+ *
+ * `allow` gates the read: in daemon mode stdin carries the JSON request
+ * protocol, so draining it here would swallow the next command. Only an
+ * explicit opt-in may consume it.
+ */
+async function readStdinIfPiped(allow: boolean): Promise<string | null> {
+  if (!allow) return null;
+  if (process.stdin.isTTY) return null;
+  const chunks: Buffer[] = [];
+  try {
+    for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+  } catch {
+    return null;
+  }
+  const text = Buffer.concat(chunks).toString("utf8").trim();
+  return text.length > 0 ? text : null;
+}
 
 program
   .name("hoichoi-scraper")
@@ -363,16 +386,43 @@ program
   });
 
 const media = program.command("media").description("remote media storage (adapter chain + retention policy)");
+/**
+ * The JSON policy can arrive three ways: as the positional arg, in
+ * `HOICHOI_MEDIA_STORAGE_JSON`, or (legacy) on stdin. The env route exists
+ * because the desktop app used to pass the policy as one argv token, and every
+ * Windows shell hop (cmd.exe + C runtime) can mangle embedded quotes — the
+ * runner then died with `Expected property name or '}' in JSON at position 1`.
+ */
+async function readMediaStorageArg(json: string | undefined, opts: { stdin?: boolean } = {}): Promise<MediaStorageConfig | null> {
+  let raw = json?.trim();
+  if (!raw) raw = process.env.HOICHOI_MEDIA_STORAGE_JSON?.trim();
+  if (!raw) {
+    // File route: the desktop writes big policies to a temp file instead of
+    // squeezing JSON through argv/stdin.
+    const file = process.env.HOICHOI_MEDIA_STORAGE_FILE?.trim();
+    if (file) {
+      const text = await readFile(file, "utf8").catch(() => {
+        throw new Error(`HOICHOI_MEDIA_STORAGE_FILE unreadable: ${file}`);
+      });
+      raw = text.trim();
+    }
+  }
+  if (!raw) {
+    const fromStdin = await readStdinIfPiped(opts.stdin === true);
+    if (fromStdin) raw = fromStdin;
+  }
+  if (!raw) return null;
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/```$/, "").trim();
+  return JSON.parse(cleaned) as MediaStorageConfig;
+}
 media
   .command("storage [json]")
   .description('print the media-storage policy (or save a new JSON policy when passed)')
   .action(async (json: string | undefined) => {
     try {
       await ensureSchema(getClient());
-      if (json) {
-        const cfg = JSON.parse(json) as MediaStorageConfig;
-        await saveMediaStorageConfig(cfg);
-      }
+      const cfg = await readMediaStorageArg(json, { stdin: true });
+      if (cfg) await saveMediaStorageConfig(cfg);
       console.log(JSON.stringify({ ok: true, config: await getMediaStorageConfig(), registry: await storageRegistryCount() }, null, 2));
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
@@ -385,8 +435,8 @@ media
   .action(async (json: string) => {
     try {
       await ensureSchema(getClient());
-      const cfg = JSON.parse(json) as MediaStorageConfig;
-      await saveMediaStorageConfig(cfg);
+      const cfg = await readMediaStorageArg(json, { stdin: true });
+      if (cfg) await saveMediaStorageConfig(cfg);
       console.log(JSON.stringify({ ok: true, config: await getMediaStorageConfig(), registry: await storageRegistryCount() }));
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
@@ -405,6 +455,30 @@ media
         ok: true,
         ...(await cleanupMedia({ dryRun: opts.dryRun ?? false, months: opts.months !== undefined ? Number(opts.months) : undefined })),
       }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+media
+  .command("backfill")
+  .description("re-download missing post media and mirror files into the web app's public folder")
+  .option("--limit <n>", "maximum posts/permalinks to repair")
+  .option("--dry-run", "only count candidates, download nothing")
+  .option("--recover", "also re-visit permalinks whose raw_posts row was archived away (needs a browser)")
+  .action(async (opts: { limit?: string; dryRun?: boolean; recover?: boolean }) => {
+    try {
+      await ensureSchema(getClient());
+      const limit = opts.limit !== undefined ? Number(opts.limit) : undefined;
+      const dryRun = opts.dryRun ?? false;
+      const log = (m: string) => console.error(m);
+      const result = await backfillMissingMedia({ limit, dryRun, log });
+      // Stage 2: posts whose raw row is gone need the permalink re-visited.
+      const recovered = opts.recover
+        ? await recoverOrphanedMedia({ limit, dryRun, log })
+        : { skipped: true, hint: "pass --recover to re-visit permalinks" };
+      const sync = await syncExistingMediaToWeb();
+      console.log(JSON.stringify({ ok: true, ...result, recovered, sync }, null, 2));
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -1365,11 +1439,12 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
       if (sub === "storage") {
         const next = args[2];
         if (next === "set") {
-          const json = args[3];
-          if (!json) throw new Error("json payload required (media storage set <json>)");
-          await saveMediaStorageConfig(JSON.parse(json) as MediaStorageConfig);
-        } else if (next !== undefined) {
-          await saveMediaStorageConfig(JSON.parse(next) as MediaStorageConfig);
+          const cfg = await readMediaStorageArg(args[3]);
+          if (!cfg) throw new Error("json payload required (media storage set <json>)");
+          await saveMediaStorageConfig(cfg);
+        } else {
+          const cfg = await readMediaStorageArg(next);
+          if (cfg) await saveMediaStorageConfig(cfg);
         }
         const config = await getMediaStorageConfig();
         const registry = await storageRegistryCount();

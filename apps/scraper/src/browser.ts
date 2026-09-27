@@ -1,5 +1,7 @@
 import * as fs from "node:fs";
-import type { Browser, LaunchOptions } from "playwright";
+import type { Browser, LaunchOptions, Page } from "playwright";
+
+export type { Browser, Page };
 
 interface LaunchAttempt {
   label: string;

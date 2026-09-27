@@ -20,7 +20,10 @@ const MIME: Record<string, string> = {
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
   const { path: parts } = await ctx.params;
   const rel = parts.join("/");
-  for (const root of mediaRootCandidates()) {
+  // Local roots first, then the committed web copy (dev convenience: a serverless
+  // deploy has neither, which is why committed media is served from /uploads/…).
+  const roots = [...mediaRootCandidates(), path.join(process.cwd(), "public", "uploads")];
+  for (const root of roots) {
     const full = path.resolve(root, rel);
     if (!full.startsWith(path.resolve(root))) continue;
     if (!fs.existsSync(full)) continue;

@@ -1,5 +1,5 @@
 import type { CategorySlug, Source } from "@hoichoi/shared-types";
-import { launchChromium } from "./browser";
+import { launchChromium, type Browser, type Page } from "./browser";
 
 export interface ScrapedPost {
   fbPostId: string;
@@ -163,36 +163,106 @@ export async function scrapePage(
 
     const posts: ScrapedPost[] = [];
     for (const url of postUrls) {
-      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
-      await page.waitForTimeout(opts.requestDelayMs ?? 2_000);
-      const id = `fb_${Buffer.from(url).toString("base64url").slice(0, 20)}`;
-      const rawText = await page
-        .locator("[data-ad-preview='message'], [data-pagelet='FeedUnit']")
-        .first()
-        .textContent()
-        .catch(() => null);
-      const hasVideo = (await page.locator("video").count()) > 0;
-      // Collect every media frame on the post — multiple photos plus the video
-      // poster when present. The poster is preferred for a video post; the
-      // pipeline still falls back to a plain image if the video fails.
-      const imgs = await page
-        .locator("img[src*='scontent'], img[alt*='photo'], img[src*='p16-sign-va']")
-        .evaluateAll((els) => els.map((e) => (e as HTMLImageElement).src))
-        .catch(() => [] as string[]);
-      const poster = hasVideo
-        ? await page.locator("video + img").first().getAttribute("src").catch(() => null)
-        : null;
-      const mediaUrls = [...new Set([...(poster ? [poster] : []), ...imgs].filter((u): u is string => Boolean(u && u.startsWith("http"))))].slice(0, 4);
-      posts.push({
-        fbPostId: id,
-        fbPostUrl: url,
-        rawText: rawText?.slice(0, 4000) ?? null,
-        mediaUrls,
-        postTimestamp: new Date().toISOString(),
-        fbMediaIsVideo: hasVideo,
-      });
+      const scraped = await extractPost(page, url, opts);
+      if (scraped) posts.push(scraped);
     }
     opts.log?.(`[facebook] ${posts.length} posts from ${source.page_name}`);
+    return posts;
+  } finally {
+    await browser.close();
+  }
+}
+
+/** Open a fresh logged-in browser context. */
+async function newFbContext(browser: Browser, sessionCookie?: string | null) {
+  const ctx = await browser.newContext({
+    locale: "bn-BD",
+    viewport: { width: 1280, height: 2200 },
+  });
+  if (sessionCookie) {
+    await ctx.addCookies([
+      {
+        name: "c_user",
+        value: sessionCookie,
+        domain: ".facebook.com",
+        path: "/",
+      },
+    ]);
+  }
+  return ctx;
+}
+
+/**
+ * Visit one already-known permalink and pull its text + media frames. Shared by
+ * the normal page crawl and by the media recovery path (posts whose raw row was
+ * archived away, so the CDN URLs are gone and the page has to be re-visited).
+ */
+async function extractPost(page: Page, url: string, opts: ScrapeOptions): Promise<ScrapedPost | null> {
+  try {
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.waitForTimeout(opts.requestDelayMs ?? 2_000);
+    const id = `fb_${Buffer.from(url).toString("base64url").slice(0, 20)}`;
+    const rawText = await page
+      .locator("[data-ad-preview='message'], [data-pagelet='FeedUnit']")
+      .first()
+      .textContent()
+      .catch(() => null);
+    const hasVideo = (await page.locator("video").count()) > 0;
+    // Collect every media frame on the post — multiple photos plus the video
+    // poster when present. The poster is preferred for a video post; the
+    // pipeline still falls back to a plain image if the video fails.
+    const imgs = await page
+      .locator("img[src*='scontent'], img[alt*='photo'], img[src*='p16-sign-va']")
+      .evaluateAll((els) => els.map((e) => (e as HTMLImageElement).src))
+      .catch(() => [] as string[]);
+    const poster = hasVideo
+      ? await page.locator("video + img").first().getAttribute("src").catch(() => null)
+      : null;
+    const mediaUrls = [
+      ...new Set([...(poster ? [poster] : []), ...imgs].filter((u): u is string => Boolean(u && u.startsWith("http")))),
+    ].slice(0, 4);
+    return {
+      fbPostId: id,
+      fbPostUrl: url,
+      rawText: rawText?.slice(0, 4000) ?? null,
+      mediaUrls,
+      postTimestamp: new Date().toISOString(),
+      fbMediaIsVideo: hasVideo,
+    };
+  } catch (err) {
+    opts.log?.(`[facebook] ${url.slice(0, 60)}… failed: ${(err as Error).message}`);
+    return null;
+  }
+}
+
+/**
+ * Re-scrape a known list of permalinks (no page crawl). Used by
+ * `media backfill --recover` to restore images for posts whose raw_posts row
+ * was deleted by the archive pass.
+ */
+export async function scrapePostUrls(
+  urls: string[],
+  opts: ScrapeOptions = {},
+): Promise<ScrapedPost[]> {
+  const unique = [...new Set(urls.map((u) => u.split("?")[0]).filter((u): u is string => Boolean(u)))];
+  if (unique.length === 0) return [];
+  try {
+    await import("playwright");
+  } catch {
+    throw new Error(
+      "playwright is not installed. Run `pnpm --filter scraper exec playwright install chromium` then retry.",
+    );
+  }
+  const browser = await launchChromium();
+  try {
+    const ctx = await newFbContext(browser, opts.sessionCookie);
+    const page = await ctx.newPage();
+    const posts: ScrapedPost[] = [];
+    for (const url of unique) {
+      const scraped = await extractPost(page, url, opts);
+      if (scraped) posts.push(scraped);
+    }
+    opts.log?.(`[facebook] recovered ${posts.length}/${unique.length} permalinks`);
     return posts;
   } finally {
     await browser.close();
