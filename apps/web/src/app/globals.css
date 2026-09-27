@@ -2,6 +2,100 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tailwind 3.4 cannot emit opacity-modifier utilities for CSS-var colors
+(it only supports them for literal colors like white/black), so classes like
+text-ink/45, bg-lime/12 and border-ink/8 never made it into the compiled CSS.
+These synthesized fallbacks provide those alpha variants via color-mix(), which
+follows the theme variables so the dark/light flip keeps working. Order: this
+block sits at the top so the more specific .admin-console / data-theme=light
+overrides appended below still win. */
+.text-ink-soft\/50{color:color-mix(in srgb,var(--color-ink-soft) 50%,transparent)}
+.text-ink-soft\/60{color:color-mix(in srgb,var(--color-ink-soft) 60%,transparent)}
+.text-ink-soft\/70{color:color-mix(in srgb,var(--color-ink-soft) 70%,transparent)}
+.text-ink-soft\/80{color:color-mix(in srgb,var(--color-ink-soft) 80%,transparent)}
+.text-ink-soft\/85{color:color-mix(in srgb,var(--color-ink-soft) 85%,transparent)}
+.text-paper\/60{color:color-mix(in srgb,var(--color-paper) 60%,transparent)}
+.text-ink\/25{color:color-mix(in srgb,var(--color-ink) 25%,transparent)}
+.text-ink\/30{color:color-mix(in srgb,var(--color-ink) 30%,transparent)}
+.text-ink\/35{color:color-mix(in srgb,var(--color-ink) 35%,transparent)}
+.text-ink\/40{color:color-mix(in srgb,var(--color-ink) 40%,transparent)}
+.text-ink\/45{color:color-mix(in srgb,var(--color-ink) 45%,transparent)}
+.text-ink\/50{color:color-mix(in srgb,var(--color-ink) 50%,transparent)}
+.text-ink\/55{color:color-mix(in srgb,var(--color-ink) 55%,transparent)}
+.text-ink\/75{color:color-mix(in srgb,var(--color-ink) 75%,transparent)}
+.text-ink\/85{color:color-mix(in srgb,var(--color-ink) 85%,transparent)}
+.text-ink\/90{color:color-mix(in srgb,var(--color-ink) 90%,transparent)}
+.text-bandline\/10{color:color-mix(in srgb,var(--color-bandline) 10%,transparent)}
+.text-bandline\/50{color:color-mix(in srgb,var(--color-bandline) 50%,transparent)}
+.text-bandline\/55{color:color-mix(in srgb,var(--color-bandline) 55%,transparent)}
+.text-bandline\/60{color:color-mix(in srgb,var(--color-bandline) 60%,transparent)}
+.text-bandline\/70{color:color-mix(in srgb,var(--color-bandline) 70%,transparent)}
+.text-bandline\/85{color:color-mix(in srgb,var(--color-bandline) 85%,transparent)}
+.text-lime\/70{color:color-mix(in srgb,var(--color-lime) 70%,transparent)}
+.text-sky-300\/90{color:color-mix(in srgb,var(--color-sky-300) 90%,transparent)}
+.text-night\/60{color:color-mix(in srgb,var(--color-night) 60%,transparent)}
+.bg-amberx\/15{background-color:color-mix(in srgb,var(--color-amberx) 15%,transparent)}
+.bg-alizarin\/5{background-color:color-mix(in srgb,var(--color-alizarin) 5%,transparent)}
+.bg-alizarin\/10{background-color:color-mix(in srgb,var(--color-alizarin) 10%,transparent)}
+.bg-alizarin\/12{background-color:color-mix(in srgb,var(--color-alizarin) 12%,transparent)}
+.bg-alizarin\/15{background-color:color-mix(in srgb,var(--color-alizarin) 15%,transparent)}
+.bg-alizarin\/20{background-color:color-mix(in srgb,var(--color-alizarin) 20%,transparent)}
+.bg-paper-deep\/30{background-color:color-mix(in srgb,var(--color-paper-deep) 30%,transparent)}
+.bg-paper-deep\/40{background-color:color-mix(in srgb,var(--color-paper-deep) 40%,transparent)}
+.bg-paper-deep\/60{background-color:color-mix(in srgb,var(--color-paper-deep) 60%,transparent)}
+.bg-rose-400\/10{background-color:color-mix(in srgb,var(--color-rose-400) 10%,transparent)}
+.bg-lime\/10{background-color:color-mix(in srgb,var(--color-lime) 10%,transparent)}
+.bg-lime\/12{background-color:color-mix(in srgb,var(--color-lime) 12%,transparent)}
+.bg-lime\/15{background-color:color-mix(in srgb,var(--color-lime) 15%,transparent)}
+.bg-cat-teal\/10{background-color:color-mix(in srgb,var(--color-cat-teal) 10%,transparent)}
+.bg-panel\/40{background-color:color-mix(in srgb,var(--color-panel) 40%,transparent)}
+.bg-panel\/60{background-color:color-mix(in srgb,var(--color-panel) 60%,transparent)}
+.bg-paper\/50{background-color:color-mix(in srgb,var(--color-paper) 50%,transparent)}
+.bg-paper\/90{background-color:color-mix(in srgb,var(--color-paper) 90%,transparent)}
+.bg-sky-400\/15{background-color:color-mix(in srgb,var(--color-sky-400) 15%,transparent)}
+.bg-ink\/5{background-color:color-mix(in srgb,var(--color-ink) 5%,transparent)}
+.bg-ink\/8{background-color:color-mix(in srgb,var(--color-ink) 8%,transparent)}
+.bg-ink\/10{background-color:color-mix(in srgb,var(--color-ink) 10%,transparent)}
+.bg-ink\/12{background-color:color-mix(in srgb,var(--color-ink) 12%,transparent)}
+.bg-ink\/25{background-color:color-mix(in srgb,var(--color-ink) 25%,transparent)}
+.bg-ink\/80{background-color:color-mix(in srgb,var(--color-ink) 80%,transparent)}
+.bg-night\/80{background-color:color-mix(in srgb,var(--color-night) 80%,transparent)}
+.border-bandline\/15{border-color:color-mix(in srgb,var(--color-bandline) 15%,transparent)}
+.border-bandline\/25{border-color:color-mix(in srgb,var(--color-bandline) 25%,transparent)}
+.border-bandline\/30{border-color:color-mix(in srgb,var(--color-bandline) 30%,transparent)}
+.border-bandline\/40{border-color:color-mix(in srgb,var(--color-bandline) 40%,transparent)}
+.border-night\/35{border-color:color-mix(in srgb,var(--color-night) 35%,transparent)}
+.border-lime\/25{border-color:color-mix(in srgb,var(--color-lime) 25%,transparent)}
+.border-lime\/30{border-color:color-mix(in srgb,var(--color-lime) 30%,transparent)}
+.border-lime\/40{border-color:color-mix(in srgb,var(--color-lime) 40%,transparent)}
+.border-lime\/60{border-color:color-mix(in srgb,var(--color-lime) 60%,transparent)}
+.border-rose-400\/20{border-color:color-mix(in srgb,var(--color-rose-400) 20%,transparent)}
+.border-rose-400\/60{border-color:color-mix(in srgb,var(--color-rose-400) 60%,transparent)}
+.border-ink\/8{border-color:color-mix(in srgb,var(--color-ink) 8%,transparent)}
+.border-ink\/10{border-color:color-mix(in srgb,var(--color-ink) 10%,transparent)}
+.border-ink\/12{border-color:color-mix(in srgb,var(--color-ink) 12%,transparent)}
+.border-ink\/15{border-color:color-mix(in srgb,var(--color-ink) 15%,transparent)}
+.border-ink\/20{border-color:color-mix(in srgb,var(--color-ink) 20%,transparent)}
+.border-ink\/25{border-color:color-mix(in srgb,var(--color-ink) 25%,transparent)}
+.border-ink\/30{border-color:color-mix(in srgb,var(--color-ink) 30%,transparent)}
+.border-ink\/35{border-color:color-mix(in srgb,var(--color-ink) 35%,transparent)}
+.border-ink\/40{border-color:color-mix(in srgb,var(--color-ink) 40%,transparent)}
+.border-ink\/45{border-color:color-mix(in srgb,var(--color-ink) 45%,transparent)}
+.border-ink\/50{border-color:color-mix(in srgb,var(--color-ink) 50%,transparent)}
+.border-ink\/60{border-color:color-mix(in srgb,var(--color-ink) 60%,transparent)}
+.border-alizarin\/40{border-color:color-mix(in srgb,var(--color-alizarin) 40%,transparent)}
+.border-alizarin\/50{border-color:color-mix(in srgb,var(--color-alizarin) 50%,transparent)}
+.border-cat-teal\/25{border-color:color-mix(in srgb,var(--color-cat-teal) 25%,transparent)}
+.border-amberx\/30{border-color:color-mix(in srgb,var(--color-amberx) 30%,transparent)}
+.border-amberx\/60{border-color:color-mix(in srgb,var(--color-amberx) 60%,transparent)}
+.bg-white\/\[0.03\]{background-color:rgb(255 255 255 / .03)}
+.bg-white\/\[0.035\]{background-color:rgb(255 255 255 / .035)}
+.bg-white\/\[0.04\]{background-color:rgb(255 255 255 / .04)}
+.bg-black\/\[0.035\]{background-color:rgb(0 0 0 / .035)}
+
+/* Alpha utility variants that Tailwind also cannot emit for CSS-var / bracket-alpha colors. */
+@media (hover:hover){.hover\:bg-alizarin\/10:hover{background-color:color-mix(in srgb,var(--color-alizarin) 10%,transparent)}.hover\:bg-alizarin\/12:hover{background-color:color-mix(in srgb,var(--color-alizarin) 12%,transparent)}.hover\:bg-alizarin\/15:hover{background-color:color-mix(in srgb,var(--color-alizarin) 15%,transparent)}.hover\:bg-ink\/10:hover{background-color:color-mix(in srgb,var(--color-ink) 10%,transparent)}.hover\:bg-lime\/10:hover{background-color:color-mix(in srgb,var(--color-lime) 10%,transparent)}.hover\:bg-lime\/15:hover{background-color:color-mix(in srgb,var(--color-lime) 15%,transparent)}.hover\:bg-white\/\[0.03\]:hover{background-color:rgb(255 255 255 / .03)}.hover\:bg-white\/\[0.035\]:hover{background-color:rgb(255 255 255 / .035)}.hover\:bg-white\/\[0.04\]:hover{background-color:rgb(255 255 255 / .04)}.hover\:border-alizarin\/50:hover{border-color:color-mix(in srgb,var(--color-alizarin) 50%,transparent)}.hover\:border-amberx\/60:hover{border-color:color-mix(in srgb,var(--color-amberx) 60%,transparent)}.hover\:border-ink\/50:hover{border-color:color-mix(in srgb,var(--color-ink) 50%,transparent)}.hover\:border-ink\/60:hover{border-color:color-mix(in srgb,var(--color-ink) 60%,transparent)}.hover\:border-lime\/60:hover{border-color:color-mix(in srgb,var(--color-lime) 60%,transparent)}.hover\:border-rose-400\/60:hover{border-color:color-mix(in srgb,var(--color-rose-400) 60%,transparent)}.group:hover .group-hover\:text-paper\/60{color:color-mix(in srgb,var(--color-paper) 60%,transparent)}}
+
 /* ---------- মকর-স্তরের স্টাইল: mockup.html থেকে পোর্ট ---------- */
 
 /* Design tokens live on CSS variables so the theme toggle can swap the whole
@@ -447,7 +541,7 @@ html[data-theme="dark"] .ad-chip {
   height: 1em;
   margin-left: 4px;
   transform: translateY(0.12em);
-  background: #c8f65d;
+  background: var(--color-lime);
   animation: blink 1s steps(1) infinite;
 }
 @keyframes blink {
@@ -480,8 +574,8 @@ html[data-theme="dark"] .ad-chip {
     box-shadow: 0 0 0 0 rgba(200, 246, 93, 0);
   }
   4% {
-    border-color: rgba(200, 246, 93, 0.85);
-    box-shadow: 0 0 26px 1px rgba(200, 246, 93, 0.25);
+    border-color: color-mix(in srgb, var(--color-lime) 85%, transparent);
+    box-shadow: 0 0 26px 1px color-mix(in srgb, var(--color-lime) 25%, transparent);
     transform: translateY(-3px);
   }
 }
@@ -494,10 +588,10 @@ html[data-theme="dark"] .ad-chip {
   height: 9px;
   margin-top: -4.5px;
   border-radius: 999px;
-  background: #c8f65d;
+  background: var(--color-lime);
   box-shadow:
-    0 0 12px 2px rgba(200, 246, 93, 0.75),
-    0 0 40px 6px rgba(200, 246, 93, 0.3);
+    0 0 12px 2px color-mix(in srgb, var(--color-lime) 75%, transparent),
+    0 0 40px 6px color-mix(in srgb, var(--color-lime) 30%, transparent);
   animation: travel 6.4s cubic-bezier(0.6, 0, 0.3, 1) infinite;
 }
 @keyframes travel {
@@ -732,3 +826,139 @@ html[data-theme="light"] .desk-scene {
     transition: none;
   }
 }
+
+/* =============== LIGHT-THEME ISLAND FLIPS ===============
+   The mockup islands (night-grid hero, editorial band, pulse panels, admin
+   console) default to dark even in the light theme. When the user switches to
+   light, these scope-dark backgrounds to light values and swap the forced
+   bright lime/amber accents for the darkened light-palette versions. Dark
+   theme is untouched (these rules only apply under html[data-theme="light"]). */
+html[data-theme="light"] .bg-night-grid {
+  background-color: #f6f1e3;
+  background-image:
+    linear-gradient(rgba(26, 20, 13, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26, 20, 13, 0.05) 1px, transparent 1px);
+  --color-lime: #5f8f0e;
+  --color-amberx: #b45309;
+}
+html[data-theme="light"] .bg-band {
+  --color-band: #f3eee1;
+  --color-bandline: #1a140d;
+  --color-lime: #5f8f0e;
+  --color-amberx: #b45309;
+}
+html[data-theme="light"] .panel {
+  background: rgba(246, 241, 227, 0.9);
+  border-color: rgba(26, 20, 13, 0.16);
+  --color-lime: #5f8f0e;
+  --color-amberx: #b45309;
+}
+html[data-theme="light"] .headline-grad {
+  background-image: linear-gradient(
+    112deg,
+    #1a140d 0%,
+    rgba(26, 20, 13, 0.74) 16%,
+    #5f8f0e 31%,
+    #b45309 41%,
+    #d2202c 49%,
+    #5f8f0e 57%,
+    rgba(26, 20, 13, 0.74) 68%,
+    #1a140d 84%
+  );
+}
+/* Tauri windows sitting on the flipped light night-grid get the darker
+   light-palette accents instead of the bright dark-island lime/amber. */
+html[data-theme="light"] .bg-night-grid .tauri-win {
+  --color-lime: #5f8f0e;
+  --color-amberx: #b45309;
+}
+
+/* =============== ADMIN CONSOLE — LIGHT THEME ===============
+   The admin console is always-dark in the default (dark) theme via the rules
+   above; under light we flip the shell and reverse the legacy-token remaps so
+   the console pages read as light without rewriting every child component.
+   White-on-alizarin badges/buttons stay white (they are already correct in
+   both themes). */
+html[data-theme="light"] .admin-console {
+  background: #f3eee1;
+  color: #1a140d;
+  --color-lime: #5f8f0e;
+  --color-amberx: #b45309;
+}
+html[data-theme="light"] .admin-console,
+html[data-theme="light"] .admin-console * {
+  scrollbar-color: #c9bfa4 #ede6d3;
+}
+html[data-theme="light"] .admin-console ::-webkit-scrollbar-thumb {
+  background: #c9bfa4;
+}
+html[data-theme="light"] .admin-console .text-ink { color: #1a140d; }
+html[data-theme="light"] .admin-console .text-ink\/40 { color: rgba(26, 20, 13, 0.4); }
+html[data-theme="light"] .admin-console .text-ink\/70 { color: rgba(26, 20, 13, 0.7); }
+html[data-theme="light"] .admin-console .text-ink\/85 { color: rgba(26, 20, 13, 0.85); }
+html[data-theme="light"] .admin-console .text-ink-soft { color: #6b6250; }
+html[data-theme="light"] .admin-console .text-alizarin { color: #d2202c; }
+html[data-theme="light"] .admin-console .bg-ink { background-color: #1a140d; }
+html[data-theme="light"] .admin-console .bg-ink\/25 { background-color: rgba(26, 20, 13, 0.28); }
+html[data-theme="light"] .admin-console .bg-ink\/80 { background-color: rgba(26, 20, 13, 0.82); }
+html[data-theme="light"] .admin-console .bg-paper { background-color: #f3eee1; }
+html[data-theme="light"] .admin-console .bg-paper-deep { background-color: #e9e2cf; }
+html[data-theme="light"] .admin-console .border-ink { border-color: rgba(26, 20, 13, 0.16); }
+html[data-theme="light"] .admin-console .border-ink\/15 { border-color: rgba(26, 20, 13, 0.12); }
+html[data-theme="light"] .admin-console .border-ink\/20 { border-color: rgba(26, 20, 13, 0.16); }
+html[data-theme="light"] .admin-console .border-ink\/25 { border-color: rgba(26, 20, 13, 0.2); }
+html[data-theme="light"] .admin-console .border-ink\/30 { border-color: rgba(26, 20, 13, 0.24); }
+html[data-theme="light"] .admin-console .border-ink\/40 { border-color: rgba(26, 20, 13, 0.3); }
+html[data-theme="light"] .admin-console .border-ink\/50 { border-color: rgba(26, 20, 13, 0.38); }
+html[data-theme="light"] .admin-console .text-white { color: #1a140d; }
+html[data-theme="light"] .admin-console .text-white\/30 { color: rgba(26, 20, 13, 0.3); }
+html[data-theme="light"] .admin-console .text-white\/35 { color: rgba(26, 20, 13, 0.35); }
+html[data-theme="light"] .admin-console .text-white\/40 { color: rgba(26, 20, 13, 0.4); }
+html[data-theme="light"] .admin-console .text-white\/45 { color: rgba(26, 20, 13, 0.45); }
+html[data-theme="light"] .admin-console .text-white\/50 { color: rgba(26, 20, 13, 0.5); }
+html[data-theme="light"] .admin-console .text-white\/55 { color: rgba(26, 20, 13, 0.55); }
+html[data-theme="light"] .admin-console .text-white\/60 { color: rgba(26, 20, 13, 0.6); }
+html[data-theme="light"] .admin-console .text-white\/70 { color: rgba(26, 20, 13, 0.7); }
+html[data-theme="light"] .admin-console .text-white\/75 { color: rgba(26, 20, 13, 0.75); }
+html[data-theme="light"] .admin-console .text-white\/85 { color: rgba(26, 20, 13, 0.85); }
+html[data-theme="light"] .admin-console .text-white\/90 { color: rgba(26, 20, 13, 0.9); }
+html[data-theme="light"] .admin-console .bg-white { background-color: #1a140d; }
+html[data-theme="light"] .admin-console .bg-white\/8 { background-color: rgba(26, 20, 13, 0.08); }
+html[data-theme="light"] .admin-console .bg-white\/10 { background-color: rgba(26, 20, 13, 0.1); }
+html[data-theme="light"] .admin-console .bg-white\/15 { background-color: rgba(26, 20, 13, 0.15); }
+html[data-theme="light"] .admin-console .bg-white\/\[0\.03\] { background-color: rgba(26, 20, 13, 0.03); }
+html[data-theme="light"] .admin-console .bg-white\/\[0\.035\] { background-color: rgba(26, 20, 13, 0.035); }
+html[data-theme="light"] .admin-console .bg-white\/\[0\.04\] { background-color: rgba(26, 20, 13, 0.04); }
+html[data-theme="light"] .admin-console .border-white\/5 { border-color: rgba(26, 20, 13, 0.05); }
+html[data-theme="light"] .admin-console .border-white\/8 { border-color: rgba(26, 20, 13, 0.08); }
+html[data-theme="light"] .admin-console .border-white\/10 { border-color: rgba(26, 20, 13, 0.12); }
+html[data-theme="light"] .admin-console .border-white\/12 { border-color: rgba(26, 20, 13, 0.14); }
+html[data-theme="light"] .admin-console .border-white\/15 { border-color: rgba(26, 20, 13, 0.16); }
+html[data-theme="light"] .admin-console .border-white\/20 { border-color: rgba(26, 20, 13, 0.22); }
+html[data-theme="light"] .admin-console .border-white\/40 { border-color: rgba(26, 20, 13, 0.4); }
+html[data-theme="light"] .admin-console .bg-panel { background-color: #f6f1e3; }
+html[data-theme="light"] .admin-console .bg-panel\/40 { background-color: rgba(246, 241, 227, 0.4); }
+html[data-theme="light"] .admin-console .bg-panel\/60 { background-color: rgba(246, 241, 227, 0.6); }
+html[data-theme="light"] .admin-console .bg-\[#0a0d12\] { background-color: #f6f1e3; }
+html[data-theme="light"] .admin-console .bg-\[#050608\]\/90 { background-color: rgba(243, 238, 225, 0.92); }
+html[data-theme="light"] .admin-console .placeholder\:text-white\/30::placeholder { color: rgba(26, 20, 13, 0.3); }
+html[data-theme="light"] .admin-console .text-night { color: #f3eee1; }
+html[data-theme="light"] .admin-console .text-night\/60 { color: rgba(243, 238, 225, 0.6); }
+html[data-theme="light"] .admin-console .text-\[#e9e6da\] { color: #1a140d; }
+html[data-theme="light"] .admin-console .bg-lime .bg-white,
+html[data-theme="light"] .admin-console .bg-ink\/25 .bg-white { background-color: #ffffff; }
+html[data-theme="light"] .admin-console .text-\[#22d3ee\] { color: #0e7490; }
+html[data-theme="light"] .admin-console .text-\[#c8f65d\] { color: #5f8f0e; }
+html[data-theme="light"] .admin-console .text-\[#ffb454\] { color: #b45309; }
+html[data-theme="light"] .admin-console .text-\[#ff6b6b\] { color: #be123c; }
+html[data-theme="light"] .admin-console .bg-\[#22d3ee\]\/15 { background-color: rgba(14, 116, 144, 0.14); }
+html[data-theme="light"] .admin-console .bg-\[#c8f65d\]\/15 { background-color: rgba(95, 143, 14, 0.14); }
+html[data-theme="light"] .admin-console .bg-\[#ffb454\]\/15 { background-color: rgba(180, 83, 9, 0.14); }
+html[data-theme="light"] .admin-console .bg-\[#ff6b6b\]\/15 { background-color: rgba(190, 18, 60, 0.12); }
+/* keep white-on-red badges/buttons white in the light console */
+html[data-theme="light"] .admin-console .bg-alizarin.text-white,
+html[data-theme="light"] .admin-console .bg-alizarin .text-white { color: #ffffff; }
+html[data-theme="light"] .admin-console .hover\:text-white:hover { color: #1a140d; }
+html[data-theme="light"] .admin-console .bg-alizarin.hover\:text-white:hover { color: #ffffff; }
+html[data-theme="light"] .admin-console .hover\:bg-white\/8:hover { background-color: rgba(26, 20, 13, 0.08); }
+html[data-theme="light"] .admin-console .hover\:bg-white\/10:hover { background-color: rgba(26, 20, 13, 0.1); }

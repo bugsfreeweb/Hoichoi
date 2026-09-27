@@ -69,7 +69,7 @@ function Trends({ points, range }: { points: AnalyticsPoint[]; range: string }) 
       {hover !== null && point && <g><line x1={x(hover)} x2={x(hover)} y1="16" y2="194" stroke="#c8f65d55" strokeDasharray="4 5" /><circle cx={x(hover)} cy={y(point.collected)} r="5" fill="#0f171d" stroke="#c8f65d" strokeWidth="2" /><circle cx={x(hover)} cy={y(point.published)} r="4" fill="#0f171d" stroke="#90afff" strokeWidth="2" /></g>}
     </svg>
     {points.map((p, i) => <button key={i} className={s.axisButton} onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)} style={{ left: `${3 + (i * 93) / points.length}%`, width: `${93 / points.length}%` }} aria-label={`${timeLabel(p.at)}: সংগৃহীত ${p.collected}, প্রকাশিত ${p.published}`} />)}
-    {point && hover !== null && <div className={s.tooltip} style={{ left: `${Math.min(65, Math.max(5, (hover / (points.length - 1)) * 80))}%` }}><b>{fullTimeBn(point.at)}</b><p style={{ color: "#c8f65d" }}>সংগৃহীত <span>{bnNum(point.collected)}টি</span></p><p style={{ color: "#90afff" }}>প্রকাশিত <span>{bnNum(point.published)}টি</span></p></div>}
+    {point && hover !== null && <div className={s.tooltip} style={{ left: `${Math.min(65, Math.max(5, (hover / (points.length - 1)) * 80))}%` }}><b>{fullTimeBn(point.at)}</b><p style={{ color: "var(--color-lime)" }}>সংগৃহীত <span>{bnNum(point.collected)}টি</span></p><p style={{ color: "var(--color-cat-blue)" }}>প্রকাশিত <span>{bnNum(point.published)}টি</span></p></div>}
   </div>;
 }
 

@@ -671,6 +671,92 @@ export async function statsSnapshot(): Promise<StatsSnapshot> {
   };
 }
 
+export interface RadarCategorySummary {
+  slug: string;
+  name: string;
+  dot: string;
+}
+
+export interface RadarStageCounts {
+  collected: Record<string, number>;
+  queued: Record<string, number>;
+  published: Record<string, number>;
+  duplicate: Record<string, number>;
+}
+
+export interface RadarSnapshot {
+  categories: RadarCategorySummary[];
+  stages: RadarStageCounts;
+  totals: { collected: number; queued: number; published: number; duplicate: number };
+  generatedAt: string;
+}
+
+/**
+ * Desk Collector polar-radar snapshot (mockup `collector-radar` parity).
+ * Per-category pipeline-stage counts — collected (raw intake), queued
+ * (rewrite awaiting publish), published, and duplicates blocked — all
+ * computed from real rows. `raw_posts` carry no category so their counts
+ * roll up through `sources → source_categories` (a post counts in every
+ * category its source belongs to, mirroring how sources drive the intake).
+ */
+export async function radarSnapshot(): Promise<RadarSnapshot> {
+  const client = getClient();
+  const toMap = (rows: Array<Record<string, unknown>>): Record<string, number> => {
+    const out: Record<string, number> = {};
+    for (const r of rows) out[String(r.slug)] = Number(r.n ?? 0);
+    return out;
+  };
+  const [cats, collected, queued, published, duplicate, tCollected, tQueued, tPublished, tDuplicate] =
+    await Promise.all([
+      listCategories(),
+      client.execute(
+        `SELECT sc.category_slug AS slug, count(*) AS n
+         FROM raw_posts rp
+         JOIN sources s ON s.id = rp.source_id
+         JOIN source_categories sc ON sc.source_id = s.id
+         GROUP BY sc.category_slug`,
+      ),
+      client.execute(
+        "SELECT category AS slug, count(*) AS n FROM posts WHERE status IN ('pending_review', 'approved') GROUP BY category",
+      ),
+      client.execute(
+        "SELECT category AS slug, count(*) AS n FROM posts WHERE status = 'published' GROUP BY category",
+      ),
+      client.execute(
+        `SELECT sc.category_slug AS slug, count(*) AS n
+         FROM raw_posts rp
+         JOIN sources s ON s.id = rp.source_id
+         JOIN source_categories sc ON sc.source_id = s.id
+         WHERE rp.phash IS NOT NULL AND rp.phash IN (
+           SELECT phash FROM raw_posts GROUP BY phash HAVING count(*) > 1
+         )
+         GROUP BY sc.category_slug`,
+      ),
+      client.execute("SELECT count(*) AS n FROM raw_posts"),
+      client.execute("SELECT count(*) AS n FROM posts WHERE status IN ('pending_review', 'approved')"),
+      client.execute("SELECT count(*) AS n FROM posts WHERE status = 'published'"),
+      client.execute(
+        "SELECT count(*) AS n FROM raw_posts WHERE phash IS NOT NULL AND phash IN (SELECT phash FROM raw_posts GROUP BY phash HAVING count(*) > 1)",
+      ),
+    ]);
+  return {
+    categories: cats.map((c) => ({ slug: c.slug, name: c.displayNameBn, dot: c.dot })),
+    stages: {
+      collected: toMap(collected.rows as Array<Record<string, unknown>>),
+      queued: toMap(queued.rows as Array<Record<string, unknown>>),
+      published: toMap(published.rows as Array<Record<string, unknown>>),
+      duplicate: toMap(duplicate.rows as Array<Record<string, unknown>>),
+    },
+    totals: {
+      collected: Number(tCollected.rows[0]?.n ?? 0),
+      queued: Number(tQueued.rows[0]?.n ?? 0),
+      published: Number(tPublished.rows[0]?.n ?? 0),
+      duplicate: Number(tDuplicate.rows[0]?.n ?? 0),
+    },
+    generatedAt: nowIso(),
+  };
+}
+
 /**
  * Public "newsroom in numbers" snapshot for the home live graph (mockup
  * `live-analytics` parity). Mirrors GET /api/stats in the mockup: totals,

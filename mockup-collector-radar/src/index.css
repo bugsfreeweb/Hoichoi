@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif;
+    background-color: #070B12;
+    color: #F0F6FC;
+  }
+  svg text {
+    font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+  }
+}
+
+.font-display {
+  font-family: 'Noto Sans Bengali', 'Hind Siliguri', sans-serif;
+}
+
+.font-mono-tabular {
+  font-family: 'Hind Siliguri', 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #070B12; }
+::-webkit-scrollbar-thumb { background: #1C293D; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #2E4466; }
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.9); }
+}
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-in { animation: slide-in 0.35s ease-out; }

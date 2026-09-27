@@ -61,7 +61,7 @@ export default function Hero({
             {["HOICHOI NEWSROOM", "HOICHOI DATABASE", "HUMAN REVIEW"].map((c) => (
               <span
                 key={c}
-                className="rounded-full border border-white/12 bg-white/[0.04] px-3 py-1 font-mono-x text-[9.5px] tracking-[0.18em] text-white/50 uppercase"
+                className="rounded-full border border-ink/12 bg-ink/[0.04] px-3 py-1 font-mono-x text-[9.5px] tracking-[0.18em] text-ink/50 uppercase"
               >
                 {c}
               </span>
@@ -75,14 +75,14 @@ export default function Hero({
           <div className="kin-mask mt-5 h-16 md:h-18">
             <p
               key={idx}
-              className="kin-line font-serif-bn text-[19px] leading-[1.6] font-bold text-white/90 md:text-[24px]"
+              className="kin-line font-serif-bn text-[19px] leading-[1.6] font-bold text-ink/90 md:text-[24px]"
             >
               {BRAND.tagline} — {PHRASES[idx]}
               <span className="caret" />
             </p>
           </div>
 
-          <p className="mt-5 max-w-xl text-[13.5px] leading-relaxed text-white/55">
+          <p className="mt-5 max-w-xl text-[13.5px] leading-relaxed text-ink/55">
             শহরের ঘটনা, মানুষের কথা। হৈচৈয়ের সম্পাদকীয় ডেস্কে প্রতিটি খবর ও
             পাঠকের মন্তব্যের জন্য আছে আলাদা পর্যালোচনা। নিচের লাইভ গ্রাফে দেখুন
             ডাটাবেসে কত প্রতিবেদন জমেছে, কোনটি প্রকাশিত, আর আলোচনায় কী যোগ হলো।
@@ -95,14 +95,14 @@ export default function Hero({
               { l: "ডুপ্লিকেট চিহ্নিত", v: summary?.duplicates ?? dups, d: 0, s: "" },
               { l: "অনুমোদিত মন্তব্য", v: summary?.approvedComments ?? 0, d: 0, s: "" },
             ].map((m) => (
-              <div key={m.l} className="border-l border-white/12 pl-3">
+              <div key={m.l} className="border-l border-ink/12 pl-3">
                 <Counter
                   end={m.v}
                   decimals={m.d}
                   suffix={m.s}
-                  className="font-serif-bn text-[26px] leading-none font-black text-white md:text-[30px]"
+                  className="font-serif-bn text-[26px] leading-none font-black text-ink md:text-[30px]"
                 />
-                <p className="mt-1.5 font-mono-x text-[9px] tracking-[0.16em] text-white/40 uppercase">
+                <p className="mt-1.5 font-mono-x text-[9px] tracking-[0.16em] text-ink/40 uppercase">
                   {m.l}
                 </p>
               </div>
@@ -133,7 +133,7 @@ export default function Hero({
             </a>
             <Link
               href="/desk"
-              className="beam flex items-center gap-2 rounded-md bg-white/[0.06] px-6 py-3.5 text-[13.5px] font-bold text-white backdrop-blur-sm transition-colors duration-300 hover:bg-white/10"
+              className="beam flex items-center gap-2 rounded-md bg-ink/[0.06] px-6 py-3.5 text-[13.5px] font-bold text-ink backdrop-blur-sm transition-colors duration-300 hover:bg-ink/10"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-lime"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/></svg>
               হৈচৈ ডেস্ক লঞ্চ
@@ -147,11 +147,11 @@ export default function Hero({
             style={{ "--fr": "-3deg", "--fd": "7s" } as CSSProperties}
           >
             <div className="tauri-win rounded-xl p-3.5">
-              <p className="flex items-center gap-2 font-mono-x text-[9px] tracking-[0.2em] text-white/45 uppercase">
+              <p className="flex items-center gap-2 font-mono-x text-[9px] tracking-[0.2em] text-ink/45 uppercase">
                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#7cc3ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>
                 FEED IN · মিরপুর আপডেট
               </p>
-              <p className="mt-2 text-[12px] leading-relaxed text-white/75">
+              <p className="mt-2 text-[12px] leading-relaxed text-ink/75">
                 জরুরি!! বাচ্চা হারাইছে বিকেলের দিকে। শেয়ার করেন সবাই…
               </p>
             </div>
@@ -163,8 +163,8 @@ export default function Hero({
               style={{ "--fr": "2.5deg", "--fd": "8s", "--fdel": "-3s" } as CSSProperties}
             >
               <div className="tauri-win overflow-hidden rounded-xl">
-                <div className="flex items-center justify-between border-b border-white/8 px-3 py-2">
-                  <span className="flex items-center gap-1.5 font-mono-x text-[9px] tracking-[0.18em] text-white/45 uppercase">
+                <div className="flex items-center justify-between border-b border-ink/8 px-3 py-2">
+                  <span className="flex items-center gap-1.5 font-mono-x text-[9px] tracking-[0.18em] text-ink/45 uppercase">
                     <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffb454" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="13" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 7l1.5-3h5L16 7"/></svg>
                     SHOT_0011.PNG
                   </span>
@@ -190,7 +190,7 @@ export default function Hero({
                     <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>
                     প্রকাশিত · শিশু সুরক্ষা
                   </p>
-                  <p className="mt-2 line-clamp-2 font-serif-bn text-[15px] leading-snug font-bold text-white">
+                  <p className="mt-2 line-clamp-2 font-serif-bn text-[15px] leading-snug font-bold text-ink">
                     {featuredTitle}
                   </p>
                 </div>
@@ -200,13 +200,13 @@ export default function Hero({
         </div>
       </div>
 
-      <div className="relative border-t border-white/8">
+      <div className="relative border-t border-ink/8">
         <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-8">
-          <p className="font-mono-x text-[9.5px] tracking-[0.24em] text-white/35 uppercase">
+          <p className="font-mono-x text-[9.5px] tracking-[0.24em] text-ink/35 uppercase">
             FEED → SHOT → HASH → LLM → GIT → DEPLOY
           </p>
           <div className="flex flex-wrap items-center gap-5">
-            <span className="text-[11px] text-white/40">সর্বশেষ নথিভুক্ত রান: {lastRunIso ? timeBn(lastRunIso) : "এখনো নেই"}</span>
+            <span className="text-[11px] text-ink/40">সর্বশেষ নথিভুক্ত রান: {lastRunIso ? timeBn(lastRunIso) : "এখনো নেই"}</span>
             <a href="#live-insights" className="flex items-center gap-2 text-sm font-semibold text-lime">লাইভ গ্রাফ দেখুন
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="rotate-90"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             </a>

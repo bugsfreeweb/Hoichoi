@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   const user = await requireApiUser();
   if (!user) return unauthorized();
   const page = Math.max(1, Number(new URL(req.url).searchParams.get("page") ?? 1));
-  const perPage = Math.min(100, Math.max(1, Number(new URL(req.url).searchParams.get("perPage") ?? 25)));
+  const perPage = Math.min(100, Math.max(1, Number(new URL(req.url).searchParams.get("perPage") ?? 100)));
   const data = await listLoginLog(page, perPage);
   return NextResponse.json({ ok: true, ...data });
 }

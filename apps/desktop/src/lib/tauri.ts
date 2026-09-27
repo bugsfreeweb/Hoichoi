@@ -365,6 +365,30 @@ export async function deskStats(env: Record<string, string>): Promise<DeskStats>
   return res as unknown as DeskStats;
 }
 
+export interface DeskRadarCategory {
+  slug: string;
+  name: string;
+  dot: string;
+}
+
+export interface DeskRadarSnapshot {
+  categories: DeskRadarCategory[];
+  stages: {
+    collected: Record<string, number>;
+    queued: Record<string, number>;
+    published: Record<string, number>;
+    duplicate: Record<string, number>;
+  };
+  totals: { collected: number; queued: number; published: number; duplicate: number };
+  generatedAt: string;
+}
+
+/** Per-category pipeline-stage snapshot feeding the Collector polar radar. */
+export async function deskRadarStats(env: Record<string, string>): Promise<DeskRadarSnapshot> {
+  const res = await deskCall(["radar"], env);
+  return res as unknown as DeskRadarSnapshot;
+}
+
 export async function deskModeration(
   env: Record<string, string>,
   status?: string | null,
@@ -417,7 +441,7 @@ export async function deskMediaStorage(
   cfgJson?: string,
 ): Promise<DeskMediaStorage> {
   const args = ["media", "storage"];
-  if (cfgJson) args.push("set", cfgJson);
+  if (cfgJson) args.push(cfgJson);
   const res = await deskCall(args, env);
   return res as unknown as DeskMediaStorage;
 }
@@ -683,7 +707,7 @@ export interface DeskLoginLogPage {
 export async function deskLoginLog(
   env: Record<string, string>,
   page = 1,
-  perPage = 25,
+  perPage = 100,
 ): Promise<DeskLoginLogPage> {
   const args = ["loginlog", "list", "--page", String(page), "--per-page", String(perPage)];
   const res = await deskCall(args, env);

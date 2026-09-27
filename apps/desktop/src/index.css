@@ -885,6 +885,35 @@ html[data-theme="light"] .theme-toggle .t-moon {
   }
 }
 
+/* Collector radar — mockup pulse/slide helpers */
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.9);
+  }
+}
+.animate-slide-in {
+  animation: slide-in 0.35s ease-out;
+}
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ---------- light theme: flip the desk window (mockup option-a tokens) ---------- */
 html[data-theme="light"] {
   color-scheme: light;

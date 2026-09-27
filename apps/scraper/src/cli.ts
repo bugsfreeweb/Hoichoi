@@ -29,6 +29,7 @@ import {
   revokeAdminLoginCodesByEmail,
   statsSnapshot,
   recentPipelineRuns,
+  radarSnapshot,
   getAllComments,
   setCommentStatus,
   listCategories,
@@ -342,6 +343,19 @@ program
     try {
       await ensureSchema(getClient());
       console.log(JSON.stringify({ ok: true, stats: await statsSnapshot(), runs: await recentPipelineRuns(8) }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("radar")
+  .description("desk collector — per-category pipeline-stage radar snapshot as JSON")
+  .action(async () => {
+    try {
+      await ensureSchema(getClient());
+      console.log(JSON.stringify({ ok: true, ...(await radarSnapshot()) }, null, 2));
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -1342,6 +1356,10 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
       console.log(JSON.stringify({ ok: true, stats: await statsSnapshot(), runs: await recentPipelineRuns(8) }, null, 2));
       return;
     }
+    case "radar": {
+      console.log(JSON.stringify({ ok: true, ...(await radarSnapshot()) }, null, 2));
+      return;
+    }
     case "media": {
       const sub = args[1];
       if (sub === "storage") {
@@ -1350,11 +1368,12 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
           const json = args[3];
           if (!json) throw new Error("json payload required (media storage set <json>)");
           await saveMediaStorageConfig(JSON.parse(json) as MediaStorageConfig);
+        } else if (next !== undefined) {
+          await saveMediaStorageConfig(JSON.parse(next) as MediaStorageConfig);
         }
         const config = await getMediaStorageConfig();
         const registry = await storageRegistryCount();
-        if (next === "set") console.log(JSON.stringify({ ok: true, config, registry }));
-        else console.log(JSON.stringify({ ok: true, config, registry }, null, 2));
+        console.log(JSON.stringify({ ok: true, config, registry }, null, 2));
       } else if (sub === "cleanup") {
         const { flags, bools } = parseArgs(args.slice(2));
         const result = await cleanupMedia({

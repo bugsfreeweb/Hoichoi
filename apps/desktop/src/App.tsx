@@ -13,9 +13,11 @@ import {
   deskMediaStorage,
   deskMediaCleanup,
   deskBackupAuto,
+  deskRadarStats,
   type DeskQueueRow,
   type DeskSource,
   type DeskStats,
+  type DeskRadarSnapshot,
 } from "./lib/tauri";
 import {
   getRunEnv,
@@ -164,6 +166,7 @@ export default function App() {
   const [sources, setSources] = useState<DeskSource[]>([]);
   const [queueRows, setQueueRows] = useState<DeskQueueRow[]>([]);
   const [statsData, setStatsData] = useState<DeskStats | null>(null);
+  const [radarData, setRadarData] = useState<DeskRadarSnapshot | null>(null);
   const [hours, setHours] = useState(2);
   const [autoRun, _setAutoRun] = useState(() => localStorage.getItem(AUTORUN_KEY) !== "0");
   const [nextRunAt, setNextRunAt] = useState<number | null>(null);
@@ -283,14 +286,16 @@ export default function App() {
       setConfigured(configuredMap);
       const s = await settingsGet(env).catch(() => null);
       if (s && Number(s.pipeline_hours) > 0) setHours(Number(s.pipeline_hours));
-      const [src, rows, stats] = await Promise.all([
+      const [src, rows, stats, radar] = await Promise.all([
         deskSources(env),
         deskQueue(env),
         deskStats(env).catch(() => null),
+        deskRadarStats(env).catch(() => null),
       ]);
       setSources(src);
       setQueueRows(rows);
       setStatsData(stats);
+      setRadarData(radar);
       const pending = stats?.stats?.pendingReview ?? 0;
       setPendingCount(pending);
       void deskWin().then((w) => w?.setBadgeCount?.(pending));
@@ -583,6 +588,8 @@ export default function App() {
                   nextRunAt={nextRunAt}
                   autoRun={autoRun}
                   onAutoRun={setAutoRun}
+                  radarData={radarData}
+                  queueRows={queueRows}
                 />
               </section>
 

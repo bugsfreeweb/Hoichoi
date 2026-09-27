@@ -57,7 +57,7 @@ const NODES = [
 export default function PulseFlow() {
   return (
     <div className="relative">
-      <div className="absolute top-[44px] right-4 left-4 hidden h-px overflow-visible bg-white/8 lg:block">
+      <div className="absolute top-[44px] right-4 left-4 hidden h-px overflow-visible bg-ink/8 lg:block">
         <span className="travel-dot" />
       </div>
 
@@ -68,16 +68,16 @@ export default function PulseFlow() {
             className="node-glow panel relative rounded-xl p-5"
             style={{ animationDelay: `${i * 1.2}s` }}
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.05] text-lime">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-ink/10 bg-ink/[0.05] text-lime">
               {ICONS[n.icon as keyof typeof ICONS]}
             </span>
-            <p className="mt-4 font-serif-bn text-[14.5px] font-bold text-white">
+            <p className="mt-4 font-serif-bn text-[14.5px] font-bold text-ink">
               {n.t}
             </p>
-            <p className="mt-1 font-mono-x text-[8.5px] tracking-[0.16em] text-white/35 uppercase">
+            <p className="mt-1 font-mono-x text-[8.5px] tracking-[0.16em] text-ink/35 uppercase">
               {n.s}
             </p>
-            <span className="absolute top-3 right-3 font-mono-x text-[10px] text-white/25">
+            <span className="absolute top-3 right-3 font-mono-x text-[10px] text-ink/25">
               0{(i + 1).toString()}
             </span>
           </div>
