@@ -15,26 +15,42 @@ env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-# Skips entirely (job stays "skipped", never fails) until the three
-# Vercel secrets are added under GitHub → Settings → Secrets → Actions.
+# The three Vercel secrets are optional: the live site is deployed by Vercel's
+# own Git integration. When they are absent the job must report a clear "not
+# configured" notice rather than being skipped — GitHub marks a run whose only
+# job is skipped as `failure`, which looked like a real deploy break.
 jobs:
   deploy:
     name: Vercel production deploy
-    if: ${{ env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != '' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Check Vercel credentials
+        id: creds
+        run: |
+          if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_PROJECT_ID are not set. Skipping the CLI deploy — Vercel's own Git integration handles production builds for this project."
+          fi
       - uses: actions/checkout@v4
+        if: steps.creds.outputs.configured == 'true'
       - uses: pnpm/action-setup@v4
+        if: steps.creds.outputs.configured == 'true'
         with:
           version: 11.18.0
       - uses: actions/setup-node@v4
+        if: steps.creds.outputs.configured == 'true'
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+        if: steps.creds.outputs.configured == 'true'
       - name: Typecheck web
+        if: steps.creds.outputs.configured == 'true'
         run: pnpm --filter @hoichoi/web typecheck
       - name: Deploy to Vercel (uses root vercel.json → apps/web)
+        if: steps.creds.outputs.configured == 'true'
         uses: amondnet/vercel-action@v20
         with:
           vercel-token: ${{ env.VERCEL_TOKEN }}

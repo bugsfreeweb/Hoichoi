@@ -38,3 +38,23 @@ export async function pushGithubSecret(name: string, value: string): Promise<voi
     body: JSON.stringify({ encrypted_value: sodium.to_base64(cipher), key_id: pub.key_id }),
   });
 }
+
+/**
+ * Names of the Actions secrets that actually exist in the repository, with the
+ * time each was last written.
+ *
+ * The desk's cron cannot run without these, and a vault value only reaches the
+ * workflow if the GitHub push succeeded. Showing the real list is the only way
+ * to tell "I typed the hook URL" apart from "the hook URL reached GitHub".
+ */
+export async function listGithubSecrets(): Promise<
+  Array<{ name: string; updated_at: string }>
+> {
+  const { pat, repo } = await getGithubCredentials();
+  if (!pat || !repo) throw new Error("GitHub PAT/repo not configured");
+  const res = await api<{ secrets?: Array<{ name: string; updated_at: string }> }>(
+    `repos/${repo}/actions/secrets?per_page=100`,
+    pat,
+  );
+  return res.secrets ?? [];
+}

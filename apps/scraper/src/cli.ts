@@ -47,6 +47,8 @@ import {
   getPostById,
   updatePost,
   deletePost,
+  bulkModeratePosts,
+  bulkDeletePosts,
   listLoginLog,
   deleteLoginLog,
   clearLoginLog,
@@ -839,15 +841,67 @@ program
     }
   });
 
+const BULK_TARGETS = ["approved", "rejected", "published"] as const;
+type BulkTarget = (typeof BULK_TARGETS)[number];
+const BULK_ACTIONS = [...BULK_TARGETS, "remove"] as const;
+type BulkAction = (typeof BULK_ACTIONS)[number];
+
+/** Narrow a raw CLI token to a bulk action, or throw a helpful error. */
+function parseBulkAction(target: string | undefined): BulkAction {
+  if (!target) {
+    throw new Error(`target required (queue bulk <${BULK_ACTIONS.join("|")}> --ids a,b,c)`);
+  }
+  if (!(BULK_ACTIONS as readonly string[]).includes(target)) {
+    throw new Error(`target must be one of: ${BULK_ACTIONS.join(", ")}`);
+  }
+  return target as BulkAction;
+}
+
+/** Narrow a bulk action to the moderation subset that `bulkModeratePosts` takes. */
+function parseBulkTarget(target: string | undefined): BulkTarget {
+  const action = parseBulkAction(target);
+  if (action === "remove") {
+    throw new Error('target "remove" deletes posts; it is not a moderation target');
+  }
+  return action;
+}
+
+/** Split a `--ids a,b,c` payload into a de-duplicated id list. */
+function parseBulkIds(raw: string | undefined): string[] {
+  const ids = (raw ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (ids.length === 0) throw new Error("--ids required and must list at least one post id");
+  return [...new Set(ids)];
+}
+
 program
   .command("queue <action> [id] [status]")
-  .description("desk content queue: list [--status s] / set <id> <approved|rejected|published>")
+  .description(
+    "desk content queue: list [--status s] / set <id> <approved|rejected|published> / bulk <target> --ids a,b,c",
+  )
   .option("--status <s>", "filter by post status")
-  .action(async (action: string, id: string | undefined, status: string | undefined, opts: { status?: string }) => {
+  .option("--ids <csv>", "comma-separated post ids (bulk)")
+  .action(async (action: string, id: string | undefined, status: string | undefined, opts: { status?: string; ids?: string }) => {
     try {
       await ensureSchema(getClient());
       if (action === "list") {
         console.log(JSON.stringify({ ok: true, rows: await listDeskQueue(opts.status) }, null, 2));
+      } else if (action === "bulk") {
+        const target = parseBulkAction(id);
+        const ids = parseBulkIds(opts.ids);
+        if (target === "remove") {
+          const res = await bulkDeletePosts(ids);
+          console.log(
+            JSON.stringify({ ok: res.missing.length === 0, action: target, ...res, ids }, null, 2),
+          );
+        } else {
+          const res = await bulkModeratePosts(ids, target);
+          console.log(
+            JSON.stringify({ ok: res.missing.length === 0, action: target, ...res, ids }, null, 2),
+          );
+        }
       } else if (action === "set") {
         if (!id || !status) throw new Error("id and status required");
         const allowed = ["approved", "rejected", "published"];
@@ -1648,6 +1702,20 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
         if (!id) throw new Error("id required (queue remove <id>)");
         await deletePost(id);
         console.log(JSON.stringify({ ok: true, removed: id }));
+      } else if (action === "bulk") {
+        // One daemon round trip for a whole selection. The desk used to loop
+        // `queue set` per row, so a 60-item bulk approve fired 60 sequential
+        // calls with no feedback and read as "nothing happened".
+        const target = parseBulkAction(args[2]);
+        const { flags } = parseArgs(args.slice(3));
+        const ids = parseBulkIds(flags.ids);
+        const res =
+          target === "remove"
+            ? await bulkDeletePosts(ids)
+            : await bulkModeratePosts(ids, target);
+        console.log(
+          JSON.stringify({ ok: res.missing.length === 0, action: target, ...res, ids }, null, 2),
+        );
       } else {
         throw new Error(`unknown action: ${action}`);
       }

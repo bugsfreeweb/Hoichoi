@@ -40,8 +40,31 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Preflight — required secrets
+        # Without this the run used to die much later at a confusing place
+        # (Playwright install, or deep inside the scrape). Fail fast with the
+        # exact list of what Settings → Secrets → Actions is missing.
+        run: |
+          missing=()
+          [ -z "$TURSO_DATABASE_URL" ] && missing+=("TURSO_DATABASE_URL")
+          [ -z "$TURSO_AUTH_TOKEN" ] && missing+=("TURSO_AUTH_TOKEN")
+          [ -z "$FB_SESSION_COOKIE" ] && missing+=("FB_SESSION_COOKIE")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required repository secrets: ${missing[*]}"
+            echo "Add them under GitHub → ${GITHUB_REPOSITORY} → Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          if [ -z "$VERCEL_DEPLOY_HOOK_URL" ]; then
+            echo "::warning::VERCEL_DEPLOY_HOOK_URL is not set — the scrape will succeed but the web app will not be redeployed, so new posts may not appear until the next Vercel build."
+          fi
       - name: Install Playwright chromium (collector browser)
-        run: pnpm exec playwright install --with-deps chromium
+        # Playwright is an optionalDependency of @hoichoi/scraper, not of the
+        # workspace root, so a root-level `pnpm exec playwright` aborts with
+        # "Command playwright not found" and the scrape never runs. Scope the
+        # install to the package that actually depends on it.
+        run: pnpm --filter @hoichoi/scraper exec playwright install --with-deps chromium
+      - name: Verify browser is available
+        run: pnpm --filter @hoichoi/scraper exec playwright --version
       - name: Run scraping pipeline
         run: pnpm run scrape
       - name: Ping deploy hook (if configured)

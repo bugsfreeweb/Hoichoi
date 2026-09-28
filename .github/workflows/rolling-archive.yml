@@ -25,7 +25,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # `pnpm purge` is a BUILT-IN ALIAS for `pnpm clean` in pnpm 11, so a bare
+      # `pnpm --filter scraper purge` silently ran `pnpm clean` and exited 1 on
+      # "Unknown option: 'recursive'". An explicit `run` forces the script.
       - name: Archive pass
-        run: pnpm --filter scraper archive
+        run: pnpm --filter @hoichoi/scraper run archive
       - name: Purge pass
-        run: pnpm --filter scraper purge
+        run: pnpm --filter @hoichoi/scraper run purge

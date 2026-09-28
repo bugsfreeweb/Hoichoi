@@ -24,6 +24,7 @@ import {
   storeCredential,
   removeCredential,
   getRunEnv,
+  getCloudEnv,
   getEnvFromVault,
   isCloudSync,
   envNameFor,
@@ -48,8 +49,9 @@ import {
   type AdminCodeList,
   type CreatedAdminLoginCode,
 } from "../lib/tauri";
-import { pushGithubSecret } from "../lib/github";
+import { listGithubSecrets, pushGithubSecret } from "../lib/github";
 import { autoPull, autoPush } from "../lib/autosync";
+import { toBn } from "../lib/format";
 import DeskCategoryManager from "../components/DeskCategoryManager";
 import DeskSourceManager from "../components/DeskSourceManager";
 import DeskProviderManager from "../components/DeskProviderManager";
@@ -72,6 +74,14 @@ const TABS = [
 ] as const;
 
 type SettingsTab = (typeof TABS)[number]["id"];
+
+/** Secrets `.github/workflows/pipeline-cron.yml` cannot run without. */
+const CRON_REQUIRED = [
+  "TURSO_DATABASE_URL",
+  "TURSO_AUTH_TOKEN",
+  "FB_SESSION_COOKIE",
+  "VERCEL_DEPLOY_HOOK_URL",
+] as const;
 
 const FIELDS: Array<{ name: CredentialName; label: string; secret: boolean }> = [
   { name: "turso_url", label: "TURSO_DATABASE_URL", secret: false },
@@ -230,6 +240,22 @@ export default function Settings({
 
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [syncErr, setSyncErr] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState<"push" | "pull" | null>(null);
+
+  const [ghSecrets, setGhSecrets] = useState<Array<{ name: string; updated_at: string }> | null>(null);
+  const [ghLoading, setGhLoading] = useState(false);
+  const [ghErr, setGhErr] = useState<string | null>(null);
+  const loadGithubSecrets = async () => {
+    setGhLoading(true);
+    setGhErr(null);
+    try {
+      setGhSecrets(await listGithubSecrets());
+    } catch (e) {
+      setGhErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setGhLoading(false);
+    }
+  };
 
   const [webMsg, setWebMsg] = useState<string | null>(null);
   const [webErr, setWebErr] = useState<string | null>(null);
@@ -283,11 +309,15 @@ export default function Settings({
         // `secrets.VERCEL_DEPLOY_HOOK_URL` / `secrets.TURSO_AUTH_TOKEN`, so
         // pushing `vercel_deploy_hook_url` would store a secret nothing reads.
         const envName = envNameFor(f.name) ?? f.name;
-        await pushGithubSecret(envName, v.trim()).catch(() => {});
+        // Never swallow this: a silently-failed push leaves the cron workflow
+        // reading an empty secret, which looks exactly like "I saved it but
+        // nothing happens".
+        await pushGithubSecret(envName, v.trim());
+        show(`${f.label} সংরক্ষিত — GitHub secret ${envName} হিসেবেও পাঠানো হয়েছে`);
       } else {
         await storeCredential(f.name, v.trim());
+        show(`${f.label} saved`);
       }
-      show(`${f.label} saved`);
       setValues((prev) => ({ ...prev, [f.name]: "" }));
       await refresh();
     } catch (e) {
@@ -403,17 +433,62 @@ export default function Settings({
     }
   };
 
-  const doSync = async (direction: "push" | "pull") => {
+  /**
+   * Runs one resync hop and returns true on success.
+   *
+   * Returns a boolean instead of only writing to state so callers can chain:
+   * the full-sync button must abort if the push leg fails, otherwise it would
+   * pull production back over the very data it just failed to send.
+   */
+  const doSync = async (direction: "push" | "pull"): Promise<boolean> => {
+    if (syncing !== null) return false;
+    setSyncMsg(null);
+    setSyncErr(null);
+    setSyncing(direction);
     try {
-      setSyncMsg(null);
+      // A manual resync is the local-file-DB ⇄ Turso hop, so it must carry the
+      // cloud credentials even when the vault's cloud-sync toggle is off.
+      const res = await syncDb(direction, await getCloudEnv());
+      setSyncMsg(
+        `${direction === "push" ? "ডেস্ক → ওয়েব" : "ওয়েব → ডেস্ক"} সম্পন্ন — ${toBn(res.tablesSynced ?? 0)} টেবিল, ${toBn(res.rowsAffected ?? 0)} রো কপি হয়েছে।`,
+      );
       setSyncErr(null);
-      const res = await syncDb(direction, await getRunEnv());
-      setSyncMsg(`${direction === "push" ? "Push" : "Pull"} সম্পন্ন — ${res.syncedTables ?? res.tablesSynced ?? 0} টেবিল সিঙ্ক, ${res.rowsAffected ?? 0} রো, ${res.conflicts ?? 0} конфликт সমাধান`);
+      await refresh();
+      await loadBrand();
+      return true;
+    } catch (e) {
+      setSyncErr(e instanceof Error ? e.message : String(e));
+      return false;
+    } finally {
+      setSyncing(null);
+    }
+  };
+
+  /** Push then pull, stopping the moment a leg fails. */
+  const doFullSync = async () => {
+    if (syncing !== null) return;
+    setSyncErr(null);
+    setSyncMsg("সিঙ্ক শুরু — ধাপ ১/২: ডেস্ক → ওয়েব…");
+    setSyncing("push");
+    try {
+      const res = await syncDb("push", await getCloudEnv());
+      setSyncMsg(
+        `ধাপ ১/২ সম্পন্ন — ${toBn(res.tablesSynced ?? 0)} টেবিল, ${toBn(res.rowsAffected ?? 0)} রো পাঠানো হয়েছে। এখন ধাপ ২/২: ওয়েব → ডেস্ক…`,
+      );
+      const back = await syncDb("pull", await getCloudEnv());
+      setSyncMsg(
+        `পূর্ণ সিঙ্ক সম্পন্ন — ${toBn(res.tablesSynced ?? 0)} টেবিল/ ${toBn(res.rowsAffected ?? 0)} রো পাঠানো, ${toBn(back.tablesSynced ?? 0)} টেবিল/ ${toBn(back.rowsAffected ?? 0)} রো আনা হয়েছে।`,
+      );
       setSyncErr(null);
       await refresh();
       await loadBrand();
     } catch (e) {
-      setSyncErr(String(e));
+      setSyncErr(
+        `পূর্ণ সিঙ্ক বন্ধ হয়েছে: ${e instanceof Error ? e.message : String(e)} — ওয়েব থেকে ডেস্কে আনা হয়নি, যাতে ত্রুটিপূর্ণ অবস্থায় ডেটা উল্টে না যায়।`,
+      );
+      setSyncMsg(null);
+    } finally {
+      setSyncing(null);
     }
   };
 
@@ -851,6 +926,47 @@ export default function Settings({
         {tab === "sync" && (
           <>
             <div className="panel mt-5">
+              <p className="panel-title">GitHub Actions · অটো কালেকশনের জন্য</p>
+              <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+                ডেস্ক বন্ধ থাকলেও GitHub Actions-এর cron একই কাজ করে — কিন্তু সেটি
+                শুধু রিপোজিটরি সিক্রেট পড়তে পারে। নিচে যেগুলো নেই, সেগুলো না
+                যোগ করা পর্যন্ত ক্রন ব্যর্থ হবে।
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button className="btn-ghost" disabled={ghLoading} onClick={() => void loadGithubSecrets()}>
+                  {ghLoading ? "⏳ যাচাই হচ্ছে…" : "↻ GitHub সিক্রেট চেক করুন"}
+                </button>
+              </div>
+              {ghErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {ghErr}</p>}
+              {ghSecrets && (
+                <div className="mt-3 space-y-1">
+                  {CRON_REQUIRED.map((req) => {
+                    const found = ghSecrets.find((s) => s.name === req);
+                    return (
+                      <div key={req} className="flex items-center gap-2 text-[11.5px]">
+                        <span className={found ? "text-lime" : "text-alizarin"}>
+                          {found ? "✓" : "✕"}
+                        </span>
+                        <span className="font-mono-x text-[11px] text-ink">{req}</span>
+                        <span className="text-ink-soft">
+                          {found
+                            ? `— GitHub-এ আছে (${new Date(found.updated_at).toLocaleString("bn-BD")})`
+                            : "— GitHub-এ নেই"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {ghSecrets.length === 0 && (
+                    <p className="text-[11.5px] font-bold text-alizarin">
+                      রিপোজিটরিতে একটিও Actions secret নেই — উপরের ফিল্ডগুলো সেভ করলে
+                      সেগুলো নিজে থেকেই GitHub-এ চলে যাবে।
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="panel mt-5">
               <p className="panel-title">Database sync · cloud ↔ local</p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <button className={cloud !== false ? "btn bg-lime" : "btn-ghost"} onClick={() => void toggleCloud(true)}>
@@ -884,18 +1000,33 @@ export default function Settings({
                 Cloud sync মোডে একই DB ব্যবহার হয় বলে অতিরিক্ত সিঙ্ক লাগে না।
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <button className="btn" onClick={() => void doSync("push")}>
-                  ☁ Push Local → Cloud
+                <button className="btn" disabled={syncing !== null || cloud === true} onClick={() => void doSync("push")}>
+                  {syncing === "push" ? "⏳ পাঠানো হচ্ছে…" : "☁ ডেস্ক → ওয়েব"}
                 </button>
-                <button className="btn-ghost" onClick={() => void doSync("pull")}>
-                  ⬇ Pull Cloud → Local
+                <button className="btn-ghost" disabled={syncing !== null || cloud === true} onClick={() => void doSync("pull")}>
+                  {syncing === "pull" ? "⏳ আনা হচ্ছে…" : "⬇ ওয়েব → ডেস্ক"}
                 </button>
-                <button className="btn-ghost" onClick={() => void doSync("push")}>
-                  ↻ Full Sync (Push then Pull)
+                <button
+                  className="btn-ghost"
+                  disabled={syncing !== null || cloud === true}
+                  onClick={() => void doFullSync()}
+                >
+                  ↻ পূর্ণ সিঙ্ক (আগে পাঠান, পরে আনুন)
                 </button>
               </div>
+              {cloud === true && (
+                <p className="mt-2 text-[11.5px] font-bold text-amber-300">
+                  ⚠ Cloud sync মোড সক্রিয় — ডেস্কটপ সরাসরি shared Turso DB-তেই লেখে, তাই
+                  এই সিঙ্ক বাটনগুলো বন্ধ। স্থানীয় file DB এখন অব্যবহৃত ও পুরোনো, তাই এটি
+                  পাঠালে shared ডেটা মুছে যেত। ◌ Local only মোডে ফিরে গেলে সিঙ্ক চালু হবে।
+                </p>
+              )}
               <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
-                Push = এই ডেস্কটপের file DB → Shared Turso (web দেখে)। Pull = Turso → এই ডেস্কটপের file DB।
+                ডেস্ক → ওয়েব = এই ডেস্কটপের file DB থেকে shared Turso DB-তে কপি। ওয়েব → ডেস্ক = উল্টো।
+                সিঙ্কের জন্য API Vault-এ Turso URL ও টোকেন থাকতে হবে — Cloud sync মোড বন্ধ
+                থাকলেও এই বাটনগুলো কাজ করে, কারণ এগুলোই cloud DB-তে লেখার পথ। তবে Cloud sync
+                মোড চালু থাকলে ডেস্কটপ ইতিমধ্যেই cloud DB ব্যবহার করছে, তাই push/pull
+                অপ্রয়োজনীয় ও ঝুঁকিপূর্ণ — সেক্ষেত্রে বাটন বন্ধ থাকে।
               </p>
               {syncMsg && <p className="mt-2 whitespace-pre-line text-[11.5px] font-bold text-ink">✓ {syncMsg}</p>}
               {syncErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {syncErr}</p>}

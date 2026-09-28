@@ -779,10 +779,33 @@ pub async fn sync_db(
         vec!["sync", "pull", "--from", &cloud, "--to", &local]
     };
     let stdout = runner_call(&app, &args, &config)?;
-    Ok(format!(
-        "sync {direction} done — {}",
-        stdout.split_whitespace().collect::<String>()
-    ))
+
+    // The runner prints `{"ok":true,"direction":..,"written":{table:rows}}`.
+    // Return the same shape the TypeScript wrapper types expect so the desk
+    // shows real table/row counts instead of a zeroed-out summary.
+    let parsed: serde_json::Value = serde_json::from_str(&stdout)
+        .map_err(|e| format!("runner returned unreadable sync output: {e}"))?;
+    let written = parsed
+        .get("written")
+        .and_then(|w| w.as_object())
+        .cloned()
+        .unwrap_or_default();
+    let mut tables = 0usize;
+    let mut rows: i64 = 0;
+    for count in written.values() {
+        tables += 1;
+        rows += count.as_i64().unwrap_or(0);
+    }
+    Ok(serde_json::json!({
+        "ok": true,
+        "direction": direction,
+        "tablesSynced": tables,
+        "syncedTables": tables,
+        "rowsAffected": rows,
+        "conflicts": 0,
+        "detail": written,
+    })
+    .to_string())
 }
 
 /// Manage one-time admin login codes through the runner (`admin-code` CLI).

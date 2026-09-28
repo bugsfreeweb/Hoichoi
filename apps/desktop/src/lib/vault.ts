@@ -136,6 +136,29 @@ export async function isCloudSync(): Promise<boolean> {
   return Boolean(snap.turso_url) && snap.use_cloud !== "0";
 }
 
+/**
+ * Env with the shared Turso credentials ALWAYS present, ignoring the
+ * cloud-sync toggle. `getRunEnv()` deliberately strips them in local-only
+ * mode so pipeline runs write to the local file DB — but a manual
+ * desk → web resync *is* the operation that targets the cloud DB, so it must
+ * carry the cloud URL + token or the Rust `sync_db` command aborts with
+ * "no cloud DB configured".
+ *
+ * Throws a user-facing message when the vault has no cloud DB configured.
+ */
+export async function getCloudEnv(): Promise<Record<string, string>> {
+  const env = await getEnvFromVault();
+  if (!env.TURSO_DATABASE_URL?.startsWith("libsql://")) {
+    throw new Error(
+      "ক্লাউড ডেটাবেস কনফিগার্ড নেই — API Vault-এ Turso URL যোগ করুন, তারপর আবার চেষ্টা করুন।",
+    );
+  }
+  if (!env.TURSO_AUTH_TOKEN) {
+    throw new Error("Turso auth token নেই — API Vault-এ Turso টোকেন যোগ করুন।");
+  }
+  return env;
+}
+
 let opening: Promise<void> | null = null;
 
 /** Smoke-test the Rust vault once per session (surfaces real errors early). */

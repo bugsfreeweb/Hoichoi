@@ -1002,6 +1002,117 @@ export const POST_STATUSES: PostStatus[] = [
   "removed",
 ];
 
+export interface BulkModerationResult {
+  requested: number;
+  updated: string[];
+  missing: string[];
+  /** Items held at `approved` because their category requires a 2nd approval. */
+  needsSecondApproval: string[];
+  published: string[];
+  rejected: string[];
+  removed: string[];
+}
+
+/**
+ * Approve/reject/publish/remove many posts in one round trip.
+ *
+ * The desk's bulk buttons used to loop `queue set` per row, which meant N
+ * daemon calls (and N UI frames of silence) for a 60-item selection — it read
+ * as "nothing happened". This does the whole selection server-side and reports
+ * exactly what happened to each row, including the double-approval hold so
+ * the UI can explain why an item did not become `published` yet.
+ */
+export async function bulkModeratePosts(
+  ids: readonly string[],
+  action: "approved" | "rejected" | "published" | "removed",
+): Promise<BulkModerationResult> {
+  const result: BulkModerationResult = {
+    requested: ids.length,
+    updated: [],
+    missing: [],
+    needsSecondApproval: [],
+    published: [],
+    rejected: [],
+    removed: [],
+  };
+  if (ids.length === 0) return result;
+
+  const unique = [...new Set(ids.filter((id) => id.trim() !== ""))];
+  if (unique.length === 0) return result;
+
+  const client = getClient();
+  const placeholders = unique.map(() => "?").join(",");
+  const found = await client.execute({
+    sql: `SELECT id, category, status FROM posts WHERE id IN (${placeholders})`,
+    args: unique as string[],
+  });
+  const byId = new Map(
+    found.rows.map((r) => {
+      const row = r as Record<string, unknown>;
+      return [String(row.id), { category: String(row.category), status: String(row.status) }];
+    }),
+  );
+
+  for (const id of unique) {
+    const row = byId.get(id);
+    if (!row) {
+      result.missing.push(id);
+      continue;
+    }
+
+    let finalStatus: PostStatus = action;
+    let publishedAt = false;
+    if (action === "approved") {
+      const cat = await getCategory(row.category);
+      const needsDouble = Boolean(cat?.config.requires_double_approval) && row.status !== "approved";
+      finalStatus = needsDouble ? "approved" : "published";
+      publishedAt = !needsDouble;
+      if (needsDouble) result.needsSecondApproval.push(id);
+    }
+
+    const res = await client.execute({
+      sql: "UPDATE posts SET status = ?, updated_at = ?, published_at = COALESCE(published_at, CASE WHEN ? = 1 THEN ? ELSE published_at END) WHERE id = ?",
+      args: [finalStatus, nowIso(), publishedAt ? 1 : 0, nowIso(), id],
+    });
+    if (Number(res.rowsAffected ?? 0) === 0) {
+      result.missing.push(id);
+      continue;
+    }
+    result.updated.push(id);
+    if (finalStatus === "published") result.published.push(id);
+    else if (finalStatus === "rejected") result.rejected.push(id);
+    else if (finalStatus === "removed") result.removed.push(id);
+  }
+
+  return result;
+}
+
+/**
+ * Hard-delete many posts in one round trip; returns the ids that existed.
+ * Mirrors `deletePost` (which throws on a missing id) but tolerates a mixed
+ * selection by reporting per-row outcomes instead of aborting the batch.
+ */
+export async function bulkDeletePosts(ids: readonly string[]): Promise<{
+  requested: number;
+  deleted: string[];
+  missing: string[];
+}> {
+  const unique = [...new Set(ids.filter((id) => id.trim() !== ""))];
+  const out = { requested: unique.length, deleted: [] as string[], missing: [] as string[] };
+  if (unique.length === 0) return out;
+
+  const client = getClient();
+  for (const id of unique) {
+    try {
+      await deletePost(id);
+      out.deleted.push(id);
+    } catch {
+      out.missing.push(id);
+    }
+  }
+  return out;
+}
+
 export const CASE_STATUSES: CaseStatus[] = [
   "active",
   "found",

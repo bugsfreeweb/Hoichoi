@@ -72,8 +72,21 @@ export async function resetDb(env: Record<string, string>): Promise<void> {
 export async function syncDb(
   direction: "push" | "pull",
   env: Record<string, string>,
-): Promise<{ ok: true; syncedTables: number; tablesSynced: number; rowsAffected: number; conflicts: number }> {
-  return await invoke<{ ok: true; syncedTables: number; tablesSynced: number; rowsAffected: number; conflicts: number }>("sync_db", { direction, env });
+): Promise<SyncResult> {
+  return await invoke<SyncResult>("sync_db", { direction, env });
+}
+
+export interface SyncResult {
+  ok: true;
+  direction: "push" | "pull";
+  /** Content tables that were copied. */
+  tablesSynced: number;
+  /** Alias kept for older callers. */
+  syncedTables: number;
+  rowsAffected: number;
+  conflicts: number;
+  /** Per-table row counts as reported by the runner. */
+  detail?: Record<string, number>;
 }
 
 export interface AdminLoginCode {
@@ -187,6 +200,22 @@ export interface DeskStats {
 }
 
 /**
+ * Thrown when a runner subcommand reports `ok: false`.
+ *
+ * The payload is retained because several commands are *partially* successful:
+ * a bulk approve that skipped a deleted ID still updated every other row, and
+ * losing the payload reduced that to an opaque "runner error" in the UI.
+ */
+export class DeskCallError extends Error {
+  readonly payload: Record<string, unknown>;
+  constructor(payload: Record<string, unknown>) {
+    super(String(payload.error ?? "runner error"));
+    this.name = "DeskCallError";
+    this.payload = payload;
+  }
+}
+
+/**
  * Run a desk-console runner subcommand and parse its JSON stdout. `args` are
  * the raw CLI tokens — e.g. ["sources", "list"] or ["queue", "list"].
  */
@@ -197,7 +226,7 @@ export async function deskCall(
   const raw = await invoke<string>("desk_call", { args, env });
   const parsed = JSON.parse(raw) as Record<string, unknown>;
   if (parsed && typeof parsed === "object" && "ok" in parsed && parsed.ok === false) {
-    throw new Error(String(parsed.error ?? "runner error"));
+    throw new DeskCallError(parsed);
   }
   return parsed;
 }
@@ -358,6 +387,55 @@ export async function deskQueueSet(
   status: "approved" | "rejected" | "published",
 ): Promise<void> {
   await deskCall(["queue", "set", id, status], env);
+}
+
+export interface DeskBulkResult {
+  requested: number;
+  updated: string[];
+  missing: string[];
+  /** Held at `approved` because the category requires a second approval. */
+  needsSecondApproval: string[];
+  published: string[];
+  rejected: string[];
+  removed: string[];
+  deleted?: string[];
+}
+
+/**
+ * Approve/reject/publish/delete a whole selection in ONE runner call.
+ *
+ * The per-row loop this replaces fired one daemon request per item, so a
+ * 60-row bulk approve sat silent for a minute and any single failure aborted
+ * the rest with the error swallowed — indistinguishable from "not working".
+ */
+export async function deskQueueBulk(
+  env: Record<string, string>,
+  ids: string[],
+  target: "approved" | "rejected" | "published" | "remove",
+): Promise<DeskBulkResult> {
+  // A bulk run reports `ok: false` whenever *any* id is missing, even though
+  // the rest were updated. Recover the payload so the UI can show exactly which
+  // rows changed and which were skipped, instead of a blanket failure.
+  let res: Record<string, unknown>;
+  try {
+    res = await deskCall(["queue", "bulk", target, "--ids", ids.join(",")], env);
+  } catch (e) {
+    if (e instanceof DeskCallError && Array.isArray(e.payload.updated)) {
+      res = e.payload;
+    } else {
+      throw e;
+    }
+  }
+  return {
+    requested: Number(res.requested ?? ids.length),
+    updated: (res.updated as string[]) ?? [],
+    missing: (res.missing as string[]) ?? [],
+    needsSecondApproval: (res.needsSecondApproval as string[]) ?? [],
+    published: (res.published as string[]) ?? [],
+    rejected: (res.rejected as string[]) ?? [],
+    removed: (res.removed as string[]) ?? [],
+    deleted: res.deleted as string[] | undefined,
+  };
 }
 
 export async function deskStats(env: Record<string, string>): Promise<DeskStats> {

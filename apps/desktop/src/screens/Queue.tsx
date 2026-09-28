@@ -1,23 +1,30 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, RefreshCw, Eye, ExternalLink, CircleCheck, Clock3, Ban, Pencil, Trash2, X } from "lucide-react";
+import { Search, RefreshCw, Eye, ExternalLink, CircleCheck, Clock3, Ban, Pencil, Trash2, X, Loader2, ShieldCheck } from "lucide-react";
 import { CATEGORY_LABEL, CATEGORY_TINT, POST_STATUS_LABEL, bnTime, toBn } from "../lib/format";
-import { deskCategories, deskQueueRemove, deskQueueSet, deskQueueUpdate, openAdmin, isTauri, type DeskCategory, type DeskQueueRow } from "../lib/tauri";
+import { deskCategories, deskQueueBulk, deskQueueRemove, deskQueueSet, deskQueueUpdate, openAdmin, isTauri, type DeskCategory, type DeskQueueRow } from "../lib/tauri";
 import { getRunEnv } from "../lib/vault";
+import { toast } from "../lib/toast";
 import { SITE_URL } from "../lib/site";
 
-type Tab = "all" | "published" | "pending_review" | "duplicate";
+type Tab = "all" | "published" | "pending_review" | "approved" | "duplicate";
 
 const TAB_LABEL: Record<string, string> = {
   all: "সব",
   published: "প্রকাশিত",
-  pending_review: "অপেক্ষমান",
-  duplicate: "ডুপ্লিকেট",
+  pending_review: "রিভিউ অপেক্ষায়",
+  approved: "দ্বিতীয় অনুমোদন",
+  duplicate: "বাতিল / সরানো",
 };
 
 const STATUS_STYLE: Record<string, { bg: string; tx: string; icon: typeof CircleCheck; bn: string }> = {
   published: { bg: "bg-lime/15", tx: "text-lime", icon: CircleCheck, bn: "প্রকাশিত" },
+  // `approved` is its own state: a category with requires_double_approval holds
+  // a post here after the first sign-off. It used to fall through to the
+  // pending_review style, so approving looked like nothing had changed.
+  approved: { bg: "bg-sky-300/15", tx: "text-sky-300", icon: ShieldCheck, bn: "দ্বিতীয় অনুমোদনের অপেক্ষায়" },
   pending_review: { bg: "bg-amberx/15", tx: "text-amberx", icon: Clock3, bn: "রিভিউ অপেক্ষায়" },
   rejected: { bg: "bg-rose-500/12", tx: "text-rose-300", icon: Ban, bn: "বাতিল" },
+  removed: { bg: "bg-white/8", tx: "text-white/50", icon: Ban, bn: "সরানো হয়েছে" },
 };
 
 function EditModal({
@@ -144,6 +151,9 @@ export default function Queue({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [focusIdx, setFocusIdx] = useState(0);
+  const [bulk, setBulk] = useState<"approved" | "rejected" | "published" | "remove" | null>(null);
+  const [bulkNote, setBulkNote] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   async function removeRow(r: DeskQueueRow) {
     if (!window.confirm(`"${r.title_bn}" পোস্টটি মুছে ফেলবেন? এটি ফেরানো যাবে না।`)) return;
@@ -168,23 +178,74 @@ export default function Queue({
     }
   }
 
-  async function bulkAct(status: "approved" | "rejected" | "remove") {
+  async function bulkAct(status: "approved" | "rejected" | "published" | "remove") {
     if (selected.size === 0) return;
-    const label = status === "approved" ? "অনুমোদন" : status === "rejected" ? "বাতিল" : "মুছে ফেলা";
-    if (!window.confirm(`${toBn(selected.size)}টি আইটেম ${label} করবেন? ${status === "remove" ? "এটি ফেরানো যাবে না।" : ""}`)) return;
-    setBusyId("bulk");
+    const ids = [...selected];
+    const label =
+      status === "approved"
+        ? "অনুমোদন"
+        : status === "published"
+          ? "সরাসরি প্রকাশ"
+          : status === "rejected"
+            ? "বাতিল"
+            : "মুছে ফেলা";
+    if (
+      !window.confirm(
+        `${toBn(ids.length)}টি আইটেম ${label} করবেন? ${status === "remove" ? "এটি ফেরানো যাবে না।" : ""}`,
+      )
+    )
+      return;
+    setBulk(status);
+    setBulkNote(null);
+    setErr(null);
+    // busy toasts have no TTL, so hold the id and close it explicitly in the
+    // finally block — otherwise this spinner outlives the operation forever.
+    const busyId = toast.busy(
+      `${toBn(ids.length)}টি আইটেম ${label} হচ্ছে…`,
+      "ডেটাবেসে লেখা হচ্ছে, একটু অপেক্ষা করুন",
+    );
     try {
-      const env = await getRunEnv();
-      if (status === "remove") {
-        for (const id of selected) await deskQueueRemove(env, id);
+      const res = await deskQueueBulk(
+        await getRunEnv(),
+        ids,
+        status === "remove" ? "remove" : status,
+      );
+      const done =
+        status === "remove"
+          ? (res.deleted?.length ?? 0)
+          : status === "approved"
+            ? res.published.length + res.needsSecondApproval.length
+            : res.updated.length;
+      const held = res.needsSecondApproval.length;
+      const parts = [`${toBn(done)}টি আপডেট হয়েছে`];
+      if (held > 0) {
+        parts.push(
+          `${toBn(held)}টি দ্বিতীয় অনুমোদনের অপেক্ষায় আছে (ক্যাটাগরি নিয়ম অনুযায়ী)`,
+        );
+      }
+      if (res.missing.length > 0) parts.push(`${toBn(res.missing.length)}টি পাওয়া যায়নি`);
+      setBulkNote(parts.join(" · "));
+      if (status === "remove" && done > 0) setSelected(new Set());
+      if (held > 0) {
+        toast.info(
+          `${toBn(held)}টি দ্বিতীয় অনুমোদনের অপেক্ষায়`,
+          "এই ক্যাটাগরিতে দুই অনুমোদন প্রয়োজন — ★ বাল্ক প্রকাশ দিয়ে সরাসরি প্রকাশ করুন",
+        );
       } else {
-        for (const id of selected) await deskQueueSet(env, id, status);
+        toast.ok(
+          `${toBn(done)}টি আইটেম ${label} সম্পন্ন`,
+          res.missing.length > 0 ? `${toBn(res.missing.length)}টি পাওয়া যায়নি` : undefined,
+        );
       }
       await refresh();
-    } catch {
-      /* non-fatal */
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setErr(msg);
+      setBulkNote(null);
+      toast.err("বাল্ক অ্যাকশন ব্যর্থ", msg);
     } finally {
-      setBusyId(null);
+      toast.dismiss(busyId);
+      setBulk(null);
     }
   }
 
@@ -224,10 +285,17 @@ export default function Queue({
   }, [rows, q, tab, focusIdx, editing]);
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: rows.length, published: 0, pending_review: 0, duplicate: 0 };
+    const c: Record<string, number> = {
+      all: rows.length,
+      published: 0,
+      pending_review: 0,
+      approved: 0,
+      duplicate: 0,
+    };
     rows.forEach((r) => {
       if (r.status === "published") c.published++;
-      else if (r.status === "pending_review" || r.status === "approved") c.pending_review++;
+      else if (r.status === "pending_review") c.pending_review++;
+      else if (r.status === "approved") c.approved++;
       else if (r.status === "rejected" || r.status === "removed") c.duplicate++;
     });
     return c;
@@ -237,9 +305,11 @@ export default function Queue({
     const bucket =
       r.status === "published"
         ? "published"
-        : r.status === "pending_review" || r.status === "approved"
+        : r.status === "pending_review"
           ? "pending_review"
-          : "duplicate";
+          : r.status === "approved"
+            ? "approved"
+            : "duplicate";
     const matchTab = tab === "all" || bucket === tab;
     const matchQ =
       q.trim() === "" ||
@@ -431,29 +501,55 @@ export default function Queue({
           সব নির্বাচন
         </label>
         <span className="font-mono-x text-[10px] text-white/35">{toBn(selected.size)} নির্বাচিত</span>
+
+        {bulk && (
+          <span className="flex items-center gap-1.5 text-[10.5px] font-semibold text-lime">
+            <Loader2 size={11} className="animate-spin" />
+            {toBn(selected.size)}টি প্রক্রিয়া হচ্ছে…
+            <span className="h-1 w-24 overflow-hidden rounded-full bg-white/10">
+              <span className="block h-full w-1/3 animate-pulse rounded-full bg-lime" />
+            </span>
+          </span>
+        )}
+        {bulkNote && !bulk && (
+          <span className="flex items-center gap-1.5 text-[10.5px] font-semibold text-lime/80">
+            <ShieldCheck size={11} />
+            {bulkNote}
+          </span>
+        )}
+        {err && <span className="text-[10.5px] font-semibold text-rose-300">✕ {err}</span>}
+
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {selected.size > 0 && (
             <>
               <button
                 onClick={() => void bulkAct("approved")}
-                disabled={busyId !== null}
+                disabled={busyId !== null || bulk !== null}
                 className="flex items-center gap-1 rounded-lg bg-lime px-3 py-1 text-[10.5px] font-bold text-night disabled:opacity-40"
               >
-                ✓ বাল্ক অনুমোদন
+                {bulk === "approved" ? <Loader2 size={11} className="animate-spin" /> : null}✓ বাল্ক অনুমোদন
+              </button>
+              <button
+                onClick={() => void bulkAct("published")}
+                disabled={busyId !== null || bulk !== null}
+                title="দ্বিতীয় অনুমোদন — সরাসরি প্রকাশ করুন"
+                className="flex items-center gap-1 rounded-lg border border-lime/40 px-3 py-1 text-[10.5px] font-bold text-lime disabled:opacity-40"
+              >
+                {bulk === "published" ? <Loader2 size={11} className="animate-spin" /> : null}★ বাল্ক প্রকাশ
               </button>
               <button
                 onClick={() => void bulkAct("rejected")}
-                disabled={busyId !== null}
+                disabled={busyId !== null || bulk !== null}
                 className="flex items-center gap-1 rounded-lg border border-rose-400/50 px-3 py-1 text-[10.5px] font-bold text-rose-300 disabled:opacity-40"
               >
-                ✕ বাল্ক বাতিল
+                {bulk === "rejected" ? <Loader2 size={11} className="animate-spin" /> : null}✕ বাল্ক বাতিল
               </button>
               <button
                 onClick={() => void bulkAct("remove")}
-                disabled={busyId !== null}
+                disabled={busyId !== null || bulk !== null}
                 className="flex items-center gap-1 rounded-lg bg-rose-500/80 px-3 py-1 text-[10.5px] font-bold text-white disabled:opacity-40"
               >
-                <Trash2 size={11} /> বাল্ক ডিলিট
+                {bulk === "remove" ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />} বাল্ক ডিলিট
               </button>
             </>
           )}

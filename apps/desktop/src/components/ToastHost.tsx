@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, XCircle, Info, Loader2, X } from "lucide-react";
-import { onToast, type ToastMsg, type ToastTone } from "../lib/toast";
+import { onToast, onToastDismiss, type ToastMsg, type ToastTone } from "../lib/toast";
 
 const TONE_STYLE: Record<ToastTone, { wrap: string; icon: React.ReactNode }> = {
   ok: {
@@ -32,6 +32,10 @@ export function ToastHost() {
     }
   }), []);
 
+  useEffect(() => onToastDismiss((id) => {
+    setItems((prev) => prev.filter((x) => x.id !== id));
+  }), []);
+
   const dismiss = (id: number) => setItems((prev) => prev.filter((x) => x.id !== id));
 
   if (items.length === 0) return null;
@@ -50,7 +54,7 @@ export function ToastHost() {
               <p className="font-bold leading-snug">{t.title}</p>
               {t.body && <p className="mt-0.5 font-mono-x text-[10.5px] leading-relaxed opacity-80">{t.body}</p>}
             </div>
-            {t.ttl > 0 && (
+            {t.tone !== "busy" && (
               <button
                 onClick={() => dismiss(t.id)}
                 className="shrink-0 rounded p-0.5 opacity-60 transition-opacity hover:opacity-100"
