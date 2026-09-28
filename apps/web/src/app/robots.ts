@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
+import { siteUrl } from "../lib/site";
 
-const SITE_URL = process.env.SITE_URL ?? "https://hoichoi.local";
+const SITE_URL = siteUrl();
 
 export default function robots(): MetadataRoute.Robots {
   return {

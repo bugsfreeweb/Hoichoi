@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Hind_Siliguri, JetBrains_Mono, Noto_Serif_Bengali, Space_Grotesk } from "next/font/google";
 import "./globals.css";
+import { siteUrl } from "../lib/site";
 
 const serifBn = Noto_Serif_Bengali({
   subsets: ["bengali"],
@@ -26,8 +27,7 @@ const mono = JetBrains_Mono({
   variable: "--font-mono",
 });
 
-const SITE_URL =
-  process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "https://hoichoi.local";
+const SITE_URL = siteUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

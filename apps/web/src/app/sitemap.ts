@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
 import { windowPosts } from "@hoichoi/db";
+import { siteUrl } from "../lib/site";
 
-const SITE_URL =
-  process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "https://hoichoi.local";
+const SITE_URL = siteUrl();
 
 export const dynamic = "force-dynamic";
 
