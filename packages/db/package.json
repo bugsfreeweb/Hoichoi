@@ -15,7 +15,8 @@
     "seed": "tsx scripts/seed.ts",
     "demo": "tsx scripts/demo.ts",
     "clean": "tsx scripts/clean.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx src/__tests__/source-merge.test.ts"
   },
   "dependencies": {
     "@hoichoi/shared-types": "workspace:*",

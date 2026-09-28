@@ -556,6 +556,14 @@ export async function ensureNoStaticCategoryChecks(client: Client): Promise<void
     }
   }
 
+  // The rebuild above reconstructs column definitions from PRAGMA table_info,
+  // which cannot express UNIQUE — so `sources.page_url` silently lost its
+  // uniqueness and the same page could be added again under a new id, showing
+  // up as a duplicate row in Settings > Source and in the Watchlist. Re-assert
+  // it as a unique index (works on already-rebuilt tables too) and merge any
+  // duplicates that slipped in before the index existed.
+  await ensureUniqueSourceUrls(client);
+
   for (const v of views) {
     await client.execute(`DROP VIEW IF EXISTS "${v.name}"`);
     await client.execute((v.sql as string).replace(/^CREATE\s+VIEW\s+/i, "CREATE VIEW IF NOT EXISTS "));
@@ -568,6 +576,82 @@ async function hasTable(client: Client, table: string): Promise<boolean> {
     args: [table],
   });
   return got.rows.length > 0;
+}
+
+/**
+ * One row per Facebook page.
+ *
+ * `sources.page_url` used to be `UNIQUE`, but the legacy-schema rebuild in
+ * `ensureNoStaticCategoryChecks` rebuilds the table from `PRAGMA table_info`
+ * and cannot carry a UNIQUE clause, and the insert path had no existence check
+ * either. The result was the same page stored 2-3 times under different ids —
+ * visible as duplicate cards in Settings > Source and duplicate rows in the
+ * Watchlist, and it fanned posts across several source records.
+ *
+ * This merges the extras into the oldest row (repointing children and folding
+ * the multi-valued `source_categories` junction together) and then installs a
+ * unique index so it cannot happen again.
+ */
+export async function ensureUniqueSourceUrls(client: Client): Promise<{ merged: number }> {
+  if (!(await hasTable(client, "sources"))) return { merged: 0 };
+
+  const dupes = await client.execute(
+    `SELECT page_url FROM sources GROUP BY page_url HAVING COUNT(*) > 1`,
+  );
+  let merged = 0;
+
+  for (const row of dupes.rows) {
+    const pageUrl = String(row.page_url);
+    // Keep the oldest row as the survivor so created_at ordering stays stable.
+    const group = await client.execute({
+      sql: `SELECT id, is_active, is_verified FROM sources
+            WHERE page_url = ? ORDER BY created_at ASC, rowid ASC`,
+      args: [pageUrl],
+    });
+    const ids = group.rows.map((r) => String(r.id));
+    const keep = ids[0];
+    if (!keep) continue;
+    const drop = ids.slice(1);
+    if (drop.length === 0) continue;
+
+    const active = group.rows.some((r) => Number(r.is_active) === 1);
+    const verified = group.rows.some((r) => Number(r.is_verified) === 1);
+    await client.execute({
+      sql: `UPDATE sources SET is_active = ?, is_verified = ? WHERE id = ?`,
+      args: [active ? 1 : 0, verified ? 1 : 0, keep],
+    });
+
+    for (const dead of drop) {
+      // source_categories is keyed (source_id, category_slug), so its rows
+      // cannot simply be re-pointed: the survivor may already hold that slug
+      // and the UPDATE would trip the PK. Fold them into the union first,
+      // then drop what the duplicate owned.
+      if (await hasTable(client, "source_categories")) {
+        await client.execute({
+          sql: `INSERT OR IGNORE INTO source_categories (source_id, category_slug)
+                SELECT ?, category_slug FROM source_categories WHERE source_id = ?`,
+          args: [keep, dead],
+        });
+        await client.execute({ sql: `DELETE FROM source_categories WHERE source_id = ?`, args: [dead] });
+      }
+      // Repoint the remaining children so no post/raw row is lost.
+      for (const child of ["raw_posts", "posts", "source_errors"] as const) {
+        if (!(await hasTable(client, child))) continue;
+        try {
+          await client.execute({ sql: `UPDATE ${child} SET source_id = ? WHERE source_id = ?`, args: [keep, dead] });
+        } catch {
+          /* child without a source_id column */
+        }
+      }
+      await client.execute({ sql: `DELETE FROM sources WHERE id = ?`, args: [dead] });
+      merged += 1;
+    }
+  }
+
+  await client.execute(
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_sources_page_url ON sources (page_url)",
+  );
+  return { merged };
 }
 
 /**

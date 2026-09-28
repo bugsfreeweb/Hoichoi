@@ -16,6 +16,7 @@ export const CREDENTIAL_NAMES = [
   "b2_bucket",
   "b2_endpoint",
   "revalidate_secret",
+  "vercel_deploy_hook_url",
   "GOOGLE_API_KEY",
   "GROQ_API_KEY",
   "OPENROUTER_API_KEY",
@@ -49,6 +50,11 @@ const ENV_MAP: Partial<Record<CredentialName, string>> = {
   b2_bucket: "B2_BUCKET",
   b2_endpoint: "B2_ENDPOINT",
   revalidate_secret: "REVALIDATE_SECRET",
+  // Exact uppercase name matters: Settings pushes vault fields to GitHub
+  // Actions under this key and `.github/workflows/pipeline-cron.yml` curls
+  // `secrets.VERCEL_DEPLOY_HOOK_URL` after a scrape. A different spelling would
+  // silently deploy nothing.
+  vercel_deploy_hook_url: "VERCEL_DEPLOY_HOOK_URL",
 };
 
 /** Vault keys that are NOT pipeline envs (metadata only). */

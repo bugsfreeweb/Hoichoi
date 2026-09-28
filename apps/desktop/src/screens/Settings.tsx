@@ -26,6 +26,7 @@ import {
   getRunEnv,
   getEnvFromVault,
   isCloudSync,
+  envNameFor,
   type CredentialName,
 } from "../lib/vault";
 import {
@@ -96,6 +97,7 @@ const FIELDS: Array<{ name: CredentialName; label: string; secret: boolean }> = 
   { name: "b2_bucket", label: "Backblaze B2 bucket", secret: false },
   { name: "b2_endpoint", label: "Backblaze B2 endpoint URL", secret: false },
   { name: "revalidate_secret", label: "Revalidate secret (web)", secret: true },
+  { name: "vercel_deploy_hook_url", label: "Vercel deploy hook URL (redeploy web after scrape)", secret: true },
 ];
 
 const BRAND_FIELDS: Array<{ key: string; label: string; secret?: boolean; multiline?: boolean }> = [
@@ -277,7 +279,11 @@ export default function Settings({
     try {
       if (f.secret) {
         await storeCredential(f.name, v.trim());
-        await pushGithubSecret(f.name, v.trim()).catch(() => {});
+        // Push under the *env* name, not the vault key: workflows read
+        // `secrets.VERCEL_DEPLOY_HOOK_URL` / `secrets.TURSO_AUTH_TOKEN`, so
+        // pushing `vercel_deploy_hook_url` would store a secret nothing reads.
+        const envName = envNameFor(f.name) ?? f.name;
+        await pushGithubSecret(envName, v.trim()).catch(() => {});
       } else {
         await storeCredential(f.name, v.trim());
       }

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { redactText } from "../rewrite";
 import { isBengaliScript } from "@hoichoi/llm";
-import { isPersonalProfileUrl, isAllowedPageUrl } from "../facebook";
+import { isPersonalProfileUrl, isAllowedPageUrl, fbPostKey } from "../facebook";
+import { canonicalPostUrl } from "../dedup";
 import { imagePhash, hammingDistance, isNearDuplicate } from "../hash";
 import sharp from "sharp";
 
@@ -34,6 +35,51 @@ check("personal profile URLs are blocked (the hard rule)", () => {
 check("bengali script detection", () => {
   assert.equal(isBengaliScript("আজ ঢাকায় বৃষ্টি হয়েছে।"), true);
   assert.equal(isBengaliScript("hello world"), false);
+});
+
+check("canonical post URL collapses tracking variants of one permalink", () => {
+  // The crawler decorates the same post on every run; these must all be one key.
+  const base = "https://www.facebook.com/hoichoi/posts/pfbid0AbCdEfGhIjKlMnOp";
+  const variants = [
+    base,
+    `${base}/`,
+    `${base}?__cft__%5B0%5D=`,
+    `${base}?comment_id=1234&__cft__%5B0%5D=abcdef&__tn__=-R`,
+    `https://m.facebook.com/hoichoi/posts/pfbid0AbCdEfGhIjKlMnOp?locale=bn_IN`,
+    `http://mbasic.facebook.com/HOICHOI/posts/pfbid0AbCdEfGhIjKlMnOp#anchor`,
+  ];
+  const canonical = new Set(variants.map(canonicalPostUrl));
+  assert.equal(canonical.size, 1, `expected 1 canonical form, got ${[...canonical].join(" | ")}`);
+  assert.equal(canonicalPostUrl(base), "https://facebook.com/hoichoi/posts/pfbid0abcdefghijklmnop");
+
+  // Distinct posts must NOT collapse together.
+  assert.notEqual(
+    canonicalPostUrl("https://www.facebook.com/hoichoi/posts/pfbid0AbCdEfGhIjKlMnOp"),
+    canonicalPostUrl("https://www.facebook.com/hoichoi/posts/pfbid0ZzZzZzZzZzZzZzZz"),
+  );
+  // Host differences that are genuinely different pages stay distinct.
+  assert.notEqual(
+    canonicalPostUrl("https://www.facebook.com/hoichoi/posts/pfbid0AbCdEfGhIjKlMnOp"),
+    canonicalPostUrl("https://www.facebook.com/otherpage/posts/pfbid0AbCdEfGhIjKlMnOp"),
+  );
+  // The "prefix" post is a different post, not a variant of the longer one.
+  assert.notEqual(
+    canonicalPostUrl("https://www.facebook.com/hoichoi/posts/pfbid0AbCdEfGhIjKlMnOp"),
+    canonicalPostUrl("https://www.facebook.com/hoichoi/posts/pfbid0AbCdEfGhIjKlMnOpExtra"),
+  );
+  // Garbage input must not throw.
+  assert.equal(canonicalPostUrl(""), "");
+  assert.equal(canonicalPostUrl("not a url"), "not a url");
+});
+
+check("fbPostId is stable across tracking variants (UNIQUE guard works)", () => {
+  const a = "https://www.facebook.com/hoichoi/posts/pfbid0AbCdEfGhIjKlMnOp?__cft__%5B0%5D=1";
+  const b = "https://m.facebook.com/hoichoi/posts/pfbid0AbCdEfGhIjKlMnOp?comment_id=99";
+  assert.equal(fbPostKey(a), fbPostKey(b));
+  assert.notEqual(
+    fbPostKey(a),
+    fbPostKey("https://www.facebook.com/hoichoi/posts/pfbid0DIFFERENTpost12345"),
+  );
 });
 
 check("maximum redaction strips phones + suspect name markers", () => {

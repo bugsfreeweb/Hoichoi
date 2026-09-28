@@ -3,6 +3,39 @@ import { hammingDistance, isNearDuplicate } from "./hash";
 
 export type DedupReason = "sem-1" | "img-1" | "exact-url";
 
+/**
+ * Stable identity of a Facebook permalink.
+ *
+ * Facebook hands out the *same* post under many URLs — the crawler appends
+ * `?comment_id=…&__cft__[0]=…&__tn__=…`, and a post can appear as `/posts/…`,
+ * `/permalink/…` or `/videos/…`. Comparing the raw string therefore never
+ * matched and the same story got republished several times. Everything that
+ * identifies a post (dedup, the `fb_post_id` unique key) must go through here:
+ * scheme forced to https, host lowercased, `www.`/`m.`/`mbasic.`/`web.` dropped,
+ * tracking query and fragment removed, trailing slash normalised, and the path
+ * lowercased because Facebook treats page slugs and `pfbid` case-insensitively.
+ */
+export function canonicalPostUrl(url: string): string {
+  const trimmed = (url ?? "").trim();
+  if (!trimmed) return "";
+  try {
+    const u = new URL(trimmed);
+    u.hash = "";
+    u.search = "";
+    u.username = "";
+    u.password = "";
+    u.hostname = u.hostname.toLowerCase().replace(/^(?:www|m|mbasic|web)\./, "");
+    u.protocol = "https:";
+    // `/posts/pfbid01ABC/` and `/posts/pfbid01ABC` are the same post, and
+    // Facebook serves `/HOICHOI/...` and `/hoichoi/...` interchangeably.
+    const path = u.pathname.replace(/\/+$/, "").toLowerCase();
+    return `https://${u.hostname}${path}`;
+  } catch {
+    // Not a parseable URL — fall back to a conservative manual cleanup.
+    return trimmed.split("#")[0]!.split("?")[0]!.replace(/\/+$/, "").toLowerCase();
+  }
+}
+
 export interface DedupResult {
   duplicate: boolean;
   reason?: DedupReason;
@@ -89,14 +122,40 @@ async function findPostForRaw(rawId: string): Promise<string | null> {
   return first ? String(first.id) : null;
 }
 
-/** Exact URL / fb_post_id duplicate — the DB unique constraint also guards this. */
+/**
+ * Exact permalink duplicate.
+ *
+ * Two things make this necessary:
+ *  - compare the *canonical* permalink, because the crawler decorates the same
+ *    post with different tracking query strings on every run;
+ *  - check `posts` as well as `raw_posts`, because the archive pass hard-deletes
+ *    raw rows. Without that, a permalink whose raw row was purged looked brand
+ *    new and the pipeline published a second copy of a live story.
+ */
 export async function isExactDuplicate(fbPostUrl: string): Promise<boolean> {
   const client = getClient();
-  const res = await client.execute({
-    sql: "SELECT 1 FROM raw_posts WHERE fb_post_url = ? LIMIT 1",
-    args: [fbPostUrl],
+  const base = canonicalPostUrl(fbPostUrl);
+  if (!base) return false;
+  // Same base, optionally followed by a tracking query or fragment.
+  const variants = [base, `${base}?%`, `${base}#%`];
+  const found = await client.execute({
+    sql: `
+      SELECT 1 FROM raw_posts
+       WHERE fb_post_url = ? OR fb_post_url LIKE ? OR fb_post_url LIKE ?
+       LIMIT 1
+    `,
+    args: variants,
   });
-  return res.rows.length > 0;
+  if (found.rows.length > 0) return true;
+  const foundPost = await client.execute({
+    sql: `
+      SELECT 1 FROM posts
+       WHERE source_url = ? OR source_url LIKE ? OR source_url LIKE ?
+       LIMIT 1
+    `,
+    args: variants,
+  });
+  return foundPost.rows.length > 0;
 }
 
 export async function checkDedup(input: {

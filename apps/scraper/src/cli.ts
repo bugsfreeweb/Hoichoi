@@ -517,6 +517,53 @@ function deskSourceRow(row: Record<string, unknown>) {
   };
 }
 
+/**
+ * Collapse rows that share a page_url, unioning their categories.
+ *
+ * `ensureUniqueSourceUrls` merges duplicates in the DB and installs a unique
+ * index, so this should normally be a no-op. It stays as a safety net: a source
+ * list that renders the same page twice (Settings > Source cards, Watchlist
+ * rows) is the visible symptom users report, and this guarantees one card per
+ * page no matter what state the database is in.
+ */
+function dedupeSourceRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  const byUrl = new Map<string, Record<string, unknown>>();
+  for (const row of rows) {
+    const key = String(row.page_url ?? "").trim().toLowerCase();
+    const seen = byUrl.get(key);
+    if (!seen) {
+      byUrl.set(key, row);
+      continue;
+    }
+    // Union the categories, keep the most complete record, and prefer an
+    // active/verified row so a stale duplicate cannot disable a live source.
+    const cats = new Set(
+      [...String(seen.category_csv ?? "").split(","), ...String(row.category_csv ?? "").split(",")]
+        .map((s) => s.trim())
+        .filter(Boolean),
+    );
+    const primary =
+      Number(row.is_active) > Number(seen.is_active) ||
+      (Number(row.is_verified) === 1 && Number(seen.is_verified) !== 1)
+        ? row
+        : seen;
+    const other = primary === row ? seen : row;
+    byUrl.set(key, {
+      ...other,
+      ...primary,
+      id: String(seen.id),
+      is_active: Number(seen.is_active) || Number(row.is_active),
+      is_verified: Number(seen.is_verified) || Number(row.is_verified),
+      health: Math.max(Number(seen.health ?? 100), Number(row.health ?? 100)),
+      posts_today: Number(seen.posts_today ?? 0) + Number(row.posts_today ?? 0),
+      last_scraped_at:
+        [seen.last_scraped_at, row.last_scraped_at].filter(Boolean).sort().pop() ?? null,
+      category_csv: [...cats].join(","),
+    });
+  }
+  return [...byUrl.values()];
+}
+
 async function listDeskSources() {
   const client = getClient();
   const today = new Date().toISOString().slice(0, 10);
@@ -527,7 +574,7 @@ async function listDeskSources() {
           FROM sources s ORDER BY s.is_active DESC, s.created_at DESC`,
     args: [`${today}%`],
   });
-  return res.rows.map((r) => deskSourceRow(r as Record<string, unknown>));
+  return dedupeSourceRows(res.rows as unknown as Record<string, unknown>[]).map((r) => deskSourceRow(r));
 }
 
 async function addDeskSource(opts: {
@@ -540,7 +587,6 @@ async function addDeskSource(opts: {
   fbId?: string | null;
 }) {
   const client = getClient();
-  const id = crypto.randomUUID();
   const created = new Date().toISOString();
   const topics = (opts.topics ?? "")
     .split(",")
@@ -553,12 +599,48 @@ async function addDeskSource(opts: {
     .map((c) => c.trim())
     .filter(Boolean);
 
+  // One row per page. The DB now carries a unique index on page_url, but the
+  // same page used to be addable repeatedly (that is what produced the
+  // duplicate cards in Settings > Source / the Watchlist), so merge into the
+  // existing row instead of failing the add.
+  const pageUrl = opts.pageUrl.trim();
+  const existing = await client.execute({
+    sql: "SELECT id FROM sources WHERE page_url = ? LIMIT 1",
+    args: [pageUrl],
+  });
+  const existingId = existing.rows[0] ? String(existing.rows[0].id) : null;
+
+  if (existingId) {
+    // Fold the new categories into the existing union rather than replacing
+    // it, so re-adding a page never loses a category it was already filed under.
+    if (categories.length > 0) {
+      const values = categories.map(() => "(?, ?)").join(", ");
+      await client.execute({
+        sql: `INSERT OR IGNORE INTO source_categories (source_id, category_slug) VALUES ${values}`,
+        args: categories.flatMap((c) => [existingId, c]),
+      });
+      await client.execute({
+        sql: `UPDATE sources SET category = COALESCE(
+                 (SELECT category_slug FROM source_categories WHERE source_id = ? LIMIT 1),
+                 category
+               ) WHERE id = ?`,
+        args: [existingId, existingId],
+      });
+    }
+    if ((opts.topics ?? "").trim() !== "") {
+      await client.execute({ sql: "UPDATE sources SET topics = ? WHERE id = ?", args: [JSON.stringify(topics), existingId] });
+    }
+    const existingRow = await listDeskSources();
+    return existingRow.find((s: { id: string }) => s.id === existingId) ?? existingRow[0];
+  }
+
+  const id = crypto.randomUUID();
   await client.execute({
     sql: `INSERT INTO sources (id, page_url, page_name, category, is_verified, is_active, kind, fb_id, topics, created_at)
           VALUES (?, ?, ?, ?, 1, 1, ?, ?, ?, ?)`,
     args: [
       id,
-      opts.pageUrl.trim(),
+      pageUrl,
       opts.pageName.trim(),
       categories[0] ?? "missing-children", // primary category for backward compat
       opts.kind === "group" ? "group" : "page",
@@ -572,7 +654,7 @@ async function addDeskSource(opts: {
   if (categories.length > 0) {
     const values = categories.map(() => "(?, ?)").join(", ");
     const args = categories.flatMap(c => [id, c]);
-    await client.execute({ sql: `INSERT INTO source_categories (source_id, category_slug) VALUES ${values}`, args });
+    await client.execute({ sql: `INSERT OR IGNORE INTO source_categories (source_id, category_slug) VALUES ${values}`, args });
   }
   
   const rows = await listDeskSources();

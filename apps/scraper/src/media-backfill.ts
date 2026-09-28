@@ -12,8 +12,8 @@
  *   1. re-downloads the media for posts that have none (from the CDN URLs kept
  *      in `raw_posts.media_urls`), processes them to webp and points the post at
  *      the new file;
- *   2. mirrors every file it touches into the web app's `public/media` folder
- *      (served at `/media/<rel>`) plus `<repo>/data/media`, so the relative
+ *   2. mirrors every file it touches into the web app's `public/uploads` folder
+ *      (served at `/uploads/<rel>`) plus `<repo>/data/media`, so the relative
  *      `media_path` resolves on the deployed site and in local dev as well.
  *
  * The original relative `media_path` is preserved (no CDN URL rewriting), which

@@ -1,5 +1,22 @@
+import { createHash } from "node:crypto";
 import type { CategorySlug, Source } from "@hoichoi/shared-types";
 import { launchChromium, type Browser, type Page } from "./browser";
+import { canonicalPostUrl } from "./dedup";
+
+/**
+ * Deterministic post key, derived from the *canonical* permalink so that
+ * `UNIQUE (source_id, fb_post_id)` collapses re-scrapes of the same post.
+ *
+ * This must be a real digest. It used to be
+ * `base64url(Buffer.from(url)).slice(0, 20)`, which only encodes the first ~15
+ * bytes — for every `https://www.facebook.com/...` URL that is the identical
+ * prefix `https://www.faceb`, so *every post on a page produced the same
+ * fb_post_id* and `ON CONFLICT (source_id, fb_post_id) DO NOTHING` silently
+ * threw away all but the first post scraped from each source.
+ */
+export function fbPostKey(url: string): string {
+  return `fb_${createHash("sha256").update(canonicalPostUrl(url)).digest("hex").slice(0, 24)}`;
+}
 
 export interface ScrapedPost {
   fbPostId: string;
@@ -201,7 +218,7 @@ async function extractPost(page: Page, url: string, opts: ScrapeOptions): Promis
   try {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForTimeout(opts.requestDelayMs ?? 2_000);
-    const id = `fb_${Buffer.from(url).toString("base64url").slice(0, 20)}`;
+    const id = fbPostKey(url);
     const rawText = await page
       .locator("[data-ad-preview='message'], [data-pagelet='FeedUnit']")
       .first()
