@@ -7,6 +7,7 @@ import { getCategories, findCategory } from "@/lib/categories-server";
 import { readMinutesBn, shortId } from "@/lib/bn";
 import { bnDate, bnTime, CATEGORY_TINT, CATEGORY_LABEL } from "@/lib/format";
 import { mediaUrl } from "@/lib/media";
+import { siteUrl } from "@/lib/site";
 import { CaseStatusBadge } from "@/components/CaseStatusBadge";
 import { ContentWarningGate } from "@/components/ContentWarningGate";
 import { ReportForm } from "@/components/ReportForm";
@@ -22,14 +23,27 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const post = await getPublicPostBySlug(slug);
   if (!post) return { title: "পোস্টটি খুঁজে পাওয়া যায়নি" };
+  // The same story is syndicated from Facebook and reachable under a few
+  // slugs; a canonical URL plus og:url tells crawlers and social scrapers
+  // which one is authoritative instead of treating each as duplicate content.
+  const url = `${siteUrl()}/post/${slug}`;
   return {
     title: post.title_bn,
     description: post.summary_bn ?? post.body_bn.slice(0, 160),
+    alternates: { canonical: url },
     openGraph: {
+      type: "article",
+      url,
       title: post.title_bn,
       description: post.summary_bn ?? undefined,
       images: mediaUrl(post) ? [{ url: mediaUrl(post)!, alt: post.title_bn }] : undefined,
       publishedTime: post.published_at ?? undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title_bn,
+      description: post.summary_bn ?? undefined,
+      images: mediaUrl(post) ? [mediaUrl(post)!] : undefined,
     },
   };
 }
