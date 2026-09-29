@@ -35,8 +35,12 @@ export async function POST() {
   return NextResponse.json(
     {
       ok: false,
-      error: "serverless runner not configured — run `pnpm scrape` locally or set RUNNER_URL / GH_TRIGGER_TOKEN",
+      error:
+        "serverless runner not configured — add GH_TRIGGER_TOKEN and GH_REPO to Vercel environment variables",
+      /** Tells the UI to show the setup guide rather than a dead end. */
       local: true,
+      setupGuide: "/admin/setup",
+      localFallback: "pnpm scrape",
     },
     { status: 501 },
   );

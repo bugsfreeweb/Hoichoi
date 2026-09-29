@@ -30,6 +30,7 @@ import {
   envNameFor,
   type CredentialName,
 } from "../lib/vault";
+import { SECRET_SPECS, LLM_SECRET_NAMES } from "../lib/secret-specs";
 import {
   settingsGet,
   settingsSet,
@@ -74,14 +75,6 @@ const TABS = [
 ] as const;
 
 type SettingsTab = (typeof TABS)[number]["id"];
-
-/** Secrets `.github/workflows/pipeline-cron.yml` cannot run without. */
-const CRON_REQUIRED = [
-  "TURSO_DATABASE_URL",
-  "TURSO_AUTH_TOKEN",
-  "FB_SESSION_COOKIE",
-  "VERCEL_DEPLOY_HOOK_URL",
-] as const;
 
 const FIELDS: Array<{ name: CredentialName; label: string; secret: boolean }> = [
   { name: "turso_url", label: "TURSO_DATABASE_URL", secret: false },
@@ -939,30 +932,69 @@ export default function Settings({
               </div>
               {ghErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {ghErr}</p>}
               {ghSecrets && (
-                <div className="mt-3 space-y-1">
-                  {CRON_REQUIRED.map((req) => {
-                    const found = ghSecrets.find((s) => s.name === req);
-                    return (
-                      <div key={req} className="flex items-center gap-2 text-[11.5px]">
-                        <span className={found ? "text-lime" : "text-alizarin"}>
-                          {found ? "✓" : "✕"}
-                        </span>
-                        <span className="font-mono-x text-[11px] text-ink">{req}</span>
-                        <span className="text-ink-soft">
-                          {found
-                            ? `— GitHub-এ আছে (${new Date(found.updated_at).toLocaleString("bn-BD")})`
-                            : "— GitHub-এ নেই"}
-                        </span>
-                      </div>
-                    );
-                  })}
+                <div className="mt-3 space-y-1.5">
                   {ghSecrets.length === 0 && (
                     <p className="text-[11.5px] font-bold text-alizarin">
                       রিপোজিটরিতে একটিও Actions secret নেই — উপরের ফিল্ডগুলো সেভ করলে
                       সেগুলো নিজে থেকেই GitHub-এ চলে যাবে।
                     </p>
                   )}
+                  {SECRET_SPECS.map((spec) => {
+                    // An LLM key is satisfied by any of its variants.
+                    const variants =
+                      spec.name === "LLM_PROVIDER_KEY" ? LLM_SECRET_NAMES : [spec.name];
+                    const found = variants
+                      .map((v) => ghSecrets.find((s) => s.name === v))
+                      .find(Boolean);
+                    const blocking = spec.requirement === "required" && !found;
+                    return (
+                      <details
+                        key={spec.name}
+                        className={`rounded-lg border px-3 py-2 ${
+                          blocking ? "border-alizarin/40 bg-alizarin/5" : "border-ink/10"
+                        }`}
+                      >
+                        <summary className="flex cursor-pointer list-none items-center gap-2 text-[11.5px]">
+                          <span className={found ? "text-lime" : blocking ? "text-alizarin" : "text-ink-soft"}>
+                            {found ? "✓" : blocking ? "✕" : "–"}
+                          </span>
+                          <span className="font-mono-x text-[11px] text-ink">{spec.name}</span>
+                          <span className="text-ink-soft">
+                            {found
+                              ? `— GitHub-এ আছে (${new Date(found.updated_at).toLocaleString("bn-BD")})`
+                              : blocking
+                                ? "— আবশ্যক, GitHub-এ নেই"
+                                : spec.requirement === "recommended"
+                                  ? "— প্রস্তাবিত, GitHub-এ নেই"
+                                  : "— ঐচ্ছিক, GitHub-এ নেই"}
+                          </span>
+                        </summary>
+                        <div className="mt-2 space-y-2 border-t border-ink/10 pt-2">
+                          <p className="text-[11.5px] leading-relaxed text-ink-soft">
+                            {spec.purposeBn}
+                          </p>
+                          <ol className="list-inside list-decimal space-y-1 text-[11.5px] leading-relaxed text-ink-soft">
+                            {spec.howToBn.map((step, i) => (
+                              <li key={i} className="whitespace-pre-wrap">{step}</li>
+                            ))}
+                          </ol>
+                          <code className="block overflow-x-auto rounded bg-ink/5 px-2 py-1 font-mono-x text-[10.5px] whitespace-pre-wrap text-ink">
+                            {spec.envExample}
+                          </code>
+                          <p className="text-[11px] text-alizarin">
+                            না দিলে: {spec.ifMissingBn}
+                          </p>
+                        </div>
+                      </details>
+                    );
+                  })}
                 </div>
+              )}
+              {!ghSecrets && (
+                <p className="mt-3 text-[11.5px] leading-relaxed text-ink-soft">
+                  উপরের চেক বাটনে চাপলে প্রতিটি সিক্রেটের বর্তমান অবস্থা দেখা যাবে এবং
+                  প্রতিটির নিচে ধাপে ধাপে কোথা থেকে পাবেন তা লেখা থাকবে।
+                </p>
               )}
             </div>
 

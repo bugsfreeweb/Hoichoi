@@ -1581,3 +1581,183 @@ export async function resetSyncCheckpoints(): Promise<void> {
   const client = getClient();
   await client.execute("DELETE FROM sync_checkpoint");
 }
+/* ------------------------------------------------------------------ *
+ * Paginated history reads
+ *
+ * The admin log and archive screens used fixed LIMITs with no way to reach
+ * older rows, which made history silently incomplete. These take an explicit
+ * page and return the total so the UI can render a paginator.
+ * ------------------------------------------------------------------ */
+
+export interface Page<T> {
+  rows: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** Clamp a caller-supplied page to a sane, positive integer. */
+function safePage(page: number | undefined): number {
+  const n = Number(page);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
+}
+
+export async function listAdminActionsPage(
+  page = 1,
+  pageSize = 40,
+): Promise<Page<Record<string, unknown>>> {
+  const p = safePage(page);
+  const client = getClient();
+  const countRes = await client.execute("SELECT COUNT(*) AS n FROM admin_actions");
+  const total = Number((countRes.rows[0] as Record<string, unknown>).n ?? 0);
+  const res = await client.execute({
+    sql: "SELECT * FROM admin_actions ORDER BY created_at DESC LIMIT ? OFFSET ?",
+    args: [pageSize, (p - 1) * pageSize],
+  });
+  return { rows: res.rows as Record<string, unknown>[], total, page: p, pageSize };
+}
+
+export async function listPipelineRunsPage(
+  page = 1,
+  pageSize = 25,
+): Promise<Page<RecentPipelineRun>> {
+  const p = safePage(page);
+  const client = getClient();
+  const countRes = await client.execute("SELECT COUNT(*) AS n FROM pipeline_runs");
+  const total = Number((countRes.rows[0] as Record<string, unknown>).n ?? 0);
+  const res = await client.execute({
+    sql: "SELECT * FROM pipeline_runs ORDER BY started_at DESC LIMIT ? OFFSET ?",
+    args: [pageSize, (p - 1) * pageSize],
+  });
+  const rows: RecentPipelineRun[] = res.rows.map((r) => {
+    const row = r as Record<string, unknown>;
+    return {
+      id: String(row.id),
+      started_at: String(row.started_at),
+      finished_at: (row.finished_at as string | null) ?? null,
+      status: String(row.status),
+      stats: parseJson<Record<string, unknown> | null>(row.stats as string, null),
+      provider_used: (row.provider_used as string | null) ?? null,
+      error: (row.error as string | null) ?? null,
+    };
+  });
+  return { rows, total, page: p, pageSize };
+}
+
+export async function listArchivedPostsPage(
+  page = 1,
+  pageSize = 50,
+): Promise<Page<Post>> {
+  const p = safePage(page);
+  const client = getClient();
+  const countRes = await client.execute(
+    "SELECT COUNT(*) AS n FROM posts WHERE archived_at IS NOT NULL",
+  );
+  const total = Number((countRes.rows[0] as Record<string, unknown>).n ?? 0);
+  const res = await client.execute({
+    sql: "SELECT * FROM posts WHERE archived_at IS NOT NULL ORDER BY archived_at DESC LIMIT ? OFFSET ?",
+    args: [pageSize, (p - 1) * pageSize],
+  });
+  return {
+    rows: res.rows.map((r) => mapPost(r as Record<string, unknown>)),
+    total,
+    page: p,
+    pageSize,
+  };
+}
+
+/**
+ * Trim history tables that grow without bound.
+ *
+ * Pipeline runs and admin actions are append-only and a busy site writes a run
+ * every two hours plus an audit row per edit, so the tables would otherwise
+ * grow forever. `adminActions` keeps a smaller slice because the audit trail
+ * is the more sensitive of the two.
+ */
+export async function trimHistory(olderThanDays = 90): Promise<{
+  runs: number;
+  actions: number;
+}> {
+  const client = getClient();
+  const cutoff = new Date(Date.now() - olderThanDays * 86_400_000).toISOString();
+  const runs = await client.execute({
+    sql: "DELETE FROM pipeline_runs WHERE started_at < ? AND status != 'running'",
+    args: [cutoff],
+  });
+  const actions = await client.execute({
+    sql: "DELETE FROM admin_actions WHERE created_at < ?",
+    args: [cutoff],
+  });
+  return { runs: runs.rowsAffected, actions: actions.rowsAffected };
+}
+
+/* ------------------------------------------------------------------ *
+ * Content hygiene
+ * ------------------------------------------------------------------ */
+
+/**
+ * Titles that the rewrite step used to emit when the model returned nothing
+ * usable. They were stored verbatim and shown to readers, which is how
+ * &ldquo;শিরোনাম ছাড়া&rdquo; ended up in the archive. The parser no longer
+ * produces them, but rows written before the fix still exist.
+ */
+const PLACEHOLDER_TITLES = ["শিরোনাম ছাড়া", "শিরোনাম ছাড়া।", "Untitled", "untitled"];
+
+/**
+ * Quarantine posts that can never be published.
+ *
+ * A post is unusable when the title is one of the known placeholders or is
+ * blank, or when the body is empty. These are moved to `rejected` rather than
+ * deleted: the raw source text is still kept in `raw_posts`, so a re-scrape can
+ * rebuild the post properly once the pipeline fix is in place.
+ *
+ * Returns the ids touched so callers can report them.
+ */
+export async function quarantineUnusablePosts(): Promise<string[]> {
+  const client = getClient();
+  const titleClause = unusableTitleClause();
+  const res = await client.execute({
+    sql: `
+      UPDATE posts
+         SET status = 'rejected',
+             updated_at = ?
+       WHERE status IN ('pending_review', 'approved', 'unreviewed')
+         AND archived_at IS NULL
+         AND ${titleClause}
+    `,
+    args: [nowIso(), ...PLACEHOLDER_TITLES],
+  });
+  // RETURNING is not portable across libsql/sqlite builds, so re-select.
+  const ids = await client.execute({
+    sql: `
+      SELECT id FROM posts
+       WHERE status = 'rejected'
+         AND archived_at IS NULL
+         AND ${titleClause}
+    `,
+    args: [...PLACEHOLDER_TITLES],
+  });
+  void res;
+  return ids.rows.map((r) => String((r as Record<string, unknown>).id));
+}
+
+/** Count posts that the quarantine above would affect. */
+export async function countUnusablePosts(): Promise<number> {
+  const client = getClient();
+  const res = await client.execute({
+    sql: `SELECT COUNT(*) AS n FROM posts WHERE archived_at IS NULL AND ${unusableTitleClause()}`,
+    args: [...PLACEHOLDER_TITLES],
+  });
+  return Number((res.rows[0] as Record<string, unknown>).n ?? 0);
+}
+
+/** Shared predicate; its `?` placeholders must be supplied in order. */
+function unusableTitleClause(): string {
+  const holes = PLACEHOLDER_TITLES.map(() => "?").join(", ");
+  return `(
+    TRIM(COALESCE(title_bn, '')) = ''
+    OR LOWER(TRIM(COALESCE(title_bn, ''))) IN (${holes})
+    OR TRIM(COALESCE(body_bn, '')) = ''
+  )`;
+}
+

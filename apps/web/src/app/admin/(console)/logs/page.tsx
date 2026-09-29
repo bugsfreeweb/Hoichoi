@@ -1,15 +1,23 @@
-import { recentPipelineRuns, getClient } from "@hoichoi/db";
+import { listAdminActionsPage, listPipelineRunsPage } from "@hoichoi/db";
 import LoginLogViewer from "@/components/admin/LoginLogViewer";
+import { Paginator } from "@/components/admin/Paginator";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminLogsPage() {
-  const runs = await recentPipelineRuns(25);
-  const client = getClient();
-  const actions = await client.execute(
-    "SELECT * FROM admin_actions ORDER BY created_at DESC LIMIT 40",
-  );
-  const actionRows = actions.rows.map((r) => r as Record<string, unknown>);
+const PAGE_SIZE = 25;
+
+export default async function AdminLogsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: pageParam } = await searchParams;
+  const [runsPage, actionsPage] = await Promise.all([
+    listPipelineRunsPage(Number(pageParam ?? 1), PAGE_SIZE),
+    listAdminActionsPage(Number(pageParam ?? 1), PAGE_SIZE),
+  ]);
+  const runs = runsPage.rows;
+  const actionRows = actionsPage.rows;
 
   return (
     <div>
@@ -37,6 +45,12 @@ export default async function AdminLogsPage() {
               </div>
             ))}
           </div>
+          <Paginator
+            page={runsPage.page}
+            pageSize={runsPage.pageSize}
+            total={runsPage.total}
+            basePath="/admin/logs"
+          />
         </section>
         <section>
           <SectionTitle>অ্যাডমিন অ্যাকশন (অডিট লগ)</SectionTitle>
@@ -51,6 +65,12 @@ export default async function AdminLogsPage() {
               </div>
             ))}
           </div>
+          <Paginator
+            page={actionsPage.page}
+            pageSize={actionsPage.pageSize}
+            total={actionsPage.total}
+            basePath="/admin/logs"
+          />
         </section>
         <section>
           <SectionTitle>অ্যাডমিন লগইন লগ (কোন ইমেইল/আইপি থেকে ঢোকার চেষ্টা)</SectionTitle>

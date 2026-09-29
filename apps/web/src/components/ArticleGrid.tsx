@@ -4,16 +4,20 @@ import { Fragment, useState } from "react";
 import type { Post } from "@hoichoi/shared-types";
 import ArticleCard from "@/components/ArticleCard";
 import { AdSlot } from "@/components/AdSlot";
-import { CATEGORY_LABEL, toBn } from "@/lib/format";
+import { toBn } from "@/lib/format";
+import { categoryLabel } from "@/lib/category-style";
+import type { CategoryMeta } from "@hoichoi/shared-types";
 
 export default function ArticleGrid({
   posts,
   ads = false,
   adInfeedHtml = null,
+  categories = null,
 }: {
   posts: Post[];
   ads?: boolean;
   adInfeedHtml?: string | null;
+  categories?: CategoryMeta[] | null;
 }) {
   const cats = Array.from(new Set(posts.map((a) => a.category)));
   const [active, setActive] = useState<string>("all");
@@ -44,7 +48,7 @@ export default function ArticleGrid({
                 : "border-ink/25 text-ink-soft hover:border-ink hover:text-ink"
             }`}
           >
-            {CATEGORY_LABEL[c] ?? c}{" "}
+            {categoryLabel(c, categories)}{" "}
             <span className="font-mono-x text-[10px] opacity-70">
               {toBn(posts.filter((a) => a.category === c).length)}
             </span>
@@ -62,7 +66,7 @@ export default function ArticleGrid({
         {shown.map((a, i) => (
           <Fragment key={a.id}>
             <div className="grid-pop" style={{ animationDelay: `${(i % 6) * 60}ms` }}>
-              <ArticleCard post={a} index={i} />
+              <ArticleCard post={a} index={i} categories={categories} />
             </div>
             {ads && i !== shown.length - 1 && (i + 1) % 4 === 0 && (
               <div className="mt-10">

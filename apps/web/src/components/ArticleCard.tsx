@@ -1,12 +1,14 @@
 import Link from "next/link";
-import type { Post } from "@hoichoi/shared-types";
-import { CATEGORY_LABEL, CATEGORY_TINT, toBn } from "@/lib/format";
+import type { Post, CategoryMeta } from "@hoichoi/shared-types";
+import { toBn } from "@/lib/format";
+import { categoryLabel, categoryTint, readableOn } from "@/lib/category-style";
 import { readMinutesBn, shortId } from "@/lib/bn";
 import { mediaUrl } from "@/lib/media";
 
 interface ArticleCardProps {
   post: Post;
   index: number;
+  categories?: CategoryMeta[] | null;
 }
 
 const Icons = {
@@ -24,8 +26,8 @@ const Icons = {
   ),
 };
 
-export default function ArticleCard({ post, index }: ArticleCardProps) {
-  const tint = CATEGORY_TINT[post.category] ?? "#fbbf24";
+export default function ArticleCard({ post, index, categories }: ArticleCardProps) {
+  const tint = categoryTint(post.category, categories);
 
   return (
     <Link href={`/post/${post.slug}`} className="group block">
@@ -71,11 +73,11 @@ export default function ArticleCard({ post, index }: ArticleCardProps) {
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <span
-          className="flex items-center gap-1.5 px-3 py-1 text-[11.5px] font-bold text-white"
-          style={{ background: tint }}
+          className="flex items-center gap-1.5 px-3 py-1 text-[11.5px] font-bold"
+          style={{ background: tint, color: readableOn(tint) }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>
-          {CATEGORY_LABEL[post.category] ?? post.category}
+          {categoryLabel(post.category, categories)}
         </span>
         <span className="flex items-center gap-1 text-[12px] text-ink-soft">
           {Icons.Pin} {post.source_name}

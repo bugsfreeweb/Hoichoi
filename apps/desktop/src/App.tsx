@@ -14,6 +14,8 @@ import {
   deskMediaCleanup,
   deskBackupAuto,
   deskRadarStats,
+  deskCategories,
+  type DeskCategory,
   type DeskQueueRow,
   type DeskSource,
   type DeskStats,
@@ -167,6 +169,7 @@ export default function App() {
   const [queueRows, setQueueRows] = useState<DeskQueueRow[]>([]);
   const [statsData, setStatsData] = useState<DeskStats | null>(null);
   const [radarData, setRadarData] = useState<DeskRadarSnapshot | null>(null);
+  const [cats, setCats] = useState<DeskCategory[] | null>(null);
   const [hours, setHours] = useState(2);
   const [autoRun, _setAutoRun] = useState(() => localStorage.getItem(AUTORUN_KEY) !== "0");
   const [nextRunAt, setNextRunAt] = useState<number | null>(null);
@@ -296,6 +299,10 @@ export default function App() {
       setQueueRows(rows);
       setStatsData(stats);
       setRadarData(radar);
+      // Category names and dots come from the DB so an admin's rename shows up
+      // in the desk. Failing to load them only costs the local fallback labels.
+      const catList = await deskCategories(env).catch(() => null);
+      setCats(catList);
       const pending = stats?.stats?.pendingReview ?? 0;
       setPendingCount(pending);
       void deskWin().then((w) => w?.setBadgeCount?.(pending));
@@ -567,6 +574,7 @@ export default function App() {
                   logs={logs}
                   onOpen={jump}
                   hours={hours}
+                  cats={cats}
                 />
               </section>
 
@@ -575,7 +583,7 @@ export default function App() {
               </section>
 
               <section className="pane col" id="pane-queue" hidden={view !== "queue"}>
-                <Queue rows={queueRows} refresh={refresh} />
+                <Queue rows={queueRows} refresh={refresh} cats={cats} />
               </section>
 
               <section className="pane col" id="pane-collector" hidden={view !== "collector"}>

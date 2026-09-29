@@ -4,6 +4,8 @@
  * Categories are now dynamic (stored in category_configs table).
  */
 
+export * from "./secrets";
+
 export type CategorySlug = string; // Dynamic - managed via category_configs table
 
 export const DEFAULT_CATEGORIES: CategorySlug[] = [

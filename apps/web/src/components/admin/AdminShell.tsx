@@ -20,6 +20,7 @@ const NAV: Array<{ href: string; emoji: string; label: string }> = [
   { href: "/admin/archive", emoji: "📁", label: "আর্কাইভ" },
   { href: "/admin/backup", emoji: "💾", label: "ব্যাকআপ ও রিসেট" },
   { href: "/admin/logs", emoji: "📜", label: "লগ" },
+  { href: "/admin/setup", emoji: "🔑", label: "সেটআপ গাইড" },
   { href: "/admin/settings", emoji: "⚙️", label: "সেটিংস" },
 ];
 

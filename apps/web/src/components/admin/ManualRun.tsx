@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type { RecentPipelineRun } from "@hoichoi/db";
 
 function toBn(v: number | string): string {
@@ -162,12 +163,38 @@ export function ManualRun({ initialRuns }: { initialRuns: RecentPipelineRun[] })
       )}
 
       {!running && msg === "local" && (
-        <p className="mt-3 text-[11.5px] text-white/45">
-          serverless রানার কনফিগার করা নেই — লোকালি চালান: <code className="rounded bg-white/10 px-1 font-mono-x text-[10px]">pnpm scrape</code>
-        </p>
+        <div className="mt-3 rounded-lg border border-amber/40 bg-amber/10 p-3">
+          <p className="text-[11.5px] leading-relaxed text-white/75">
+            <span className="font-bold text-amber">রানার কনফিগার করা নেই।</span>{" "}
+            ওয়েবসাইট থেকে GitHub-কে সরাসরি স্ক্র্যাপ চালাতে দুটি সার্ভার ভ্যারিয়েবল দরকার।
+            না থাকলে লোকালি চালাতে হবে:{" "}
+            <code className="rounded bg-white/10 px-1 font-mono-x text-[10px]">
+              pnpm scrape
+            </code>
+          </p>
+          <Link
+            href="/admin/setup"
+            className="mt-2 inline-block border border-amber/50 px-3 py-1.5 text-[11px] font-bold text-amber transition-colors hover:bg-amber hover:text-night"
+          >
+            কীভাবে সেট করবেন দেখুন →
+          </Link>
+        </div>
       )}
       {msg === "denied" && <p className="mt-3 text-[11.5px] font-bold text-rose-300">অনুমতি নেই — admin/editor প্রয়োজন।</p>}
-      {msg === "err" && <p className="mt-3 text-[11.5px] font-bold text-rose-300">✗ ট্রিগার ব্যর্থ।</p>}
+      {msg === "err" && (
+        <div className="mt-3 rounded-lg border border-rose-400/40 bg-rose-500/10 p-3">
+          <p className="text-[11.5px] font-bold text-rose-300">✕ ট্রিগার ব্যর্থ।</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-white/55">
+            লগে বিস্তারিত দেখুন, অথবা GitHub → Actions → Pipeline cron-এ হাতে চাপ দিন।
+          </p>
+          <Link
+            href="/admin/logs"
+            className="mt-2 inline-block border border-white/20 px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:border-white/40"
+          >
+            রান লগ দেখুন →
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

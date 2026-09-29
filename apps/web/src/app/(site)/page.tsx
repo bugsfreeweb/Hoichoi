@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { windowPosts, countWindowPosts, categoriesWithCounts, parseAppConfig } from "@hoichoi/db";
+import { windowPosts, countWindowPosts, categoriesWithCounts, parseAppConfig, listCategories } from "@hoichoi/db";
 import { ScrollProgress } from "@/components/ScrollProgress";
 import Hero from "@/components/home/Hero";
 import LiveAnalytics from "@/components/home/live-analytics";
@@ -32,11 +32,12 @@ export default async function HomePage({
   const sp = await searchParams;
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
   const offset = (page - 1) * PAGE_SIZE;
-  const [posts, total, catStats, settings] = await Promise.all([
+  const [posts, total, catStats, settings, catRows] = await Promise.all([
     windowPosts({ limit: PAGE_SIZE, offset }),
     countWindowPosts(),
     categoriesWithCounts(),
     getSettings(),
+    listCategories(),
   ]);
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const featured = page === 1 ? (posts[0] ?? null) : null;
@@ -363,7 +364,7 @@ export default async function HomePage({
           </p>
         </div>
         </Reveal>
-        <ArticleGrid posts={rest} ads={cfg.show_ads} adInfeedHtml={settings.ad_infeed_html} />
+        <ArticleGrid posts={rest} ads={cfg.show_ads} adInfeedHtml={settings.ad_infeed_html} categories={catRows} />
         <Pagination page={page} pageCount={pageCount} base="/" />
       </section>
 

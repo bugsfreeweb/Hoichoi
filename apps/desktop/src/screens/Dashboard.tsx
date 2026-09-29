@@ -12,9 +12,10 @@
   BarChart3,
 } from "lucide-react";
 import Countdown from "../components/Countdown";
-import { toBn, bnTime, CATEGORY_LABEL } from "../lib/format";
+import { toBn, bnTime } from "../lib/format";
+import { categoryLabel } from "../lib/category-style";
 import { parseLogLine } from "../lib/logs";
-import type { DeskQueueRow, DeskSource, DeskStats } from "../lib/tauri";
+import type { DeskQueueRow, DeskSource, DeskStats, DeskCategory } from "../lib/tauri";
 import type { View } from "../App";
 
 export default function Dashboard({
@@ -24,6 +25,7 @@ export default function Dashboard({
   logs,
   onOpen,
   hours = 2,
+  cats,
 }: {
   sources: DeskSource[];
   queueRows: DeskQueueRow[];
@@ -31,6 +33,7 @@ export default function Dashboard({
   logs: string[];
   onOpen: (tab: View) => void;
   hours?: number;
+  cats?: DeskCategory[] | null;
 }) {
   const last = statsData?.runs?.[0] ?? null;
   const st = statsData?.stats;
@@ -219,7 +222,7 @@ export default function Dashboard({
                   {a.title_bn}
                 </span>
                 <span className="hidden text-[10.5px] text-white/40 sm:inline">
-                  {CATEGORY_LABEL[a.category] ?? a.category}
+                  {categoryLabel(a.category, cats)}
                 </span>
                 <span
                   className={`rounded-full px-2 py-0.5 font-mono-x text-[9px] uppercase ${

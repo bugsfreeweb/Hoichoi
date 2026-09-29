@@ -133,8 +133,54 @@ function resolveCategoryConfig(
   return null;
 }
 
-export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineStats> {
-  const log = opts.log ?? ((s: string) => console.log(s));
+/**
+ * Risk tier for a rewritten post.
+ *
+ * The previous rule was all-or-nothing: any category with `auto_pending_review`
+ * or `requires_double_approval` sent every post to the queue, so a page
+ * publishing hundreds of routine notices a day created hundreds of manual
+ * reviews while the genuinely dangerous material got no extra scrutiny beyond
+ * sitting in the same queue as everything else.
+ *
+ * Tiers, highest first:
+ *   critical     two-person approval required, never auto-published
+ *   sensitive    manual review before publishing
+ *   routine      publishes on its own
+ *
+ * A critical or sensitive tier always overrides the category defaults, so
+ * loosening a category's config can never let a minor-involved post through
+ * unattended.
+ */
+export type RiskTier = "critical" | "sensitive" | "routine";
+
+const CRITICAL_FLAGS = new Set([
+  "minor_involved",
+  "graphic_content",
+  "needs_double_approval",
+]);
+
+const SENSITIVE_FLAGS = new Set(["unverified_claim"]);
+
+export function assessRisk(
+  config: { auto_pending_review: boolean; requires_double_approval: boolean },
+  flags: readonly string[],
+): { tier: RiskTier; status: PostStatus } {
+  if (flags.some((f) => CRITICAL_FLAGS.has(f))) {
+    return { tier: "critical", status: "pending_review" };
+  }
+  if (flags.some((f) => SENSITIVE_FLAGS.has(f))) {
+    return { tier: "sensitive", status: "pending_review" };
+  }
+  if (config.requires_double_approval) {
+    return { tier: "critical", status: "pending_review" };
+  }
+  if (config.auto_pending_review) {
+    return { tier: "sensitive", status: "pending_review" };
+  }
+  return { tier: "routine", status: "published" };
+}
+
+export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineStats> {  const log = opts.log ?? ((s: string) => console.log(s));
   const client = getClient();
   const resolver = newResolver();
   const runId = crypto.randomUUID();
@@ -402,13 +448,8 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           continue;
         }
 
-        const sensitive =
-          config.auto_pending_review ||
-          config.requires_double_approval ||
-          outcome.flags.some((f) =>
-            f === "needs_double_approval" || f === "minor_involved" || f === "graphic_content",
-          );
-        const status: PostStatus = sensitive ? "pending_review" : "published";
+        const decision = assessRisk(config, outcome.flags);
+        const status: PostStatus = decision.status;
         const slug = makeSlug(outcome.rewritten.title_bn);
         const now = nowIso();
         await withTx(async (tx) => {

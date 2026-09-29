@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { toBn } from "@/lib/format";
 import { BRAND } from "@/lib/brand";
+import { SITE_BUILD } from "@/lib/build";
 import { listFooterCategories, getSettings } from "@hoichoi/db";
 
 export async function Footer() {
@@ -9,7 +10,19 @@ export async function Footer() {
   const siteName = settings.site_name || BRAND.en;
   const about =
     settings.footer_about_bn ||
-    `${BRAND.tagline} — স্বয়ংক্রিয় সংবাদ কিউরেশন ডেস্কের কারিগরি প্রদর্শনী: ডেস্কটপ কালেক্টর, পুনর্লিখন ইঞ্জিন, AI Agent-ভিত্তিক প্রকাশনা ও Web ডিপ্লয়লাইনের পূর্ণ প্রবাহ।`;
+    `${BRAND.tagline} — উন্মুক্ত ফেসবুক সূত্র থেকে স্বয়ংক্রিয়ভাবে সংগৃহীত, যাচাইকৃত ও সম্পাদনাগতভাবে প্রকাশিত প্রতিবেদনের সংবাদ-ধাঁচের সাইট।`;
+  // The submit link is the site's only growth channel, so it is surfaced in the
+  // footer nav and as its own call-to-action. It previously existed only at
+  // /submit with no inbound link, so visitors could never find it.
+  const legalLinks = [
+    { href: "/submit", label: "সোর্স জমা দিন" },
+    { href: "/report", label: "ভুল রিপোর্ট" },
+    { href: "/about", label: "সম্পর্কে" },
+    { href: "/privacy", label: "গোপনীয়তা" },
+    { href: "/terms", label: "শর্তাবলি" },
+    { href: "/dmca", label: "DMCA" },
+    { href: "/contact", label: "যোগাযোগ" },
+  ];
   return (
     <footer className="page-chrome border-t-2 border-ink">
       <div className="mx-auto max-w-[1400px] px-4 py-12 md:px-8">
@@ -46,13 +59,25 @@ export async function Footer() {
             </ul>
           </div>
           <div className="md:col-span-4">
-            <p className="font-mono-x text-[10px] tracking-[0.24em] text-ink-soft uppercase">
-              সিস্টেম মানচিত্র
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link href="/admin" className="border border-ink/30 px-4 py-2 text-[12px] font-bold transition-all duration-300 hover:border-ink hover:bg-ink hover:text-paper">
-                ওয়েব অ্যাডমিন →
+            <div className="border border-alizarin/40 bg-alizarin/[0.06] p-5">
+              <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">
+                আপনি কি এমন কোনো ফেসবুক পেজ বা গ্রুপ জানেন?
+              </p>
+              <p className="mt-2 text-[12.5px] leading-relaxed text-ink">
+                সংবাদ-ধাঁচের গুরুত্বপূর্ণ পোস্ট প্রকাশ করে এমন সব পেজ ও গ্রুপ আমাদের কাছে জানান।
+                অ্যাডমিন যাচাই করে অনুমোদন করলেই সেটি সোর্স হিসেবে যুক্ত হয়।
+              </p>
+              <Link
+                href="/submit"
+                className="mt-4 inline-block bg-alizarin px-5 py-2.5 text-[12.5px] font-bold text-white transition-colors hover:bg-ink"
+              >
+                সোর্স জমা দিন →
               </Link>
+            </div>
+            <p className="mt-6 font-mono-x text-[10px] tracking-[0.24em] text-ink-soft uppercase">
+              সিস্টেম
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
               <Link href="/system" className="border border-ink/30 px-4 py-2 text-[12px] font-bold transition-all duration-300 hover:border-ink hover:bg-ink hover:text-paper">
                 সিস্টেম ব্লুপ্রিন্ট →
               </Link>
@@ -65,14 +90,14 @@ export async function Footer() {
         </div>
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-ink/15 pt-6 font-mono-x text-[10px] tracking-[0.16em] text-ink-soft uppercase">
           <span>
-            © {toBn(2026)} {siteName} DESK · BUILD 3.2
+            © {toBn(2026)} {siteName} · BUILD {SITE_BUILD}
           </span>
-          <span className="flex items-center gap-4">
-            <Link href="/about">সম্পর্কে</Link>
-            <Link href="/privacy">গোপনীয়তা</Link>
-            <Link href="/terms">শর্তাবলি</Link>
-            <Link href="/dmca">DMCA</Link>
-            <Link href="/contact">যোগাযোগ</Link>
+          <span className="flex flex-wrap items-center gap-4">
+            {legalLinks.map((l) => (
+              <Link key={l.href} href={l.href} className="hover:text-alizarin">
+                {l.label}
+              </Link>
+            ))}
           </span>
           <span className="flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>

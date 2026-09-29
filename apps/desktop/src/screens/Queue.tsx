@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, RefreshCw, Eye, ExternalLink, CircleCheck, Clock3, Ban, Pencil, Trash2, X, Loader2, ShieldCheck } from "lucide-react";
-import { CATEGORY_LABEL, CATEGORY_TINT, POST_STATUS_LABEL, bnTime, toBn } from "../lib/format";
+import { POST_STATUS_LABEL, bnTime, toBn } from "../lib/format";
+import { categoryLabel, categoryTint, bySortOrder, type CatMeta } from "../lib/category-style";
 import { deskCategories, deskQueueBulk, deskQueueRemove, deskQueueSet, deskQueueUpdate, openAdmin, isTauri, type DeskCategory, type DeskQueueRow } from "../lib/tauri";
 import { getRunEnv } from "../lib/vault";
 import { toast } from "../lib/toast";
@@ -109,7 +110,9 @@ function EditModal({
         <label className="mt-3 block">
           <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">বিভাগ</span>
           <select className={field} value={category} onChange={(e) => setCategory(e.target.value)}>
-            {(cats ?? [{ slug: row.category, displayNameBn: CATEGORY_LABEL[row.category] ?? row.category }]).map((c) => (
+            {bySortOrder<CatMeta>(
+              cats ?? [{ slug: row.category, displayNameBn: categoryLabel(row.category, cats) }],
+            ).map((c) => (
               <option key={c.slug} value={c.slug} className="bg-panel text-white">
                 {c.displayNameBn}
               </option>
@@ -141,9 +144,11 @@ function EditModal({
 export default function Queue({
   rows,
   refresh,
+  cats,
 }: {
   rows: DeskQueueRow[];
   refresh: () => Promise<void>;
+  cats?: DeskCategory[] | null;
 }) {
   const [tab, setTab] = useState<Tab>("all");
   const [q, setQ] = useState("");
@@ -425,9 +430,9 @@ export default function Queue({
                         <span className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-white/10 px-2 py-0.5 text-[9.5px] text-white/55">
                           <span
                             className="h-1.5 w-1.5 rounded-full"
-                            style={{ background: CATEGORY_TINT[r.category] ?? "#fbbf24" }}
+                            style={{ background: categoryTint(r.category, cats) }}
                           />
-                          {CATEGORY_LABEL[r.category] ?? r.category}
+                          {categoryLabel(r.category, cats)}
                         </span>
                       </div>
                     </div>
