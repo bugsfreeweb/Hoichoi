@@ -13,7 +13,8 @@ import { Reveal } from "@/components/Reveal";
 import { HomeLiveProvider } from "@/components/home/live-data";
 import { getSettings } from "@/lib/settings";
 import { timeBn, readMinutesBn, shortId, bnNum } from "@/lib/bn";
-import { CATEGORY_LABEL, CATEGORY_TINT, agoBn } from "@/lib/format";
+import { agoBn } from "@/lib/format";
+import { categoryLabel, categoryTint, readableOn } from "@/lib/category-style";
 import { mediaUrl } from "@/lib/media";
 import { BRAND } from "@/lib/brand";
 
@@ -81,7 +82,7 @@ export default async function HomePage({
               >
                 <span
                   className="h-1.5 w-1.5 rounded-full"
-                  style={{ background: CATEGORY_TINT[category.slug] ?? "#d2202c" }}
+                  style={{ background: categoryTint(category.slug, [category]) }}
                 />
                 {category.displayNameBn}
                 <span className="font-mono-x text-[9.5px] font-medium text-ink-soft group-hover:text-paper/60">
@@ -160,13 +161,18 @@ export default async function HomePage({
             <div className="lg:col-span-5">
               <Reveal delay={100}>
               <div className="flex flex-wrap items-center gap-3">
-                <span
-                  className="flex items-center gap-1.5 px-3 py-1 text-[11.5px] font-bold text-white"
-                  style={{ background: CATEGORY_TINT[featured.category] ?? "#d2202c" }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>
-                  {CATEGORY_LABEL[featured.category] ?? featured.category}
-                </span>
+                {(() => {
+                  const tint = categoryTint(featured.category, catStats.map((s) => s.category));
+                  return (
+                    <span
+                      className="flex items-center gap-1.5 px-3 py-1 text-[11.5px] font-bold"
+                      style={{ background: tint, color: readableOn(tint) }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>
+                      {categoryLabel(featured.category, catStats.map((s) => s.category))}
+                    </span>
+                  );
+                })()}
                 <span className="flex items-center gap-1 text-[12px] text-ink-soft">
                   <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0"/><circle cx="12" cy="10" r="3"/></svg>
                   {featured.source_name}
@@ -226,11 +232,18 @@ export default async function HomePage({
                             {a.title_bn}
                           </h4>
                           <p className="mt-1 flex items-center gap-2 text-[10.5px] text-ink-soft">
-                            <span
-                              className="inline-block h-1.5 w-1.5 rounded-full"
-                              style={{ background: CATEGORY_TINT[a.category] ?? "#d2202c" }}
-                            />
-                            {CATEGORY_LABEL[a.category] ?? a.category} ·{" "}
+                            {(() => {
+                              const meta = catStats.map((s) => s.category);
+                              return (
+                                <>
+                                  <span
+                                    className="inline-block h-1.5 w-1.5 rounded-full"
+                                    style={{ background: categoryTint(a.category, meta) }}
+                                  />
+                                  {categoryLabel(a.category, meta)} ·{" "}
+                                </>
+                              );
+                            })()}
                             {agoBn(a.published_at ?? a.created_at)}
                           </p>
                         </div>

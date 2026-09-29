@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CATEGORY_LABEL, bnTime, toBn } from "@/lib/format";
-import type { Post, PostStatus } from "@hoichoi/shared-types";
+import { bnTime, toBn } from "@/lib/format";
+import { categoryLabel, categoryTint } from "@/lib/category-style";
+import type { CategoryMeta, Post, PostStatus } from "@hoichoi/shared-types";
 
 type Tab = "all" | "published" | "pending";
 
@@ -28,17 +29,13 @@ function tabKey(status: PostStatus): Tab {
   return "pending";
 }
 
-const CATEGORY_TINT: Record<string, string> = {
-  "child-sexual-abuse": "#2563eb",
-  "extramarital-crime": "#d2202c",
-  "missing-children": "#0d9488",
-  crime: "#d2202c",
-  child: "#2563eb",
-  family: "#0d9488",
-  viral: "#d97706",
-};
-
-export default function ContentQueue({ rows }: { rows: Post[] }) {
+export default function ContentQueue({
+  rows,
+  cats,
+}: {
+  rows: Post[];
+  cats?: Array<Pick<CategoryMeta, "slug" | "dot" | "displayNameBn" | "displayNameEn">>;
+}) {
   const [tab, setTab] = useState<Tab>("all");
   const [q, setQ] = useState("");
 
@@ -124,9 +121,9 @@ export default function ContentQueue({ rows }: { rows: Post[] }) {
                         <span className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-white/10 px-2 py-0.5 text-[9.5px] text-white/55">
                           <span
                             className="h-1.5 w-1.5 rounded-full"
-                            style={{ background: CATEGORY_TINT[r.category] ?? "#888" }}
+                            style={{ background: categoryTint(r.category, cats) }}
                           />
-                          {CATEGORY_LABEL[r.category] ?? r.category}
+                          {categoryLabel(r.category, cats)}
                         </span>
                       </div>
                     </div>

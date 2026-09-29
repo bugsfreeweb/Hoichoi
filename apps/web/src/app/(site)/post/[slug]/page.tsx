@@ -5,7 +5,8 @@ import { getPublicPostBySlug, relatedPosts } from "@hoichoi/db";
 import { getPostComments } from "@hoichoi/db";
 import { getCategories, findCategory } from "@/lib/categories-server";
 import { readMinutesBn, shortId } from "@/lib/bn";
-import { bnDate, bnTime, CATEGORY_TINT, CATEGORY_LABEL } from "@/lib/format";
+import { bnDate, bnTime } from "@/lib/format";
+import { categoryLabel, categoryTint, readableOn } from "@/lib/category-style";
 import { mediaUrl } from "@/lib/media";
 import { siteUrl } from "@/lib/site";
 import { CaseStatusBadge } from "@/components/CaseStatusBadge";
@@ -48,11 +49,47 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
+/**
+ * Split the article body into paragraphs.
+ *
+ * Blank lines are the paragraph separator the rewrite prompt asks for, so that
+ * is the primary rule. Some models instead emit one paragraph per line with no
+ * blank line between them, so a single block falls back to splitting on every
+ * newline rather than rendering one unbroken wall of text.
+ */
 function paragraphize(text: string): string[] {
-  return text
-    .split(/\n{1,}/)
-    .map((p) => p.trim())
+  const clean = (s: string) => s.replace(/\s+/g, " ").trim();
+  const blankLineSplit = text
+    .split(/\n\s*\n/)
+    .map(clean)
     .filter(Boolean);
+  if (blankLineSplit.length > 1) return blankLineSplit;
+  return text
+    .split(/\n/)
+    .map(clean)
+    .filter(Boolean);
+}
+
+/**
+ * Build the "মূল বিষয়সমূহ" list from the article itself.
+ *
+ * The opening sentence of each paragraph is the natural summary of that
+ * section, and deriving it here means the briefing stays correct for every
+ * article without storing a second field or asking the model for one.
+ */
+function keyPointsFrom(paragraphs: string[], limit = 4): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const p of paragraphs) {
+    // First sentence, tolerating Bangla danda (।) and ASCII full stops.
+    const first = p.split(/(?<=।)|(?<=\.)\s/)[0]?.trim() ?? p;
+    const point = first.length > 140 ? `${first.slice(0, 137).trimEnd()}…` : first;
+    if (!point || seen.has(point)) continue;
+    seen.add(point);
+    out.push(point);
+    if (out.length >= limit) break;
+  }
+  return out;
 }
 
 export default async function PostPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -126,8 +163,13 @@ function PostContent({
   settings: Awaited<ReturnType<typeof getSettings>>;
   cat: Awaited<ReturnType<typeof findCategory>>;
 }) {
-  const tint = cat?.dot ? `#${cat.dot}` : CATEGORY_TINT[post!.category] ?? "#d2202c";
+  const tint = categoryTint(post!.category, cat ? [cat] : null);
+  // Category dots are admin-editable, so a pale hue is entirely possible.
+  // A fixed text-white would become unreadable white-on-white in light theme.
+  const onTint = readableOn(tint);
+  const label = categoryLabel(post!.category, cat ? [cat] : null);
   const paragraphs = paragraphize(post!.body_bn);
+  const keyPoints = keyPointsFrom(paragraphs);
   const hash = shortId(post!.id);
   const item = `ITEM_${hash.slice(0, 4).toUpperCase()}`;
   const fbText =
@@ -146,7 +188,7 @@ function PostContent({
           <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
           প্রচ্ছদ
         </Link>
-        <span>/ সংগ্রহ / {CATEGORY_LABEL[post!.category] ?? cat?.displayNameBn ?? post!.category} /</span>
+        <span>/ সংগ্রহ / {label} /</span>
         <span className="text-ink">{item}</span>
       </div>
 
@@ -154,10 +196,10 @@ function PostContent({
       <header className="mx-auto mt-8 max-w-4xl text-center">
         <div className="flex flex-wrap items-center justify-center gap-3">
           <span
-            className="inline-flex items-center gap-1.5 px-3 py-1 text-[11.5px] font-bold text-white"
-            style={{ background: tint }}
+            className="inline-flex items-center gap-1.5 px-3 py-1 text-[11.5px] font-bold"
+            style={{ background: tint, color: onTint }}
           >
-            {CATEGORY_LABEL[post!.category] ?? cat?.displayNameBn ?? post!.category}
+            {label}
           </span>
           {isMissingActive && post!.case_status && <CaseStatusBadge status={post!.case_status} />}
         </div>
@@ -222,29 +264,66 @@ function PostContent({
       {/* body + sidebar */}
       <div className="mx-auto mt-12 grid max-w-6xl gap-12 lg:grid-cols-12">
         <div className="lg:col-span-7">
-          {paragraphs.map((p, i) => (
-            <p
-              key={i}
-              className={`mb-6 text-[16px] leading-[1.95] text-ink/90 ${
-                i === 0
-                  ? "first-letter:float-left first-letter:mr-3 first-letter:font-serif-bn first-letter:text-[64px] first-letter:leading-[0.8] first-letter:font-black first-letter:text-alizarin"
-                  : ""
-              }`}
-            >
-              {p}
-            </p>
-          ))}
+          {/*
+            The pull quote is inserted after the second paragraph rather than
+            after the whole body. Placing it at the end left the article
+            reading as one uninterrupted wall, and with the summary already
+            rendered under the headline it duplicated that text a third time.
+          */}
+          {(() => {
+            const QUOTE_AFTER = 2;
+            const quote = post!.summary_bn;
+            const out: React.ReactNode[] = [];
+            paragraphs.forEach((p, i) => {
+              if (i === QUOTE_AFTER && quote) {
+                out.push(
+                  <blockquote key="quote" className="my-10 border-y-2 border-ink py-8">
+                    <p className="font-serif-bn text-[22px] leading-[1.6] font-bold text-ink md:text-[26px]">
+                      “{quote}”
+                    </p>
+                    <cite className="mt-3 block font-mono-x text-[10px] tracking-[0.2em] text-ink-soft uppercase not-italic">
+                      — পুনর্লিখিত প্রতিবেদন থেকে
+                    </cite>
+                  </blockquote>,
+                );
+              }
+              out.push(
+                <p
+                  key={i}
+                  className={`mb-6 text-[16px] leading-[1.95] text-ink/90 ${
+                    i === 0
+                      ? "first-letter:float-left first-letter:mr-3 first-letter:font-serif-bn first-letter:text-[64px] first-letter:leading-[0.8] first-letter:font-black first-letter:text-alizarin"
+                      : ""
+                  }`}
+                >
+                  {p}
+                </p>,
+              );
+            });
+            return out;
+          })()}
 
-          {/* pull quote */}
-          {post!.summary_bn && (
-            <blockquote className="my-10 border-y-2 border-ink py-8">
-              <p className="font-serif-bn text-[22px] leading-[1.6] font-bold text-ink md:text-[26px]">
-                “{post!.summary_bn}”
+          {/* briefing summary — gives a reader the whole case at a glance */}
+          {keyPoints.length > 0 && (
+            <section className="mt-10 border border-ink/20 bg-ink/[0.03] p-5 dark:bg-paper-deep/60">
+              <p className="font-mono-x text-[10px] tracking-[0.22em] text-ink-soft uppercase">
+                At a glance
               </p>
-              <cite className="mt-3 block font-mono-x text-[10px] tracking-[0.2em] text-ink-soft uppercase not-italic">
-                — পুনর্লিখিত প্রতিবেদন থেকে
-              </cite>
-            </blockquote>
+              <h2 className="mt-1.5 font-serif-bn text-[19px] font-bold text-ink">
+                মূল বিষয়সমূহ
+              </h2>
+              <ul className="mt-3 space-y-2">
+                {keyPoints.map((k, i) => (
+                  <li key={i} className="flex gap-2.5 text-[13.5px] leading-relaxed text-ink/85">
+                    <span
+                      className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full"
+                      style={{ background: tint }}
+                    />
+                    {k}
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
 
           <div className="flex items-center gap-2 border border-ink/25 bg-ink/5 dark:bg-paper-deep/60 px-4 py-3 text-[11.5px] text-ink-soft">

@@ -1,26 +1,25 @@
 /**
  * Pure presentation helpers — safe to import from client components
  * (no database or server-only dependencies here).
+ *
+ * Category colours and labels live in `category-style.ts`, which resolves them
+ * from the database and derives readable text from the colour's luminance.
+ * The maps below are a static fallback for surfaces with no category rows
+ * loaded; prefer `categoryLabel(slug, cats)` / `categoryTint(slug, cats)`.
  */
 
+/** @deprecated Use `categoryLabel(slug, cats)` so admin renames are respected. */
 export const CATEGORY_LABEL: Record<string, string> = {
   "child-sexual-abuse": "শিশু যৌন নির্যাতন",
   "extramarital-crime": "পরকীয়া অপরাধ",
   "missing-children": "নিখোঁজ শিশু",
-  crime: "অপরাধ",
-  child: "শিশু সুরক্ষা",
-  family: "পরিবার ও সমাজ",
-  viral: "ভাইরাল ও তথ্য",
 };
 
+/** @deprecated Use `categoryTint(slug, cats)` so admin dot colours are respected. */
 export const CATEGORY_TINT: Record<string, string> = {
   "child-sexual-abuse": "#2563eb",
   "extramarital-crime": "#d2202c",
   "missing-children": "#0d9488",
-  crime: "#d2202c",
-  child: "#2563eb",
-  family: "#0d9488",
-  viral: "#d97706",
 };
 
 const BN_DIGITS = "০১২৩৪৫৬৭৮৯";

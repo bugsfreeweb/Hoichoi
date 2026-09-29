@@ -93,7 +93,7 @@ export class OpenAICompatProvider implements LLMProvider {
           { role: "user", content: user },
         ],
         temperature: 0.3,
-        max_tokens: 1600,
+        max_tokens: 4096,
       }),
     });
     if (!res.ok) {

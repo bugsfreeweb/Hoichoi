@@ -1,5 +1,5 @@
 ﻿import Link from "next/link";
-import { statsSnapshot, recentPipelineRuns, getAllComments, listPosts } from "@hoichoi/db";
+import { statsSnapshot, recentPipelineRuns, getAllComments, listPosts, listCategories } from "@hoichoi/db";
 import type { RecentPipelineRun } from "@hoichoi/db";
 import Countdown from "@/components/admin/Countdown";
 import ContentQueue from "@/components/admin/ContentQueue";
@@ -49,11 +49,12 @@ function runStats(r: RecentPipelineRun) {
 }
 
 export default async function AdminDashboardPage() {
-  const [stats, runs, comments, posts] = await Promise.all([
+  const [stats, runs, comments, posts, cats] = await Promise.all([
     statsSnapshot(),
     recentPipelineRuns(10),
     getAllComments(),
     listPosts(300),
+    listCategories(),
   ]);
 
   const lastRun = runs[0] ?? null;
@@ -233,7 +234,7 @@ export default async function AdminDashboardPage() {
 
       {/* content queue */}
       <div className="mt-4">
-        <ContentQueue rows={posts} />
+        <ContentQueue rows={posts} cats={cats} />
       </div>
 
       {/* moderation summary */}

@@ -60,7 +60,7 @@ export class GoogleGeminiProvider implements LLMProvider {
         body: JSON.stringify({
           system_instruction: { parts: [{ text: content }] },
           contents: [{ role: "user", parts: [{ text: user }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 1600 },
+          generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
         }),
       },
     );

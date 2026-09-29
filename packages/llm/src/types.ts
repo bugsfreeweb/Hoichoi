@@ -50,13 +50,46 @@ export class ProviderError extends Error {
   }
 }
 
-/** Parses strict `<LABEL>: <value>` output into structured fields. */
+/**
+ * A field starts a new section only when the line begins with an all-caps
+ * label followed by a colon, e.g. `TITLE:` or `SAFETY_FLAG:`.
+ */
+const FIELD_LABEL = /^([A-Z][A-Z0-9_]*):[ \t]?/;
+
+/**
+ * Parses strict `<LABEL>: <value>` output into structured fields.
+ *
+ * This walks the output line by line instead of using one regex per field.
+ * The previous regex terminator was `(?=^[A-Z_]+:|\s*$)`; under the `m` flag
+ * `\s*$` matches at *every* line end rather than only at end-of-string, so the
+ * lazy BODY capture stopped at the first newline. Every multi-paragraph
+ * article was silently reduced to its opening paragraph, which is why posts
+ * read as a one-line brief instead of an article. A line scanner has no such
+ * ambiguity and also tolerates Windows line endings.
+ */
 export function parseRewriteOutput(raw: string): ParsedRewrite {
-  const grab = (label: string) => {
-    const rx = new RegExp(`^${label}:\\s*([\\s\\S]*?)(?=^[A-Z_]+:|\\s*$)`, "im");
-    const m = raw.match(rx);
-    return m ? m[1]!.trim() : "";
+  const fields: Record<string, string> = {};
+  let label: string | null = null;
+  let buffer: string[] = [];
+
+  const flush = () => {
+    if (label) fields[label] = buffer.join("\n").trim();
   };
+
+  for (const line of raw.split(/\r?\n/)) {
+    const m = FIELD_LABEL.exec(line);
+    if (m) {
+      flush();
+      label = m[1]!;
+      // Keep the remainder of the label's own line, so single-line values work.
+      buffer = [line.slice(m[0].length)];
+    } else if (label) {
+      buffer.push(line);
+    }
+  }
+  flush();
+
+  const grab = (name: string) => fields[name] ?? "";
 
   const safetyRaw = grab("SAFETY_FLAG").toLowerCase();
   const safetyFlag = (
@@ -73,7 +106,10 @@ export function parseRewriteOutput(raw: string): ParsedRewrite {
   ) as ParsedRewrite["case_status"];
 
   return {
-    title_bn: grab("TITLE") || "শিরোনাম ছাড়া",
+    // Intentionally no "শিরোনাম ছাড়া" fallback: an absent title must stay
+    // empty so the scraper rejects the post instead of storing a placeholder
+    // headline on the site.
+    title_bn: grab("TITLE"),
     summary_bn: grab("SUMMARY"),
     body_bn: grab("BODY"),
     safety_flag: safetyFlag,

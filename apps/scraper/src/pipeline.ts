@@ -45,10 +45,66 @@ export interface PipelineStats {
   rawInserted: number;
   rewritten: number;
   duplicatesBlocked: number;
+  /** Posts rejected because the rewrite was unusable (no title, no body, …). */
+  skipped: number;
   published: number;
   pendingReview: number;
   providerUsed: string[] | null;
   errors: string[];
+}
+
+/**
+ * Titles that a model emits when it could not write one. Stored as literal
+ * headlines they look like real content while carrying no information.
+ */
+const PLACEHOLDER_TITLES = new Set([
+  "শিরোনাম ছাড়া",
+  "শিরোনাম নেই",
+  "শিরোনাম",
+  "শিরোনামহীন",
+  "শিরোনাম দেওয়া হয়নি",
+  "শিরোনাম পাওয়া যায়নি",
+  "untitled",
+  "no title",
+  "n/a",
+  "na",
+  "-",
+  "—",
+  "…",
+]);
+
+/**
+ * Reject rewrite output that must not reach the database.
+ *
+ * Returns a short reason for the log, or null when the post is publishable.
+ * The checks are deliberately cheap and string-based: an empty or placeholder
+ * title is a hard reject, and a body too short to be an article is a reject
+ * too, because such a post can only ever be noise in the queue.
+ */
+export function unusableReason(rewritten: {
+  title_bn: string;
+  body_bn: string;
+  summary_bn?: string;
+}): string | null {
+  const title = (rewritten.title_bn ?? "").trim();
+  const body = (rewritten.body_bn ?? "").trim();
+
+  if (!title) return "no title";
+  // Compare on a normalised form so "শিরোনাম ছাড়া" and "শিরোনাম   ছাড়া" both hit.
+  const flat = title.replace(/[\s।।,.:!?"'“”‘’()\[\]-]+/g, "").toLowerCase();
+  if (PLACEHOLDER_TITLES.has(flat) || flat.length < 4) {
+    return `placeholder title (${JSON.stringify(title.slice(0, 40))})`;
+  }
+  // A title that is only punctuation/quotes carries no information.
+  if (!/\p{L}/u.test(title)) return "title has no letters";
+
+  if (!body) return "no body";
+  // 40 Bangla/word characters is well under the shortest acceptable briefing,
+  // and filters out the single-line echoes models return on a failed rewrite.
+  const words = body.split(/\s+/).filter(Boolean);
+  if (words.length < 25) return `body too short (${words.length} words)`;
+
+  return null;
 }
 
 /**
@@ -89,6 +145,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
     rawInserted: 0,
     rewritten: 0,
     duplicatesBlocked: 0,
+    skipped: 0,
     published: 0,
     pendingReview: 0,
     providerUsed: [],
@@ -334,6 +391,17 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           continue;
         }
 
+        // Reject unusable output BEFORE it reaches the database. A post with no
+        // real title, a placeholder title, or an empty body is worse than no
+        // post at all: it shows up in the queue and on the site as "শিরোনাম ছাড়া"
+        // and costs a human to clean up.
+        const unusable = unusableReason(outcome.rewritten);
+        if (unusable) {
+          log(`[skip] ${unusable} — ${sp.fbPostUrl}`);
+          stats.skipped++;
+          continue;
+        }
+
         const sensitive =
           config.auto_pending_review ||
           config.requires_double_approval ||
@@ -416,6 +484,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         rawInserted: stats.rawInserted,
         rewritten: stats.rewritten,
         duplicatesBlocked: stats.duplicatesBlocked,
+        skipped: stats.skipped,
         published: stats.published,
         pendingReview: stats.pendingReview,
       }),

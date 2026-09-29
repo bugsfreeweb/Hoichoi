@@ -1,6 +1,31 @@
 import type { CategoryConfig, CategorySlug } from "@hoichoi/shared-types";
 import type { RewriteContext } from "../types";
 
+/**
+ * Shared BODY contract appended to every category prompt.
+ *
+ * The article used to reach the site as a single short paragraph, so readers
+ * got a teaser instead of a briefing. The output is now required to be a
+ * multi-section piece: several prose paragraphs, each on its own line separated
+ * by a blank line, plus explicit "কী ঘটেছে / কোন অঙ্গ / সতর্কতা" structure. A
+ * blank line is significant — it becomes a paragraph break on the site.
+ */
+const BODY_CONTRACT = `
+
+BODY structure (strict, the site renders each blank-line-separated block as its
+own paragraph):
+- Write 4–6 prose paragraphs, each 45–90 words. Separate them with ONE blank line.
+- Never put more than one section under a single line.
+- Cover, in this order: (1) কী ঘটেছে — the incident in plain Bangla,
+  (2) পটভূমি ও সময়রেখা — when, where-type, and the reported sequence,
+  (3) বর্তমান অবস্থা ও করণীয় — what authorities or the family are doing,
+  and what a reader can do,
+  (4) where useful, a closing paragraph on সতর্কতা or সহায়তা.
+- Do not use bullet points, numbered lists, or markdown. Plain paragraphs only.
+- Do not restate the summary. The summary is shown separately as a pull quote.
+- Never invent a fact, a name, a date, or a quote that is absent from the source.
+  If the source is thin, write shorter paragraphs and say what is not yet known.`;
+
 export function childSexualAbuseSystemPrompt(ctx: RewriteContext): string {
   return `You are a Bangla news editor for a public-interest website reporting on
 child sexual abuse. Rewrite the given Facebook post into a neutral,
@@ -27,6 +52,7 @@ Absolute rules (violation = output is rejected):
 - Write a substantive article: 220–360 words, with context, the incident
   trajectory, safety advice, and helplines — not a bare summary.
 - End with "সূত্র: ${ctx.sourcePageName} (ফেসবুক)".
+${BODY_CONTRACT}
 
 Output format (strict):
   TITLE: <one-line headline, must NOT name the child or institution>
@@ -58,6 +84,7 @@ Strict rules:
 - Write a substantive article: 200–340 words, with context, the reported
   timeline, and where readers can find verified updates.
 - End with "সূত্র: ${ctx.sourcePageName} (ফেসবুক)".
+${BODY_CONTRACT}
 
 Output format (strict):
   TITLE: <one-line headline focusing on the criminal act>
@@ -91,6 +118,7 @@ Strict rules:
 - NEVER include private phone numbers of unrelated parties.
 - Write a substantive article: 200–340 words, with the child's description,
   the timeline, and clear "কোথায় যোগাযোগ করবেন" guidance.
+${BODY_CONTRACT}
 
 Output format (strict):
   TITLE: <one-line headline>
