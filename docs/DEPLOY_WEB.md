@@ -31,6 +31,9 @@ ADMIN_ALLOWED_EMAILS admin@example.com
 STORAGE_ADAPTER      local | r2
 ```
 
+> **পূর্ণ সিক্রেত তালিকা ও প্রতিটির বিস্তারিত নির্দেশনা:** [`SECRETS.md`](./SECRETS.md)।
+> সেখানে প্রতিটি সিক্রেট কোথা থেকে পাবেন, খরচ কত, এবং না দিলে ঠিক কী ভাঙবে — বাংলায়।
+
 > `file:` URLs do not work on Vercel (ephemeral filesystem) — use a Turso
 > `libsql://` database.
 
@@ -68,6 +71,13 @@ Live site: `https://hoichoifeed.vercel.app`.
    Actions:
    - `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
    - `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`
+
+   > Option A is **optional in practice**. If Vercel's own Git integration is
+   > connected to the repo, a push to `main` already deploys production and none
+   > of the three `VERCEL_*` secrets are needed. Add them only if you want GitHub
+   > Actions to be the deploy path. The workflow skips itself (without failing)
+   > when they are absent.
+
 4. Push to `main` touching `apps/web/**` or `packages/**` → the
    `.github/workflows/deploy-web.yml` workflow typechecks then runs
    `amondnet/vercel-action` with `--prod`. Git push is the only trigger.

@@ -303,14 +303,18 @@ The desktop UI mirrors the `mockup/` desk controller exactly:
   the child via `stop_pipeline` (Windows `taskkill /F /T`) (`screens/Collector.tsx`).
 - **Vault** — KeyVault-style table of the AES-256-GCM credential store with
   reveal/copy per key + copy-all `.env` payload (`screens/Vault.tsx`).
-- **Settings** — mockup preference panels (cron `0 */N * * *` → `pipeline_hours` via
-  `settingsSet`, model/temp/gate/toggles persisted to `localStorage`) above the real
-  functional panels (cloud sync, branding, admin codes, backup/reset/sync)
-  (`screens/Settings.tsx`). The screen is organized into **10 pill tabs**
-  (`.settings-tabs`, mirroring `.mtabs`) so the long settings page no longer
-  scrolls endlessly:
-  1. **প্রেফারেন্স** (Sliders) — cron, model, temperature, toggles (stateless —
-     reads `localStorage` / runner env).
+- **Settings** — mockup preference panels above the real functional panels (cloud
+  sync, branding, admin codes, backup/reset/sync) (`screens/Settings.tsx`). The
+  screen is organized into **10 pill tabs** (`.settings-tabs`, mirroring `.mtabs`)
+  so the long settings page no longer scrolls endlessly:
+  1. **প্রেফারেন্স** (Sliders) — cron, model, temperature, fact-gate and toggles.
+     **Cron, temperature, and the fact-gate persist to the shared `settings` row**
+     (via `settingsSet`) and have explicit **সংরক্ষিত করুন** buttons, so the web
+     admin and the scheduled GitHub Actions run read the same values. This is a
+     behavioural change from earlier versions, where all three lived only in
+     `localStorage` and the providers hardcoded `temperature: 0.3` — the sliders
+     looked live but changed nothing. `model` and the pipeline toggles remain
+     local to the desk (they select which provider row the local runner uses).
   2. **সোর্স** (Rss) — inline source editing via `<DeskSourceManager />` (see below);
      the dedicated Watchlist screen still handles add/search.
   3. **বিভাগ** (Tags) — inline category CRUD via `<DeskCategoryManager />`:
@@ -334,6 +338,22 @@ The desktop UI mirrors the `mockup/` desk controller exactly:
   10. **API ভল্ট** (KeyRound) — vault fields table (unchanged).
 - **Moderation** — comment queue with pending/approved/blocked tabs and approve/block
   actions through the runner (`moderation list|set`) (`screens/Moderation.tsx`).
+  Bulk approve/block counts progress (`done/total`) and reports **partial**
+  results: each comment is a separate write, so a failure halfway through says
+  how many landed rather than a blanket "failed" that hides which items still
+  need attention.
+- **GitHub Actions secrets panel** — Settings shows every credential the scheduled
+  pipeline needs, with its presence, last-updated timestamp, and — crucially —
+  **where to obtain it and what breaks when it is missing**, inline in Bangla.
+  The catalogue is a standalone copy at `src/lib/secret-specs.ts` (the Tauri
+  frontend is intentionally dependency-free) that mirrors
+  `packages/shared-types/src/secrets.ts`, which backs the web `/admin/setup` page
+  and [`docs/SECRETS.md`](./SECRETS.md). Update all three together.
+- **Media capability is partial** — the Settings → মিডিয়া panel states this
+  outright: **image** posts are fetched and stored under `/uploads`, **video**
+  needs `yt-dlp` + `ffmpeg`, which the pipeline does not invoke, so video posts
+  are skipped rather than failing. Previously a video post silently kept its
+  Facebook URL with no error shown anywhere.
 - **Inline source editing (`DeskSourceManager`)** — the Settings → সোর্স tab lets an
   editor open any existing source and edit its name, URL, kind, primary category,
   topics and Facebook id **in place** without re-creating the row (runs through the

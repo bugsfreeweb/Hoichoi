@@ -109,6 +109,28 @@ What this platform is **not**:
 
 ## Cross-cutting rules (all categories)
 
+0. **Risk tier decides the queue.** Every rewritten post is assigned a tier before
+   it is stored; the tier — not the category alone — decides whether it can publish
+   on its own. Implemented in `apps/scraper/src/pipeline.ts::assessRisk`.
+
+   | Tier | Trigger | Outcome |
+   | --- | --- | --- |
+   | `critical` | `minor_involved`, `graphic_content`, or `needs_double_approval` safety flag, **or** a category with `requires_double_approval` | `pending_review`, two-person approval required, never auto-publishes |
+   | `sensitive` | `unverified_claim` safety flag, **or** a category with `auto_pending_review` | `pending_review`, single approval |
+   | `routine` | No flags, category allows auto-publish | Publishes immediately |
+
+   A safety flag always overrides the category default, in the unsafe direction:
+   loosening a category's config can never let a minor-involved post through
+   unattended. This replaced an earlier all-or-nothing rule that sent every post
+   from a flagged category to review, burying genuinely dangerous material under
+   hundreds of routine ones.
+
+   On top of the tier, a **fact-gate** holds any post whose category was
+   *re-detected* by the classifier at less than `settings.fact_gate` confidence
+   (default 90%, adjustable from the desk). The content may be fine, but its
+   placement on the site is a guess, so a human confirms it. A post that keeps its
+   source's own category is not gated — the source's configuration is authoritative.
+
 1. **No fabrication.** Names, ages, places, quotes, numbers must be in the source. Unclear → "স্পষ্ট নয়".
 2. **Always attribute.** "সূত্র: <page name> (ফেসবুক)" with a link to the original post.
 3. **No slur or hate speech reproduction.** Summarize without quoting.
@@ -145,7 +167,11 @@ The `submitted_pages` form on the public site lets anyone suggest a new source. 
 | `editor` | Can approve posts in `extramarital-crime` and `missing-children`. Cannot approve `child-sexual-abuse` alone. Can manage sources. |
 | `moderator` | Can view the moderation queue, view the private screenshots, but cannot approve. Can act on removal requests. |
 
-These are enforced via Supabase RLS policies on `posts`, `admin_users`, and `admin_actions`.
+These are enforced in the application layer. There is no Supabase/RLS in this
+project — the database is Turso/libSQL and every admin API route re-checks the
+session and role before touching a row. See `docs/database-decision.md` for why
+Turso was chosen, and `packages/db/src/index.ts` for the bulk-operation helpers
+that encode the double-approval rules.
 
 ---
 

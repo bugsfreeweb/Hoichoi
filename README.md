@@ -70,6 +70,11 @@ Copy `.env.example` → `.env`. Key ones:
 | `FB_SESSION_COOKIE` | Optional `c_user`/`xs` cookie for logged-in Facebook scraping |
 | `ARCHIVE_VISIBLE_DAYS` `ARCHIVE_RETENTION_DAYS` | Rolling policy |
 
+> **GitHub Actions secrets নিয়ে বিস্তারিত, প্রতিটির কোথা থেকে পাবেন, খরচ ও
+> "না দিলে কী হবে" — সব [`docs/SECRETS.md`](docs/SECRETS.md)-তে। ওয়েব অ্যাডমিনের
+> `/admin/setup` পেজে একই তথ্য বাংলায় দেখা যায়, এবং ডেস্ক অ্যাপের
+> Settings → Secrets প্যানেলেও।
+
 Provider keys can also be registered per-provider from the admin `AI প্রোভাইডার`
 page: an optional **API key override** is stored on the `llm_providers` row
 (takes precedence over vault/env) and the **⚡ মডেল অটো-ফেচ** button pulls the
@@ -105,7 +110,7 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 
 > After any change to `packages/db/migrations/` you **must** re-run `bundle:runner`
 > before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
-> (latest e.g. `009_footer_loginlog.sql`).
+> (latest e.g. `010_llm_temperature.sql`).
 
 ## Editorial & safety
 

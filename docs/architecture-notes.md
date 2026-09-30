@@ -23,10 +23,10 @@ Companion to `coding-agent-prompt.md`. Read this for the *why* before pasting th
 │  Every 2 hours (or manual trigger)                                   │
 │                                                                      │
 │   ┌──────────────────┐    ┌──────────────────┐    ┌──────────────┐  │
-│   │  GitHub Actions  │───▶│  Scraper (Node)  │───▶│  Supabase DB │  │
-│   │   cron job       │    │  Playwright +    │    │  Postgres +  │  │
-│   └──────────────────┘    │  Multi-LLM       │    │  pgvector    │  │
-│                           │  Resolver        │    │  Storage     │  │
+│   │  GitHub Actions  │───▶│  Scraper (Node)  │───▶│  Turso DB    │  │
+│   │   cron job       │    │  Playwright +    │    │  libSQL +    │  │
+│   └──────────────────┘    │  Multi-LLM       │    │  vec0        │  │
+│                           │  Resolver        │    │  + media     │  │
 │                           └────────┬─────────┘    └──────┬───────┘  │
 │                                    │                      │          │
 │             ┌──────────────────────┼──────────────────────┘          │
@@ -230,14 +230,14 @@ What broke and what didn't:
 
 | Resource | v1 estimate | v2 reality | Verdict |
 |---|---|---|---|
-| Supabase DB (500 MB) | ~1.6 MB/day → 500 MB in 300 days | Same | OK |
-| Supabase Storage (1 GB) | **30 MB/day → 1 GB in 33 days** | Now we store re-encoded WebP (~50 KB/image) + MP4 (~2 MB/video) + private screenshot (~200 KB). Slightly worse. | **First thing to address** |
-| Supabase Egress (5 GB/mo) | 10k pageviews | Same | OK |
+| Turso DB (500 MB) | ~1.6 MB/day → 500 MB in 300 days | Same | OK |
+| Media storage (1 GB) | **30 MB/day → 1 GB in 33 days** | Now we store re-encoded WebP (~50 KB/image) + MP4 (~2 MB/video) + private screenshot (~200 KB). Slightly worse. | **First thing to address** |
+| Egress (5 GB/mo) | 10k pageviews | Same | OK |
 | GitHub Actions min (2000/mo private) | 90% used | Scraper run is now ~7 min (added media processing) = 84 min/day = 2520/mo | **Now OVER quota on private repos** |
 | LLM API cost | ~$9/mo at 100 posts/day | $0 if using Gemini/Groq free tiers, or ~$3/mo if using Gemini paid tier | **Now near zero** |
 
 **Two fixes:**
-1. **Make the GitHub repo public** (or upgrade to GitHub Pro). Public repos get unlimited Actions minutes. The data in the repo is only the schema and the app code, not the content. The actual posts live in Supabase, which is private.
+1. **Make the GitHub repo public** (or upgrade to GitHub Pro). Public repos get unlimited Actions minutes. The data in the repo is only the schema and the app code, not the content. The actual posts live in Turso, which is private.
 2. **Aggressive media compression** (already in the prompt: WebP 80%, H.264 720p, 1500k bitrate). Plus: move screenshots to a separate private repo or delete after 90 days.
 
 **LLM cost collapse:** the v1 estimate of $9/mo assumed Claude Haiku 4.5. With Gemini Flash free tier handling 1,500 rewrite calls per day (way more than you'll need), the v2 cost is **$0/mo at any realistic volume**. This is the big win of the multi-provider design.
@@ -250,10 +250,10 @@ What broke and what didn't:
 - **No email newsletter.** Skip for v1; add later with Resend free tier.
 - **No mobile app.** Tauri desktop covers desktop. Mobile can come later via Tauri Mobile once v1 is stable.
 - **No multi-tenant admin.** One operator, one org.
-- **No real-time push.** ISR is enough for news. Add Supabase Realtime if you ever do live blogs.
+- **No real-time push.** ISR is enough for news.
 - **No automatic translation back to English.** If you need it later, add a separate LLM call with a "translate bn→en" prompt.
 - **No automatic Facebook posting** (i.e., we don't auto-repost back to FB). The user collects, we publish on their own site. Cross-posting would be an obvious ToS violation.
-- **No self-hosted Supabase.** Use the hosted free tier. Self-hosting costs more in time than money at v1 scale.
+- **No self-hosted database.** Use hosted Turso. Self-hosting costs more in time than money at this scale.
 
 ---
 
@@ -280,7 +280,7 @@ Exceptions:
 ### Why this design
 
 1. **Freshness signal to Google.** A site that cycles through ~30 days of content at a time has very high content/recency ratios. Google News and Discover prioritize this. Compare to a site with 5 years of posts where most are stale.
-2. **Lower storage costs.** Supabase Storage free tier is 1 GB. At ~50 KB per image, ~2 MB per video, and ~200 KB per screenshot, plus the database row, you can hold ~3 months of archive comfortably before hitting limits. Default 180-day retention keeps it tight.
+2. **Lower storage costs.** Media storage is a pluggable adapter (local FS in dev, Cloudflare R2 or GitHub in prod). At ~50 KB per image, ~2 MB per video, and ~200 KB per screenshot, plus the database row, you can hold ~3 months of archive comfortably before hitting limits. Default 180-day retention keeps it tight.
 3. **Lower legal exposure.** Sensitive content (especially `child-sexual-abuse`) has a higher deletion risk over time. 180 days is a reasonable window for legal/editorial record without indefinite retention of identifying material.
 4. **Editorial discipline.** The "this month only" framing matches the daily-news cadence the categories imply. You can't be a stale-archive site if you only show the current month.
 
@@ -298,10 +298,10 @@ Exceptions:
 
 ### Implementation summary
 
-- **GitHub Action `monthly-archive.yml`** runs at `cron: '0 0 1 * *'` (00:00 UTC on the 1st of each month). Calls `pnpm --filter scraper archive --previous-month` then `purge --older-than-days=180`, then pings the Vercel deploy hook.
-- **`scraper archive.ts`** (Phase 3.9) implements both subcommands as plain SQL + Supabase Storage calls.
+- **GitHub Action `rolling-archive.yml`** runs on a schedule. Calls `pnpm --filter scraper archive --previous-month` then `purge --older-than-days=180`, then pings the Vercel deploy hook.
+- **`scraper archive.ts`** (Phase 3.9) implements both subcommands as plain SQL against Turso, plus media-adapter calls for blob cleanup.
 - **The view `posts_current_month`** encapsulates the "what's public" logic for all public queries. Use it everywhere.
-- **RLS** on `posts` already enforces "only `service_role` and admins can read non-published" — so the public site's anon-key queries can only ever see published + non-archived + current-month rows anyway. Defense in depth.
+- **No RLS in this project.** There is no Supabase, so there are no row-level policies. Public queries filter to `published` + non-archived explicitly, and every admin route re-checks the session server-side. Defense in depth lives in the API layer, not the database.
 
 ---
 
@@ -314,6 +314,6 @@ Exceptions:
 5. **Public read-only JSON API** so other sites can republish with attribution.
 6. **Community flagging with weighted trust scores**, auto-hide after N reports.
 7. **LLM fine-tune** on approved Bangla rewrites for cheaper, more on-brand output.
-8. **Move screenshots to Cloudflare R2** (10 GB free) once Supabase Storage is the bottleneck.
+8. **Move screenshots to a dedicated private bucket** once the configured media adapter becomes the bottleneck.
 9. **Vector dedup of the re-processed media** (so a repost with a different crop but same visual content is caught even if the original screenshot is different).
 10. **Auto-publish via Vercel deploy hook only** (skip ISR for breaking-news categories) — adds a manual "publish now" button in the admin.
