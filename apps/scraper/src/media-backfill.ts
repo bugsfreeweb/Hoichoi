@@ -107,7 +107,51 @@ export async function syncExistingMediaToWeb(): Promise<{ checked: number; copie
     mirrorMediaFile(rel, local[0]);
     copied += 1;
   }
+  // Posts that were purged or archived leave their image behind in the media
+  // root with nothing pointing at it. Archived posts stay reachable on the site
+  // for the retention window, so those bytes still have to be mirrored - and
+  // iterating `posts` alone can never find them.
+  copied += mirrorOrphanedMedia();
   return { checked: rows.length, copied, missing };
+}
+
+/**
+ * Mirror every file under the media root that is not yet in the web mirror,
+ * including files no live post references. Returns how many were copied.
+ */
+export function mirrorOrphanedMedia(): number {
+  const root = mediaRoot();
+  if (!fs.existsSync(root)) return 0;
+  const webDir = mirrorDirs()[0]!;
+  let copied = 0;
+  const walk = (dir: string): void => {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      const rel = path.relative(root, full).replace(/\\/g, "/");
+      if (!rel || rel.startsWith("..")) continue;
+      if (fs.existsSync(path.join(webDir, rel))) continue;
+      try {
+        fs.mkdirSync(path.dirname(path.join(webDir, rel)), { recursive: true });
+        fs.copyFileSync(full, path.join(webDir, rel));
+        copied += 1;
+      } catch {
+        /* best effort - a failed mirror must not abort the backfill */
+      }
+    }
+  };
+  walk(root);
+  return copied;
 }
 
 /** Download + attach media for every post that has none yet. */

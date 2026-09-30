@@ -36,18 +36,27 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         args,
       });
     }
-    if (Array.isArray(body.categories) || body.allCategories === true) {
+    // An empty array used to mean "remove every category", which is a footgun:
+    // a client that always sends the array (even empty, e.g. before categories
+    // load) silently wiped a source's whole membership. An explicit
+    // `allCategories: true` is now required for that.
+    if (body.allCategories === true || (Array.isArray(body.categories) && body.categories.length > 0)) {
       const { listCategories } = await import("@hoichoi/db");
-      const active = (await listCategories()).map((c) => c.slug);
-      const next = body.allCategories === true
-        ? active
-        : (body.categories as string[]).filter((c) => active.includes(c));
-      // Replace source_categories membership.
+      // Validate against every configured category, not only the active ones,
+      // so saving never deletes a membership just because a category is off.
+      const known = new Set((await listCategories({ includeInactive: true })).map((c) => c.slug));
+      const requested = (body.allCategories === true
+        ? [...known]
+        : (body.categories as string[])
+      ).map(String);
+      const next = requested.filter((c) => known.has(c));
       await client.execute({ sql: "DELETE FROM source_categories WHERE source_id = ?", args: [id] });
       if (next.length > 0) {
         const values = next.map(() => "(?, ?)").join(", ");
         const args2 = next.flatMap((slug: string) => [id, slug]);
         await client.execute({ sql: `INSERT INTO source_categories (source_id, category_slug) VALUES ${values}`, args: args2 });
+        // Keep the legacy primary in step with the membership it now describes.
+        await client.execute({ sql: "UPDATE sources SET category = ? WHERE id = ?", args: [next[0], id] });
       }
     }
   }

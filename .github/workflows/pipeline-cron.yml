@@ -30,6 +30,8 @@ jobs:
   scrape:
     name: Extract → rewrite → moderate → publish
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -79,6 +81,24 @@ jobs:
         run: pnpm --filter @hoichoi/scraper exec playwright --version
       - name: Run scraping pipeline
         run: pnpm run scrape
+      - name: Commit mirrored media
+        # The deployed site is serverless: it can only serve bytes that exist in
+        # git, because Vercel builds from the repository. When no remote storage
+        # adapter is configured the scraper mirrors new images into
+        # apps/web/public/uploads/ on the runner's disk, which is destroyed when
+        # the job ends. Without this commit every scraped image was silently
+        # lost and the post rendered with no picture.
+        run: |
+          git config user.name "hoichoi-bot"
+          git config user.email "hoichoi-bot@users.noreply.github.com"
+          git add -A apps/web/public/uploads
+          if git diff --cached --quiet; then
+            echo "No new media to commit."
+          else
+            count=$(git diff --cached --name-only | wc -l)
+            git commit -m "chore(media): mirror ${count} scraped image(s) for the deployed site"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
       - name: Ping deploy hook (if configured)
         if: env.VERCEL_DEPLOY_HOOK_URL != ''
         run: curl -fsS -X POST "$VERCEL_DEPLOY_HOOK_URL" || true

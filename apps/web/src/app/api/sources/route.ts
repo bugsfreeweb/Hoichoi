@@ -93,7 +93,11 @@ export async function PUT(req: NextRequest) {
   }
 
   const client = getClient();
-  const active = (await listCategories()).map((c) => c.slug);
+  // Every configured category, not just the active ones. Filtering through the
+  // active list used to silently delete memberships that pointed at a
+  // deactivated category on any save, and the admin UI never renders those, so
+  // the loss was invisible and unrecoverable.
+  const known = new Set((await listCategories({ includeInactive: true })).map((c) => c.slug));
   const sets: string[] = [];
   const args: (string | number)[] = [];
 
@@ -105,53 +109,56 @@ export async function PUT(req: NextRequest) {
     sets.push("page_name = ?");
     args.push(body.pageName.trim());
   }
-  if (body.category !== undefined || body.categories?.length) {
-    const requested = body.categories?.length ? body.categories : body.category ? [body.category] : [];
-    const chosen = active.filter((c) => requested.includes(c));
-    if (chosen.length === 0) {
-      return NextResponse.json({ error: "invalid category" }, { status: 400 });
+
+  // A request that carries no `categories` key at all is a partial edit and
+  // must leave membership untouched. Only an explicit array replaces the set.
+  const membershipSupplied = Array.isArray(body.categories);
+  let chosen: string[] = [];
+  if (membershipSupplied) {
+    const requested = (body.categories as string[]).map(String).filter(Boolean);
+    const unknown = requested.filter((c) => !known.has(c));
+    if (unknown.length > 0) {
+      return NextResponse.json({ error: `unknown category: ${unknown.join(", ")}` }, { status: 400 });
     }
-    if (body.category !== undefined) {
-      sets.push("category = ?");
-      args.push(body.category);
-    } else {
-      // multi-category: set category to first chosen (chosen.length > 111 guaranteed)
-      sets.push("category = ?");
-      args.push(chosen[0] as string);
+    if (requested.length === 0) {
+      return NextResponse.json({ error: "at least one category required" }, { status: 400 });
     }
+    chosen = [...new Set(requested)];
+  }
+  // `category` on its own is only a primary-selection hint. It must never
+  // collapse a multi-category source down to one row.
+  if (membershipSupplied) {
+    const primary = body.category && known.has(body.category) ? body.category : chosen[0] as string;
+    sets.push("category = ?");
+    args.push(primary);
+  } else if (typeof body.category === "string" && known.has(body.category)) {
+    sets.push("category = ?");
+    args.push(body.category);
   }
   if (body.isVerified !== undefined) {
     sets.push("is_verified = ?");
     args.push(body.isVerified ? 1 : 0);
   }
 
-// $FlowFixMe $TS-ignore
-  // $FlowFixMe $TS-ignore
-  sets.push("updated_at = ?");
-  args.push(nowIso());
   args.push((body.sourceId as string).trim());
 
-  try {
-    await client.execute({
-      sql: `UPDATE sources SET ${sets.join(", ")} WHERE id = ?`,
-      args,
-    });
-  } catch {
-    return NextResponse.json({ error: "source update failed" }, { status: 409 });
+  if (sets.length > 0) {
+    try {
+      await client.execute({
+        sql: `UPDATE sources SET ${sets.join(", ")} WHERE id = ?`,
+        args,
+      });
+    } catch {
+      return NextResponse.json({ error: "source update failed" }, { status: 409 });
+    }
   }
 
-  // Sync multi-category membership if categories provided
-  if (body.category !== undefined || body.categories?.length) {
-    const requested = body.categories?.length ? body.categories : body.category ? [body.category] : [];
-    const active = (await listCategories()).map((c) => c.slug);
-    const chosen = active.filter((c) => requested.includes(c));
-    // Clear existing and re-insert
+  // Replace membership only when the client explicitly sent the full set.
+  if (membershipSupplied) {
     await client.execute({ sql: "DELETE FROM source_categories WHERE source_id = ?", args: [body.sourceId] });
-    if (chosen.length > 0) {
-      const values = chosen.map(() => "(?, ?)").join(", ");
-      const catArgs = chosen.flatMap((c) => [body.sourceId as string, c]);
-      await client.execute({ sql: `INSERT INTO source_categories (source_id, category_slug) VALUES ${values}`, args: catArgs });
-    }
+    const values = chosen.map(() => "(?, ?)").join(", ");
+    const catArgs = chosen.flatMap((c) => [body.sourceId as string, c]);
+    await client.execute({ sql: `INSERT INTO source_categories (source_id, category_slug) VALUES ${values}`, args: catArgs });
   }
 
   const row = await client.execute({ sql: "SELECT * FROM sources WHERE id = ?", args: [body.sourceId] });

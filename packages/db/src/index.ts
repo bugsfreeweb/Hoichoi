@@ -336,10 +336,20 @@ export async function getSpecialNotice(): Promise<Notice | null> {
   return mapNotice(res.rows[0] as Record<string, unknown>);
 }
 
-export async function listCategories(): Promise<CategoryMeta[]> {
+/**
+ * Configured categories, active ones first in normal use.
+ *
+ * `includeInactive` exists for editors that must not lose data: when a save
+ * rewrites a source's whole membership set, validating against the active-only
+ * list would silently drop a membership that points at a deactivated category.
+ */
+export async function listCategories(
+  opts: { includeInactive?: boolean } = {},
+): Promise<CategoryMeta[]> {
   const client = getClient();
+  const where = opts.includeInactive ? "" : "WHERE is_active = 1";
   const res = await client.execute(
-    "SELECT * FROM category_configs WHERE is_active = 1 ORDER BY sort_order ASC",
+    `SELECT * FROM category_configs ${where} ORDER BY sort_order ASC`,
   );
   return res.rows.map((r) => mapCategory(r as Record<string, unknown>));
 }
@@ -507,7 +517,10 @@ export async function getSourceCategories(sourceId: string): Promise<CategorySlu
     sql: "SELECT category_slug FROM source_categories WHERE source_id = ?",
     args: [sourceId],
   });
-  return res.rows.map((r) => String(r.category_slug));
+  return res.rows
+    .map((r) => String(r.category_slug))
+    .sort((a, b) => a.localeCompare(b));
+
 }
 
 /** Set categories for a source (replaces existing). */
