@@ -14,19 +14,24 @@ export function Paginator({
   pageSize,
   total,
   basePath,
+  paramName = "page",
   extraParams = {},
 }: {
   page: number;
   pageSize: number;
   total: number;
   basePath: string;
+  /** Query-string key this control drives. Pages with two lists give each its own. */
+  paramName?: string;
   extraParams?: Record<string, string>;
 }) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   if (pageCount <= 1) return null;
 
   const href = (p: number) => {
-    const q = new URLSearchParams({ ...extraParams, page: String(p) });
+    // Keep the sibling list on the page it was already showing, so paging one
+    // section does not silently reset the other.
+    const q = new URLSearchParams({ ...extraParams, [paramName]: String(p) });
     return `${basePath}?${q.toString()}`;
   };
 

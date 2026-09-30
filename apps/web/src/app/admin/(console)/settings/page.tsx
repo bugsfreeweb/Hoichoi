@@ -9,9 +9,10 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminSettingsPage() {
   const settings = await getSettings();
-  // Manual Run shows the last few outcomes inline so an operator can tell
+  // Manual Run shows recent outcomes inline so an operator can tell
   // "triggered but failed" apart from "trigger never reached GitHub".
-  const recent = await listPipelineRunsPage(1, 5).catch(() => null);
+  // Full history, paginated, lives at /admin/logs.
+  const recent = await listPipelineRunsPage(1, 20).catch(() => null);
   return (
     <div>
       <PageHeading emoji="⚙️" kicker="OPERATIONS" title="সেটিংস" />

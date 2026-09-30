@@ -16,7 +16,7 @@
     "demo": "tsx scripts/demo.ts",
     "clean": "tsx scripts/clean.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx src/__tests__/source-merge.test.ts && tsx src/__tests__/bulk-moderate.test.ts"
+    "test": "tsx src/__tests__/source-merge.test.ts && tsx src/__tests__/bulk-moderate.test.ts && tsx src/__tests__/source-categories.test.ts"
   },
   "dependencies": {
     "@hoichoi/shared-types": "workspace:*",

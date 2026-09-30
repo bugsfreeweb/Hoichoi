@@ -12,7 +12,14 @@ export default async function AdminSourcesPage() {
   const sources: Source[] = await Promise.all(
     rows.map(async (r) => mapSource(r, await getSourceCategories(String(r.id)))),
   );
-  const cats = await listCategories();
+  // Inactive categories must stay selectable here. The editor round-trips the
+  // whole membership set, so a category hidden from this list would be erased
+  // from the source the next time anyone saved an unrelated field.
+  const cats = await listCategories({ includeInactive: true });
+  const options = cats.map((c) => ({
+    slug: c.slug,
+    label: c.isActive ? c.displayNameBn : `${c.displayNameBn} (নিষ্ক্রিয়)`,
+  }));
 
   return (
     <div>
@@ -22,7 +29,7 @@ export default async function AdminSourcesPage() {
           <h3 className="font-sans-bn text-[15px] font-bold text-ink">নতুন সোর্স যোগ</h3>
           <p className="mt-1 text-[12px] text-ink-soft">শুধু পাবলিক পেজ/গ্রুপ — ব্যক্তিগত প্রোফাইল নয়।</p>
           <div className="mt-4">
-            <SourceForm categories={cats.map((c) => ({ slug: c.slug, label: c.displayNameBn }))} />
+            <SourceForm categories={options} />
           </div>
         </div>
         <div className="space-y-2.5">
@@ -33,7 +40,7 @@ export default async function AdminSourcesPage() {
             <SourceRow
               key={s.id}
               source={s}
-              categories={cats.map((c) => ({ slug: c.slug, label: c.displayNameBn }))}
+              categories={options}
             />
           ))}
         </div>

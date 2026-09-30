@@ -51,12 +51,13 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       ).map(String);
       const next = requested.filter((c) => known.has(c));
       await client.execute({ sql: "DELETE FROM source_categories WHERE source_id = ?", args: [id] });
-      if (next.length > 0) {
+      const primary = next[0];
+      if (primary !== undefined) {
         const values = next.map(() => "(?, ?)").join(", ");
         const args2 = next.flatMap((slug: string) => [id, slug]);
         await client.execute({ sql: `INSERT INTO source_categories (source_id, category_slug) VALUES ${values}`, args: args2 });
         // Keep the legacy primary in step with the membership it now describes.
-        await client.execute({ sql: "UPDATE sources SET category = ? WHERE id = ?", args: [next[0], id] });
+        await client.execute({ sql: "UPDATE sources SET category = ? WHERE id = ?", args: [primary, id] });
       }
     }
   }

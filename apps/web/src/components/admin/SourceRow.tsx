@@ -57,6 +57,10 @@ export function SourceRow({
       const requested = editForm.allCategories
         ? categories.map((c) => c.slug)
         : editForm.categories;
+      if (requested.length === 0) {
+        setErr("অন্তত একটি বিভাগ নির্বাচন করুন — সোর্সের বিভাগ খালি রাখা যাবে না।");
+        return;
+      }
       const res = await fetch("/api/sources", {
         method: "PUT",
         headers: { "content-type": "application/json" },
@@ -107,13 +111,17 @@ export function SourceRow({
   }
 
   function toggleCategory(slug: string) {
-    setEditForm((f) => ({
-      ...f,
-      allCategories: false,
-      categories: f.categories.includes(slug)
-        ? f.categories.filter((c) => c !== slug)
-        : [...f.categories, slug],
-    }));
+    setEditForm((f) => {
+      // Ticking "সব বিভাগ" then unticking one box means "all except this" — seed
+      // the full set first so the untick actually subtracts instead of leaving
+      // an empty (and rejected) list.
+      const base = f.allCategories ? categories.map((c) => c.slug) : f.categories;
+      return {
+        ...f,
+        allCategories: false,
+        categories: base.includes(slug) ? base.filter((c) => c !== slug) : [...base, slug],
+      };
+    });
   }
 
   const field = "mt-1 w-full border border-ink/30 bg-paper px-3 py-2 text-[13px] focus:outline-none focus:border-ink";
@@ -145,7 +153,7 @@ export function SourceRow({
               <label key={c.slug} className="flex cursor-pointer items-center gap-2 border border-ink/20 bg-paper px-3 py-2 text-[12.5px] hover:border-ink/50">
                 <input
                   type="checkbox"
-                  checked={editForm.categories.includes(c.slug)}
+                  checked={editForm.allCategories || editForm.categories.includes(c.slug)}
                   onChange={() => toggleCategory(c.slug)}
                   className="accent-ink"
                 />
@@ -156,14 +164,27 @@ export function SourceRow({
               <input
                 type="checkbox"
                 checked={editForm.allCategories}
-                onChange={(e) =>
-                  setEditForm((f) => ({ ...f, allCategories: e.target.checked, categories: [] }))
-                }
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  // Keep a concrete list so the boxes above stay truthful when
+                  // "all" is switched back off.
+                  const current = on
+                    ? categories.map((c) => c.slug)
+                    : editForm.categories.length
+                      ? editForm.categories
+                      : [source.category];
+                  setEditForm((f) => ({ ...f, allCategories: on, categories: current }));
+                }}
                 className="accent-ink"
               />
               সব বিভাগ
             </label>
           </div>
+          {editForm.allCategories && (
+            <p className="mt-1.5 text-[11.5px] text-ink-soft">
+              সব বিভাগ নির্বাচিত। কোনো একটি বাকি দিলে সেটি বাদ যাবে।
+            </p>
+          )}
         </fieldset>
         {err && <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">{err}</p>}
         <div className="flex items-center gap-3">

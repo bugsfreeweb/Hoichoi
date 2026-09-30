@@ -4,20 +4,21 @@ import { Paginator } from "@/components/admin/Paginator";
 
 export const dynamic = "force-dynamic";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 20;
 
 export default async function AdminLogsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ runsPage?: string; actionsPage?: string }>;
 }) {
-  const { page: pageParam } = await searchParams;
-  const [runsPage, actionsPage] = await Promise.all([
-    listPipelineRunsPage(Number(pageParam ?? 1), PAGE_SIZE),
-    listAdminActionsPage(Number(pageParam ?? 1), PAGE_SIZE),
+  const { runsPage: runsParam, actionsPage: actionsParam } = await searchParams;
+  // Each list paginates on its own `page` param. They used to share one, so
+  // paging the run history scrolled the audit log too and the two sections
+  // fought over the same number.
+  const [runs, actions] = await Promise.all([
+    listPipelineRunsPage(Number(runsParam ?? 1), PAGE_SIZE),
+    listAdminActionsPage(Number(actionsParam ?? 1), PAGE_SIZE),
   ]);
-  const runs = runsPage.rows;
-  const actionRows = actionsPage.rows;
 
   return (
     <div>
@@ -26,8 +27,8 @@ export default async function AdminLogsPage({
         <section>
           <SectionTitle>পাইপলাইন রান</SectionTitle>
           <div className="mt-3 space-y-2.5">
-            {runs.length === 0 && <Empty />}
-            {runs.map((r) => (
+            {runs.rows.length === 0 && <Empty />}
+            {runs.rows.map((r) => (
               <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 border border-ink/20 bg-paper-deep px-4 py-3">
                 <div>
                   <p className="font-mono-x text-[12px] font-bold text-ink">
@@ -46,17 +47,19 @@ export default async function AdminLogsPage({
             ))}
           </div>
           <Paginator
-            page={runsPage.page}
-            pageSize={runsPage.pageSize}
-            total={runsPage.total}
+            page={runs.page}
+            pageSize={runs.pageSize}
+            total={runs.total}
             basePath="/admin/logs"
+            paramName="runsPage"
+            extraParams={actionsParam ? { actionsPage: actionsParam } : {}}
           />
         </section>
         <section>
           <SectionTitle>অ্যাডমিন অ্যাকশন (অডিট লগ)</SectionTitle>
           <div className="mt-3 space-y-1.5">
-            {actionRows.length === 0 && <Empty />}
-            {actionRows.map((a) => (
+            {actions.rows.length === 0 && <Empty />}
+            {actions.rows.map((a) => (
               <div key={String(a.id)} className="flex items-center justify-between gap-3 border border-ink/20 bg-paper-deep px-4 py-2">
                 <p className="font-mono-x text-[11.5px] text-ink">
                   <span className="font-bold">{String(a.action)}</span> · {String(a.target_table)}/{String(a.target_id)}
@@ -66,10 +69,12 @@ export default async function AdminLogsPage({
             ))}
           </div>
           <Paginator
-            page={actionsPage.page}
-            pageSize={actionsPage.pageSize}
-            total={actionsPage.total}
+            page={actions.page}
+            pageSize={actions.pageSize}
+            total={actions.total}
             basePath="/admin/logs"
+            paramName="actionsPage"
+            extraParams={runsParam ? { runsPage: runsParam } : {}}
           />
         </section>
         <section>
