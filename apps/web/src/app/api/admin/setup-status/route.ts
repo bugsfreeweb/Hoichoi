@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
 import { recentPipelineRuns } from "@hoichoi/db";
 import { LLM_SECRET_NAMES } from "@hoichoi/shared-types";
+import { evaluateReadiness } from "@/lib/setup-readiness";
 
 /**
  * Setup readiness for the hosted web app.
@@ -11,6 +12,9 @@ import { LLM_SECRET_NAMES } from "@hoichoi/shared-types";
  * operator can act on from the browser:
  *   1. whether the manual-run dispatch credentials exist server-side
  *   2. what the last few pipeline runs actually did
+ *
+ * Readiness itself is computed by the shared helper so this JSON and the
+ * `/admin/setup` page can never disagree.
  *
  * Secret *values* are never read or returned; only their presence.
  */
@@ -26,18 +30,15 @@ export async function GET() {
   let runs: Awaited<ReturnType<typeof recentPipelineRuns>> = [];
   let runsError: string | null = null;
   try {
-    runs = await recentPipelineRuns(10);
+    runs = await recentPipelineRuns(20);
   } catch (err) {
     runsError = (err as Error).message;
   }
 
   // A run only proves the secrets are right if it got past the preflight step.
-  // Preflight failures mean a required secret is still missing.
-  const lastRun = runs[0] ?? null;
-  const preflightBlocked = Boolean(
-    lastRun?.error &&
-      /Missing required repository secrets|Missing repository secrets/i.test(lastRun.error),
-  );
+  // Preflight failures name the exact missing secrets, so the checklist can
+  // point at the one thing still outstanding.
+  const verdict = evaluateReadiness(runs);
 
   return NextResponse.json({
     ok: true,
@@ -50,8 +51,11 @@ export async function GET() {
     },
     /** Names the pipeline can read, for the guide's checklist. */
     llmSecretNames: LLM_SECRET_NAMES,
-    lastRun,
-    preflightBlocked,
+    lastRun: verdict.lastRun,
+    preflightBlocked: verdict.preflightBlocked,
+    present: verdict.present,
+    missing: verdict.missing,
+    noSuccessYet: verdict.noSuccessYet,
     runs,
     runsError,
   });

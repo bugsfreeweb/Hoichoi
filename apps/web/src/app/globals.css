@@ -357,6 +357,20 @@ html[data-theme="dark"] .ad-chip {
   color: #e9e2cf;
   --color-lime: #c8f65d;
   --color-amberx: #ffb454;
+  /* The console is dark-only, so re-pin every accent token to its dark value.
+     Without this, `<html data-theme="light">` (carried over from the public
+     site) flips these to dark-on-dark and the text stops being readable. */
+  --color-paper: #0a0c10;
+  --color-paper-deep: #10141b;
+  --color-ink: #e9e2cf;
+  --color-ink-soft: #8e99a7;
+  --color-alizarin: #fa8b9b;
+  --color-alizarin-deep: #d2202c;
+  --color-fb: #8eb8ff;
+  --color-cat-blue: #7cc3ff;
+  --color-cat-teal: #5eead4;
+  --color-band: #10141b;
+  --color-bandline: rgba(255, 255, 255, 0.16);
 }
 .admin-console,
 .admin-console * {

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requirePageUser } from "@/lib/auth";
 import { recentPipelineRuns } from "@hoichoi/db";
-import { evaluateSecrets, LLM_SECRET_NAMES } from "@hoichoi/shared-types";
+import { evaluateSecrets } from "@hoichoi/shared-types";
+import { evaluateReadiness } from "@/lib/setup-readiness";
 import { SetupGuide, type SecretView } from "@/components/admin/SetupGuide";
 
 export const dynamic = "force-dynamic";
@@ -10,13 +11,9 @@ export const dynamic = "force-dynamic";
  * /admin/setup — the operator's credentials walkthrough.
  *
  * The hosted web app cannot read repository secret values (and must never try),
- * so this page reports readiness from the two signals it legitimately has:
- *   - whether manual-run dispatch credentials exist server-side
- *   - whether the last pipeline runs passed their own preflight
- *
- * Secret presence is inferred from run outcomes. A preflight failure names the
- * exact missing secret in the run log, which is precise enough to drive the
- * checklist without exposing anything.
+ * so readiness is derived from what the pipeline actually managed to do. The
+ * logic lives in `@/lib/setup-readiness` and is shared with
+ * `/api/admin/setup-status`, so the checklist and the JSON never disagree.
  */
 export default async function AdminSetupPage() {
   const user = await requirePageUser();
@@ -35,39 +32,19 @@ export default async function AdminSetupPage() {
     hasRunnerUrl: Boolean(process.env.RUNNER_URL),
   };
 
-  let lastRun: { status: string; error: string | null; started_at: string | null } | null =
-    null;
-  let preflightBlocked = false;
-  let runs: Array<{ status: string; error: string | null; started_at: string | null }> = [];
-
+  const runs: Array<{ status: string; error: string | null; started_at: string }> = [];
   if (canSeeOps) {
     try {
       const rows = await recentPipelineRuns(20);
-      runs = rows.map((r) => ({
-        status: r.status,
-        error: r.error,
-        started_at: r.started_at,
-      }));
-      lastRun = runs[0] ?? null;
-      // The workflow's preflight writes the missing names into the run error.
-      const block = /Missing required repository secrets|Missing repository secrets/i;
-      preflightBlocked = runs.some((r) => r.error && block.test(r.error));
+      runs.push(
+        ...rows.map((r) => ({ status: r.status, error: r.error, started_at: r.started_at })),
+      );
     } catch {
       // A database hiccup must not blank the guide; the static help still works.
     }
   }
 
-  /**
-   * Infer which secrets are present.
-   *
-   * A successful run proves Turso + the Facebook cookie + an LLM key are all in
-   * place, because the workflow refuses to start without them. Anything short
-   * of that is shown as outstanding, which is the safe direction to be wrong in.
-   */
-  const anySuccess = runs.some((r) => r.status === "success");
-  const present: string[] = anySuccess
-    ? ["TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN", "FB_SESSION_COOKIE", ...LLM_SECRET_NAMES]
-    : [];
+  const { present, lastRun, preflightBlocked } = evaluateReadiness(runs);
   const readiness = evaluateSecrets(present, []);
 
   const secrets: SecretView[] = readiness.map((r) => ({

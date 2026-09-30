@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import type { AdminUser } from "@hoichoi/shared-types";
 import { adminLogout } from "@/lib/auth-actions";
-import { ThemeToggle } from "@/components/ThemeToggle";
 
 const NAV: Array<{ href: string; emoji: string; label: string }> = [
   { href: "/admin", emoji: "📊", label: "ড্যাশবোর্ড" },
@@ -26,6 +26,21 @@ const NAV: Array<{ href: string; emoji: string; label: string }> = [
 
 export function AdminShell({ user, children }: { user: AdminUser; children: React.ReactNode }) {
   const path = usePathname();
+
+  // The console is a fixed dark theme: `.admin-console` hardcodes a near-black
+  // background and remaps the light legacy tokens (see globals.css). A visitor
+  // who picked the light theme on the public site arrives here with
+  // `<html data-theme="light">` still set, which un-remaps every token the
+  // remap block does not cover (fb, cat-*, rose, sky) and strands white text
+  // on light surfaces. Pin the attribute for as long as the console is mounted.
+  useEffect(() => {
+    const root = document.documentElement;
+    const previous = root.getAttribute("data-theme");
+    root.setAttribute("data-theme", "dark");
+    return () => {
+      if (previous) root.setAttribute("data-theme", previous);
+    };
+  }, []);
 
   return (
     <main className="admin-console bg-night-grid min-h-screen pb-16 text-[#e9e6da]">
@@ -52,7 +67,6 @@ export function AdminShell({ user, children }: { user: AdminUser; children: Reac
             >
               পাবলিক সাইট ↘
             </Link>
-            <ThemeToggle />
             <form action={adminLogout}>
               <button
                 type="submit"

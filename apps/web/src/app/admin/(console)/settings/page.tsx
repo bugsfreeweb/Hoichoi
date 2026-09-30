@@ -11,18 +11,23 @@ export default async function AdminSettingsPage() {
   const settings = await getSettings();
   // Manual Run shows recent outcomes inline so an operator can tell
   // "triggered but failed" apart from "trigger never reached GitHub".
-  // Full history, paginated, lives at /admin/logs.
-  const recent = await listPipelineRunsPage(1, 20).catch(() => null);
+  // ManualRun only renders the newest run and the newest finished one, so a
+  // handful is plenty. Full paginated history lives at /admin/logs.
+  const recent = await listPipelineRunsPage(1, 5).catch(() => null);
   return (
     <div>
       <PageHeading emoji="⚙️" kicker="OPERATIONS" title="সেটিংস" />
       {/*
-        The console shell is 1500px wide; capping this column at 3xl left most of
-        the operational panels stranded in the left third of a very wide screen.
-        The two-column layout below fills the space and keeps each form narrow
-        enough to stay readable.
+        Single column, deliberately.
+
+        This was briefly a two-column grid to "use up" the 1500px console shell.
+        It made the page worse: the login log is a table with `min-w-[720px]`,
+        and a half-width column of that shell is only ~690px, so the table
+        overflowed and forced a horizontal scrollbar inside a nested box. Forms
+        also lost reading width for no gain. One centred column fits the widest
+        panel on the page and keeps every control comfortably readable.
       */}
-      <div className="mt-6 grid items-start gap-8 xl:grid-cols-2">
+      <div className="mt-6 grid max-w-4xl gap-8">
         <div className="grid gap-8">
           <div className="border border-ink/20 bg-paper-deep p-6">
             <h3 className="font-sans-bn text-[15px] font-bold text-ink">পাইপলাইন</h3>
@@ -45,9 +50,7 @@ export default async function AdminSettingsPage() {
           <VisibilityPanel />
           <LoginLogViewer />
         </div>
-        <div className="grid gap-8">
-          <SettingsForm initial={settings} />
-        </div>
+        <SettingsForm initial={settings} />
       </div>
     </div>
   );

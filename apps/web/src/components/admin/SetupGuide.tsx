@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { SecretSpec } from "@hoichoi/shared-types";
+import { RUN_SUCCESS_STATUS } from "@/lib/setup-readiness";
 
 /**
  * On-screen guide for configuring the automation.
@@ -205,7 +206,7 @@ export function SetupGuide({
             <div className="flex flex-wrap items-center gap-2 text-[12.5px]">
               <span
                 className={`rounded-full px-2.5 py-0.5 font-mono-x text-[10px] font-bold uppercase ${
-                  lastRun.status === "success"
+                  lastRun.status === RUN_SUCCESS_STATUS
                     ? "bg-lime/20 text-lime"
                     : lastRun.status === "running"
                       ? "bg-amber/20 text-amber"

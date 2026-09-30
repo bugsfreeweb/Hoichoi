@@ -8,7 +8,7 @@
     "build": "pnpm -w run db:migrate && next build",
     "start": "next start --port 3070",
     "typecheck": "tsc --noEmit",
-    "test": "tsx src/__tests__/category-style.test.ts"
+    "test": "tsx src/__tests__/category-style.test.ts && tsx scripts/setup-readiness.test.ts"
   },
   "dependencies": {
     "@hoichoi/db": "workspace:*",
