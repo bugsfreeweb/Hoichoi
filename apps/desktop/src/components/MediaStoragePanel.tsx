@@ -130,6 +130,26 @@ export default function MediaStoragePanel() {
 
   return (
     <div className="panel mt-5">
+      {/*
+        Media capability is only partly implemented: image posts are fetched and
+        converted server-side, while video needs yt-dlp/ffmpeg which the pipeline
+        does not call. Stating that up front stops an operator from wondering why
+        a video post keeps its Facebook URL forever with no error anywhere.
+      */}
+      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2.5">
+        <span className="rounded-full bg-lime/15 px-2 py-0.5 font-mono-x text-[9.5px] text-lime">
+          ছবি — সমর্থিত
+        </span>
+        <span className="rounded-full bg-white/8 px-2 py-0.5 font-mono-x text-[9.5px] text-white/45">
+          ভিডিও — অসমর্থিত
+        </span>
+        <p className="text-[11px] leading-relaxed text-white/50">
+          ছবির পোস্ট স্থানীয়ভাবে <code className="font-mono-x">/uploads</code>-এ সংরক্ষিত হয়। ভিডিও
+          ডাউনলোডের জন্য <code className="font-mono-x">yt-dlp</code> ও{" "}
+          <code className="font-mono-x">ffmpeg</code> দরকার, যা এখনো যুক্ত হয়নি — তাই ভিডিও পোস্টের
+          মিডিয়া আপলোড না হলে সেটি উপেক্ষা করা হয়, ব্যর্থ বলে ধরা হয় না।
+        </p>
+      </div>
       <div className="flex flex-wrap items-center gap-3">
         <p className="flex items-center gap-2 panel-title">
           <Cloud size={14} className="text-lime" /> মিডিয়া স্টোরেজ · fallback চেইন + মাসিক ডিলিট

@@ -110,6 +110,8 @@ export async function saveMediaStorageConfig(cfg: MediaStorageConfig): Promise<v
 export const DEFAULT_SETTINGS: SiteSettings = {
   id: 1,
   pipeline_hours: 2,
+  llm_temperature: 0.3,
+  fact_gate: 90,
   site_name: "হৈচৈ",
   contact_email: "contact@hoichoi.local",
   police_helpline: "999",
@@ -135,6 +137,10 @@ export function mapSettings(row: Record<string, unknown>): SiteSettings {
   return {
     id: 1,
     pipeline_hours: Number(row.pipeline_hours ?? DEFAULT_SETTINGS.pipeline_hours),
+    // Guard the range here rather than trusting a hand-edited row: a stored 90
+    // would be sent straight to the provider and rejected mid-run.
+    llm_temperature: Math.min(1, Math.max(0, Number(row.llm_temperature ?? 0.3))),
+    fact_gate: Math.min(100, Math.max(0, Number(row.fact_gate ?? 90))),
     site_name: str(row.site_name, DEFAULT_SETTINGS.site_name),
     contact_email: str(row.contact_email),
     police_helpline: str(row.police_helpline, DEFAULT_SETTINGS.police_helpline),
@@ -169,6 +175,8 @@ export async function updateSettings(fields: Partial<SiteSettings>): Promise<voi
   const client = getClient();
   const allowed: Array<keyof SiteSettings> = [
     "pipeline_hours",
+    "llm_temperature",
+    "fact_gate",
     "site_name",
     "contact_email",
     "police_helpline",

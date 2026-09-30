@@ -30,6 +30,8 @@ export default function Moderation() {
   const [err, setErr] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [focusIdx, setFocusIdx] = useState(0);
+  /** Counted progress for bulk actions; null when nothing is in flight. */
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -83,18 +85,43 @@ export default function Moderation() {
     if (!window.confirm(`${toBn(selected.size)}টি মন্তব্য ${status === "approved" ? "অনুমোদন" : "ব্লক"} করবেন?`)) return;
     setBusy("bulk");
     setErr(null);
+    setBulkProgress({ done: 0, total: selected.size });
+    const verb = status === "approved" ? "অনুমোদন" : "ব্লক";
+    // Each comment is a separate write, so a failure halfway through leaves a
+    // partial result. Report exactly what landed rather than a blanket "failed"
+    // that hides which items still need attention.
+    let done = 0;
+    const failed: string[] = [];
     try {
       const env = await getRunEnv();
       for (const id of selected) {
-        await deskModerationSet(env, id, status);
+        try {
+          await deskModerationSet(env, id, status);
+          done++;
+        } catch (e) {
+          failed.push(String(e));
+        }
+        setBulkProgress({ done, total: selected.size });
       }
-      setMsg(`${toBn(selected.size)}টি মন্তব্য ${status === "approved" ? "অনুমোদিত" : "ব্লক"} হয়েছে।`);
-      toast.ok(`আইটেম ${toBn(selected.size)}টির ${status === "approved" ? "অনুমোদন" : "ব্লক"} সম্পন্ন`, "মডারেশন অবস্থা হালনাগাদ");
+      const okCount = done;
+      if (failed.length === 0) {
+        setMsg(`${toBn(okCount)}টি মন্তব্য ${verb} হয়েছে।`);
+        toast.ok(`আইটেম ${toBn(okCount)}টির ${verb} সম্পন্ন`, "মডারেশন অবস্থা হালনাগাদ");
+      } else {
+        setErr(
+          `${toBn(okCount)}টি ${verb} হয়েছে, ${toBn(failed.length)}টি ব্যর্থ। বাকিগুলো আবার চেষ্টা করুন।`,
+        );
+        toast.err(
+          `আংশিক সফল — ${toBn(failed.length)}টি ব্যর্থ`,
+          `${toBn(okCount)}টি ${verb} হয়েছে।`,
+        );
+      }
       await load();
     } catch (e) {
       setErr(String(e));
       toast.err("বাল্ক অ্যাকশন ব্যর্থ", String(e));
     } finally {
+      setBulkProgress(null);
       setBusy(null);
     }
   };
@@ -219,6 +246,12 @@ export default function Moderation() {
           </label>
           <span className="font-mono-x text-[10px] text-white/35">{toBn(selected.size)} নির্বাচিত</span>
           <div className="ml-auto flex items-center gap-2">
+            {bulkProgress && (
+              <span className="flex items-center gap-1.5 font-mono-x text-[10px] text-lime">
+                <Loader2 size={11} className="animate-spin" />
+                {toBn(bulkProgress.done)}/{toBn(bulkProgress.total)}
+              </span>
+            )}
             {selected.size > 0 && (
               <>
                 <button

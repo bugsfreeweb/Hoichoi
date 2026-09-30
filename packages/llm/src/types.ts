@@ -21,6 +21,21 @@ export interface RewriteContext extends RewriteInput {
   category: CategorySlug;
   categoryConfig: CategoryConfig;
   sourcePageName: string;
+  /**
+   * Sampling temperature for this call. Optional because a rewrite should never
+   * fail just because nobody set a preference: providers fall back to the
+   * conservative 0.3 used for Bengali editorial prose.
+   */
+  temperature?: number;
+}
+
+/** Default temperature for rewrite calls. */
+export const DEFAULT_TEMPERATURE = 0.3;
+
+/** Clamp a caller-supplied temperature into the range providers accept. */
+export function resolveTemperature(t: number | null | undefined): number {
+  if (typeof t !== "number" || !Number.isFinite(t)) return DEFAULT_TEMPERATURE;
+  return Math.min(1, Math.max(0, t));
 }
 
 export interface LLMProvider {

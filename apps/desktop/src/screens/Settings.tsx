@@ -283,6 +283,30 @@ export default function Settings({
     }
   };
 
+  const saveTemp = async () => {
+    try {
+      await settingsSet(await getRunEnv(), { llm_temperature: prefs.temp });
+      show(`রিরাইট তাপমাত্রা সংরক্ষিত — ${prefs.temp.toFixed(2)}`);
+      setErr(null);
+      await loadBrand();
+      await autoPush();
+    } catch (e) {
+      fail(e);
+    }
+  };
+
+  const saveGate = async () => {
+    try {
+      await settingsSet(await getRunEnv(), { fact_gate: prefs.gate });
+      show(`ফ্যাক্ট-গেট থ্রেশহোল্ড সংরক্ষিত — ${prefs.gate}%`);
+      setErr(null);
+      await loadBrand();
+      await autoPush();
+    } catch (e) {
+      fail(e);
+    }
+  };
+
   const show = (m: string) => {
     setMsg(m);
     setErr(null);
@@ -832,6 +856,16 @@ export default function Settings({
                   onChange={(e) => updatePref("temp", Number(e.target.value))}
                   className="mt-1 w-full accent-[#c8f65d]"
                 />
+                <button
+                  onClick={() => void saveTemp()}
+                  className="mt-2 flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 text-[11px] font-bold text-night hover:brightness-110"
+                >
+                  তাপমাত্রা সংরক্ষিত করুন
+                </button>
+                <p className="mt-2 text-[11.5px] text-white/40">
+                  LLM-এর স্যাম্পলিং তাপমাত্রা। এটি সেভ করলে ওয়েব অ্যাডমিন ও নির্ধারিত
+                  GitHub Actions রান — সবাই একই মান পাবে।
+                </p>
               </section>
 
               <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
@@ -851,9 +885,16 @@ export default function Settings({
                   className="mt-1 w-full accent-[#c8f65d]"
                 />
                 <p className="mt-3 text-[12px] leading-relaxed text-white/45">
-                  স্কোর এর নিচে গেলে আইটেম <span className="text-amberx">pending</span> সারিতে
-                  যায় — লাইভে নয়। সংবেদনশীল অপরাধ/শিশু কনটেন্টে ০.৯০+ রাখুন।
+                  ক্লাসিফায়ারের নিশ্চয়তা এই থ্রেশহোল্ডের নিচে নামলে পোস্টটি{" "}
+                  <span className="text-amberx">pending</span> সারিতে যায় — লাইভে নয়। সংবেদনশীল
+                  অপরাধ/শিশু কনটেন্টে ৯০+ রাখুন।
                 </p>
+                <button
+                  onClick={() => void saveGate()}
+                  className="mt-3 flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 text-[11px] font-bold text-night hover:brightness-110"
+                >
+                  থ্রেশহোল্ড সংরক্ষিত করুন
+                </button>
               </section>
 
               <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">

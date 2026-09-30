@@ -89,6 +89,8 @@ export async function rewritePost(input: {
   originalAuthorName?: string | null;
   policeHelpline?: string;
   childHelpline?: string;
+  /** Optional override from operator preferences; providers clamp and default. */
+  temperature?: number;
   resolver: import("@hoichoi/llm").Resolver;
   log?: (msg: string) => void;
 }): Promise<RewriteOutcome> {
@@ -100,6 +102,7 @@ export async function rewritePost(input: {
     category: input.category,
     categoryConfig: input.categoryConfig,
     originalAuthorName: input.originalAuthorName ?? null,
+    temperature: input.temperature,
   };
 
   const { out, provider } = await resolver.rewrite(ctx);

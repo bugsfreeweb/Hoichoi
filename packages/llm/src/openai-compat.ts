@@ -1,7 +1,7 @@
 import type { HealthCheckResult, LLMProviderRow } from "@hoichoi/shared-types";
 import { ProviderError, type LLMProvider, type ParsedRewrite, type RewriteContext } from "./types";
 import { getSystemPrompt } from "./prompts";
-import { parseRewriteOutput } from "./types";
+import { parseRewriteOutput, resolveTemperature } from "./types";
 
 export interface OpenAICompatOptions {
   row: LLMProviderRow;
@@ -92,7 +92,7 @@ export class OpenAICompatProvider implements LLMProvider {
           { role: "system", content: system },
           { role: "user", content: user },
         ],
-        temperature: 0.3,
+        temperature: resolveTemperature(ctx.temperature),
         max_tokens: 4096,
       }),
     });

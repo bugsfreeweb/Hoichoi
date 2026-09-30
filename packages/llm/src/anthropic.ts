@@ -2,7 +2,7 @@ import type { HealthCheckResult, LLMProviderRow } from "@hoichoi/shared-types";
 import { classifyStatus } from "./openai-compat";
 import { getSystemPrompt } from "./prompts";
 import { ProviderError, type LLMProvider, type ParsedRewrite, type RewriteContext } from "./types";
-import { parseRewriteOutput } from "./types";
+import { parseRewriteOutput, resolveTemperature } from "./types";
 
 const API_BASE = "https://api.anthropic.com";
 
@@ -52,7 +52,7 @@ export class AnthropicProvider implements LLMProvider {
         system: getSystemPrompt(ctx),
         messages: [{ role: "user", content: user }],
         max_tokens: 4096,
-        temperature: 0.3,
+        temperature: resolveTemperature(ctx.temperature),
       }),
     });
     if (!res.ok) classifyStatus(res.status, await res.text());

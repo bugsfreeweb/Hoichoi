@@ -295,6 +295,18 @@ export interface RedactionBlocklistEntry {
 export interface SiteSettings {
   id: number;
   pipeline_hours: number;
+  /**
+   * Sampling temperature used for LLM rewrites, in [0, 1]. Shared by the desktop
+   * slider, the web admin, and the scheduled pipeline so all three agree.
+   * Undefined means "not set", which resolves to the provider default of 0.3.
+   */
+  llm_temperature?: number | null;
+  /**
+   * Classifier confidence, as a whole percent, under which a post whose category
+   * was re-detected (not inherited from its source) is held for human review.
+   * Undefined means "not set", which resolves to 90.
+   */
+  fact_gate?: number | null;
   site_name: string;
   contact_email: string;
   police_helpline: string;

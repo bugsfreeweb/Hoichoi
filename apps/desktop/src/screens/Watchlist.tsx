@@ -69,8 +69,11 @@ export default function Watchlist({
     try {
       const errs = await deskSourceErrors(await getRunEnv());
       setSourceErrors(errs.filter((e) => e.status === "open"));
-    } catch {
-      /* ignore */
+    } catch (e) {
+      // Silently swallowing this made a broken connection look identical to
+      // "no scrape problems", so the operator could not tell a healthy
+      // watchlist from a failed status query.
+      setErr(`সোর্সের ত্রুটি লোড করা যায়নি: ${String(e)}`);
     } finally {
       setErrBusy(false);
     }
@@ -78,6 +81,7 @@ export default function Watchlist({
 
   const ignoreError = async (e: DeskSourceError) => {
     setErrBusy(true);
+    setErr(null);
     try {
       const src = sources.find((s) => s.id === e.source_id);
       await deskSourceErrorSet(await getRunEnv(), e.id, "dismiss");
@@ -86,8 +90,8 @@ export default function Watchlist({
       }
       await refresh();
       await loadErrors();
-    } catch {
-      /* ignore */
+    } catch (ex) {
+      setErr(`ত্রুটি বাতিল করা যায়নি: ${String(ex)}`);
     } finally {
       setErrBusy(false);
     }

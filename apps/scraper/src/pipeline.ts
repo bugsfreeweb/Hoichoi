@@ -49,6 +49,8 @@ export interface PipelineStats {
   skipped: number;
   published: number;
   pendingReview: number;
+  /** Posts held because the classifier's confidence fell under the fact-gate. */
+  lowConfidence: number;
   providerUsed: string[] | null;
   errors: string[];
 }
@@ -194,6 +196,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
     skipped: 0,
     published: 0,
     pendingReview: 0,
+    lowConfidence: 0,
     providerUsed: [],
     errors: [],
   };
@@ -213,6 +216,11 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
   }
   const setRes = await client.execute("SELECT * FROM settings WHERE id = 1");
   const setRow = (setRes.rows[0] ?? {}) as Record<string, unknown>;
+  // Clamp before use so a hand-edited or absent column degrades to the
+  // historical 0.3 instead of failing every rewrite.
+  const rewriteTemperature = Math.min(1, Math.max(0, Number(setRow.llm_temperature ?? 0.3)));
+  // Fact-gate threshold as a whole percent, defaulting to the historical 90.
+  const factGate = Math.min(100, Math.max(0, Number(setRow.fact_gate ?? 90)));
 
   // Sources
   const srcRes = await client.execute(
@@ -410,6 +418,21 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         // Prefer the detected post's own category config when it exists here;
         // otherwise the source's best-effort config (see resolveCategoryConfig).
         const config = (cats.get(postCategory) ?? resolved).config;
+
+        // Fact-gate: a weak keyword match means the category assignment is a
+        // guess. The desk has always exposed a threshold slider for exactly this,
+        // and routing those posts to the moderation queue is what makes an
+        // operator raising it see anything. The source's own category is treated
+        // as authoritative, so an unrecognised post is not punished for the
+        // source's configuration.
+        const gateApplies = detected !== null && postCategory !== source.category;
+        const lowConfidenceThisPost = gateApplies && detected.confidence < factGate;
+        if (lowConfidenceThisPost) {
+          log(
+            `[gate] "${source.page_name}" → ${postCategory} @ ${detected.confidence}% below ${factGate}% — held for review`,
+          );
+          stats.lowConfidence++;
+        }
         const outcome = await rewritePost({
           rawText: sp.rawText,
           sourceName: source.id,
@@ -419,6 +442,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           originalAuthorName: sp.authorName ?? null,
           policeHelpline: String(setRow.police_helpline ?? "999"),
           childHelpline: String(setRow.child_helpline ?? "109"),
+          temperature: rewriteTemperature,
           resolver,
           log,
         });
@@ -449,7 +473,10 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         }
 
         const decision = assessRisk(config, outcome.flags);
-        const status: PostStatus = decision.status;
+        // A weak category match escalates regardless of what the category or the
+        // safety flags say: the content may be fine, but its placement on the
+        // site is a guess, and a human should confirm it.
+        const status: PostStatus = lowConfidenceThisPost ? "pending_review" : decision.status;
         const slug = makeSlug(outcome.rewritten.title_bn);
         const now = nowIso();
         await withTx(async (tx) => {

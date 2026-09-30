@@ -11,7 +11,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "tsx src/__tests__/parse-rewrite.test.ts && tsx src/__tests__/body-structure.test.ts"
+    "test": "tsx src/__tests__/parse-rewrite.test.ts && tsx src/__tests__/body-structure.test.ts && tsx src/__tests__/temperature.test.ts"
   },
   "dependencies": {
     "@hoichoi/db": "workspace:*",

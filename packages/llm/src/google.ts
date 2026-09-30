@@ -2,7 +2,7 @@ import type { HealthCheckResult, LLMProviderRow } from "@hoichoi/shared-types";
 import { classifyStatus } from "./openai-compat";
 import { getSystemPrompt } from "./prompts";
 import { ProviderError, type LLMProvider, type ParsedRewrite, type RewriteContext } from "./types";
-import { parseRewriteOutput } from "./types";
+import { parseRewriteOutput, resolveTemperature } from "./types";
 
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -60,7 +60,10 @@ export class GoogleGeminiProvider implements LLMProvider {
         body: JSON.stringify({
           system_instruction: { parts: [{ text: content }] },
           contents: [{ role: "user", parts: [{ text: user }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
+          generationConfig: {
+            temperature: resolveTemperature(ctx.temperature),
+            maxOutputTokens: 4096,
+          },
         }),
       },
     );
