@@ -49,9 +49,21 @@ jobs:
           [ -z "$TURSO_DATABASE_URL" ] && missing+=("TURSO_DATABASE_URL")
           [ -z "$TURSO_AUTH_TOKEN" ] && missing+=("TURSO_AUTH_TOKEN")
           [ -z "$FB_SESSION_COOKIE" ] && missing+=("FB_SESSION_COOKIE")
+          # Any one concrete LLM credential is enough (the scraper picks the
+          # highest-priority enabled provider row). Checked here because the
+          # rewrite step would otherwise fail much later and less clearly.
+          llm=()
+          for v in GOOGLE_API_KEY GROQ_API_KEY OPENROUTER_API_KEY \
+                   ANTHROPIC_API_KEY OPENAI_API_KEY MISTRAL_API_KEY OLLAMA_BASE_URL; do
+            [ -n "${!v}" ] && llm+=("$v")
+          done
+          if [ ${#llm[@]} -eq 0 ]; then
+            missing+=("an LLM key: one of GOOGLE_API_KEY, GROQ_API_KEY, OPENROUTER_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, MISTRAL_API_KEY, OLLAMA_BASE_URL")
+          fi
           if [ ${#missing[@]} -gt 0 ]; then
             echo "::error::Missing required repository secrets: ${missing[*]}"
             echo "Add them under GitHub → ${GITHUB_REPOSITORY} → Settings → Secrets and variables → Actions."
+            echo "Step-by-step Bangla guide: https://github.com/${GITHUB_REPOSITORY}/blob/main/docs/SECRETS.md"
             exit 1
           fi
           if [ -z "$VERCEL_DEPLOY_HOOK_URL" ]; then
