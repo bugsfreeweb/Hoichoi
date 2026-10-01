@@ -1712,6 +1712,32 @@ export async function trimHistory(olderThanDays = 90): Promise<{
   return { runs: runs.rowsAffected, actions: actions.rowsAffected };
 }
 
+/**
+ * How many rows `trimHistory` would delete, without deleting anything.
+ *
+ * The maintenance panel runs a dry run before the real trim, but the dry run used
+ * to only restate the retention window — it gave the operator no idea whether
+ * the trim would remove 3 rows or 300,000, so there was nothing to review before
+ * committing to an irreversible delete.
+ */
+export async function countTrimmableHistory(olderThanDays = 90): Promise<{
+  runs: number;
+  actions: number;
+}> {
+  const client = getClient();
+  const cutoff = new Date(Date.now() - olderThanDays * 86_400_000).toISOString();
+  const runs = await client.execute({
+    sql: "SELECT COUNT(*) AS n FROM pipeline_runs WHERE started_at < ? AND status != 'running'",
+    args: [cutoff],
+  });
+  const actions = await client.execute({
+    sql: "SELECT COUNT(*) AS n FROM admin_actions WHERE created_at < ?",
+    args: [cutoff],
+  });
+  const n = (r: { rows: unknown[] }) => Number((r.rows[0] as Record<string, unknown>)?.n ?? 0);
+  return { runs: n(runs), actions: n(actions) };
+}
+
 /* ------------------------------------------------------------------ *
  * Content hygiene
  * ------------------------------------------------------------------ */

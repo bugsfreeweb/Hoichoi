@@ -19,6 +19,10 @@ export function MaintenancePanel({ unusableCount }: { unusableCount: number }) {
   const [result, setResult] = useState<{ action: Action; msg: string; ok: boolean } | null>(
     null,
   );
+  // The destructive button stays locked until the operator has actually seen the
+  // dry-run counts for that specific action. Deleting rows should never be one
+  // click away from a count nobody looked at.
+  const [reviewed, setReviewed] = useState<Partial<Record<Action, boolean>>>({});
 
   const call = async (action: Action, dryRun: boolean) => {
     setBusy(action);
@@ -51,7 +55,13 @@ export function MaintenancePanel({ unusableCount }: { unusableCount: number }) {
           ? `✓ ${data.quarantined ?? 0}টি পোস্ট rejected করা হয়েছে।`
           : `✓ ${data.runs ?? 0}টি রান ও ${data.actions ?? 0}টি অ্যাকশন লগ মোখা হয়েছে।`;
       setResult({ action, ok: true, msg });
-      if (!dryRun) router.refresh();
+      // A successful dry run unlocks the real run for this action; any change to
+      // the data invalidates that, so the counts must be re-read before deleting.
+      if (dryRun) setReviewed((prev) => ({ ...prev, [action]: true }));
+      if (!dryRun) {
+        setReviewed((prev) => ({ ...prev, [action]: false }));
+        router.refresh();
+      }
     } catch {
       setResult({ action, ok: false, msg: "নেটওয়ার্ক ত্রুটি।" });
     } finally {
@@ -72,6 +82,7 @@ export function MaintenancePanel({ unusableCount }: { unusableCount: number }) {
           title="অব্যবহারযোগ্য পোস্ট সরিয়ে দিন"
           desc={`শিরোনাম &ldquo;শিরোনাম ছাড়া&rdquo; বা ফাঁকা, অথবা দেহ খালি — এমন ${unusableCount}টি পোস্ট rejected হবে। মোছা হবে না, শুধু প্রকাশিত হবে না।`}
           busy={busy === "quarantine-unusable"}
+          reviewed={reviewed["quarantine-unusable"] === true}
           onDryRun={() => void call("quarantine-unusable", true)}
           onRun={() => void call("quarantine-unusable", false)}
           runLabel="সরিয়ে দিন"
@@ -82,6 +93,7 @@ export function MaintenancePanel({ unusableCount }: { unusableCount: number }) {
           title="পুরোনো লগ সাফ করুন"
           desc="৯০ দিনের বেশি পুরনো পাইপলাইন রান ও অ্যাডমিন অ্যাকশন লগ মুছে যাবে (চলমান রান বাদে)।"
           busy={busy === "trim-history"}
+          reviewed={reviewed["trim-history"] === true}
           onDryRun={() => void call("trim-history", true)}
           onRun={() => void call("trim-history", false)}
           runLabel="সাফ করুন"
@@ -105,6 +117,7 @@ function Row({
   title,
   desc,
   busy,
+  reviewed,
   onDryRun,
   onRun,
   runLabel,
@@ -113,6 +126,7 @@ function Row({
   title: string;
   desc: string;
   busy: boolean;
+  reviewed: boolean;
   onDryRun: () => void;
   onRun: () => void;
   runLabel: string;
@@ -123,6 +137,11 @@ function Row({
       <div className="min-w-0 flex-1">
         <p className="text-[13.5px] font-bold text-ink">{title}</p>
         <p className="mt-0.5 text-[12px] leading-relaxed text-ink-soft">{desc}</p>
+        {reviewed && (
+          <p className="mt-1 text-[11.5px] font-bold text-lime">
+            পরীক্ষা করা হয়েছে — এখন আসল কাজটি চালাতে পারেন
+          </p>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <button
@@ -134,7 +153,8 @@ function Row({
         </button>
         <button
           onClick={onRun}
-          disabled={busy || disabled}
+          disabled={busy || disabled || !reviewed}
+          title={reviewed ? undefined : "আগে “পরীক্ষা করুন” চাপুন"}
           className="bg-alizarin px-3 py-1.5 text-[11.5px] font-bold text-white transition-colors hover:bg-alizarin/80 disabled:opacity-40"
         >
           {busy ? "চলছে…" : runLabel}

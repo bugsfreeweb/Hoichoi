@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  countTrimmableHistory,
   countUnusablePosts,
   nowIso,
   quarantineUnusablePosts,
@@ -52,14 +53,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, dryRun: false, quarantined: ids.length });
     }
 
-    case "trim-history": {
+case "trim-history": {
       const days = Math.max(7, Math.min(3650, Number(body.olderThanDays ?? 90)));
       if (dryRun) {
+        // Report the real row counts so the operator can review before deleting.
+        const wouldDelete = await countTrimmableHistory(days);
         return NextResponse.json({
           ok: true,
           dryRun: true,
           olderThanDays: days,
-          message: `${days} দিনের পুরনো রান ও অ্যাকশন লগ মুছে যাবে। আসল করতে dryRun: false পাঠান।`,
+          wouldDelete,
+          message: `${days} দিনের পুরনো ${wouldDelete.runs}টি রান ও ${wouldDelete.actions}টি অ্যাডমিন অ্যাকশন মুছে যাবে — সত্যিই মুছতে dryRun: false পাঠান।`,
         });
       }
       const result = await trimHistory(days);
