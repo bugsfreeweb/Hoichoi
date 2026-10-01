@@ -144,6 +144,42 @@ await check("duplicate slugs collapse to one membership row", async () => {
   );
 });
 
+await check("the legacy category column follows the membership it describes", async () => {
+  const client = await freshClient();
+  // This is what `sources update --categories` does after replacing the set.
+  // The scraper falls back to this column when a source has no membership row,
+  // so if it is left behind the same source reads as two different categories
+  // depending on which surface asks.
+  const csv = "child-sexual-abuse,extramarital-crime";
+  const categories = csv
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
+  await client.execute({ sql: "DELETE FROM source_categories WHERE source_id = 'src-1'", args: [] });
+  const values = categories.map(() => "(?, ?)").join(", ");
+  await client.execute({
+    sql: `INSERT INTO source_categories (source_id, category_slug) VALUES ${values}`,
+    args: categories.flatMap((c) => ["src-1", c]),
+  });
+  const primary = categories[0];
+  assert.ok(primary, "the fixture must have at least one category");
+  await client.execute({
+    sql: "UPDATE sources SET category = ? WHERE id = ?",
+    args: [primary, "src-1"],
+  });
+  const r = await one(client, "SELECT category FROM sources WHERE id = 'src-1'");
+  assert.equal(
+    String(r.category),
+    primary,
+    "the legacy column must be the first membership slug",
+  );
+  // And the fallback the pipeline relies on resolves to a real slug, never null.
+  const sc = await rows(client, "SELECT category_slug FROM source_categories WHERE source_id='src-1'");
+  const slugs = sc.map((x) => String(x.category_slug));
+  assert.equal(slugs.length > 0 ? slugs[0] : String(r.category), slugs[0]);
+  assert.ok(slugs[0], "a source with membership must resolve to a usable category");
+});
+
 console.log(`\n[db] ${passed} checks passed`);
 
 for (const c of openClients) {

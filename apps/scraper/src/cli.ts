@@ -747,6 +747,22 @@ async function updateDeskSource(
         args: categories.flatMap((c) => [id, c]),
       });
     }
+    // `sources.category` is the legacy single-category column that older readers
+    // still use, and the pipeline falls back to it when a source has no
+    // membership row (pipeline.ts). Without this, editing a source's categories
+    // from the desk left the two disagreeing: the junction table said one thing,
+    // the column another, so the same source rendered under different categories
+    // depending on which surface asked. The web editor already syncs it.
+    //
+    // Empty membership is left alone on purpose, exactly as the web route does:
+    // nulling the column would make the pipeline's `[s.category]` fallback
+    // resolve to `[null]` for a source that simply has no categories yet.
+    if (categories.length > 0) {
+      const primary = categories[0];
+      if (primary !== undefined) {
+        await client.execute({ sql: "UPDATE sources SET category = ? WHERE id = ?", args: [primary, id] });
+      }
+    }
   }
   return (await listDeskSources()).find((s: { id: string }) => s.id === id) ?? null;
 }
