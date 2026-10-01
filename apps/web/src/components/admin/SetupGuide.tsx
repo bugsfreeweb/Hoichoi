@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { SecretSpec } from "@hoichoi/shared-types";
 import { RUN_SUCCESS_STATUS } from "@/lib/setup-readiness";
+import { ExternalLink } from "./ExternalLink";
 
 /**
  * On-screen guide for configuring the automation.
@@ -99,14 +100,12 @@ function SecretCard({ s }: { s: SecretView }) {
         </div>
 
         {s.dashboardUrl && (
-          <a
+          <ExternalLink
             href={s.dashboardUrl}
-            target="_blank"
-            rel="noreferrer"
             className="inline-block border border-white/20 px-4 py-2 text-[12px] font-bold text-white transition-colors hover:border-alizarin hover:bg-alizarin"
           >
             {s.dashboardLabelBn ?? "ড্যাশবোর্ড খুলুন"} ↗
-          </a>
+          </ExternalLink>
         )}
 
         <div>
@@ -247,10 +246,8 @@ export function SetupGuide({
           সংগ্রহ করে একে একে সেখানে পেস্ট করবেন।
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <a
+          <ExternalLink
             href={ACTIONS_SECRETS_URL}
-            target="_blank"
-            rel="noreferrer"
             className="rounded-lg border border-lime/40 bg-lime/10 p-4 transition-colors hover:bg-lime/15"
           >
             <p className="text-[13px] font-bold text-lime">Repository Secrets (প্রধান জায়গা)</p>
@@ -260,11 +257,9 @@ export function SetupGuide({
             <p className="mt-2 text-[12px] text-white/60">
               এখানে "New repository secret" বাটনে ক্লিক করে নাম ও মান দুটোই পেস্ট করুন।
             </p>
-          </a>
-          <a
+          </ExternalLink>
+          <ExternalLink
             href={ACTIONS_VARS_URL}
-            target="_blank"
-            rel="noreferrer"
             className="rounded-lg border border-white/15 bg-white/5 p-4 transition-colors hover:border-white/30"
           >
             <p className="text-[13px] font-bold text-white/70">Repository Variables (ঐচ্ছিক টিউনিং)</p>
@@ -275,7 +270,7 @@ export function SetupGuide({
               MAX_POSTS_PER_RUN, ARCHIVE_RETENTION_DAYS ইত্যাদি সংখ্যা টিউনিং এখানে যায়।
               এগুলো সিক্রেট নয়, তাই গোপন রাখার দরকার নেই।
             </p>
-          </a>
+          </ExternalLink>
         </div>
         <p className="mt-4 text-[12.5px] text-white/50">
           ডেস্ক অ্যাপ ব্যবহার করলে হাতে কাজ কম: সেখানে{" "}
@@ -353,14 +348,12 @@ export function SetupGuide({
                 </li>
               ))}
             </ol>
-            <a
+            <ExternalLink
               href={NEW_TOKEN_URL}
-              target="_blank"
-              rel="noreferrer"
               className="inline-block border border-white/20 px-4 py-2 text-[12px] font-bold text-white transition-colors hover:border-alizarin hover:bg-alizarin"
             >
               নতুন PAT তৈরি করুন ↗
-            </a>
+            </ExternalLink>
           </div>
         )}
       </section>

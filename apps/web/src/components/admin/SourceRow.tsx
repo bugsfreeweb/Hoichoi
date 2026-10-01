@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Source } from "@hoichoi/shared-types";
+import { ExternalLink } from "./ExternalLink";
 
 type CategoryOption = { slug: string; label: string };
 
@@ -202,9 +203,9 @@ export function SourceRow({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border border-ink/20 bg-paper-deep px-4 py-3">
       <div className="min-w-0">
-        <a href={source.page_url} target="_blank" rel="noreferrer" className="truncate text-[13.5px] font-bold text-ink hover:text-alizarin">
+        <ExternalLink href={source.page_url} className="truncate text-[13.5px] font-bold text-ink hover:text-alizarin">
           {source.page_name}
-        </a>
+        </ExternalLink>
         <p className="truncate font-mono-x text-[11px] text-ink-soft">{source.page_url}</p>
       </div>
       <div className="flex items-center gap-3">

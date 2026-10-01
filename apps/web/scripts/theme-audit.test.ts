@@ -89,7 +89,7 @@ const composite = (
   bg: [number, number, number],
   a: number,
 ): [number, number, number] =>
-  rgb.map((c, i) => Math.round(c * a + bg[i] * (1 - a))) as [number, number, number];
+  rgb.map((c, i) => Math.round(c * a + (bg[i] ?? 0) * (1 - a))) as [number, number, number];
 
 const channel = (c: number): number => {
   const s = c / 255;
@@ -98,8 +98,8 @@ const channel = (c: number): number => {
 const luminance = (rgb: [number, number, number]): number =>
   0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2]);
 const contrast = (a: [number, number, number], b: [number, number, number]): number => {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
+  const sorted = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return ((sorted[0] ?? 0) + 0.05) / ((sorted[1] ?? 0) + 0.05);
 };
 
 /** The console background set by `html[data-theme="light"] .admin-console`. */
@@ -136,7 +136,9 @@ const INVERSE: Record<string, [number, number, number]> = {
 // the scan and silently under-report how many rules were checked.
 const RULES = /(?<=[}])\s*([^{}]+?)\s*\{([^{}]*)\}/g;
 for (const m of lightBlock.matchAll(RULES)) {
-  const [, selector, body] = m;
+  const selector = m[1];
+  const body = m[2];
+  if (!selector || !body) continue;
   if (selector.includes(":") || /\.bg-/.test(selector)) continue;
 
   const textClasses = [...selector.matchAll(/\.(text-[a-z-]+(?:\/[\d.]+)?)/g)].map((x) => x[1]!);
@@ -147,8 +149,9 @@ for (const m of lightBlock.matchAll(RULES)) {
   if (!value) continue;
   let rgb: [number, number, number];
   let alpha = 1;
-  if (value.includes("rgba")) {
-    const parts = value.match(/rgba?\(([^)]+)\)/)![1].split(",").map((s) => parseFloat(s));
+  const fn = value.match(/rgba?\(([^)]+)\)/);
+  if (fn) {
+    const parts = fn[1]!.split(",").map((s) => parseFloat(s));
     alpha = parts.length > 3 ? parts[3]! : 1;
     rgb = [parts[0]!, parts[1]!, parts[2]!];
   } else if (value.trim().startsWith("#")) {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { SubmittedPage } from "@hoichoi/shared-types";
+import { ExternalLink } from "./ExternalLink";
 
 export function SubmissionRow({ sub }: { sub: SubmittedPage }) {
   const [busy, setBusy] = useState<null | "accept" | "reject">(null);
@@ -27,9 +28,9 @@ export function SubmissionRow({ sub }: { sub: SubmittedPage }) {
     <div className="border border-ink/20 bg-paper-deep p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <a href={sub.page_url} target="_blank" rel="noreferrer" className="truncate text-[14px] font-bold text-ink hover:text-alizarin">
+          <ExternalLink href={sub.page_url} className="truncate text-[14px] font-bold text-ink hover:text-alizarin">
             {sub.page_name ?? sub.page_url}
-          </a>
+          </ExternalLink>
           <p className="truncate font-mono-x text-[11px] text-ink-soft">{sub.page_url}</p>
           <p className="mt-1 text-[11.5px] text-ink-soft">
             {sub.submitter_name ? `${sub.submitter_name} · ` : ""}
