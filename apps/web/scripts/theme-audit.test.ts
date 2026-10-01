@@ -6,22 +6,32 @@ import { fileURLToPath } from "node:url";
 const APP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
- * Regression guard for the admin console's light theme.
+ * Two guards for the admin console's light theme.
  *
  * Admin components were authored against a dark surface using raw
  * `text-white` / `bg-white` / `border-ink` utilities. `globals.css` carries a
- * light-theme island block that remaps those onto dark ink, but the block and
- * the components drifted apart: any utility the block forgot kept rendering as
- * literal white on a now-light console, and the text on it vanished.
+ * light-theme island block that remaps those onto dark ink. That block and the
+ * components drifted apart twice, in two different ways:
  *
- * This fails the build if a component uses one of those families at an opacity
- * the light block does not cover, so the gap cannot silently reopen.
+ *  1. COVERAGE — a utility the block forgot kept rendering as literal white on
+ *     a now-light console and took its text with it.
+ *  2. CONTRAST — even a covered utility could be illegible, because the remap
+ *     inlined the same alpha as `rgba(26,20,13,N)`. Inverting white to black
+ *     while keeping the transparency turned every "muted" step into grey mush:
+ *     `text-white/35` measured 2.20:1 and `text-white/40` 2.51:1, against a
+ *     4.5:1 WCAG AA floor. Presence alone would never have caught that, which
+ *     is why the sticky header looked broken while every class was "covered".
+ *
+ * So this checks coverage AND measures the composite colour of every light
+ * theme text rule against the console surface.
  */
 
 // Strip CSS escapes up front so both sides compare as plain class names.
 const css = fs.readFileSync(path.join(APP, "src/app/globals.css"), "utf8").replace(/\\/g, "");
-const lightBlock = css.slice(css.indexOf("ADMIN CONSOLE"));
-if (!lightBlock) throw new Error("light-theme admin block not found in globals.css");
+
+const lightStart = css.indexOf("LIGHT THEME");
+if (lightStart < 0) throw new Error("light-theme admin block not found in globals.css");
+const lightBlock = css.slice(css.lastIndexOf("/*", lightStart));
 
 const FAM =
   "text-white|text-ink|text-paper|bg-white|bg-ink|bg-panel|bg-paper|border-white|border-ink";
@@ -40,7 +50,7 @@ const covered = new Set(
 const INTENTIONAL = new Set(["text-paper"]);
 
 const roots = [path.join(APP, "src/components/admin"), path.join(APP, "src/app/admin")];
-const used = new Map();
+const used = new Map<string, string>();
 for (const root of roots) {
   for (const entry of fs.readdirSync(root, { recursive: true })) {
     const f = String(entry);
@@ -67,4 +77,107 @@ if (uncovered.length > 0) {
   process.exit(1);
 }
 
-console.log(`[web] theme audit: ${used.size} admin colour utilities all covered in light theme`);
+/* ---------------- contrast gate ---------------- */
+
+const hex = (h: string): [number, number, number] => [
+  parseInt(h.slice(1, 3), 16),
+  parseInt(h.slice(3, 5), 16),
+  parseInt(h.slice(5, 7), 16),
+];
+const composite = (
+  rgb: [number, number, number],
+  bg: [number, number, number],
+  a: number,
+): [number, number, number] =>
+  rgb.map((c, i) => Math.round(c * a + bg[i] * (1 - a))) as [number, number, number];
+
+const channel = (c: number): number => {
+  const s = c / 255;
+  return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+};
+const luminance = (rgb: [number, number, number]): number =>
+  0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2]);
+const contrast = (a: [number, number, number], b: [number, number, number]): number => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+};
+
+/** The console background set by `html[data-theme="light"] .admin-console`. */
+const SURFACE: [number, number, number] = hex("#f3eee1");
+const MIN = 4.5;
+
+const measured: { cls: string; ratio: number }[] = [];
+
+/**
+ * Inverse utilities: these are painted on a saturated/dark fill that stays that
+ * way in both themes, so "dark ink on the light console" is the wrong question
+ * to ask about them. Map each to the background it actually sits on and measure
+ * there instead of silently exempting them — `text-night/60` used to measure
+ * 1.00:1 against the page and would otherwise hide behind an exemption.
+ */
+const INVERSE: Record<string, [number, number, number]> = {
+  // `text-night` / `text-night/60` are the label and count on a `bg-white` pill
+  // (the active queue tab). `bg-white` remaps to dark ink under the light theme,
+  // so these sit on #1a140d — not on lime, which is the other `text-night` use.
+  "text-night": hex("#1a140d"),
+  "text-night/60": hex("#1a140d"),
+  // `text-paper` only ever sits on `bg-ink`, which stays dark in both themes.
+  "text-paper": hex("#1a140d"),
+};
+
+// Parse the block into (selector, declarations) rules. Only rules whose colour
+// lands on the element itself are measured: a selector carrying a `bg-` compound
+// (`.bg-alizarin .text-white`) is white-on-red, and a `:` compound
+// (`.hover\:text-white:hover`, `::placeholder`) is not the resting state. Neither
+// should be judged as if it painted the bare console surface.
+//
+// The lookbehind anchors each selector to the previous rule's closing brace
+// without consuming it — a consumed `}` would make every other rule invisible to
+// the scan and silently under-report how many rules were checked.
+const RULES = /(?<=[}])\s*([^{}]+?)\s*\{([^{}]*)\}/g;
+for (const m of lightBlock.matchAll(RULES)) {
+  const [, selector, body] = m;
+  if (selector.includes(":") || /\.bg-/.test(selector)) continue;
+
+  const textClasses = [...selector.matchAll(/\.(text-[a-z-]+(?:\/[\d.]+)?)/g)].map((x) => x[1]!);
+  if (textClasses.length !== 1) continue; // compound groups like `.a .text-white, .b .text-x`
+  const cls = textClasses[0]!;
+
+  const value = body.match(/color:\s*([^};]+)/)?.[1];
+  if (!value) continue;
+  let rgb: [number, number, number];
+  let alpha = 1;
+  if (value.includes("rgba")) {
+    const parts = value.match(/rgba?\(([^)]+)\)/)![1].split(",").map((s) => parseFloat(s));
+    alpha = parts.length > 3 ? parts[3]! : 1;
+    rgb = [parts[0]!, parts[1]!, parts[2]!];
+  } else if (value.trim().startsWith("#")) {
+    rgb = hex(value.trim());
+  } else {
+    continue; // var(--…) or a keyword: not statically checkable, skip.
+  }
+
+  const against = INVERSE[cls] ?? SURFACE;
+  const painted = alpha === 1 ? rgb : composite(rgb, against, alpha);
+  measured.push({ cls, ratio: contrast(painted, against) });
+}
+
+const illegible = measured.filter((m) => m.ratio < MIN).sort((a, b) => a.ratio - b.ratio);
+if (illegible.length > 0) {
+  console.error(
+    `\n[web] these light-theme text colours fall under the ${MIN}:1 WCAG AA floor\n` +
+      "       against the #f3eee1 admin console, so they read as grey mush:\n" +
+      illegible
+        .map((m) => `  ${m.cls.padEnd(22)} ${m.ratio.toFixed(2)}:1`)
+        .join("\n") +
+      "\n       Use a solid ink that measures >= 4.5:1 instead of rgba(26,20,13,N).\n",
+  );
+  process.exit(1);
+}
+
+const worst = measured.reduce((a, b) => (a.ratio <= b.ratio ? a : b));
+console.log(
+  `[web] theme audit: ${used.size} admin colour utilities covered, ` +
+    `${measured.length} light-theme text rules readable ` +
+    `(lowest ${worst.cls} ${worst.ratio.toFixed(2)}:1)`,
+);
