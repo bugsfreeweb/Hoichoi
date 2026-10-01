@@ -100,7 +100,7 @@ export const SECRET_SPECS: SecretSpec[] = [
     labelBn: "Facebook সেশন কুকি",
     purposeBn:
       "উন্মুক্ত ফেসবুক পেজ স্ক্র্যাপ করার জন্য লগইন-সেশন। এটি না থাকলে স্ক্র্যাপার ফেসবুকে ঢুকতে পারে না।",
-    requirement: "required",
+    requirement: "recommended",
     consumers: ["pipeline", "desktop"],
     vaultKey: "fb_session_cookie",
     isSecretValue: true,

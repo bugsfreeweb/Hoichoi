@@ -357,20 +357,6 @@ html[data-theme="dark"] .ad-chip {
   color: #e9e2cf;
   --color-lime: #c8f65d;
   --color-amberx: #ffb454;
-  /* The console is dark-only, so re-pin every accent token to its dark value.
-     Without this, `<html data-theme="light">` (carried over from the public
-     site) flips these to dark-on-dark and the text stops being readable. */
-  --color-paper: #0a0c10;
-  --color-paper-deep: #10141b;
-  --color-ink: #e9e2cf;
-  --color-ink-soft: #8e99a7;
-  --color-alizarin: #fa8b9b;
-  --color-alizarin-deep: #d2202c;
-  --color-fb: #8eb8ff;
-  --color-cat-blue: #7cc3ff;
-  --color-cat-teal: #5eead4;
-  --color-band: #10141b;
-  --color-bandline: rgba(255, 255, 255, 0.16);
 }
 .admin-console,
 .admin-console * {
@@ -976,3 +962,20 @@ html[data-theme="light"] .admin-console .hover\:text-white:hover { color: #1a140
 html[data-theme="light"] .admin-console .bg-alizarin.hover\:text-white:hover { color: #ffffff; }
 html[data-theme="light"] .admin-console .hover\:bg-white\/8:hover { background-color: rgba(26, 20, 13, 0.08); }
 html[data-theme="light"] .admin-console .hover\:bg-white\/10:hover { background-color: rgba(26, 20, 13, 0.1); }
+
+/* ---- gap fill ----
+   Utilities the block above did not cover. Each one rendered as literal white
+   (or a white border/wash) on the now-light console, so the text sitting on it
+   disappeared. Kept in the same rgba(26,20,13,N) shape as the rules above. */
+html[data-theme="light"] .admin-console .text-white\/65 { color: rgba(26, 20, 13, 0.65); }
+html[data-theme="light"] .admin-console .text-white\/80 { color: rgba(26, 20, 13, 0.8); }
+html[data-theme="light"] .admin-console .bg-white\/5 { background-color: rgba(26, 20, 13, 0.05); }
+html[data-theme="light"] .admin-console .bg-ink\/5 { background-color: rgba(26, 20, 13, 0.05); }
+html[data-theme="light"] .admin-console .bg-ink\/10 { background-color: rgba(26, 20, 13, 0.1); }
+html[data-theme="light"] .admin-console .bg-panel\/50 { background-color: rgba(246, 241, 227, 0.5); }
+html[data-theme="light"] .admin-console .bg-paper\/50 { background-color: rgba(243, 238, 225, 0.5); }
+html[data-theme="light"] .admin-console .border-ink\/10 { border-color: rgba(26, 20, 13, 0.1); }
+html[data-theme="light"] .admin-console .border-white\/30 { border-color: rgba(26, 20, 13, 0.3); }
+html[data-theme="light"] .admin-console .hover\:bg-white\/15:hover { background-color: rgba(26, 20, 13, 0.15); }
+html[data-theme="light"] .admin-console .hover\:border-white\/40:hover { border-color: rgba(26, 20, 13, 0.4); }
+html[data-theme="light"] .admin-console .text-paper { color: #f3eee1; }

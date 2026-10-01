@@ -11,12 +11,24 @@ import { evaluateSecrets, LLM_SECRET_NAMES, SECRET_SPECS } from "../secrets";
 const byName = (n: string) => SECRET_SPECS.find((s) => s.name === n)!;
 
 // The exact set the workflow's preflight refuses to start without.
-const WORKFLOW_REQUIRED = ["TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN", "FB_SESSION_COOKIE"];
+const WORKFLOW_REQUIRED = ["TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN"];
 
 for (const name of WORKFLOW_REQUIRED) {
   const spec = byName(name);
   assert.equal(spec.requirement, "required", `${name} must be marked required`);
 }
+
+/**
+ * FB_SESSION_COOKIE used to be a hard gate, which meant a missing or expired
+ * Facebook login silently took the whole pipeline — and therefore the public
+ * site's content — down with it. The workflow now only warns, and the scraper
+ * already treats the cookie as optional, so the spec must agree.
+ */
+assert.equal(
+  byName("FB_SESSION_COOKIE").requirement,
+  "recommended",
+  "FB_SESSION_COOKIE only warns in pipeline-cron.yml, so it must not be a hard requirement",
+);
 
 /** VERCEL_DEPLOY_HOOK_URL is only a warning in the workflow, never a blocker. */
 assert.equal(
@@ -34,7 +46,7 @@ assert.deepEqual(
   SECRET_SPECS.filter((s) => s.requirement === "required")
     .map((s) => s.name)
     .sort(),
-  ["FB_SESSION_COOKIE", "LLM_PROVIDER_KEY", "TURSO_AUTH_TOKEN", "TURSO_DATABASE_URL"].sort(),
+  ["LLM_PROVIDER_KEY", "TURSO_AUTH_TOKEN", "TURSO_DATABASE_URL"].sort(),
   "exactly the gated secrets are marked required",
 );
 
@@ -69,15 +81,15 @@ assert.equal(new Set(names).size, names.length, "secret names are unique");
 const empty = evaluateSecrets([], []);
 assert.equal(
   empty.filter((r) => r.spec.requirement === "required" && !r.satisfied).length,
-  4,
-  "four required secrets are unsatisfied with nothing configured",
+  3,
+  "three required secrets are unsatisfied with nothing configured (Turso pair + LLM)",
 );
 // Optional and recommended items are never blocking.
 for (const r of empty.filter((x) => x.spec.requirement !== "required")) {
   assert.equal(r.satisfied, true, `${r.spec.name} must not block the pipeline`);
 }
 
-/** Turso + cookie alone is still blocked: without an LLM key nothing rewrites. */
+/** Turso alone is still blocked: without an LLM key nothing rewrites. */
 const noLlm = evaluateSecrets([...WORKFLOW_REQUIRED], []);
 const noLlmState = noLlm.find((r) => r.spec.name === "LLM_PROVIDER_KEY")!;
 assert.equal(noLlmState.satisfied, false, "no LLM key means the pipeline cannot rewrite");

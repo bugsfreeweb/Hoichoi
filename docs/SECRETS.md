@@ -193,7 +193,9 @@ push করলেই Vercel নিজে বিল্ড করে। এগু�
 2. **ডেস্ক অ্যাপ:** Settings → GitHub Secrets প্যানেল — একই তালিকা, সাথে লেখা আছে কোথায়
    পাবেন।
 3. **GitHub Actions:** রিপোজিটরির **Actions** ট্যাব → একটি রান খুলুন।
-   - `❌ missing required secret: FB_SESSION_COOKIE` → ওই নামের secret নেই
+   - `❌ missing required secret: …` → ওই নামের secret নেই (এখন শুধু Turso ও LLM key)
+   - `⚠️ FB_SESSION_COOKIE is not set` → **সমস্যা নয়**। Facebook collector
+     এড়িয়ে যাবে, বাকি সব কাজ (public সোর্স, rewrite, publish) চলবে।
    - `❌ no LLM API key` → কোনো LLM key নেই
    - সবুজ টিক ও `collected > 0` → সব ঠিক আছে
 

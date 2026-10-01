@@ -13,7 +13,8 @@ import {
  * These checks pin the real status values and the preflight parsing.
  */
 
-// Verbatim from GitHub Actions run 36665165698.
+// Verbatim from GitHub Actions run 36665165698, before FB_SESSION_COOKIE was
+// demoted from a hard gate to a warning.
 const PREFLIGHT_ERROR =
   "Missing required repository secrets: TURSO_DATABASE_URL TURSO_AUTH_TOKEN FB_SESSION_COOKIE an LLM key: one of GOOGLE_API_KEY, GROQ_API_KEY, OPENROUTER_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, MISTRAL_API_KEY, OLLAMA_BASE_URL";
 
@@ -51,6 +52,35 @@ await check("a preflight failure marks only the named secrets as outstanding", (
   assert.ok(v.missing.includes("TURSO_DATABASE_URL"));
   // The one thing that IS set must not be reported missing.
   assert.ok(!v.missing.includes("VERCEL_DEPLOY_HOOK_URL"));
+});
+
+/**
+ * The whole point of demoting FB_SESSION_COOKIE: a missing Facebook login must
+ * never read as "setup is blocked", or the banner nags about work that is
+ * already fine and the operator chases a non-problem.
+ */
+await check("a missing Facebook cookie is advisory, never blocking", () => {
+  const v = evaluateReadiness([{ status: "failed", error: PREFLIGHT_ERROR, started_at: "2026-09-30T00:00:00Z" }]);
+  assert.ok(
+    v.advisory.includes("FB_SESSION_COOKIE"),
+    `FB_SESSION_COOKIE should be advisory, got: ${JSON.stringify(v.advisory)}`,
+  );
+  assert.ok(
+    !v.missing.includes("FB_SESSION_COOKIE"),
+    "FB_SESSION_COOKIE must not appear in the blocking missing list",
+  );
+  // The two real gates are still reported as blocking.
+  assert.ok(v.missing.includes("TURSO_DATABASE_URL"));
+  assert.ok(v.missing.includes("TURSO_AUTH_TOKEN"));
+});
+
+/** With nothing configured at all, the cookie is still only advisory. */
+await check("a cold start only blocks on Turso and the LLM key", () => {
+  const v = evaluateReadiness([]);
+  assert.ok(v.missing.includes("TURSO_DATABASE_URL"));
+  assert.ok(v.missing.includes("TURSO_AUTH_TOKEN"));
+  assert.ok(!v.missing.includes("FB_SESSION_COOKIE"));
+  assert.ok(v.advisory.includes("FB_SESSION_COOKIE"));
 });
 
 await check("a completed run makes setup ready", () => {

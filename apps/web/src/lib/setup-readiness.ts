@@ -46,13 +46,24 @@ export function isSuccessfulRun(run: ReadinessRun | undefined | null): boolean {
   return Boolean(run && run.status === RUN_SUCCESS_STATUS);
 }
 
-const CORE = ["TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN", "FB_SESSION_COOKIE"];
+/** Hard gates: the pipeline refuses to start without these. */
+const CORE = ["TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN"];
+
+/**
+ * Things that improve the run but are not gates. FB_SESSION_COOKIE is here
+ * because a missing or expired Facebook login only disables that one collector
+ * — the workflow warns and the rest of the pipeline still publishes, so it must
+ * never show up as blocking work.
+ */
+const ADVISORY = ["FB_SESSION_COOKIE", "VERCEL_DEPLOY_HOOK_URL"];
 
 export interface ReadinessVerdict {
   /** Secret names we can prove are in place. */
   present: string[];
   /** Secret names the latest preflight explicitly reported as missing. */
   missing: string[];
+  /** Optional secrets that are not set. Never blocks. */
+  advisory: string[];
   /** The most recent run, whatever it did. */
   lastRun: ReadinessRun | null;
   /** The latest run stopped at preflight, so setup is definitely incomplete. */
@@ -74,13 +85,17 @@ export interface ReadinessVerdict {
  */
 export function evaluateReadiness(runs: ReadinessRun[]): ReadinessVerdict {
   const lastRun = runs[0] ?? null;
+  const all = [...new Set([...CORE, ...ADVISORY, ...LLM_SECRET_NAMES])];
 
   if (lastRun && isPreflightBlocked(lastRun.error)) {
-    const missing = missingFromPreflight(lastRun.error);
-    const present = [...new Set([...CORE, ...LLM_SECRET_NAMES])].filter((n) => !missing.includes(n));
+    // The preflight text is the source of truth for what is absent, but a
+    // secret that only warns must not land in the blocking list.
+    const reported = missingFromPreflight(lastRun.error);
+    const missing = reported.filter((n) => !ADVISORY.includes(n));
     return {
-      present,
+      present: all.filter((n) => !reported.includes(n)),
       missing,
+      advisory: ADVISORY.filter((n) => reported.includes(n)),
       lastRun,
       preflightBlocked: true,
       noSuccessYet: !runs.some(isSuccessfulRun),
@@ -89,13 +104,21 @@ export function evaluateReadiness(runs: ReadinessRun[]): ReadinessVerdict {
 
   if (runs.some(isSuccessfulRun)) {
     return {
-      present: [...new Set([...CORE, ...LLM_SECRET_NAMES])],
+      present: all,
       missing: [],
+      advisory: [],
       lastRun,
       preflightBlocked: false,
       noSuccessYet: false,
     };
   }
 
-  return { present: [], missing: [...CORE, ...LLM_SECRET_NAMES], lastRun, preflightBlocked: false, noSuccessYet: true };
+  return {
+    present: [],
+    missing: [...CORE, ...LLM_SECRET_NAMES],
+    advisory: [...ADVISORY],
+    lastRun,
+    preflightBlocked: false,
+    noSuccessYet: true,
+  };
 }

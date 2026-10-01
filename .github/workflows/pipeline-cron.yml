@@ -50,7 +50,6 @@ jobs:
           missing=()
           [ -z "$TURSO_DATABASE_URL" ] && missing+=("TURSO_DATABASE_URL")
           [ -z "$TURSO_AUTH_TOKEN" ] && missing+=("TURSO_AUTH_TOKEN")
-          [ -z "$FB_SESSION_COOKIE" ] && missing+=("FB_SESSION_COOKIE")
           # Any one concrete LLM credential is enough (the scraper picks the
           # highest-priority enabled provider row). Checked here because the
           # rewrite step would otherwise fail much later and less clearly.
@@ -67,6 +66,14 @@ jobs:
             echo "Add them under GitHub → ${GITHUB_REPOSITORY} → Settings → Secrets and variables → Actions."
             echo "Step-by-step Bangla guide: https://github.com/${GITHUB_REPOSITORY}/blob/main/docs/SECRETS.md"
             exit 1
+          fi
+          # FB_SESSION_COOKIE is deliberately NOT required. Logged-in Facebook is
+          # one collector among several, and a missing/expired cookie used to
+          # hard-fail the whole run and take the public site's content with it.
+          # The pipeline now degrades: the collector skips Facebook and the rest
+          # of the run still publishes.
+          if [ -z "$FB_SESSION_COOKIE" ]; then
+            echo "::warning::FB_SESSION_COOKIE is not set — skipping the Facebook collector. Everything else (public sources, groups with public URLs, rewrite, publish) still runs. See docs/SECRETS.md to restore it."
           fi
           if [ -z "$VERCEL_DEPLOY_HOOK_URL" ]; then
             echo "::warning::VERCEL_DEPLOY_HOOK_URL is not set — the scrape will succeed but the web app will not be redeployed, so new posts may not appear until the next Vercel build."
