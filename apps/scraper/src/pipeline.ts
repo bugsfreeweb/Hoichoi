@@ -47,6 +47,16 @@ export interface PipelineStats {
   duplicatesBlocked: number;
   /** Posts rejected because the rewrite was unusable (no title, no body, …). */
   skipped: number;
+  /**
+   * Posts whose scraped text was empty, so there was nothing to rewrite.
+   *
+   * This used to be a bare `continue` with no counter, which made a run where
+   * every post had empty text look identical to a run that had nothing to do:
+   * `rewritten: 0`, `skipped: 0`, no errors. The post was already inserted into
+   * `raw_posts`, so the row count grew while the site published nothing and
+   * nothing in the run explained why.
+   */
+  emptyText: number;
   published: number;
   pendingReview: number;
   /** Posts held because the classifier's confidence fell under the fact-gate. */
@@ -194,6 +204,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
     rewritten: 0,
     duplicatesBlocked: 0,
     skipped: 0,
+    emptyText: 0,
     published: 0,
     pendingReview: 0,
     lowConfidence: 0,
@@ -397,7 +408,16 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       }
 
       // STEP 5: rewrite + embedding (only when we have text).
-      if (!sp.rawText) continue;
+      // Facebook serves image- and link-only posts with no body text. There is
+      // nothing for the rewriter to work from, so this post can only ever be a
+      // photo with a caption-less record — count it rather than letting it
+      // disappear, otherwise a source that starts returning text-less posts
+      // silently publishes nothing and the run still reports success.
+      if (!sp.rawText) {
+        stats.emptyText++;
+        log(`[skip] no post text (image/link-only post?) — ${sp.fbPostUrl}`);
+        continue;
+      }
       try {
         // Content-based re-detection: a source pinned to one category (e.g. the
         // CLI default "missing-children") may receive posts that clearly belong
@@ -553,6 +573,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         rewritten: stats.rewritten,
         duplicatesBlocked: stats.duplicatesBlocked,
         skipped: stats.skipped,
+        emptyText: stats.emptyText,
         published: stats.published,
         pendingReview: stats.pendingReview,
       }),

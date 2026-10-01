@@ -30,6 +30,10 @@ function runStats(r: RecentPipelineRun | null) {
     collected: Number(s.collected ?? s.scraped ?? 0),
     duplicates: Number(s.duplicatesBlocked ?? 0),
     published: Number(s.published ?? 0),
+    // Posts that arrived with no body text. Worth showing because a run can
+    // collect these and still publish nothing, which otherwise looks like a
+    // broken pipeline rather than a source returning image-only posts.
+    emptyText: Number(s.emptyText ?? 0),
   };
 }
 
@@ -159,6 +163,12 @@ export function ManualRun({ initialRuns }: { initialRuns: RecentPipelineRun[] })
           {lastDone.status === "failed" && lastDone.error
             ? `রান ব্যর্থ: ${lastDone.error}`
             : `+${toBn(st?.published ?? 0)} প্রকাশিত · ${toBn(st?.duplicates ?? 0)} ডুপ্লিকেট ব্লক · ${toBn(st?.collected ?? 0)} সংগৃহীত`}
+          {(st?.emptyText ?? 0) > 0 && (
+            <span className="mt-1 block text-[11px] font-normal text-amber">
+              {toBn(st?.emptyText ?? 0)}টি পোস্টে লেখা ছিল না (শুধু ছবি/লিংক) — এগুলো
+              রিরাইট বা প্রকাশ হয়নি।
+            </span>
+          )}
         </p>
       )}
 
