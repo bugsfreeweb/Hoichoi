@@ -363,6 +363,17 @@ export default function Settings({
       setBrand(rec);
       const hours = Number(s.pipeline_hours ?? 2);
       if (hours > 0) updatePref("cron", `0 */${hours} * * *`);
+
+      // The rewrite temperature and fact gate are the two prefs the scraper
+      // actually reads, and they live in the shared `settings` table so the web
+      // admin and the GitHub pipeline use the same values. They used to hydrate
+      // from localStorage only, which meant this machine showed a default that
+      // had nothing to do with the value the pipeline was really using — and a
+      // change made on the web admin never showed up here.
+      const temp = Number(s.llm_temperature);
+      if (Number.isFinite(temp) && temp >= 0 && temp <= 2) updatePref("temp", temp);
+      const gate = Number(s.fact_gate);
+      if (Number.isFinite(gate) && gate >= 0 && gate <= 100) updatePref("gate", gate);
     } catch {
       /* ব্যান্ডিং লোড ব্যর্থ — ফিল্ড খালি থাকবে */
     }
@@ -933,7 +944,8 @@ export default function Settings({
               </section>
             </div>
             <p className="mt-3 font-mono-x text-[10px] tracking-[0.14em] text-white/30 uppercase">
-              এই প্রেফারেন্স শুধু এই মেশিনে থাকবে (localStorage) — অ্যাকচুয়াল কী ও সেটিংস ভল্ট + settings দিয়ে চলে।
+              রিরাইট তাপমাত্রা ও ফ্যাক্ট-গেট সেভ করলে সেগুলো shared settings টেবিলে যায় — ওয়েব অ্যাডমিন ও
+              GitHub পাইপলাইন একই ভ্যালু ব্যবহার করবে। বাকি প্রেফারেন্স শুধু এই মেশিনে (localStorage) থাকে।
             </p>
           </div>
         )}
