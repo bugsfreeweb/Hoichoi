@@ -1,8 +1,11 @@
-import { getClient, mapProvider } from "@hoichoi/db";
+import { mapProvider, pageRows } from "@hoichoi/db";
 import { ProviderRow } from "@/components/admin/ProviderRow";
 import { ProviderForm } from "@/components/admin/ProviderForm";
+import { Paginator } from "@/components/admin/Paginator";
 
 export const dynamic = "force-dynamic";
+
+const PAGE_SIZE = 20;
 
 const TIERS: Record<string, { order: number }> = {
   google: { order: 1 },
@@ -17,11 +20,21 @@ const TIERS: Record<string, { order: number }> = {
   custom: { order: 10 },
 };
 
-export default async function AdminProvidersPage() {
-  const client = getClient();
-  const res = await client.execute("SELECT * FROM llm_providers ORDER BY priority ASC");
-  const providers = res.rows
-    .map((r) => mapProvider(r as Record<string, unknown>))
+export default async function AdminProvidersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: pageParam } = await searchParams;
+  const page = await pageRows({
+    sql: "SELECT * FROM llm_providers",
+    order: "priority ASC",
+    page: Number(pageParam ?? 1),
+    pageSize: PAGE_SIZE,
+    map: mapProvider,
+  });
+  const providers = page.rows
+    .map((r) => r)
     .sort((a, b) => (TIERS[a.provider_key]?.order ?? 9) - (TIERS[b.provider_key]?.order ?? 9));
 
   return (
@@ -45,6 +58,12 @@ export default async function AdminProvidersPage() {
           {providers.map((p, i) => (
             <ProviderRow key={p.id} provider={p} index={i + 1} />
           ))}
+          <Paginator
+            page={page.page}
+            pageSize={page.pageSize}
+            total={page.total}
+            basePath="/admin/providers"
+          />
         </div>
       </div>
     </div>

@@ -997,6 +997,61 @@ export async function listStatusPosts(status: PostStatus): Promise<Post[]> {
   return res.rows.map((r) => mapPost(r as Record<string, unknown>));
 }
 
+/**
+ * Count + page an admin queue that a page reads with a hand-written SELECT.
+ *
+ * The moderation, removal, submission, source, category and provider pages all
+ * query their table directly and rendered every row. That is fine at 5 rows and
+ * unusable at 5,000: the whole table is read on every request, so the queue gets
+ * slower as it fills, and nothing tells the operator there is more to review.
+ *
+ * `sql` is the full statement with a `__WHERE` placeholder standing in for the
+ * filter and `__ORDER` for the sort. They are inlined rather than parameterised
+ * because both are compile-time constants in the admin pages, never user input.
+ */
+export async function pageRows<T>(
+  opts: {
+    /** e.g. "SELECT * FROM removal_requests" — constants only, never user input. */
+    sql: string;
+    /** SQL predicate without the WHERE keyword, or "" for the whole table. */
+    where?: string;
+    /** Sort clause without the ORDER BY keyword. */
+    order: string;
+    /** Values for `?` inside `where`, in order. */
+    args?: InValue[];
+    page?: number;
+    pageSize?: number;
+    /** Row mapper, normally one of the existing `map*` helpers. */
+    map?: (row: Record<string, unknown>) => T;
+  },
+): Promise<Page<T>> {
+  const p = safePage(opts.page);
+  const pageSize = Math.max(1, Math.floor(opts.pageSize ?? 20));
+  const client = getClient();
+  const where = opts.where ? ` WHERE ${opts.where}` : "";
+
+  const filterArgs = opts.args ?? [];
+  const countRes = await client.execute({
+    sql: `SELECT COUNT(*) AS n FROM (${opts.sql}${where})`,
+    args: filterArgs,
+  });
+  const total = Number((countRes.rows[0] as Record<string, unknown>).n ?? 0);
+
+  const res = await client.execute({
+    sql: `${opts.sql}${where} ORDER BY ${opts.order} LIMIT ? OFFSET ?`,
+    args: [...filterArgs, pageSize, (p - 1) * pageSize],
+  });
+
+  return {
+    rows: opts.map
+      ? res.rows.map((r) => opts.map!(r as Record<string, unknown>))
+      : (res.rows as Record<string, unknown>[]) as T[],
+    total,
+    page: p,
+    pageSize,
+  };
+}
+
 export async function updatePostStatus(
   id: string,
   status: PostStatus,
@@ -1338,7 +1393,7 @@ export async function deleteComment(id: string): Promise<void> {
  * Reader reports (public report form → admin queue)
  * ------------------------------------------------------------------ */
 
-function mapReport(row: Record<string, unknown>): ReaderReport {
+export function mapReport(row: Record<string, unknown>): ReaderReport {
   return {
     id: String(row.id),
     post_id: String(row.post_id),

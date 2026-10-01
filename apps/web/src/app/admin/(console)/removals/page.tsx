@@ -1,43 +1,87 @@
-import { getClient, getPostById, mapRemovalRequest } from "@hoichoi/db";
+import { getPostById, mapRemovalRequest, pageRows } from "@hoichoi/db";
 import { RemovalRow } from "@/components/admin/RemovalRow";
+import { Paginator } from "@/components/admin/Paginator";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminRemovalsPage() {
-  const client = getClient();
-  const res = await client.execute("SELECT * FROM removal_requests ORDER BY created_at DESC");
-  const rows = res.rows.map((r) => mapRemovalRequest(r as Record<string, unknown>));
+const PAGE_SIZE = 20;
+
+export default async function AdminRemovalsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ openPage?: string; donePage?: string }>;
+}) {
+  const { openPage: openParam, donePage: doneParam } = await searchParams;
+
+  // The two queues page separately. This page used to read every row of
+  // removal_requests, split it in JS, and render all of it, so an open request
+  // could fall past the fold with no way to reach it, and the closed list grew
+  // without limit.
+  const [open, done] = await Promise.all([
+    pageRows({
+      sql: "SELECT * FROM removal_requests",
+      where: "status = 'open'",
+      order: "created_at DESC",
+      page: Number(openParam ?? 1),
+      pageSize: PAGE_SIZE,
+      map: mapRemovalRequest,
+    }),
+    pageRows({
+      sql: "SELECT * FROM removal_requests",
+      where: "status != 'open'",
+      order: "created_at DESC",
+      page: Number(doneParam ?? 1),
+      pageSize: PAGE_SIZE,
+      map: mapRemovalRequest,
+    }),
+  ]);
+
+  // Resolve post titles for the rows actually on screen. Resolving them for the
+  // whole table meant one getPostById per historical request.
   const posts = new Map<string, { slug: string; title: string }>();
-  for (const r of rows) {
-    if (!posts.has(r.post_id)) {
-      const p = await getPostById(r.post_id);
-      if (p) posts.set(r.post_id, { slug: p.slug, title: p.title_bn });
-    }
+  for (const r of [...open.rows, ...done.rows]) {
+    if (posts.has(r.post_id)) continue;
+    const p = await getPostById(r.post_id);
+    if (p) posts.set(r.post_id, { slug: p.slug, title: p.title_bn });
   }
-  const open = rows.filter((r) => r.status === "open");
-  const done = rows.filter((r) => r.status !== "open");
 
   return (
     <div>
       <PageHeading emoji="⚠️" kicker="CONTENT TAKEDOWN REQUESTS" title="রিমুভাল রিকোয়েস্ট" />
       <div className="mt-6 grid gap-10">
         <section>
-          <QueueTitle count={open.length} label="খোলা" />
+          <QueueTitle count={open.total} label="খোলা" />
           <div className="mt-3 space-y-3">
-            {open.length === 0 && <Empty />}
-            {open.map((r) => (
+            {open.rows.length === 0 && <Empty />}
+            {open.rows.map((r) => (
               <RemovalRow key={r.id} req={r} post={posts.get(r.post_id)} />
             ))}
           </div>
+          <Paginator
+            page={open.page}
+            pageSize={open.pageSize}
+            total={open.total}
+            basePath="/admin/removals"
+            paramName="openPage"
+            extraParams={doneParam ? { donePage: doneParam } : {}}
+          />
         </section>
         <section>
-          <QueueTitle count={done.length} label="প্রসেসড" />
+          <QueueTitle count={done.total} label="প্রসেসড" />
           <div className="mt-3 space-y-3">
-            {done.length === 0 && <Empty />}
-            {done.map((r) => (
+            {done.rows.length === 0 && <Empty />}
+            {done.rows.map((r) => (
               <RemovalRow key={r.id} req={r} post={posts.get(r.post_id)} />
             ))}
           </div>
+          <Paginator
+            page={done.page}
+            pageSize={done.pageSize}
+            total={done.total}
+            basePath="/admin/removals"
+            paramName="donePage"
+            extraParams={openParam ? { openPage: openParam } : {}}
+          />
         </section>
       </div>
     </div>

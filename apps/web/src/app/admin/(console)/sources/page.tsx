@@ -1,16 +1,31 @@
-import { getClient, mapSource, getSourceCategories, listCategories } from "@hoichoi/db";
+import { mapSource, getSourceCategories, listCategories, pageRows } from "@hoichoi/db";
 import type { Source } from "@hoichoi/shared-types";
 import { SourceForm } from "@/components/admin/SourceForm";
 import { SourceRow } from "@/components/admin/SourceRow";
+import { Paginator } from "@/components/admin/Paginator";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminSourcesPage() {
-  const client = getClient();
-  const res = await client.execute("SELECT * FROM sources ORDER BY created_at DESC");
-  const rows = res.rows as Record<string, unknown>[];
+const PAGE_SIZE = 20;
+
+export default async function AdminSourcesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: pageParam } = await searchParams;
+
+  const page = await pageRows<Record<string, unknown>>({
+    sql: "SELECT * FROM sources",
+    order: "created_at DESC",
+    page: Number(pageParam ?? 1),
+    pageSize: PAGE_SIZE,
+  });
+
+  // Resolve category membership only for the rows on screen. Hydrating every
+  // source meant one extra query per source on every page load.
   const sources: Source[] = await Promise.all(
-    rows.map(async (r) => mapSource(r, await getSourceCategories(String(r.id)))),
+    page.rows.map(async (r) => mapSource(r, await getSourceCategories(String(r.id)))),
   );
   // Inactive categories must stay selectable here. The editor round-trips the
   // whole membership set, so a category hidden from this list would be erased
@@ -33,8 +48,8 @@ export default async function AdminSourcesPage() {
           </div>
         </div>
         <div className="space-y-2.5">
-          {sources.length === 0 && (
-            <p className="border border-ink/20 p-5 text-[13px] text-ink-soft">কোনো সোর্স নেই।</p>
+{sources.length === 0 && (
+            <p className="border border-ink/20 p-5 text-[13px] text-ink-soft">এখনও কোনো সোর্স যোগ করা হয়নি</p>
           )}
           {sources.map((s) => (
             <SourceRow
@@ -43,6 +58,12 @@ export default async function AdminSourcesPage() {
               categories={options}
             />
           ))}
+          <Paginator
+            page={page.page}
+            pageSize={page.pageSize}
+            total={page.total}
+            basePath="/admin/sources"
+          />
         </div>
       </div>
     </div>

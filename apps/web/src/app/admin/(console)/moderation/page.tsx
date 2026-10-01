@@ -1,38 +1,80 @@
-import { listStatusPosts } from "@hoichoi/db";
+import { mapPost, pageRows } from "@hoichoi/db";
 import { ModerationCard } from "@/components/admin/ModerationCard";
+import { Paginator } from "@/components/admin/Paginator";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminModerationPage() {
+const PAGE_SIZE = 20;
+
+export default async function AdminModerationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ pendingPage?: string; approvedPage?: string }>;
+}) {
+  const { pendingPage: pendingParam, approvedPage: approvedParam } = await searchParams;
+
+  // The review queues now page. Rendering every pending_review post at once meant
+  // a backlog of any size loaded in full, and there was no indication that more
+  // were waiting beyond what fit on screen.
   const [pending, approved] = await Promise.all([
-    listStatusPosts("pending_review"),
-    listStatusPosts("approved"),
+    pageRows({
+      sql: "SELECT * FROM posts",
+      where: "status = 'pending_review'",
+      order: "created_at DESC",
+      page: Number(pendingParam ?? 1),
+      pageSize: PAGE_SIZE,
+      map: mapPost,
+    }),
+    pageRows({
+      sql: "SELECT * FROM posts",
+      where: "status = 'approved'",
+      order: "created_at DESC",
+      page: Number(approvedParam ?? 1),
+      pageSize: PAGE_SIZE,
+      map: mapPost,
+    }),
   ]);
 
   return (
     <div>
-      <PageHeading emoji="✅" kicker="DOUBLE-APPROVAL GATE" title="মডারেশন কিউ" />
+      <PageHeading emoji="⚖️" kicker="DOUBLE-APPROVAL GATE" title="মডারেশন সারি" />
       <div className="mt-6 grid gap-10">
         <section>
-          <QueueTitle color="amberx" count={pending.length} label="পেন্ডিং রিভিউ" />
+          <QueueTitle color="amberx" count={pending.total} label="অনুমোদনের অপেক্ষায়" />
           <div className="mt-3 space-y-3">
-            {pending.length === 0 && <Empty msg="রিভিউর জন্য কোনো পোস্ট নেই।" />}
-            {pending.map((p) => (
+            {pending.rows.length === 0 && <Empty msg="অনুমোদনের অপেক্ষায় কোনো পোস্ট নেই। চমৎকার!" />}
+            {pending.rows.map((p) => (
               <ModerationCard key={p.id} post={p} queue="pending" />
             ))}
           </div>
+          <Paginator
+            page={pending.page}
+            pageSize={pending.pageSize}
+            total={pending.total}
+            basePath="/admin/moderation"
+            paramName="pendingPage"
+            extraParams={approvedParam ? { approvedPage: approvedParam } : {}}
+          />
         </section>
         <section>
-          <QueueTitle color="cat-blue" count={approved.length} label="প্রথম-অনুমোদিত (প্রকাশের অপেক্ষায়)" />
+          <QueueTitle color="cat-blue" count={approved.total} label="দ্বিতীয়-অনুমোদনের (সম্পাদক-অনুমোদনের) অপেক্ষায়" />
           <p className="mt-1 text-[12.5px] text-ink-soft">
-            child-sexual-abuse ক্যাটাগরিতে ডাবল-অ্যাপ্রুভাল লাগে — দ্বিতীয় approver ক্লিক করলে প্রকাশ পাবে।
+            child-sexual-abuse বিভাগের জন্য চার-স্তরের (fact+editor+human+legal) যাচাই - প্রকাশের আগে approver লিখে স্বাক্ষর করতে হয়
           </p>
           <div className="mt-3 space-y-3">
-            {approved.length === 0 && <Empty msg="কোনো পোস্ট নেই।" />}
-            {approved.map((p) => (
+            {approved.rows.length === 0 && <Empty msg="কোনো পোস্ট নেই।" />}
+            {approved.rows.map((p) => (
               <ModerationCard key={p.id} post={p} queue="approved" />
             ))}
           </div>
+          <Paginator
+            page={approved.page}
+            pageSize={approved.pageSize}
+            total={approved.total}
+            basePath="/admin/moderation"
+            paramName="approvedPage"
+            extraParams={pendingParam ? { pendingPage: pendingParam } : {}}
+          />
         </section>
       </div>
     </div>

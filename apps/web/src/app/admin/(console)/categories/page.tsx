@@ -1,14 +1,27 @@
-import { getClient, mapCategory } from "@hoichoi/db";
-import type { CategoryMeta } from "@hoichoi/shared-types";
+import { mapCategory, pageRows } from "@hoichoi/db";
 import { CategoryForm } from "@/components/admin/CategoryForm";
 import { CategoryRow } from "@/components/admin/CategoryRow";
+import { Paginator } from "@/components/admin/Paginator";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminCategoriesPage() {
-  const client = getClient();
-  const res = await client.execute("SELECT * FROM category_configs ORDER BY sort_order ASC, slug ASC");
-  const categories: CategoryMeta[] = res.rows.map((r) => mapCategory(r as Record<string, unknown>));
+const PAGE_SIZE = 20;
+
+export default async function AdminCategoriesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: pageParam } = await searchParams;
+
+  const result = await pageRows({
+    sql: "SELECT * FROM category_configs",
+    order: "sort_order ASC, slug ASC",
+    page: Number(pageParam ?? 1),
+    pageSize: PAGE_SIZE,
+    map: mapCategory,
+  });
+  const categories = result.rows;
 
   return (
     <div>
@@ -28,6 +41,12 @@ export default async function AdminCategoriesPage() {
           {categories.map((c) => (
             <CategoryRow key={c.slug} category={c} />
           ))}
+          <Paginator
+            page={result.page}
+            pageSize={result.pageSize}
+            total={result.total}
+            basePath="/admin/categories"
+          />
         </div>
       </div>
     </div>

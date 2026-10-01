@@ -1,36 +1,77 @@
-import { getClient, mapSubmittedPage } from "@hoichoi/db";
+import { mapSubmittedPage, pageRows } from "@hoichoi/db";
 import { SubmissionRow } from "@/components/admin/SubmissionRow";
+import { Paginator } from "@/components/admin/Paginator";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminSubmissionsPage() {
-  const client = getClient();
-  const res = await client.execute("SELECT * FROM submitted_pages ORDER BY created_at DESC");
-  const subs = res.rows.map((r) => mapSubmittedPage(r as Record<string, unknown>));
-  const open = subs.filter((s) => s.status === "new" || s.status === "reviewing");
-  const done = subs.filter((s) => s.status === "accepted" || s.status === "rejected");
+const PAGE_SIZE = 20;
+
+export default async function AdminSubmissionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ openPage?: string; donePage?: string }>;
+}) {
+  const { openPage: openParam, donePage: doneParam } = await searchParams;
+
+  // Paginate in SQL rather than fetching every row and filtering in JS. Both
+  // queues page independently so working the "new" list does not jump the
+  // "processed" list back to page 1.
+  const [open, done] = await Promise.all([
+    pageRows({
+      sql: "SELECT * FROM submitted_pages",
+      where: "status IN ('new', 'reviewing')",
+      order: "created_at DESC",
+      page: Number(openParam ?? 1),
+      pageSize: PAGE_SIZE,
+      map: mapSubmittedPage,
+    }),
+    pageRows({
+      sql: "SELECT * FROM submitted_pages",
+      where: "status IN ('accepted', 'rejected')",
+      order: "created_at DESC",
+      page: Number(doneParam ?? 1),
+      pageSize: PAGE_SIZE,
+      map: mapSubmittedPage,
+    }),
+  ]);
 
   return (
     <div>
-      <PageHeading emoji="📥" kicker="PUBLIC SUGGESTIONS" title="সাবমিশন" />
+      <PageHeading emoji="💡" kicker="PUBLIC SUGGESTIONS" title="সাবমিশন" />
       <div className="mt-6 grid gap-10">
         <section>
-          <QueueTitle count={open.length} label="নতুন সাবমিশন" />
+          <QueueTitle count={open.total} label="নতুন সাবমিশন" />
           <div className="mt-3 space-y-3">
-            {open.length === 0 && <Empty />}
-            {open.map((s) => (
+            {open.rows.length === 0 && <Empty />}
+            {open.rows.map((s) => (
               <SubmissionRow key={s.id} sub={s} />
             ))}
           </div>
+          <Paginator
+            page={open.page}
+            pageSize={open.pageSize}
+            total={open.total}
+            basePath="/admin/submissions"
+            paramName="openPage"
+            extraParams={doneParam ? { donePage: doneParam } : {}}
+          />
         </section>
         <section>
-          <QueueTitle count={done.length} label="হ্যান্ডেল করা" />
+          <QueueTitle count={done.total} label="প্রসেসড সাবমিশন" />
           <div className="mt-3 space-y-3">
-            {done.length === 0 && <Empty />}
-            {done.map((s) => (
+            {done.rows.length === 0 && <Empty />}
+            {done.rows.map((s) => (
               <SubmissionRow key={s.id} sub={s} />
             ))}
           </div>
+          <Paginator
+            page={done.page}
+            pageSize={done.pageSize}
+            total={done.total}
+            basePath="/admin/submissions"
+            paramName="donePage"
+            extraParams={openParam ? { openPage: openParam } : {}}
+          />
         </section>
       </div>
     </div>
