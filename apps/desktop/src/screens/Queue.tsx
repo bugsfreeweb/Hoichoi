@@ -2,10 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, RefreshCw, Eye, ExternalLink, CircleCheck, Clock3, Ban, Pencil, Trash2, X, Loader2, ShieldCheck } from "lucide-react";
 import { POST_STATUS_LABEL, bnTime, toBn } from "../lib/format";
 import { categoryLabel, categoryTint, bySortOrder, type CatMeta } from "../lib/category-style";
-import { deskCategories, deskQueueBulk, deskQueueRemove, deskQueueSet, deskQueueUpdate, openAdmin, isTauri, type DeskCategory, type DeskQueueRow } from "../lib/tauri";
+import { deskCategories, deskQueueBulk, deskQueueMediaCandidates, deskQueueRemove, deskQueueSet, deskQueueUpdate, openAdmin, isTauri, type DeskCategory, type DeskMediaCandidate, type DeskQueueRow } from "../lib/tauri";
 import { getRunEnv } from "../lib/vault";
 import { toast } from "../lib/toast";
 import { SITE_URL } from "../lib/site";
+
+/** Same resolution rule as mediaUrl() in the web app, for the editor preview. */
+function deskMediaSrc(p: string): string {
+  return /^https?:\/\//i.test(p) ? p : `/uploads/${p.replace(/\\/g, "/")}`;
+}
 
 type Tab = "all" | "published" | "pending_review" | "approved" | "duplicate";
 
@@ -41,9 +46,28 @@ function EditModal({
   const [summary, setSummary] = useState(row.summary_bn ?? "");
   const [body, setBody] = useState(row.body_bn ?? "");
   const [category, setCategory] = useState(row.category);
+  const [media, setMedia] = useState(row.media_path ?? "");
+  const [candidates, setCandidates] = useState<DeskMediaCandidate[] | null>(null);
   const [cats, setCats] = useState<DeskCategory[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      try {
+        const env = await getRunEnv();
+        const r = await deskQueueMediaCandidates(env, row.id);
+        if (live) setCandidates(r.candidates);
+      } catch {
+        // Candidates are an optional convenience; the manual URL field still works.
+        if (live) setCandidates([]);
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [row.id]);
 
   useEffect(() => {
     let live = true;
@@ -71,6 +95,9 @@ function EditModal({
         summary: summary.trim() === "" ? null : summary.trim(),
         body,
         category,
+        // Sent every save so the image field and the text fields are one write.
+        // Empty clears it.
+        media: media.trim(),
       });
       onSaved();
     } catch (e) {
@@ -119,6 +146,73 @@ function EditModal({
             ))}
           </select>
         </label>
+        {/*
+          Image block. The URL field is authoritative (it is saved with the rest
+          of the form); the candidate strip is a shortcut that fills that field.
+          Dead fbcdn links are shown greyed out rather than hidden, so an
+          operator can tell "the collector saw no image" apart from "every link
+          it saw has expired".
+        */}
+        <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">ছবি</p>
+          <div className="mt-2 flex gap-3">
+            {media.trim() !== "" && (
+              <img
+                src={deskMediaSrc(media.trim())}
+                alt=""
+                className="h-24 w-auto max-w-[160px] shrink-0 rounded-lg border border-white/10 object-cover"
+              />
+            )}
+            <div className="min-w-0 flex-1">
+              <input
+                className={field}
+                value={media}
+                placeholder="https://… অথবা /uploads/… (ফাঁকা = ছবি নেই)"
+                onChange={(e) => setMedia(e.target.value)}
+              />
+              {media.trim() !== "" && (
+                <button
+                  type="button"
+                  onClick={() => setMedia("")}
+                  className="mt-1.5 text-[11px] font-bold text-rose-300 underline"
+                >
+                  ছবি মুছে ফেলুন
+                </button>
+              )}
+            </div>
+          </div>
+          {candidates === null && <p className="mt-2 text-[11px] text-white/35">ছবি খোঁজা হচ্ছে…</p>}
+          {candidates !== null && candidates.length === 0 && (
+            <p className="mt-2 text-[11px] text-white/35">
+              সংগ্রাহক কোনো ছবি সংরক্ষণ করেনি — উপরে সরাসরি লিঙ্ক বসান।
+            </p>
+          )}
+          {candidates !== null && candidates.length > 0 && (
+            <div className="mt-2.5 grid grid-cols-4 gap-2">
+              {candidates.map((c) => (
+                <button
+                  key={c.url}
+                  type="button"
+                  onClick={() => setMedia(c.url)}
+                  title={c.ok ? c.url : `অনুপলব্ধ (HTTP ${c.status})`}
+                  className="min-w-0"
+                >
+                  <img
+                    src={c.url}
+                    alt=""
+                    loading="lazy"
+                    className={`h-16 w-full rounded-md border object-cover ${
+                      c.ok ? "border-white/15" : "border-rose-400/60 opacity-40"
+                    }`}
+                  />
+                  <span className="mt-1 block truncate text-[9.5px] text-white/40">
+                    {c.ok ? "এটি নিন" : "মরা লিঙ্ক"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         {err && <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-300">{err}</p>}
         <div className="mt-5 flex items-center gap-2.5">
           <button

@@ -18,17 +18,21 @@ export default async function AdminSettingsPage() {
     <div>
       <PageHeading emoji="⚙️" kicker="OPERATIONS" title="সেটিংস" />
       {/*
-        Single column, deliberately.
+        Full width, two columns on wide screens.
 
-        This was briefly a two-column grid to "use up" the 1500px console shell.
-        It made the page worse: the login log is a table with `min-w-[720px]`,
-        and a half-width column of that shell is only ~690px, so the table
-        overflowed and forced a horizontal scrollbar inside a nested box. Forms
-        also lost reading width for no gain. One centred column fits the widest
-        panel on the page and keeps every control comfortably readable.
+        This was briefly `max-w-4xl` in a single column, to keep the login-log
+        table (min-w-[720px]) from overflowing a narrow shell. Now that the
+        console is full width, capping at 4xl left the page looking half-width
+        against the window on every large display. The two-column grid below
+        only splits at xl, where each column clears the table's minimum, and the
+        table carries its own `scroll-x` so it degrades on narrower screens
+        instead of widening the page.
       */}
-      <div className="mt-6 grid max-w-4xl gap-8">
-        <div className="grid gap-8">
+      <div className="mt-6 grid w-full gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        {/* min-w-0 on both tracks: a grid item defaults to min-width:auto, which
+            refuses to shrink below its widest child, so the login-log table would
+            widen the column instead of scrolling inside it. */}
+        <div className="grid min-w-0 gap-8">
           <div className="border border-ink/20 bg-paper-deep p-6">
             <h3 className="font-sans-bn text-[15px] font-bold text-ink">পাইপলাইন</h3>
             <p className="mt-1 text-[12.5px] text-ink-soft">
@@ -50,7 +54,9 @@ export default async function AdminSettingsPage() {
           <VisibilityPanel />
           <LoginLogViewer />
         </div>
-        <SettingsForm initial={settings} />
+        <div className="min-w-0">
+          <SettingsForm initial={settings} />
+        </div>
       </div>
     </div>
   );

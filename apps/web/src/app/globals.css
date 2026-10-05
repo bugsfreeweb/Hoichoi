@@ -366,6 +366,79 @@ html[data-theme="dark"] .ad-chip {
   z-index: 2;
 }
 
+/* ================= NO HORIZONTAL SCROLLING =================
+   Wide tables and long unbroken Bangla strings were pushing the whole document
+   sideways, so the page scrolled horizontally and the sticky header/footer
+   drifted out of view.
+
+   `overflow-x: clip` rather than `hidden`: `hidden` makes the element a scroll
+   container, which silently breaks `position: sticky` on every descendant -
+   the header and footer would stop sticking. `clip` contains the overflow
+   without creating a scrollport, so sticky keeps working. */
+html,
+body {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+/* Belt and braces for the shell wrappers: an element wider than its parent from
+   a wide table or a long code string is contained here rather than at the root. */
+.page-chrome,
+.admin-console {
+  overflow-x: clip;
+}
+
+/* Vertical scrolling only. Applies to every scrollable region in the app so a
+   nested scroll box cannot scroll sideways either. */
+.page-chrome *,
+.admin-console * {
+  overflow-x: clip;
+}
+
+/* An element that genuinely needs sideways scrolling (a wide data table) opts
+   back in explicitly. This is the only way to reintroduce horizontal scrolling,
+   so it has to be deliberate. */
+.page-chrome .scroll-x,
+.admin-console .scroll-x,
+.page-chrome .overflow-x-auto,
+.admin-console .overflow-x-auto {
+  overflow-x: auto;
+}
+
+/* ================= STICKY FOOTER (admin console only) =================
+   Deliberately scoped to .admin-console. The public site's own footer stays a
+   normal document-flow element: it is a four-column block that a visitor reads
+   at the end of a page, and pinning it would cover content on long reads. */
+.admin-console {
+  display: flex;
+  flex-direction: column;
+}
+/* The growing middle: pushes the footer down on short pages and leaves it
+   sticking to the bottom edge once the content overflows the viewport. */
+.admin-console-main {
+  flex: 1 0 auto;
+  min-width: 0;
+}
+
+.admin-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 40;
+  background: rgba(5, 6, 8, 0.94);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+/* Scoped off `.admin-console` on purpose: theme-audit.test.ts locates the light
+   console token block by the first indexOf hit on the light-console selector
+   string, so a longer selector that merely *starts* with it would be mistaken
+   for the token block and the audit would read this rule's colours as the
+   console palette. Equal specificity (0,2,0) and later in the sheet, so it
+   still beats the bare `.admin-footer` above. */
+html[data-theme="light"] .admin-footer {
+  background: rgba(243, 238, 225, 0.94);
+  border-top-color: rgba(26, 20, 13, 0.12);
+}
+
 /* ================= ADMIN CONSOLE (dark "night" mockup theme) ============== */
 .admin-console {
   min-height: 100dvh;

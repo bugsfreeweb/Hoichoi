@@ -7,6 +7,7 @@ import { runPipeline, type PipelineOptions } from "./pipeline";
 import { runArchivePass } from "./archive";
 import { cleanupMedia, storageRegistryCount } from "./storage";
 import { backfillMissingMedia, recoverOrphanedMedia, syncExistingMediaToWeb } from "./media-backfill";
+import { isVideoUrl } from "./media";
 import {
   getClient,
   ensureSchema,
@@ -56,6 +57,7 @@ import {
   nowIso,
   CONTENT_TABLES,
   type ExportBundle,
+  listPostMediaCandidates,
   type PostUpdateFields,
 } from "@hoichoi/db";
 import { PROCESSOR_ENV_DEFAULTS, type CategorySlug, type MediaStorageConfig, type NoticeTone, type ProviderKey, type SiteSettings } from "@hoichoi/shared-types";
@@ -1699,7 +1701,7 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
         console.log(JSON.stringify({ ok: true, status: finalStatus }));
       } else if (action === "update") {
         const id = args[2];
-        if (!id) throw new Error("id required (queue update <id> --title ... --body ... --summary ... --category ...)");
+        if (!id) throw new Error("id required (queue update <id> --title ... --body ... --summary ... --category ... --media ...)");
         const existing = await getPostById(id);
         if (!existing) throw new Error(`post not found: ${id}`);
         const { flags } = parseArgs(args.slice(3));
@@ -1708,11 +1710,42 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
         if (flags.body !== undefined) fields.body_bn = flags.body;
         if (flags.summary !== undefined) fields.summary_bn = flags.summary === "__CLEAR__" ? null : flags.summary;
         if (flags.category !== undefined) fields.category = flags.category as CategorySlug;
+        // --media "" / __CLEAR__ removes the image; anything else is validated
+        // by normalizeMediaPath before it can reach the page.
+        if (flags.media !== undefined) {
+          fields.media_path = flags.media === "__CLEAR__" ? null : flags.media;
+        }
         if (Object.keys(fields).length === 0) {
-          throw new Error("at least one field required (--title, --body, --summary, --category)");
+          throw new Error("at least one field required (--title, --body, --summary, --category, --media)");
         }
         await updatePost(id, fields);
         console.log(JSON.stringify({ ok: true, post: await getPostById(id) }, null, 2));
+      } else if (action === "media") {
+        // Collector-seen image URLs for one post, probed so the desk editor can
+        // grey out fbcdn links whose signature has expired. Same shape as the
+        // web route /api/posts/[id]/media.
+        const id = args[2];
+        if (!id) throw new Error("id required (queue media <id>)");
+        const info = await listPostMediaCandidates(id);
+        const candidates = info.media_urls
+          .filter((u) => /^https?:\/\//i.test(u) && !isVideoUrl(u))
+          .slice(0, 12);
+        const probed = await Promise.all(
+          candidates.map(async (url) => {
+            try {
+              const res = await fetch(url, {
+                method: "HEAD",
+                signal: AbortSignal.timeout(6000),
+                headers: { "user-agent": "Mozilla/5.0 Hoichoi/1.0" },
+              });
+              const type = res.headers.get("content-type") ?? "";
+              return { url, ok: res.ok && type.startsWith("image/"), status: res.status, contentType: type || null };
+            } catch {
+              return { url, ok: false, status: 0, contentType: null };
+            }
+          }),
+        );
+        console.log(JSON.stringify({ ok: true, current: info.current, candidates: probed }, null, 2));
       } else if (action === "remove") {
         const id = args[2];
         if (!id) throw new Error("id required (queue remove <id>)");

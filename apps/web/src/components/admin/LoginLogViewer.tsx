@@ -107,7 +107,14 @@ export default function LoginLogViewer() {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-white/8 bg-panel/40">
+      {/*
+        scroll-x opts this one region back into horizontal scrolling. The app
+        now clips horizontal overflow everywhere, which is what we want for the
+        page as a whole - but this table has six columns of audit data and
+        truncating the timestamps or the IPs to avoid a scrollbar would destroy
+        the point of an audit log. It scrolls inside its own box instead.
+      */}
+      <div className="scroll-x overflow-x-auto rounded-xl border border-white/8 bg-panel/40">
         <table className="w-full min-w-[720px] text-left">
           <thead>
             <tr className="border-b border-white/8 font-mono-x text-[9.5px] tracking-[0.16em] text-white/35 uppercase">

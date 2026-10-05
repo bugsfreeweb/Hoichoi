@@ -7,6 +7,7 @@ import { adminLogout } from "@/lib/auth-actions";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/admin/NotificationBell";
 import { QueueCountsProvider, useQueueCounts, useQueueCountsPolling } from "@/components/admin/queue-counts";
+import { SITE_BUILD } from "@/lib/build";
 
 function toBn(v: number): string {
   return String(v).replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)] ?? d);
@@ -72,10 +73,10 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
   const { counts } = useQueueCounts();
 
   return (
-    <main className="admin-console bg-night-grid min-h-screen pb-16 text-[#e9e6da]">
+    <div className="admin-console bg-night-grid min-h-dvh text-[#e9e6da]">
       {/* ============ TOP BAR ============ */}
       <header className="sticky top-0 z-50 border-b border-white/8 bg-[#050608]/90 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-[1500px] items-center justify-between gap-4 px-4 md:px-6">
+        <div className="mx-auto flex h-14 w-full items-center justify-between gap-4 px-4 md:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-alizarin font-serif-bn text-[15px] font-black text-white">
               হ
@@ -110,7 +111,15 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-[1500px] gap-6 px-4 pt-6 md:px-6">
+      {/*
+        Full width. The console used to cap itself at max-w-[1500px], which left
+        a wide empty gutter on large displays and made the settings and notice
+        pages look half-width against the browser window. `w-full` + `min-w-0`
+        on the content column: the sidebar is fixed-width, so without min-w-0
+        the content column refuses to shrink below its widest child and pushes
+        the page into horizontal scrolling.
+      */}
+      <div className="admin-console-main flex w-full gap-6 px-4 pt-6 md:px-6">
         {/* ============ SIDEBAR ============ */}
         <aside className="sticky top-20 hidden h-[calc(100vh-6.5rem)] w-60 shrink-0 flex-col rounded-2xl border border-white/8 bg-panel/60 p-4 lg:flex">
           <div className="flex items-center gap-3 border-b border-white/8 px-2 pb-4">
@@ -180,6 +189,33 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
         {/* ============ MAIN ============ */}
         <section className="min-w-0 flex-1">{children}</section>
       </div>
-    </main>
+
+      {/* ============ STICKY FOOTER ============ */}
+      <AdminFooter path={path} email={user.email} />
+    </div>
+  );
+}
+
+/**
+ * Compact console status bar. Pinned to the bottom edge so the build stamp and
+ * the "you are here" label stay visible on long queue pages instead of only
+ * being reachable by scrolling back to the top.
+ */
+function AdminFooter({ path, email }: { path: string; email: string }) {
+  const active = NAV.find((n) => path === n.href || path.startsWith(`${n.href}/`));
+  return (
+    <footer className="admin-footer">
+      <div className="mx-auto flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2 md:px-6">
+        <span className="font-mono-x text-[9.5px] tracking-[0.16em] text-white/40 uppercase">
+          {active ? `${active.emoji} ${active.label}` : "হৈচৈ কন্ট্রোল"}
+        </span>
+        <span className="min-w-0 truncate text-[10.5px] text-white/45">{email}</span>
+        <span className="flex items-center gap-3 font-mono-x text-[9.5px] tracking-[0.16em] text-white/35 uppercase">
+          <span>ASIA/DHAKA</span>
+          <span aria-hidden="true">·</span>
+          <span>BUILD {SITE_BUILD}</span>
+        </span>
+      </div>
+    </footer>
   );
 }

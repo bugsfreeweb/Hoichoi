@@ -1440,6 +1440,55 @@ export async function listContentQueue(opts: {
   });
 }
 
+/**
+ * Validate a media reference before it is written to `posts.media_path`.
+ *
+ * Two accepted shapes, and nothing else:
+ *   - an absolute http(s) URL — served directly by the browser/CDN;
+ *   - a relative store path like `2026-10-05/img_ab12cd34.webp`, which the web
+ *     app resolves to `/uploads/<path>` (see mediaUrl in apps/web).
+ *
+ * Everything is rejected rather than coerced: `javascript:` and `data:` URLs
+ * would turn the post body into a script/HTML injection vector when the image
+ * lands in an <img src>, and a relative path escaping the store (`../../…`)
+ * would make the served URL point outside /uploads. Backslashes are rejected
+ * too: they normalise to `/` on the server, so `a\..\..\etc` would sneak past a
+ * check that only looked for forward slashes.
+ */
+export function normalizeMediaPath(input: string): string | null {
+  const raw = input.trim();
+  if (raw === "") return null; // empty = clear the image
+  if (raw.length > 2000) throw new Error("media_path too long");
+  if (/[\u0000-\u001f]/.test(raw)) throw new Error("media_path contains control characters");
+  if (raw.includes("\\")) throw new Error("media_path must not contain backslashes");
+  if (/^\/+/.test(raw)) throw new Error("media_path must be relative (drop the leading slash)");
+
+  if (/^https?:\/\//i.test(raw)) {
+    let url: URL;
+    try {
+      url = new URL(raw);
+    } catch {
+      throw new Error("media_path is not a valid URL");
+    }
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      throw new Error("media_path must be an http(s) URL");
+    }
+    return url.toString();
+  }
+
+  if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) {
+    throw new Error(`unsupported media scheme: ${raw.split(":")[0]}`);
+  }
+  // Relative store path: no traversal segments, and no empty ones ("a//b").
+  if (raw.split("/").some((seg) => seg === "" || seg === "." || seg === "..")) {
+    throw new Error("media_path has an invalid path segment");
+  }
+  return raw;
+}
+
+/** Image extensions we accept for a manual/local media reference. */
+const MEDIA_EXT = /\.(?:webp|jpe?g|png|gif|avif|mp4|webm)$/i;
+
 /** Content fields that may be edited through the admin post editor. */
 export interface PostUpdateFields {
   title_bn?: string;
@@ -1448,6 +1497,49 @@ export interface PostUpdateFields {
   category?: CategorySlug;
   case_status?: CaseStatus | null;
   published_at?: string | null;
+  /** Absolute http(s) URL or a relative `/uploads/…` store path; null clears. */
+  media_path?: string | null;
+  /** Inferred from media_path when omitted. */
+  media_kind?: "image" | "video" | "none";
+}
+
+/**
+ * Media URLs the collector already saw for a post, newest raw row first.
+ *
+ * This is what the admin "sync image" action offers as candidates: the bytes
+ * are known-good (the collector fetched them once) and re-downloading one costs
+ * a single request instead of a full browser re-visit of the permalink.
+ */
+export async function listPostMediaCandidates(
+  postId: string,
+): Promise<{ media_urls: string[]; source_url: string | null; current: string | null; kind: string | null }> {
+  const client = getClient();
+  const res = await client.execute({
+    sql: `SELECT p.media_path, p.media_kind, p.source_url, r.media_urls
+          FROM posts p LEFT JOIN raw_posts r ON r.id = p.raw_post_id
+          WHERE p.id = ?`,
+    args: [postId],
+  });
+  const row = (res.rows[0] ?? {}) as Record<string, unknown>;
+  let media_urls: string[] = [];
+  try {
+    const parsed = JSON.parse(String(row.media_urls ?? "[]")) as unknown;
+    if (Array.isArray(parsed)) media_urls = parsed.filter((u): u is string => typeof u === "string" && u !== "");
+  } catch {
+    media_urls = [];
+  }
+  return {
+    media_urls,
+    source_url: (row.source_url as string) ?? null,
+    current: (row.media_path as string) ?? null,
+    kind: (row.media_kind as string) ?? null,
+  };
+}
+
+/** Best-effort kind for a media reference: video by extension, else image. */
+function inferMediaKind(path: string | null): "image" | "video" | "none" {
+  if (!path) return "none";
+  return /\.(?:mp4|webm|mov|m3u8)$/i.test(path) ? "video" : "image";
 }
 
 /**
@@ -1496,6 +1588,16 @@ export async function updatePost(id: string, fields: PostUpdateFields): Promise<
   if ("published_at" in fields && fields.published_at !== undefined) {
     sets.push("published_at = ?");
     args.push(fields.published_at ?? null);
+  }
+  if ("media_path" in fields && fields.media_path !== undefined) {
+    // Throws on anything unsafe, so a bad URL can never reach the page.
+    const normalized = normalizeMediaPath(fields.media_path ?? "");
+    const kind = fields.media_kind ?? inferMediaKind(normalized);
+    // Keep media_kind consistent when a path is cleared: leaving kind='image'
+    // with a null path makes the backfill queries (which require kind='none')
+    // skip the post forever.
+    sets.push("media_path = ?", "media_kind = ?");
+    args.push(normalized, normalized ? kind : "none");
   }
 
   if (sets.length === 0) return;

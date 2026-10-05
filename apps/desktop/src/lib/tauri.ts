@@ -161,6 +161,16 @@ export interface DeskQueueRow {
   created_at: string;
   summary_bn: string | null;
   body_bn: string | null;
+  media_kind: string;
+  media_path: string;
+}
+
+/** Collector-seen image URLs offered as one-click options in the desk editor. */
+export interface DeskMediaCandidate {
+  url: string;
+  ok: boolean;
+  status: number;
+  contentType: string | null;
 }
 
 export interface DeskComment {
@@ -367,14 +377,37 @@ export async function deskQueue(env: Record<string, string>, status?: string | n
 export async function deskQueueUpdate(
   env: Record<string, string>,
   id: string,
-  fields: { title?: string; body?: string; summary?: string | null; category?: string },
+  fields: {
+    title?: string;
+    body?: string;
+    summary?: string | null;
+    category?: string;
+    /** URL or `/uploads/…` path; null or "" clears the image. */
+    media?: string | null;
+  },
 ): Promise<void> {
   const args = ["queue", "update", id];
   if (fields.title !== undefined) args.push("--title", fields.title);
   if (fields.body !== undefined) args.push("--body", fields.body);
   if (fields.summary !== undefined) args.push("--summary", fields.summary === null ? "__CLEAR__" : fields.summary);
   if (fields.category !== undefined) args.push("--category", fields.category);
+  // `__CLEAR__` is the sentinel the runner maps to a NULL media_path; a real
+  // URL is passed through verbatim and validated server-side.
+  if (fields.media !== undefined) {
+    args.push("--media", fields.media === null || fields.media === "" ? "__CLEAR__" : fields.media);
+  }
   await deskCall(args, env);
+}
+
+export async function deskQueueMediaCandidates(
+  env: Record<string, string>,
+  id: string,
+): Promise<{ current: string | null; candidates: DeskMediaCandidate[] }> {
+  const res = await deskCall(["queue", "media", id], env);
+  return {
+    current: typeof res.current === "string" ? res.current : null,
+    candidates: (res.candidates as DeskMediaCandidate[] | undefined) ?? [],
+  };
 }
 
 export async function deskQueueRemove(env: Record<string, string>, id: string): Promise<void> {

@@ -36,11 +36,12 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     "category",
     "case_status",
     "published_at",
+    "media_path",
   ] as const;
   for (const key of contentKeys) {
     if (!(key in body)) continue;
     const v = body[key];
-    if (key === "summary_bn" || key === "published_at") {
+    if (key === "summary_bn" || key === "published_at" || key === "media_path") {
       if (v === null || typeof v === "string") {
         (fields as Record<string, unknown>)[key] = v;
         applied.push(key);
