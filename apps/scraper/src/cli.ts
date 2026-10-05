@@ -897,15 +897,70 @@ function parseBulkIds(raw: string | undefined): string[] {
 program
   .command("queue <action> [id] [status]")
   .description(
-    "desk content queue: list [--status s] / set <id> <approved|rejected|published> / bulk <target> --ids a,b,c",
+    "desk content queue: list [--status s] / set <id> <approved|rejected|published> / bulk <target> --ids a,b,c / update <id> --title/--body/--summary/--category/--media / media <id>",
   )
   .option("--status <s>", "filter by post status")
   .option("--ids <csv>", "comma-separated post ids (bulk)")
-  .action(async (action: string, id: string | undefined, status: string | undefined, opts: { status?: string; ids?: string }) => {
+  // `queue update` and `queue media` must be declared here, on the commander
+  // command. An earlier revision added them to the raw-argv `case "queue"`
+  // block further down the file, where commander never routed them: its
+  // handler claimed `queue` first and rejected both with "unknown action",
+  // so the desktop editor's image save silently did nothing.
+  .option("--title <t>", "new title (update)")
+  .option("--body <b>", "new body (update)")
+  .option("--summary <s>", 'new summary; "__CLEAR__" removes it (update)')
+  .option("--category <c>", "new category slug (update)")
+  .option("--media <m>", 'image URL or /uploads/… path; "__CLEAR__" removes it (update)')
+  .action(async (action: string, id: string | undefined, status: string | undefined, opts: { status?: string; ids?: string; title?: string; body?: string; summary?: string; category?: string; media?: string }) => {
     try {
       await ensureSchema(getClient());
       if (action === "list") {
         console.log(JSON.stringify({ ok: true, rows: await listDeskQueue(opts.status) }, null, 2));
+      } else if (action === "update") {
+        if (!id) throw new Error("id required (queue update <id> --title ... --body ... --summary ... --category ... --media ...)");
+        const existing = await getPostById(id);
+        if (!existing) throw new Error(`post not found: ${id}`);
+        const fields: PostUpdateFields = {};
+        if (opts.title !== undefined) fields.title_bn = opts.title;
+        if (opts.body !== undefined) fields.body_bn = opts.body;
+        if (opts.summary !== undefined) fields.summary_bn = opts.summary === "__CLEAR__" ? null : opts.summary;
+        if (opts.category !== undefined) fields.category = opts.category as CategorySlug;
+        // "__CLEAR__" removes the image. Anything else goes through
+        // normalizeMediaPath inside updatePost, so a bad URL is rejected
+        // before it can reach the page.
+        if (opts.media !== undefined) {
+          fields.media_path = opts.media === "__CLEAR__" ? null : opts.media;
+        }
+        if (Object.keys(fields).length === 0) {
+          throw new Error("at least one field required (--title, --body, --summary, --category, --media)");
+        }
+        await updatePost(id, fields);
+        console.log(JSON.stringify({ ok: true, post: await getPostById(id) }, null, 2));
+      } else if (action === "media") {
+        // Collector-seen image URLs for one post, probed with HEAD so the desk
+        // editor greys out fbcdn links whose signature has expired. Mirrors the
+        // web route /api/posts/[id]/media.
+        if (!id) throw new Error("id required (queue media <id>)");
+        const info = await listPostMediaCandidates(id);
+        const candidates = info.media_urls
+          .filter((u) => /^https?:\/\//i.test(u) && !isVideoUrl(u))
+          .slice(0, 12);
+        const probed = await Promise.all(
+          candidates.map(async (url) => {
+            try {
+              const res = await fetch(url, {
+                method: "HEAD",
+                signal: AbortSignal.timeout(6000),
+                headers: { "user-agent": "Mozilla/5.0 Hoichoi/1.0" },
+              });
+              const type = res.headers.get("content-type") ?? "";
+              return { url, ok: res.ok && type.startsWith("image/"), status: res.status, contentType: type || null };
+            } catch {
+              return { url, ok: false, status: 0, contentType: null };
+            }
+          }),
+        );
+        console.log(JSON.stringify({ ok: true, current: info.current, candidates: probed }, null, 2));
       } else if (action === "bulk") {
         const target = parseBulkAction(id);
         const ids = parseBulkIds(opts.ids);
@@ -1699,53 +1754,6 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
           await updatePostStatus(id, "published", { publishedAt: true });
         }
         console.log(JSON.stringify({ ok: true, status: finalStatus }));
-      } else if (action === "update") {
-        const id = args[2];
-        if (!id) throw new Error("id required (queue update <id> --title ... --body ... --summary ... --category ... --media ...)");
-        const existing = await getPostById(id);
-        if (!existing) throw new Error(`post not found: ${id}`);
-        const { flags } = parseArgs(args.slice(3));
-        const fields: PostUpdateFields = {};
-        if (flags.title !== undefined) fields.title_bn = flags.title;
-        if (flags.body !== undefined) fields.body_bn = flags.body;
-        if (flags.summary !== undefined) fields.summary_bn = flags.summary === "__CLEAR__" ? null : flags.summary;
-        if (flags.category !== undefined) fields.category = flags.category as CategorySlug;
-        // --media "" / __CLEAR__ removes the image; anything else is validated
-        // by normalizeMediaPath before it can reach the page.
-        if (flags.media !== undefined) {
-          fields.media_path = flags.media === "__CLEAR__" ? null : flags.media;
-        }
-        if (Object.keys(fields).length === 0) {
-          throw new Error("at least one field required (--title, --body, --summary, --category, --media)");
-        }
-        await updatePost(id, fields);
-        console.log(JSON.stringify({ ok: true, post: await getPostById(id) }, null, 2));
-      } else if (action === "media") {
-        // Collector-seen image URLs for one post, probed so the desk editor can
-        // grey out fbcdn links whose signature has expired. Same shape as the
-        // web route /api/posts/[id]/media.
-        const id = args[2];
-        if (!id) throw new Error("id required (queue media <id>)");
-        const info = await listPostMediaCandidates(id);
-        const candidates = info.media_urls
-          .filter((u) => /^https?:\/\//i.test(u) && !isVideoUrl(u))
-          .slice(0, 12);
-        const probed = await Promise.all(
-          candidates.map(async (url) => {
-            try {
-              const res = await fetch(url, {
-                method: "HEAD",
-                signal: AbortSignal.timeout(6000),
-                headers: { "user-agent": "Mozilla/5.0 Hoichoi/1.0" },
-              });
-              const type = res.headers.get("content-type") ?? "";
-              return { url, ok: res.ok && type.startsWith("image/"), status: res.status, contentType: type || null };
-            } catch {
-              return { url, ok: false, status: 0, contentType: null };
-            }
-          }),
-        );
-        console.log(JSON.stringify({ ok: true, current: info.current, candidates: probed }, null, 2));
       } else if (action === "remove") {
         const id = args[2];
         if (!id) throw new Error("id required (queue remove <id>)");

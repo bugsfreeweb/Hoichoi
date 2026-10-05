@@ -16,7 +16,6 @@ import { timeBn, readMinutesBn, shortId, bnNum } from "@/lib/bn";
 import { agoBn } from "@/lib/format";
 import { categoryLabel, categoryTint, readableOn } from "@/lib/category-style";
 import { mediaUrl } from "@/lib/media";
-import { BRAND } from "@/lib/brand";
 
 export const revalidate = 300;
 
@@ -367,42 +366,6 @@ export default async function HomePage({
         <ArticleGrid posts={rest} ads={cfg.show_ads} adInfeedHtml={settings.ad_infeed_html} categories={catRows} />
         <Pagination page={page} pageCount={pageCount} base="/" />
       </section>
-
-      {cfg.show_desk_cta && (
-      <section className="mx-auto max-w-[1400px] px-4 pb-16 md:px-8">
-        <Link
-          href="/desk"
-          className="group relative flex flex-col items-start justify-between gap-6 overflow-hidden border-[1.5px] border-band bg-band p-7 text-bandline md:flex-row md:items-center md:p-10"
-        >
-          <div className="drift pointer-events-none absolute -top-24 right-10 h-64 w-64 rounded-full bg-lime/10 blur-[80px]" />
-          <div className="relative flex items-start gap-4">
-            <img
-              src={BRAND.mark}
-              alt=""
-              className="h-16 w-16 rounded-full object-cover ring-2 ring-lime/40"
-            />
-            <div>
-              <p className="font-mono-x text-[10px] tracking-[0.26em] text-lime uppercase">
-                TAURI DESK · NATIVE CONTROLLER
-              </p>
-              <h3 className="mt-1 font-serif-bn text-[26px] font-black md:text-[32px]">
-                {BRAND.desk} খুলুন
-              </h3>
-              <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-bandline/60">
-                এই সাইটের প্রতিটি লাইনের পেছনে ওই একটাই ইঞ্জিন — ওয়াচলিস্ট,
-                কালেক্টর, ডুপ্লিকেট গেট, API ভল্ট ও দুই-ঘণ্টার ক্রন। ওয়েব শুধু
-                ছাপে; অ্যাপই চালায়।
-              </p>
-            </div>
-          </div>
-          <span className="beam relative flex items-center gap-2 rounded-md bg-lime px-6 py-3.5 text-[13.5px] font-bold text-night transition-transform duration-300 group-hover:scale-[1.03]">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/></svg>
-            অ্যাপ লঞ্চ
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-          </span>
-        </Link>
-      </section>
-      )}
 
       {cfg.show_ads && (
       <div className="mx-auto max-w-[1400px] px-4 pb-12 md:px-8">

@@ -72,7 +72,6 @@ export const DEFAULT_APP_CONFIG: SiteAppConfig = {
   show_categories: true,
   show_ads: true,
   show_rewrite_engine: true,
-  show_desk_cta: true,
   show_footer: true,
   theme_default: "light",
   surge_threshold: 12,

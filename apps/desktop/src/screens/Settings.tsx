@@ -126,7 +126,6 @@ const VIS_ITEMS: Array<{ key: keyof SiteAppConfig; label: string; hint: string }
   { key: "show_categories", label: "বিভাগ স্ট্রিপ", hint: "হোমপেজ গ্রিডের আগে ক্যাটাগরি-বোতাম" },
   { key: "show_ads", label: "বিজ্ঞাপন স্লট", hint: "সব ad slot জায়গা" },
   { key: "show_rewrite_engine", label: "রিরাইট ইঞ্জিন ব্যাজ", hint: "ডেস্কটপ অ্যাপ প্রচার-কার্ড" },
-  { key: "show_desk_cta", label: "Desktop App CTA", hint: "হোমপেজে ডেস্কটপ-অ্যাপ ডাউনলোড বক্স" },
   { key: "show_footer", label: "ফুটার", hint: "নিচের ফুটার প্যানেল" },
 ];
 
@@ -136,7 +135,6 @@ interface SiteAppConfig {
   show_categories: boolean;
   show_ads: boolean;
   show_rewrite_engine: boolean;
-  show_desk_cta: boolean;
   show_footer: boolean;
   theme_default: "light" | "dark";
   surge_threshold: number;
@@ -148,7 +146,6 @@ const VIS_DEFAULTS: SiteAppConfig = {
   show_categories: true,
   show_ads: true,
   show_rewrite_engine: true,
-  show_desk_cta: true,
   show_footer: true,
   theme_default: "dark",
   surge_threshold: 12,

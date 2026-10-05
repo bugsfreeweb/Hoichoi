@@ -407,8 +407,6 @@ export interface SiteAppConfig {
   show_ads: boolean;
   /** Rewrite-engine showcase block. */
   show_rewrite_engine: boolean;
-  /** Desktop app CTA banner. */
-  show_desk_cta: boolean;
   /** Site footer. */
   show_footer: boolean;
   /** Default theme seeded before hydration (`light` | `dark`). */

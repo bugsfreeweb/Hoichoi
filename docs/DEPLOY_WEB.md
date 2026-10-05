@@ -185,11 +185,11 @@ pnpm --filter @hoichoi/web build
     tab reads the same rows through the runner `loginlog list|delete|clear`.
 - **Web-visibility gating (`settings.app_config_json`)** — the `settings` row carries a
   JSON `SiteAppConfig` (fields `show_hero`, `show_live_graph`, `show_categories`,
-  `show_ads`, `show_rewrite_engine`, `show_desk_cta`, `show_footer`,
+  `show_ads`, `show_rewrite_engine`, `show_footer`,
   `theme_default`, `surge_threshold`) parsed with `parseAppConfig` in `@hoichoi/db`
   and honored by the public homepage — it gates the hero, the lead story, all three
   ad slots + the infeed (`ArticleGrid ads={cfg.show_ads}`), the live-analytics strip,
-  the category chips, the pipeline/rewrite showcase band, the desk-download CTA and
+  the category chips, the pipeline/rewrite showcase band and
   the footer. "Off" hides the section entirely (ads included — not just the default
   sponsor card). Edited from the web admin settings page (`VisibilityPanel`, PATCH
   `/api/settings`) or the desktop's সাইট ও বিজ্ঞাপন tab; both persist the same

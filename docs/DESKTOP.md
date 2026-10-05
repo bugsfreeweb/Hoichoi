@@ -389,7 +389,7 @@ The desktop UI mirrors the `mockup/` desk controller exactly:
   rows.
 - **Web-visibility panel (`app_config_json`)** — the Settings → সাইট ও বিজ্ঞাপন tab
   includes a *ওয়েব ভিজিবিলিটি ও থিম* toggle grid (`show_hero`, `show_live_graph`,
-  `show_categories`, `show_ads`, `show_rewrite_engine`, `show_desk_cta`, `show_footer`)
+  `show_categories`, `show_ads`, `show_rewrite_engine`, `show_footer`)
   plus `theme_default` (`light`|`dark`) and `surge_threshold`. Saving writes the whole
   `SiteAppConfig` JSON to the shared `settings.app_config_json` through
   `settingsSet { app_config_json: … }`, so the public web home sections switch
