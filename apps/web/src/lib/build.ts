@@ -5,6 +5,8 @@
  * behind reality. Importing the version from package.json keeps the stamp
  * correct for every release without anyone remembering to edit a string.
  */
-import { version } from "../../package.json";
+// Default import, not `{ version }`: JSON modules default-export the whole
+// object, and the named import made the build emit a warning on every deploy.
+import pkg from "../../package.json";
 
-export const SITE_BUILD = version;
+export const SITE_BUILD = pkg.version;
