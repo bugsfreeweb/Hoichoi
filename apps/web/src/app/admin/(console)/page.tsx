@@ -11,6 +11,7 @@ import {
 } from "@hoichoi/db";
 import type { RecentPipelineRun } from "@hoichoi/db";
 import Countdown from "@/components/admin/Countdown";
+import { nextCronSlots, PIPELINE_CRON } from "@/lib/cron";
 import ContentQueue from "@/components/admin/ContentQueue";
 import { CategoryFunnel, RunTrendChart } from "@/components/admin/DashboardCharts";
 import { ManualRun } from "@/components/admin/ManualRun";
@@ -92,15 +93,26 @@ export default async function AdminDashboardPage({
     : "—";
   const lastStats = lastRun ? runStats(lastRun) : null;
 
-  const base = lastRun ? new Date(lastRun.started_at).getTime() : Date.now();
-  const nextSlots = [1, 2, 3].map((n) => bnTime(new Date(base + n * 2 * 60 * 60 * 1000)));
+  // Derived from the workflow's cron, not from the last run's start time. The
+  // real pipeline fires at :17 of every even hour; adding 2h to a run that
+  // started at 00:53 promised 02:53, which the scheduler never honours. An
+  // unparseable schedule yields no slots rather than a guess.
+  const nextSlots = nextCronSlots(PIPELINE_CRON, new Date());
 
-  // Tab counters come from the same counts the queue pages use, so the dashboard
-  // and the list it links to can never disagree about how much work is waiting.
+  // Tab counters come from the same counts the queue pages use, and cover every
+  // status the matching SQL filter selects. `rejected` is included because the
+  // "সব"/"সারিতে" tabs list `status != 'published'`; omitting it here made the
+  // tab label smaller than the rows under it.
   const tabCounts = {
-    all: queues.pending_review + queues.approved + queues.published + queues.removed,
+    all:
+      queues.pending_review +
+      queues.approved +
+      queues.published +
+      queues.removed +
+      queues.rejected,
     published: queues.published,
-    pending: queues.pending_review + queues.approved + queues.removed,
+    pending:
+      queues.pending_review + queues.approved + queues.removed + queues.rejected,
   };
 
   const totals = radar.totals;
@@ -276,15 +288,28 @@ export default async function AdminDashboardPage({
             শিডিউল
           </p>
           <div className="mt-4 flex items-baseline justify-between">
-            <code className="font-mono-x text-[22px] font-bold text-white">ম্যানুয়াল</code>
+            {/* Says the real cadence rather than "manual": this card lists
+                automated slots, and calling it manual contradicted itself. */}
+            <code className="font-mono-x text-[15px] font-bold text-white">
+              প্রতি {toBn(2)} ঘণ্টায়
+            </code>
             <span className="font-mono-x text-[9.5px] text-white/40">ASIA/DHAKA</span>
           </div>
           <div className="mt-4 flex flex-wrap gap-1.5">
-            {nextSlots.map((t, i) => (
-              <span key={i} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono-x text-[10px] text-white/70">
-                পরের {toBn(i + 1)} · {t}
+            {nextSlots.length === 0 ? (
+              <span className="text-[11px] text-white/45">
+                শিডিউল পড়া যায়নি — Actions থেকে হাতে চাপ দিন।
               </span>
-            ))}
+            ) : (
+              nextSlots.map((t, i) => (
+                <span
+                  key={t.toISOString()}
+                  className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono-x text-[10px] text-white/70"
+                >
+                  পরের {toBn(i + 1)} · {bnTime(t)}
+                </span>
+              ))
+            )}
           </div>
           <ManualRun initialRuns={runs} />
           <p className="mt-4 border-t border-white/8 pt-4 text-[10.5px] leading-relaxed text-white/40">
