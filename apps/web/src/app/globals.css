@@ -388,16 +388,18 @@ body {
   overflow-x: clip;
 }
 
-/* Vertical scrolling only. Applies to every scrollable region in the app so a
-   nested scroll box cannot scroll sideways either. */
-.page-chrome *,
-.admin-console * {
-  overflow-x: clip;
-}
-
 /* An element that genuinely needs sideways scrolling (a wide data table) opts
-   back in explicitly. This is the only way to reintroduce horizontal scrolling,
-   so it has to be deliberate. */
+   in explicitly, so reintroducing horizontal scrolling stays deliberate.
+
+   There is deliberately no `*` rule forcing `overflow-x: clip` on every
+   descendant. It looked thorough but made each element a clip container, which
+   silently cropped the overflow of anything positioned or overflowing its box
+   - nav badges, focus rings, dropdowns, tooltips - and the admin sidebar and
+   footer lost their overflowing content. Horizontal overflow is prevented at
+   the root and on the two shell wrappers above, which is where it actually
+   originates; individual components that must not push the page sideways get
+   `min-w-0` on the flex/grid child instead. */
+
 .page-chrome .scroll-x,
 .admin-console .scroll-x,
 .page-chrome .overflow-x-auto,

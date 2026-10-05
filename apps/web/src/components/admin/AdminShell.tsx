@@ -121,8 +121,8 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
       */}
       <div className="admin-console-main flex w-full gap-6 px-4 pt-6 md:px-6">
         {/* ============ SIDEBAR ============ */}
-        <aside className="sticky top-20 hidden h-[calc(100vh-6.5rem)] w-60 shrink-0 flex-col rounded-2xl border border-white/8 bg-panel/60 p-4 lg:flex">
-          <div className="flex items-center gap-3 border-b border-white/8 px-2 pb-4">
+        <aside className="sticky top-20 hidden max-h-[calc(100vh-7.5rem)] w-60 shrink-0 flex-col rounded-2xl border border-white/8 bg-panel/60 lg:flex">
+          <div className="flex items-center gap-3 border-b border-white/8 px-2 py-4">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-alizarin font-serif-bn text-[17px] font-black text-white">
               হ
             </span>
@@ -136,7 +136,16 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
             </div>
           </div>
 
-          <nav className="mt-4 space-y-1">
+          {/*
+            The 15 nav rows are taller than any laptop viewport, so this is the
+            one region that scrolls vertically. The aside is capped with
+            max-h rather than a fixed h: with a fixed height the overflow used
+            to escape the box and land underneath the sticky footer, which then
+            covered the last few rows. `min-h-0` lets the flex child actually
+            shrink below its content size, which is what makes overflow-y
+            engage instead of the aside growing past the viewport.
+          */}
+          <nav className="mt-4 min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-1 pb-2">
             <Link href="/admin/notices" className="mb-3 flex items-center justify-between rounded-lg border border-lime/30 bg-lime/10 px-3 py-3 text-[13px] font-bold text-lime transition-colors hover:bg-lime/15">নোটিশ ও ঘোষণা <span>↗</span></Link>
             <Link href="/admin/moderation" className="mb-3 flex items-center justify-between rounded-lg border border-lime/30 bg-lime/10 px-3 py-3 text-[13px] font-bold text-lime transition-colors hover:bg-lime/15">মন্তব্য মডারেশন <span>↗</span></Link>
             <ul className="space-y-0.5 font-sans-bn text-[12.5px] font-medium">
@@ -168,7 +177,7 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
             </ul>
           </nav>
 
-          <div className="mt-auto rounded-xl border border-white/8 bg-white/[0.04] p-4">
+          <div className="shrink-0 rounded-xl border border-white/8 bg-white/[0.04] p-4">
             <p className="flex items-center gap-2 text-[11px] font-semibold text-white/85">
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-lime"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               ভল্ট সিলড
@@ -178,7 +187,7 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
             </p>
           </div>
 
-          <div className="mt-4 border-t border-white/8 pt-3">
+          <div className="shrink-0 border-t border-white/8 pt-3">
             <div className="flex items-center gap-1.5 px-1 text-[10.5px] text-white/70">
               <span className="cat-dot bg-lime"></span>
               <span className="truncate">{user.email}</span>
@@ -205,15 +214,23 @@ function AdminFooter({ path, email }: { path: string; email: string }) {
   const active = NAV.find((n) => path === n.href || path.startsWith(`${n.href}/`));
   return (
     <footer className="admin-footer">
-      <div className="mx-auto flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2 md:px-6">
-        <span className="font-mono-x text-[9.5px] tracking-[0.16em] text-white/40 uppercase">
+      {/*
+        Three cells on a wrapping grid rather than justify-between on one row.
+        A single row of nowrap items could not fit a narrow window, so the
+        labels were pushed out of the bar and cropped; here each cell shrinks or
+        wraps on its own and the bar grows vertically instead of losing content.
+      */}
+      <div className="grid w-full grid-cols-1 gap-x-4 gap-y-0.5 px-4 py-2 sm:grid-cols-[minmax(0,1fr)_auto] md:px-6 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
+        <span className="min-w-0 truncate font-mono-x text-[9.5px] tracking-[0.16em] text-white/40 uppercase">
           {active ? `${active.emoji} ${active.label}` : "হৈচৈ কন্ট্রোল"}
         </span>
-        <span className="min-w-0 truncate text-[10.5px] text-white/45">{email}</span>
-        <span className="flex items-center gap-3 font-mono-x text-[9.5px] tracking-[0.16em] text-white/35 uppercase">
+        <span className="min-w-0 truncate text-[10.5px] text-white/45 sm:text-right">
+          {email}
+        </span>
+        <span className="flex items-center gap-3 font-mono-x text-[9.5px] tracking-[0.16em] text-white/35 uppercase lg:justify-self-end">
           <span>ASIA/DHAKA</span>
           <span aria-hidden="true">·</span>
-          <span>BUILD {SITE_BUILD}</span>
+          <span className="whitespace-nowrap">BUILD {SITE_BUILD}</span>
         </span>
       </div>
     </footer>
