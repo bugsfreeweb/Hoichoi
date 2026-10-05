@@ -10,7 +10,10 @@ concurrency:
 
 jobs:
   js:
-    name: Lint · typecheck · test · build
+    # Named for what it runs. It used to lead with "Lint", but no package in the
+    # workspace defines a lint task, so `pnpm lint` reported success while
+    # checking nothing. The name claimed a gate that did not exist.
+    name: Typecheck · test · build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
