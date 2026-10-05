@@ -184,3 +184,140 @@ console.log(
     `${measured.length} light-theme text rules readable ` +
     `(lowest ${worst.cls} ${worst.ratio.toFixed(2)}:1)`,
 );
+
+/* ---------------- accent token gate ---------------- */
+
+/**
+ * The coverage check above can only see utilities that the light block overrides
+ * by name. Accent text (`text-lime`, `text-amberx`, ...) is a Tailwind class
+ * bound to a `--color-*` variable, so it resolves through a token — and tokens
+ * are exactly what the contrast parser skips as "not statically checkable".
+ *
+ * That gap was not theoretical. `text-lime` shipped at 3.34:1 and `text-amberx`
+ * at 4.33:1 against the light console across ~48 admin call sites, and
+ * `text-sky-300` / `text-rose-300` / `text-cat-blue` had no light value at all,
+ * so they kept their bright-on-dark values on a light background. Both themes
+ * were affected: `--color-cat-blue` was 2.6:1 on the dark panels.
+ *
+ * So resolve the tokens each theme actually applies to the console and measure
+ * them against that theme's own surface.
+ */
+const ACCENT_TOKENS: Record<string, string> = {
+  "text-lime": "--color-lime",
+  "text-amberx": "--color-amberx",
+  "text-alizarin": "--color-alizarin",
+  "text-sky-300": "--color-sky-300",
+  "text-sky-400": "--color-sky-400",
+  "text-rose-300": "--color-rose-300",
+  "text-rose-400": "--color-rose-400",
+  "text-cat-blue": "--color-cat-blue",
+  "text-cat-teal": "--color-cat-teal",
+};
+
+const ACCENT = Object.keys(ACCENT_TOKENS).join("|");
+
+/** Collects `--name: #hex;` declarations from the given css scopes, last wins. */
+function tokensIn(...scopes: string[]): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const scope of scopes) {
+    for (const m of scope.matchAll(/(--[a-z0-9-]+)\s*:\s*(#[0-9a-f]{6})\s*;/gi)) {
+      out.set(m[1]!, m[2]!);
+    }
+  }
+  return out;
+}
+
+const ruleBody = (selector: string, from = 0): string => {
+  const at = css.indexOf(selector, from);
+  if (at < 0) return "";
+  const open = css.indexOf("{", at);
+  if (open < 0) return "";
+  return css.slice(open + 1, css.indexOf("}", open));
+};
+
+// The console blocks are more specific than :root and appear later in the sheet,
+// so a token declared in both resolves to the console's own value.
+//
+// Dark mode needs both sources: `html[data-theme="dark"]` carries the brand
+// palette, and `.admin-console {` later in the file re-declares the few tokens
+// the console needs its own value for. Searching for `.admin-console {` from the
+// top would land on the light block instead, whose selector also contains that
+// substring — hence the explicit start offset.
+const DARK_CONSOLE = css.indexOf("ADMIN CONSOLE (dark");
+const rootTokens = tokensIn(ruleBody(":root"));
+const lightConsoleTokens = tokensIn(ruleBody('html[data-theme="light"] .admin-console'));
+const darkConsoleTokens = tokensIn(
+  ruleBody('html[data-theme="dark"]'),
+  ruleBody(".admin-console {", DARK_CONSOLE),
+);
+
+const THEMES = [
+  {
+    name: "light",
+    surface: SURFACE,
+    tokens: new Map([...rootTokens, ...lightConsoleTokens]),
+  },
+  {
+    name: "dark",
+    surface: hex("#0f131a"),
+    tokens: new Map([...rootTokens, ...darkConsoleTokens]),
+  },
+];
+
+const accentUsed = new Set<string>();
+for (const root of roots) {
+  for (const entry of fs.readdirSync(root, { recursive: true })) {
+    const f = String(entry);
+    if (!f.endsWith(".tsx")) continue;
+    const text = fs.readFileSync(path.join(root, f), "utf8");
+    for (const m of text.matchAll(new RegExp(`(${ACCENT})\\b`, "g"))) accentUsed.add(m[1]!);
+  }
+}
+
+const accentProblems: string[] = [];
+for (const theme of THEMES) {
+  for (const cls of [...accentUsed].sort()) {
+    const token = ACCENT_TOKENS[cls]!;
+    const value = theme.tokens.get(token);
+    if (!value) {
+      accentProblems.push(
+        `  ${theme.name.padEnd(5)} ${cls.padEnd(18)} ${token} is never defined in this theme`,
+      );
+      continue;
+    }
+    const ratio = contrast(hex(value), theme.surface);
+    if (ratio < MIN) {
+      accentProblems.push(
+        `  ${theme.name.padEnd(5)} ${cls.padEnd(18)} ${value} on ${theme.name} console = ${ratio.toFixed(2)}:1`,
+      );
+    }
+  }
+}
+
+if (accentProblems.length > 0) {
+  console.error(
+    `\n[web] these admin accent text colours resolve through a --color-* token, so\n` +
+      `       the checks above cannot see them, and they fall under the ${MIN}:1 floor\n` +
+      `       against their own theme's console surface:\n` +
+      accentProblems.join("\n") +
+      "\n       Re-declare the token on .admin-console (and its light counterpart).\n",
+  );
+  process.exit(1);
+}
+
+const accentWorst = THEMES.flatMap((theme) =>
+  [...accentUsed]
+    .map((cls) => {
+      const value = theme.tokens.get(ACCENT_TOKENS[cls]!);
+      return value
+        ? { cls: `${theme.name}/${cls}`, ratio: contrast(hex(value), theme.surface) }
+        : null;
+    })
+    .filter((x): x is { cls: string; ratio: number } => x !== null),
+).reduce((a, b) => (a.ratio <= b.ratio ? a : b));
+
+console.log(
+  `[web] accent tokens: ${accentUsed.size} classes x ${THEMES.length} themes ` +
+    `readable (lowest ${accentWorst.cls} ${accentWorst.ratio.toFixed(2)}:1)`,
+);
+
