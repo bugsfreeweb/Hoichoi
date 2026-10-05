@@ -228,8 +228,12 @@ export function CategoryFunnel({ radar }: { radar: RadarSnapshot }) {
                   </span>
                 </span>
               </div>
-              {/* Segments share the row proportional to the category's own
-                  collected total, so rows stay comparable across categories. */}
+              {/* Every segment is scaled against `peak` (the largest collected
+                  total on the page), not against this row's own collected count.
+                  That is deliberate: a shared scale makes bar length comparable
+                  between categories, so a small category looks small instead of
+                  being scaled up to fill the row and reading as equally busy. */}
+
               <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-white/8">
                 {(
                   [
@@ -266,7 +270,7 @@ export function CategoryFunnel({ radar }: { radar: RadarSnapshot }) {
           </span>
         ))}
         <span className="ml-auto text-[10.5px] text-white/40">
-          বারটি প্রতিটি ক্যাটাগরির নিজস্ব সংগৃহীতের সাপেক্ষে আঁকা
+          সব বার একই মাপে আঁকা — সবচেয়ে বেশি সংগৃহীত ক্যাটাগরির সমান
         </span>
       </div>
     </section>

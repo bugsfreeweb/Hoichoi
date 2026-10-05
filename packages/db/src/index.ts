@@ -1108,6 +1108,13 @@ export async function countReviewQueues(): Promise<{
   approved: number;
   published: number;
   removed: number;
+  /**
+   * `rejected` was missing here, so the dashboard's "সব" and "সারিতে" tab
+   * counters silently excluded rejected posts while the list they labelled
+   * (`status != 'published'`) included them. The tab read a smaller number than
+   * the rows beneath it.
+   */
+  rejected: number;
   open_removals: number;
   open_reports: number;
   new_submissions: number;
@@ -1121,6 +1128,7 @@ export async function countReviewQueues(): Promise<{
       (SELECT COUNT(*) FROM posts WHERE status = 'approved')         AS approved,
       (SELECT COUNT(*) FROM posts WHERE status = 'published')        AS published,
       (SELECT COUNT(*) FROM posts WHERE status = 'removed')          AS removed,
+      (SELECT COUNT(*) FROM posts WHERE status = 'rejected')        AS rejected,
       (SELECT COUNT(*) FROM removal_requests WHERE status = 'open')  AS open_removals,
       (SELECT COUNT(*) FROM reader_reports WHERE status = 'open')    AS open_reports,
       (SELECT COUNT(*) FROM submitted_pages
@@ -1137,6 +1145,7 @@ export async function countReviewQueues(): Promise<{
     approved: n("approved"),
     published: n("published"),
     removed: n("removed"),
+    rejected: n("rejected"),
     open_removals: n("open_removals"),
     open_reports: n("open_reports"),
     new_submissions: n("new_submissions"),
