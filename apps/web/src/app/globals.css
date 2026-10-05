@@ -127,6 +127,16 @@ overrides appended below still win. */
   --color-sky-400: #4aa3ff;
   --color-rose-300: #ff6b6b;
   --color-rose-400: #f34f4f;
+
+  /* Dashboard chart series. SVG fills can't be remapped by the class-based
+     light-theme overrides that handle text, so the series colours are tokens
+     that flip with the theme instead. Light values are dark enough to clear
+     3:1 against the light panel, which is the WCAG bar for non-text graphics. */
+  --chart-collected: #0b7c72;
+  --chart-published: #5f8f0e;
+  --chart-duplicates: #b45309;
+  --chart-grid: rgba(26, 20, 13, 0.1);
+  --chart-axis: #6b6250;
 }
 
 html[data-theme="dark"] {
@@ -141,6 +151,12 @@ html[data-theme="dark"] {
   --color-night: #050608;
   --color-panel: #0f131a;
   --color-fb: #8eb8ff;
+
+  --chart-collected: #2dd4bf;
+  --chart-published: #c8f65d;
+  --chart-duplicates: #ffb454;
+  --chart-grid: rgba(255, 255, 255, 0.1);
+  --chart-axis: #8e99a7;
 }
 
 html,
@@ -357,6 +373,12 @@ html[data-theme="dark"] .ad-chip {
   color: #e9e2cf;
   --color-lime: #c8f65d;
   --color-amberx: #ffb454;
+  /* Re-declared for the same reason as the light block below: the :root value
+     of --color-cat-blue (#2563eb) is a mid tone that reaches only ~2.6:1 on
+     this console's dark panels, and the accent tokens had no dark value at all
+     so they inherited the light-tuned ones. */
+  --color-cat-blue: #7aa2ff;
+  --color-cat-teal: #2dd4bf;
 }
 .admin-console,
 .admin-console * {
@@ -882,8 +904,20 @@ html[data-theme="light"] .bg-night-grid .tauri-win {
 html[data-theme="light"] .admin-console {
   background: #f3eee1;
   color: #1a140d;
-  --color-lime: #5f8f0e;
-  --color-amberx: #b45309;
+  /* These accents are re-declared here rather than inherited from :root because
+     the token values that work on the dark console are unreadable on paper.
+     :root's --color-lime measured 3.34:1 and --color-amberx 4.33:1 against
+     #f3eee1 — both under the 4.5:1 AA floor for the body-size text these
+     classes carry (queue counters, status labels, inline links). The values
+     below clear 4.5:1, and the theme audit measures them on every run.
+     --color-sky-300 / --color-rose-300 / --color-cat-blue had no light value at
+     all, so they stayed at their bright-on-dark values on a light console. */
+  --color-lime: #4a7009;
+  --color-amberx: #9a4208;
+  --color-sky-300: #0e7490;
+  --color-rose-300: #be123c;
+  --color-cat-blue: #1d4ed8;
+  --color-cat-teal: #0a6b62;
 }
 html[data-theme="light"] .admin-console,
 html[data-theme="light"] .admin-console * {
