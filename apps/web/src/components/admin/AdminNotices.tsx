@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import type { Notice, NoticeTone } from "@hoichoi/shared-types";
 import { Check, Megaphone, Pencil, Pin, Plus, RefreshCw, Trash2, X } from "lucide-react";
 
@@ -27,9 +28,14 @@ const EMPTY: Form = { title: "", body: "", tone: "info", url: "", pinned: false,
  * নোটিশ CRUD (web অ্যাডমিন)। Pinned + active নোটিশটি পাবলিক সাইটের হেডারে
  * "স্পেশাল নোটিশ" ব্যানার, বাকিগুলো বেল নোটিফিকেশনে — ডেস্কটপ অ্যাপ থেকেও
  * একই টেবিল লেখা যায়, তাই দুদিক থেকেই আপডেট।
+ *
+ * The list is rendered and paged by the server. This component used to fetch the
+ * whole table on mount and again after every mutation, which discarded the page's
+ * own query and grew without bound; mutations now refresh the server render, so
+ * one query per change drives the whole list.
  */
-export function AdminNotices({ initial }: { initial: Notice[] }) {
-  const [notices, setNotices] = useState<Notice[]>(initial);
+export function AdminNotices({ notices }: { notices: Notice[] }) {
+  const router = useRouter();
   const [form, setForm] = useState<Form>(EMPTY);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Notice | null>(null);
@@ -41,21 +47,6 @@ export function AdminNotices({ initial }: { initial: Notice[] }) {
     setMsg({ type, text });
     setTimeout(() => setMsg(null), 4000);
   };
-
-  const refresh = useCallback(async () => {
-    try {
-      const res = await fetch("/api/notices?all=1", { cache: "no-store" });
-      if (!res.ok) throw new Error("লোড ব্যর্থ");
-      const data = (await res.json()) as { notices: Notice[] };
-      setNotices(data.notices ?? []);
-    } catch (e) {
-      flash("err", String(e));
-    }
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   const toForm = (n: Notice): Form => ({
     title: n.title,
@@ -82,7 +73,7 @@ export function AdminNotices({ initial }: { initial: Notice[] }) {
       if (!res.ok) throw new Error("তৈরি ব্যর্থ");
       setForm(EMPTY);
       setOpen(false);
-      await refresh();
+      router.refresh();
       flash("ok", "নোটিশ তৈরি হয়েছে — পিন করলে সাইটের হেডারে ব্যানার আসবে");
     } catch (e) {
       flash("err", e instanceof Error ? e.message : "তৈরি ব্যর্থ");
@@ -103,7 +94,7 @@ export function AdminNotices({ initial }: { initial: Notice[] }) {
       if (!res.ok) throw new Error("আপডেট ব্যর্থ");
       setEditing(null);
       setEditForm(null);
-      await refresh();
+      router.refresh();
       flash("ok", "আপডেট হয়েছে");
     } catch (e) {
       flash("err", e instanceof Error ? e.message : "আপডেট ব্যর্থ");
@@ -120,7 +111,7 @@ export function AdminNotices({ initial }: { initial: Notice[] }) {
         body: JSON.stringify({ active: !n.is_active }),
       });
       if (!res.ok) throw new Error("টগল ব্যর্থ");
-      await refresh();
+      router.refresh();
     } catch (e) {
       flash("err", String(e));
     }
@@ -132,7 +123,7 @@ export function AdminNotices({ initial }: { initial: Notice[] }) {
     try {
       const res = await fetch(`/api/notices/${n.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("মুছতে ব্যর্থ");
-      await refresh();
+      router.refresh();
       flash("ok", "মুছে ফেলা হয়েছে");
     } catch (e) {
       flash("err", e instanceof Error ? e.message : "মুছতে ব্যর্থ");
@@ -168,7 +159,7 @@ export function AdminNotices({ initial }: { initial: Notice[] }) {
             <Plus size={14} /> নতুন নোটিশ
           </button>
         )}
-        <button onClick={() => void refresh()} className="flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-2 text-[12px] font-bold text-white/70 hover:text-white">
+        <button onClick={() => router.refresh()} className="flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-2 text-[12px] font-bold text-white/70 hover:text-white">
           <RefreshCw size={13} /> refresh
         </button>
       </div>
