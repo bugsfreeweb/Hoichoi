@@ -5,18 +5,49 @@ import { usePathname } from "next/navigation";
 import type { AdminUser } from "@hoichoi/shared-types";
 import { adminLogout } from "@/lib/auth-actions";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotificationBell } from "@/components/admin/NotificationBell";
+import { QueueCountsProvider, useQueueCounts, useQueueCountsPolling } from "@/components/admin/queue-counts";
 
-const NAV: Array<{ href: string; emoji: string; label: string }> = [
+function toBn(v: number): string {
+  return String(v).replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)] ?? d);
+}
+
+/**
+ * Which queue count each nav row carries. `key` matches the field the
+ * notifications endpoint returns, so the sidebar and the header bell read from
+ * the same single COUNT query instead of each counting independently.
+ */
+type CountKey =
+  | "pending_review"
+  | "approved"
+  | "new_submissions"
+  | "open_removals"
+  | "open_reports";
+
+const NAV: Array<{
+  href: string;
+  emoji: string;
+  label: string;
+  /** Summed into one badge, so a two-stage queue reads as the total waiting. */
+  countKeys?: CountKey[];
+}> = [
   { href: "/admin", emoji: "📊", label: "ড্যাশবোর্ড" },
   { href: "/admin/sources", emoji: "📡", label: "সোর্স" },
   { href: "/admin/categories", emoji: "🗂️", label: "বিভাগ" },
-  { href: "/admin/moderation", emoji: "✅", label: "মডারেশন কিউ" },
+  {
+    href: "/admin/moderation",
+    emoji: "✅",
+    label: "মডারেশন কিউ",
+    // Both gates: an item waiting on the second approval is still an item an
+    // operator has to act on, so showing only the first gate under-reports.
+    countKeys: ["pending_review", "approved"],
+  },
   { href: "/admin/posts", emoji: "✏️", label: "পোস্ট এডিটর" },
   { href: "/admin/providers", emoji: "🤖", label: "AI প্রোভাইডার" },
-  { href: "/admin/notices", emoji: "🔔", label: "নোটিশ" },
-  { href: "/admin/submissions", emoji: "📥", label: "সাবমিশন" },
-  { href: "/admin/removals", emoji: "⚠️", label: "রিমুভাল রিকোয়েস্ট" },
-  { href: "/admin/reports", emoji: "🚩", label: "পাঠকের রিপোর্ট" },
+  { href: "/admin/notices", emoji: "📢", label: "নোটিশ" },
+  { href: "/admin/submissions", emoji: "📥", label: "সাবমিশন", countKeys: ["new_submissions"] },
+  { href: "/admin/removals", emoji: "⚠️", label: "রিমুভাল রিকোয়েস্ট", countKeys: ["open_removals"] },
+  { href: "/admin/reports", emoji: "🚩", label: "পাঠকের রিপোর্ট", countKeys: ["open_reports"] },
   { href: "/admin/archive", emoji: "📁", label: "আর্কাইভ" },
   { href: "/admin/backup", emoji: "💾", label: "ব্যাকআপ ও রিসেট" },
   { href: "/admin/logs", emoji: "📜", label: "লগ" },
@@ -25,7 +56,20 @@ const NAV: Array<{ href: string; emoji: string; label: string }> = [
 ];
 
 export function AdminShell({ user, children }: { user: AdminUser; children: React.ReactNode }) {
+  // Polled once here so the sidebar badges and the header bell read from the
+  // same numbers rather than each counting separately.
+  const counts = useQueueCountsPolling();
+
+  return (
+    <QueueCountsProvider value={counts}>
+      <AdminChrome user={user}>{children}</AdminChrome>
+    </QueueCountsProvider>
+  );
+}
+
+function AdminChrome({ user, children }: { user: AdminUser; children: React.ReactNode }) {
   const path = usePathname();
+  const { counts } = useQueueCounts();
 
   return (
     <main className="admin-console bg-night-grid min-h-screen pb-16 text-[#e9e6da]">
@@ -53,6 +97,7 @@ export function AdminShell({ user, children }: { user: AdminUser; children: Reac
               পাবলিক সাইট ↘
             </Link>
             <ThemeToggle />
+            <NotificationBell />
             <form action={adminLogout}>
               <button
                 type="submit"
@@ -88,6 +133,7 @@ export function AdminShell({ user, children }: { user: AdminUser; children: Reac
             <ul className="space-y-0.5 font-sans-bn text-[12.5px] font-medium">
               {NAV.map((n) => {
                 const active = path === n.href || path.startsWith(`${n.href}/`);
+                const badge = n.countKeys?.reduce((sum, k) => sum + (counts[k] ?? 0), 0) ?? 0;
                 return (
                   <li key={n.href}>
                     <Link
@@ -100,6 +146,11 @@ export function AdminShell({ user, children }: { user: AdminUser; children: Reac
                     >
                       <span className="text-[14px]">{n.emoji}</span>
                       <span className="flex-1">{n.label}</span>
+                      {badge > 0 && (
+                        <span className="rounded-full bg-alizarin px-1.5 py-0.5 font-mono-x text-[9px] font-bold text-white">
+                          {toBn(badge)}
+                        </span>
+                      )}
                       {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-alizarin" />}
                     </Link>
                   </li>

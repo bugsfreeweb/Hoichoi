@@ -36,7 +36,7 @@ async function pageRows<T>(
   },
 ): Promise<{ rows: T[]; total: number; page: number; pageSize: number }> {
   const n = Number(opts.page);
-  const p = Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
+  const safe = Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
   const pageSize = Math.max(1, Math.floor(opts.pageSize ?? 20));
   const where = opts.where ? ` WHERE ${opts.where}` : "";
   const filterArgs = opts.args ?? [];
@@ -46,6 +46,8 @@ async function pageRows<T>(
     args: filterArgs,
   });
   const total = Number((countRes.rows[0] as Record<string, unknown>).n ?? 0);
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const p = Math.min(safe, pageCount);
 
   const res = await client.execute({
     sql: `${opts.sql}${where} ORDER BY ${opts.order} LIMIT ? OFFSET ?`,
@@ -133,11 +135,45 @@ await check("the first page is the newest, the second is the remainder", async (
   assert.equal(new Set(ids).size, 25, "pages must not overlap");
 });
 
-await check("a page past the end is empty rather than an error", async () => {
+await check("a page past the end falls back to the last real page", async () => {
   const client = await freshClient();
-  const page = await openQueue(client, 99);
+  // Not a hand-typed URL: delete the tail of page 2 and refresh, and the URL
+  // still says page=2. Serving that as an empty list makes a 25-item queue look
+  // wiped, and leaves the control reading "2 / 1".
+  const page = await openQueue(client, 2);
+  assert.equal(page.page, 2, "page 2 exists for 25 rows at 20/page");
+  assert.equal(page.rows.length, 5);
+
+  const past = await openQueue(client, 99);
+  assert.equal(past.page, 2, "an out-of-range page clamps to the last one");
+  assert.equal(past.rows.length, 5, "and shows that page's rows, not an empty list");
+  assert.equal(past.total, 25, "the total is still the real total");
+});
+
+await check("a shrinking queue clamps too", async () => {
+  const client = await freshClient();
+  await openQueue(client, 1);
+  // Drop to 20 rows: page 2 no longer exists.
+  await client.execute(
+    `DELETE FROM removal_requests WHERE id IN (${Array.from({ length: 5 }, (_, i) => `'open-${String(i + 1).padStart(2, "0")}'`).join(", ")})`,
+  );
+  const page = await openQueue(client, 2);
+  assert.equal(page.total, 20);
+  assert.equal(page.page, 1, "page 2 vanished, so page 1 is the answer");
+  assert.equal(page.rows.length, 20);
+});
+
+await check("an empty result set reports page 1 of 1", async () => {
+  const client = await freshClient();
+  await client.execute("DELETE FROM removal_requests");
+  const page = await pageRows<Record<string, unknown>>(client, {
+    sql: "SELECT * FROM removal_requests",
+    order: "created_at DESC",
+    page: 7,
+  });
+  assert.equal(page.total, 0);
+  assert.equal(page.page, 1);
   assert.equal(page.rows.length, 0);
-  assert.equal(page.total, 25, "the total is still the real total");
 });
 
 await check("hostile page numbers clamp to the first page", async () => {

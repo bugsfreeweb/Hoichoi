@@ -242,6 +242,30 @@ export async function listNotices(opts?: {
   return res.rows.map((r) => mapNotice(r as Record<string, unknown>));
 }
 
+/**
+ * Paginated notice board for the admin.
+ *
+ * The board used to ask for 200 notices server-side and then immediately refetch
+ * the entire table from the client on mount, throwing the server query away and
+ * rendering every row with no way to reach anything past the cap. This pages it
+ * through the shared helper instead.
+ *
+ * `pinned DESC` stays first so the header banner a pinned notice produces is
+ * always the first row, on every page's top.
+ */
+export async function listNoticesPaged(opts?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<Page<Notice>> {
+  return pageRows<Notice>({
+    sql: "SELECT * FROM notices",
+    order: "pinned DESC, updated_at DESC",
+    page: Number(opts?.page ?? 1),
+    pageSize: Number(opts?.pageSize ?? 20),
+    map: mapNotice,
+  });
+}
+
 export async function getNotice(id: string): Promise<Notice | null> {
   const client = getClient();
   const res = await client.execute({
@@ -692,6 +716,89 @@ export async function statsSnapshot(): Promise<StatsSnapshot> {
   };
 }
 
+export interface RunDayPoint {
+  day: string;
+  runs: number;
+  completed: number;
+  failed: number;
+  collected: number;
+  published: number;
+  duplicates: number;
+  emptyText: number;
+}
+
+/**
+ * Daily pipeline throughput for the admin trend chart.
+ *
+ * Zero-filled across the window so the chart keeps a stable X axis on days with
+ * no run (a weekend, a disabled schedule) instead of collapsing the gap and
+ * making two adjacent runs look consecutive.
+ *
+ * `stats` is a free-form JSON blob written by the pipeline, so each field is
+ * read through `json_valid` guards and `collected` falls back to the older
+ * `scraped` key. A malformed or partial blob degrades that one field to 0 rather
+ * than failing the whole dashboard.
+ */
+export async function runHistoryByDay(days = 14): Promise<RunDayPoint[]> {
+  const span = Math.min(Math.max(Math.trunc(days), 1), 90);
+  const client = getClient();
+  const since = new Date(Date.now() - (span - 1) * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  const safe = "CASE WHEN json_valid(stats) THEN stats ELSE '{}' END";
+  const res = await client.execute({
+    sql: `SELECT substr(started_at, 1, 10) AS day,
+                 count(*) AS runs,
+                 COALESCE(sum(status = 'completed'), 0) AS completed,
+                 COALESCE(sum(status = 'failed'), 0) AS failed,
+                 COALESCE(sum(COALESCE(json_extract(${safe}, '$.collected'),
+                                        json_extract(${safe}, '$.scraped'), 0)), 0) AS collected,
+                 COALESCE(sum(COALESCE(json_extract(${safe}, '$.published'), 0)), 0) AS published,
+                 COALESCE(sum(COALESCE(json_extract(${safe}, '$.duplicatesBlocked'), 0)), 0) AS duplicates,
+                 COALESCE(sum(COALESCE(json_extract(${safe}, '$.emptyText'), 0)), 0) AS empty_text
+          FROM pipeline_runs
+          WHERE started_at >= ?
+          GROUP BY day
+          ORDER BY day ASC`,
+    args: [`${since}%`],
+  });
+
+  const byDay = new Map<string, RunDayPoint>();
+  for (const r of res.rows) {
+    const day = String(r.day);
+    byDay.set(day, {
+      day,
+      runs: Number(r.runs ?? 0),
+      completed: Number(r.completed ?? 0),
+      failed: Number(r.failed ?? 0),
+      collected: Number(r.collected ?? 0),
+      published: Number(r.published ?? 0),
+      duplicates: Number(r.duplicates ?? 0),
+      emptyText: Number(r.empty_text ?? 0),
+    });
+  }
+
+  const out: RunDayPoint[] = [];
+  for (let i = 0; i < span; i++) {
+    const day = new Date(Date.now() - (span - 1 - i) * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    out.push(
+      byDay.get(day) ?? {
+        day,
+        runs: 0,
+        completed: 0,
+        failed: 0,
+        collected: 0,
+        published: 0,
+        duplicates: 0,
+        emptyText: 0,
+      },
+    );
+  }
+  return out;
+}
+
 export interface RadarCategorySummary {
   slug: string;
   name: string;
@@ -988,6 +1095,55 @@ export async function recentPipelineRuns(limit = 10): Promise<RecentPipelineRun[
   });
 }
 
+/**
+ * Counts for the review queues, in one round trip.
+ *
+ * The dashboard badges, the notification bell and the sidebar all want the same
+ * handful of numbers, and each was previously derived by fetching the whole
+ * queue and calling `.length` on it. On a table that only ever grows that is the
+ * most expensive way to learn "17 are waiting".
+ */
+export async function countReviewQueues(): Promise<{
+  pending_review: number;
+  approved: number;
+  published: number;
+  removed: number;
+  open_removals: number;
+  open_reports: number;
+  new_submissions: number;
+  active_notices: number;
+}> {
+  const client = getClient();
+  const res = await client.execute({
+    sql: `
+    SELECT
+      (SELECT COUNT(*) FROM posts WHERE status = 'pending_review') AS pending_review,
+      (SELECT COUNT(*) FROM posts WHERE status = 'approved')         AS approved,
+      (SELECT COUNT(*) FROM posts WHERE status = 'published')        AS published,
+      (SELECT COUNT(*) FROM posts WHERE status = 'removed')          AS removed,
+      (SELECT COUNT(*) FROM removal_requests WHERE status = 'open')  AS open_removals,
+      (SELECT COUNT(*) FROM reader_reports WHERE status = 'open')    AS open_reports,
+      (SELECT COUNT(*) FROM submitted_pages
+         WHERE status IN ('new','reviewing'))                        AS new_submissions,
+      (SELECT COUNT(*) FROM notices
+         WHERE is_active = 1 AND (expires_at IS NULL OR expires_at > ?)) AS active_notices
+  `,
+    args: [nowIso()],
+  });
+  const row = (res.rows[0] ?? {}) as Record<string, unknown>;
+  const n = (k: string): number => Number(row[k] ?? 0);
+  return {
+    pending_review: n("pending_review"),
+    approved: n("approved"),
+    published: n("published"),
+    removed: n("removed"),
+    open_removals: n("open_removals"),
+    open_reports: n("open_reports"),
+    new_submissions: n("new_submissions"),
+    active_notices: n("active_notices"),
+  };
+}
+
 export async function listStatusPosts(status: PostStatus): Promise<Post[]> {
   const client = getClient();
   const res = await client.execute({
@@ -1025,7 +1181,6 @@ export async function pageRows<T>(
     map?: (row: Record<string, unknown>) => T;
   },
 ): Promise<Page<T>> {
-  const p = safePage(opts.page);
   const pageSize = Math.max(1, Math.floor(opts.pageSize ?? 20));
   const client = getClient();
   const where = opts.where ? ` WHERE ${opts.where}` : "";
@@ -1036,6 +1191,14 @@ export async function pageRows<T>(
     args: filterArgs,
   });
   const total = Number((countRes.rows[0] as Record<string, unknown>).n ?? 0);
+
+  // Clamp to the last page that actually exists. A page beyond the end is
+  // reachable in normal use, not just from a hand-typed URL: delete the last row
+  // of page 3 and refresh, and the URL still says page=3. Serving that as an
+  // empty list makes a queue look wiped, and it leaves `Paginator` rendering
+  // "3 / 2".
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const p = Math.min(safePage(opts.page), pageCount);
 
   const res = await client.execute({
     sql: `${opts.sql}${where} ORDER BY ${opts.order} LIMIT ? OFFSET ?`,
@@ -1220,6 +1383,52 @@ export async function listPosts(limit = 300): Promise<Post[]> {
     args: [limit],
   });
   return res.rows.map((r) => mapPost(r as Record<string, unknown>));
+}
+
+export type ContentQueueTab = "all" | "published" | "pending";
+
+/**
+ * Paginated, searchable content queue for the dashboard.
+ *
+ * This backs a view that used to load the 300 newest posts and filter them in the
+ * browser, so its tab counters and its search box only ever described that window.
+ * Moving the work into SQL is what makes the counts honest and lets a search
+ * reach rows the old limit could not.
+ *
+ * `q` is matched against the title and the source name. LIKE metacharacters in
+ * the query are escaped, otherwise a search for a literal `%` would silently
+ * match every post and report a full queue for a term that appears in none.
+ */
+export async function listContentQueue(opts: {
+  tab?: ContentQueueTab;
+  q?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<Page<Post>> {
+  const tab: ContentQueueTab =
+    opts.tab === "published" || opts.tab === "pending" ? opts.tab : "all";
+  const q = (opts.q ?? "").trim();
+  const clauses: string[] = [];
+  const args: InValue[] = [];
+
+  if (tab === "published") clauses.push("status = 'published'");
+  else if (tab === "pending") clauses.push("status != 'published'");
+
+  if (q !== "") {
+    clauses.push("(title_bn LIKE ? ESCAPE '\\' OR source_name LIKE ? ESCAPE '\\')");
+    const pattern = `%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`;
+    args.push(pattern, pattern);
+  }
+
+  return pageRows<Post>({
+    sql: "SELECT * FROM posts",
+    where: clauses.length > 0 ? clauses.join(" AND ") : undefined,
+    order: "created_at DESC",
+    args,
+    page: Number(opts.page ?? 1),
+    pageSize: Number(opts.pageSize ?? 20),
+    map: mapPost,
+  });
 }
 
 /** Content fields that may be edited through the admin post editor. */
