@@ -22,14 +22,29 @@ import { uploadRemote } from "./storage";
 
 /** Shared fetch options for CDN media: some providers 403 on the bare Node
  *  user-agent, so present a normal browser UA + image accept header. */
-const MEDIA_FETCH_INIT: RequestInit = {
-  headers: {
-    "user-agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
-    accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-  },
-  signal: AbortSignal.timeout(20_000),
-};
+/**
+ * Per-request init for origin media fetches.
+ *
+ * This is a factory, not a shared constant, because `AbortSignal.timeout()`
+ * starts counting the moment the signal object is created. Held as a
+ * module-level `const`, the single signal was built at import time and had
+ * already expired by the time the pipeline reached its first image — every
+ * media and pHash fetch then failed instantly with "The operation was aborted
+ * due to timeout", and because both call sites swallow the error, posts were
+ * published with `media_kind = 'none'` and no image, silently.
+ *
+ * A fresh signal per call restores the actual 20s budget.
+ */
+function mediaFetchInit(timeoutMs = 20_000): RequestInit {
+  return {
+    headers: {
+      "user-agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+      accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+    },
+    signal: AbortSignal.timeout(timeoutMs),
+  };
+}
 
 export interface PipelineOptions {
   mock?: boolean;
@@ -333,7 +348,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
               }
             } else {
               const rel = randomMediaName("img", "webp");
-              const bufRes = await fetch(mUrl, MEDIA_FETCH_INIT);
+              const bufRes = await fetch(mUrl, mediaFetchInit());
               if (bufRes.ok && bufRes.headers.get("content-length") !== "0") {
                 const buf = Buffer.from(await bufRes.arrayBuffer());
                 if (buf.length >= 1024) {
@@ -392,7 +407,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       try {
         const firstMedia = sp.mediaUrls?.[0];
         if (firstMedia && !isVideoUrl(firstMedia)) {
-          const bufRes = await fetch(firstMedia, MEDIA_FETCH_INIT);
+          const bufRes = await fetch(firstMedia, mediaFetchInit());
           if (bufRes.ok) {
             phash = await imagePhash(Buffer.from(await bufRes.arrayBuffer()));
             if (phash) {

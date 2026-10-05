@@ -25,16 +25,25 @@ import { scrapePostUrls } from "./facebook";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-/** Header set that makes fbcdn.net hand the original bytes over. */
-const MEDIA_FETCH_INIT: RequestInit = {
-  headers: {
-    "user-agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 Hoichoi/1.0",
-    accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-    "accept-language": "en-US,en;q=0.9",
-    referer: "https://www.facebook.com/",
-  },
-};
+/**
+ * Header set that makes fbcdn.net hand the original bytes over.
+ *
+ * A factory, not a shared object: `AbortSignal.timeout()` begins counting when
+ * the signal is constructed, so a module-level constant would be born expired by
+ * the time a backfill reached its first download. See the same fix in pipeline.ts.
+ */
+function mediaFetchInit(timeoutMs = 20_000): RequestInit {
+  return {
+    headers: {
+      "user-agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 Hoichoi/1.0",
+      accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+      "accept-language": "en-US,en;q=0.9",
+      referer: "https://www.facebook.com/",
+    },
+    signal: AbortSignal.timeout(timeoutMs),
+  };
+}
 
 const MAX_WIDTH_PX = 1280;
 
@@ -211,7 +220,7 @@ export async function backfillMissingMedia(opts: {
       const day = String(row.created_at ?? nowIso()).slice(0, 10);
       const rel = `${day}/img_${crypto.randomUUID().slice(0, 8)}.webp`;
       try {
-        const r = await fetch(url, MEDIA_FETCH_INIT);
+        const r = await fetch(url, mediaFetchInit());
         if (!r.ok) continue;
         const buf = Buffer.from(await r.arrayBuffer());
         if (buf.length < 1024) continue;
@@ -322,7 +331,7 @@ export async function recoverOrphanedMedia(opts: {
     let stored = false;
     for (const url of candidates.slice(0, 3)) {
       try {
-        const r = await fetch(url, MEDIA_FETCH_INIT);
+        const r = await fetch(url, mediaFetchInit());
         if (!r.ok) continue;
         const buf = Buffer.from(await r.arrayBuffer());
         if (buf.length < 1024) continue;

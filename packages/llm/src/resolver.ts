@@ -29,6 +29,12 @@ export class Resolver {
   /** Skip a provider that keeps failing until this window from its last write passes. */
   private static readonly PERSISTED_DOWN_MS = 5 * 60_000;
 
+  /**
+   * Why `next()` returned null on its most recent full scan of the chain.
+   * Read only when building a failure message, never for control flow.
+   */
+  private lastSkipped: string[] = [];
+
   constructor(private readonly opts: ResolverOptions = {}) {}
 
   async activeProviders(operation: Operation): Promise<ActiveProvider[]> {
@@ -57,11 +63,25 @@ export class Resolver {
    *  chain — we find the provider that actually answers *now*. */
   async next(operation: Operation): Promise<ActiveProvider | null> {
     const active = await this.activeProviders(operation);
+    // Why each candidate was passed over. Every `continue` below records a
+    // reason: without this the chain is silent, and a total failure surfaced as
+    // `all providers exhausted []` with an empty bracket — which is unreadable
+    // and hid a four-day publishing outage behind a green workflow run.
+    const skipped: string[] = [];
     for (const ap of active) {
-      if (this.isCoolingDown(ap.row.id)) continue;
-      if (this.isPersistentlyDown(ap.row)) continue;
+      if (this.isCoolingDown(ap.row.id)) {
+        skipped.push(`${ap.row.display_name}: cooling down`);
+        continue;
+      }
+      if (this.isPersistentlyDown(ap.row)) {
+        skipped.push(`${ap.row.display_name}: skipped after a recent failure (${ap.row.last_error_at})`);
+        continue;
+      }
       const key = this.resolveKey(ap.row);
-      if (!key && ap.provider.providerKey !== "ollama") continue;
+      if (!key && ap.provider.providerKey !== "ollama") {
+        skipped.push(`${ap.row.display_name}: no key for ${ap.row.api_key_env_var}`);
+        continue;
+      }
       if (operation === "rewrite" && !this.probed.has(ap.row.id)) {
         this.probed.add(ap.row.id);
         try {
@@ -81,11 +101,13 @@ export class Resolver {
             ap.row.id,
             e instanceof ProviderError ? e.kind : "network",
           );
+          skipped.push(`${ap.row.display_name}: probe failed — ${e.message}`);
           continue;
         }
       }
       return ap;
     }
+    this.lastSkipped = skipped;
     return null;
   }
 
@@ -104,7 +126,7 @@ export class Resolver {
         if (e instanceof ProviderError && e.kind === "bad_output") break;
       }
     }
-    throw new ProviderError("network", `all providers exhausted [${lastError.join(" | ")}]`);
+    throw new ProviderError("network", `all providers exhausted [${describe(lastError, this.lastSkipped)}]`);
   }
 
   async embedText(text: string, signal?: AbortSignal): Promise<{ vector: number[]; provider: string }> {
@@ -122,7 +144,7 @@ export class Resolver {
         this.markFailure(provider.row.id, e instanceof ProviderError ? e.kind : "unknown");
       }
     }
-    throw new ProviderError("network", `no embedding provider available [${lastError.join(" | ")}]`);
+    throw new ProviderError("network", `no embedding provider available [${describe(lastError, this.lastSkipped)}]`);
   }
 
   private resolveKey(row: LLMProviderRow): string | null {
@@ -187,6 +209,17 @@ export class Resolver {
     else cur.fail++;
     this.history.set(id, cur);
   }
+}
+
+/**
+ * Merge "provider was tried and failed" with "provider was never tried" into one
+ * message. When the chain yields nothing at all, `lastError` is empty and the
+ * operator is left staring at `[]`; the skip reasons say whether the keys are
+ * missing, a probe is failing, or everything is in cooldown, which are three
+ * very different fixes.
+ */
+function describe(lastError: string[], skipped: string[]): string {
+  return [...lastError, ...skipped].join(" | ");
 }
 
 export function newResolver(opts: ResolverOptions = {}): Resolver {
