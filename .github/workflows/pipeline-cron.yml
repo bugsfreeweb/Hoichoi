@@ -8,6 +8,18 @@ on:
   repository_dispatch:
     types: [run-pipeline]
 
+# One scrape at a time. Without this, a manual dispatch landing while the cron
+# run is still working starts a second scraper against the same raw_posts table:
+# both see the same rows as unprocessed, both insert, and the "dedup" that is
+# supposed to prevent duplicate posts runs twice at once. The media-mirroring
+# commit at the end would also race on the same paths.
+#
+# cancel-in-progress is false deliberately: a queued run waits rather than
+# killing a scrape that may already have committed media and posts.
+concurrency:
+  group: pipeline-cron
+  cancel-in-progress: false
+
 env:
   TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
   TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
