@@ -523,6 +523,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           phash,
           vector: outcome.embedding,
           skipExact: true, // the exact URL was just inserted as raw_post
+          excludeRawId: rawId, // STEP 4 stored this post's own pHash on this row
         });
         if (dup.duplicate) {
           log(`[dedup] blocked ${dup.reason} → ${dup.matchedPostId ?? dup.matchedRawId ?? "?"}`);

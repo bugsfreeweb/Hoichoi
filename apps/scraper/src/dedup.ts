@@ -90,9 +90,18 @@ export async function findSemanticDuplicates(
  * IMG-1 — image-only dedup using perceptual hash (≤ 10 bits of 64).
  * Exact pixel-level comparisons are not possible offline; the pHash is
  * computed locally and compared against prior raw_posts.
+ *
+ * `excludeRawId` is not an optimisation, it is the difference between
+ * publishing and never publishing again. STEP 4 stores this post's own pHash on
+ * its own `raw_posts` row before dedup runs, and the candidate set is every row
+ * that has a pHash — including that one. Hamming distance to itself is 0, so
+ * every post matched itself, was reported as `img-1`, and was skipped: runs
+ * showed `rewritten: 0, published: 0` with six of eight posts blocked and no
+ * error anywhere. The caller must pass the raw row it just wrote.
  */
 export async function findImageDuplicates(
   phash: string | null,
+  excludeRawId?: string,
 ): Promise<{ rawId: string; postId: string | null; dist: number } | null> {
   if (!phash) return null;
   const client = getClient();
@@ -102,6 +111,7 @@ export async function findImageDuplicates(
   let best: { rawId: string; postId: string | null; dist: number } | null = null;
   for (const row of res.rows) {
     const rec = row as Record<string, unknown>;
+    if (excludeRawId && String(rec.id) === excludeRawId) continue;
     const other = String(rec.phash);
     const dist = hammingDistance(phash, other);
     if (isNearDuplicate(phash, other) && (!best || dist < best.dist)) {
@@ -164,11 +174,13 @@ export async function checkDedup(input: {
   phash: string | null;
   vector: number[] | null;
   skipExact?: boolean;
+  /** The caller's own raw_posts row, so it cannot dedup against itself. */
+  excludeRawId?: string;
 }): Promise<DedupResult> {
   if (!input.skipExact && (await isExactDuplicate(input.fbPostUrl))) {
     return { duplicate: true, reason: "exact-url" };
   }
-  const img = await findImageDuplicates(input.phash);
+  const img = await findImageDuplicates(input.phash, input.excludeRawId);
   if (img) {
     return {
       duplicate: true,
