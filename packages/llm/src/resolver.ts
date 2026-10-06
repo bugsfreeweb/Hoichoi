@@ -102,10 +102,6 @@ export class Resolver {
           continue;
         }
       }
-      if (this.isPersistentlyDown(ap.row)) {
-        skipped.push(`${ap.row.display_name}: skipped after a recent failure (${ap.row.last_error_at})`);
-        continue;
-      }
       const key = this.resolveKey(ap.row);
       if (!key && ap.provider.providerKey !== "ollama") {
         skipped.push(`${ap.row.display_name}: no key for ${ap.row.api_key_env_var}`);
