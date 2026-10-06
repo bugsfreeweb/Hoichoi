@@ -226,12 +226,24 @@ async function extractPost(page: Page, url: string, opts: ScrapeOptions): Promis
     // surrounding markup text, and a post whose caption lived in a plain
     // `[data-ad-preview='message']` node was reported as caption-less.
     const rawText = await (async () => {
-      const message = await page
-        .locator("[data-ad-preview='message']")
-        .first()
-        .textContent()
-        .catch(() => null);
-      if (message?.trim()) return message;
+      // Body markers Facebook has used across deployments. The first is the
+      // oldest; newer builds mark the caption with `data-ad-comet-preview`
+      // and put the whole post inside `role="article"`. Falling through the
+      // list means a marker rename degrades to the FeedUnit wrapper instead
+      // of silently returning nothing.
+      const bodySelectors = [
+        "[data-ad-preview='message']",
+        "[data-ad-comet-preview='message']",
+        "div[role='article'] div[dir='auto']",
+      ];
+      for (const sel of bodySelectors) {
+        const text = await page
+          .locator(sel)
+          .first()
+          .textContent()
+          .catch(() => null);
+        if (text?.trim()) return text;
+      }
       const unit = await page
         .locator("[data-pagelet='FeedUnit']")
         .first()
@@ -260,6 +272,23 @@ async function extractPost(page: Page, url: string, opts: ScrapeOptions): Promis
     const mediaUrls = [
       ...new Set([...(poster ? [poster] : []), ...imgs].filter((u): u is string => Boolean(u && u.startsWith("http")))),
     ].slice(0, 4);
+    // A permalink that yields neither words nor picture is indistinguishable
+    // downstream from a genuinely caption-less post, so state what the page
+    // actually contained. This is the difference between "Facebook served a
+    // login wall to this IP" and "the selector stopped matching" - guessing
+    // between them costs a whole run.
+    if (!rawText?.trim() && mediaUrls.length === 0) {
+      const feedUnits = await page.locator("[data-pagelet='FeedUnit']").count().catch(() => -1);
+      const loginWall = await page
+        .locator("form[action*='login'], input[name='email'], a[href*='login']")
+        .count()
+        .catch(() => 0);
+      const title = await page.title().catch(() => "");
+      opts.log?.(
+        `[facebook] empty post feedUnits=${feedUnits} loginWall=${loginWall > 0} ` +
+          `title="${title}" at ${page.url().split("?")[0]}`,
+      );
+    }
     return {
       fbPostId: id,
       fbPostUrl: url,
