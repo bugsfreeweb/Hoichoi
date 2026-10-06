@@ -68,21 +68,39 @@ export class Resolver {
     return built;
   }
 
-  /** First provider (free-first, priority) that is keyed, not cooling down and
+/** First provider (free-first, priority) that is keyed, not cooling down and
    *  not still down from a recent persisted failure. For rewrites the provider
    *  is also health-probed once per run so a retired model never dead-ends the
-   *  chain — we find the provider that actually answers *now*. */
-  async next(operation: Operation): Promise<ActiveProvider | null> {
+   *  chain - we find the provider that actually answers *now*.
+   *
+   *  `ignoreProviderDown` drops the cooldown and persisted-failure gates. It is
+   *  for embeddings: those hit `:embedContent`, a different endpoint with its
+   *  own quota, so a provider that is cooling down from a failed *generation*
+   *  may still embed fine. Without this, one rate-limited rewrite disabled
+   *  SEM-1 for the whole run - Google is the only embedding provider we have,
+   *  so every embedding was skipped with "no embedding provider available"
+   *  while the run still reported success. Embedding stays best-effort: a real
+   *  failure still records and still falls through the chain. */
+  async next(
+    operation: Operation,
+    opts: { ignoreProviderDown?: boolean } = {},
+  ): Promise<ActiveProvider | null> {
     const active = await this.activeProviders(operation);
     // Why each candidate was passed over. Every `continue` below records a
     // reason: without this the chain is silent, and a total failure surfaced as
-    // `all providers exhausted []` with an empty bracket — which is unreadable
+    // `all providers exhausted []` with an empty bracket - which is unreadable
     // and hid a four-day publishing outage behind a green workflow run.
     const skipped: string[] = [];
     for (const ap of active) {
-      if (this.isCoolingDown(ap.row.id)) {
-        skipped.push(`${ap.row.display_name}: cooling down`);
-        continue;
+      if (!opts.ignoreProviderDown) {
+        if (this.isCoolingDown(ap.row.id)) {
+          skipped.push(`${ap.row.display_name}: cooling down`);
+          continue;
+        }
+        if (this.isPersistentlyDown(ap.row)) {
+          skipped.push(`${ap.row.display_name}: skipped after a recent failure (${ap.row.last_error_at})`);
+          continue;
+        }
       }
       if (this.isPersistentlyDown(ap.row)) {
         skipped.push(`${ap.row.display_name}: skipped after a recent failure (${ap.row.last_error_at})`);
@@ -143,7 +161,7 @@ export class Resolver {
   async embedText(text: string, signal?: AbortSignal): Promise<{ vector: number[]; provider: string }> {
     const lastError: string[] = [];
     let provider: ActiveProvider | null = null;
-    while ((provider = await this.next("embed"))) {
+    while ((provider = await this.next("embed", { ignoreProviderDown: true }))) {
       if (!provider.provider.embed) continue;
       try {
         const vector = await provider.provider.embed(text, signal);
