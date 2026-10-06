@@ -138,6 +138,12 @@ export class GoogleGeminiProvider implements LLMProvider {
 
   private embeddingModel(): string {
     const override = (this.row.config as Record<string, unknown> | null)?.embedding_model;
-    return typeof override === "string" ? override : "text-embedding-004";
+    if (typeof override === "string" && override) return override;
+    // `text-embedding-004` was retired and answers 404, so every embedding
+    // was skipped with "no embedding provider available" and SEM-1 dedup ran
+    // silently disabled - reposts were only caught if their images happened to
+    // collide. `gemini-embedding-001` is the current GA model on the same
+    // `:embedContent` endpoint (verified: 200, 3072 dimensions).
+    return "gemini-embedding-001";
   }
 }
