@@ -63,13 +63,17 @@ export interface PipelineStats {
   /** Posts rejected because the rewrite was unusable (no title, no body, …). */
   skipped: number;
   /**
-   * Posts whose scraped text was empty, so there was nothing to rewrite.
+   * Posts with no scraped caption.
    *
    * This used to be a bare `continue` with no counter, which made a run where
    * every post had empty text look identical to a run that had nothing to do:
    * `rewritten: 0`, `skipped: 0`, no errors. The post was already inserted into
    * `raw_posts`, so the row count grew while the site published nothing and
    * nothing in the run explained why.
+   *
+   * Caption-less posts that carry an image are now saved and held for review,
+   * so this counter means "posted to the desk without a caption"; anything
+   * counted here with no image was discarded entirely.
    */
   emptyText: number;
   published: number;
@@ -423,14 +427,44 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       }
 
       // STEP 5: rewrite + embedding (only when we have text).
-      // Facebook serves image- and link-only posts with no body text. There is
-      // nothing for the rewriter to work from, so this post can only ever be a
-      // photo with a caption-less record — count it rather than letting it
-      // disappear, otherwise a source that starts returning text-less posts
-      // silently publishes nothing and the run still reports success.
+      // Facebook serves image- and link-only posts with no body text. Dropping
+      // them threw the picture away even though STEP 3 had already mirrored it,
+      // and the run still reported success — a source that starts returning
+      // caption-less posts silently published nothing.
+      //
+      // A caption-less post is still saved, with its image, and held for review:
+      // the media is real and should not be lost, but nothing may be invented
+      // for the words. The desk operator writes the caption and releases it.
+      // With neither text nor media there is genuinely nothing to keep.
       if (!sp.rawText) {
+        if (!media.path) {
+          stats.emptyText++;
+          log(`[skip] no post text and no media — ${sp.fbPostUrl}`);
+          continue;
+        }
+        const slug = makeSlug(`${source.page_name} photo ${sp.fbPostId}`);
+        const now = nowIso();
+        await client.execute({
+          sql: `
+            INSERT INTO posts (
+              id, raw_post_id, source_id, category, title_bn, body_bn, summary_bn,
+              media_path, media_kind, source_url, source_name, slug, status,
+              safety_flags, embedding, case_status, original_author_name,
+              published_at, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+          args: [
+            crypto.randomUUID(), rawId, source.id, source.category,
+            `${source.page_name} — ছবি পোস্ট`, "", "",
+            media.path, media.kind,
+            sp.fbPostUrl, source.page_name, slug, "pending_review",
+            "[]", null, null,
+            sp.authorName ?? null, null, now, now,
+          ],
+        });
         stats.emptyText++;
-        log(`[skip] no post text (image/link-only post?) — ${sp.fbPostUrl}`);
+        stats.pendingReview++;
+        log(`[photo] held for review (no caption) · ${slug} · ${media.path}`);
         continue;
       }
       try {

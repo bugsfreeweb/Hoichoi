@@ -219,11 +219,33 @@ async function extractPost(page: Page, url: string, opts: ScrapeOptions): Promis
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForTimeout(opts.requestDelayMs ?? 2_000);
     const id = fbPostKey(url);
-    const rawText = await page
-      .locator("[data-ad-preview='message'], [data-pagelet='FeedUnit']")
-      .first()
-      .textContent()
-      .catch(() => null);
+    // Prefer the message body over the whole FeedUnit. Both selectors were
+    // combined into one `.first()`, which resolves in DOM order, and the
+    // FeedUnit wrapper contains the author name, reaction counts and UI chrome
+    // ahead of the caption — so a real caption was routinely returned as the
+    // surrounding markup text, and a post whose caption lived in a plain
+    // `[data-ad-preview='message']` node was reported as caption-less.
+    const rawText = await (async () => {
+      const message = await page
+        .locator("[data-ad-preview='message']")
+        .first()
+        .textContent()
+        .catch(() => null);
+      if (message?.trim()) return message;
+      const unit = await page
+        .locator("[data-pagelet='FeedUnit']")
+        .first()
+        .textContent()
+        .catch(() => null);
+      if (!unit?.trim()) return null;
+      // Some captions render in a bare `dir="auto"` block with no marker attr.
+      const bare = await page
+        .locator("[data-pagelet='FeedUnit'] div[dir='auto']")
+        .first()
+        .textContent()
+        .catch(() => null);
+      return bare?.trim() ? bare : unit;
+    })();
     const hasVideo = (await page.locator("video").count()) > 0;
     // Collect every media frame on the post — multiple photos plus the video
     // poster when present. The poster is preferred for a video post; the

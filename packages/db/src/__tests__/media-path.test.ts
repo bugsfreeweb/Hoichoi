@@ -53,8 +53,27 @@ const cases: Array<{ label: string; run: () => unknown }> = [
     run: () => assert.throws(() => normalizeMediaPath("..\\..\\secret"), /backslashes/),
   },
   {
-    label: "leading slash is rejected",
-    run: () => assert.throws(() => normalizeMediaPath("/uploads/a.webp"), /must be relative/),
+    label: "the /uploads/ path the admin UI advertises is accepted",
+    run: () =>
+      assert.equal(normalizeMediaPath("/uploads/2026-09-27/a.webp"), "2026-09-27/a.webp"),
+  },
+  {
+    label: "uploads prefix without the leading slash is accepted",
+    run: () =>
+      assert.equal(normalizeMediaPath("uploads/2026-09-27/a.webp"), "2026-09-27/a.webp"),
+  },
+  {
+    label: "uploads prefix is case-insensitive",
+    run: () => assert.equal(normalizeMediaPath("/Uploads/a.webp"), "a.webp"),
+  },
+  {
+    label: "uploads prefix cannot smuggle traversal past the segment check",
+    run: () =>
+      assert.throws(() => normalizeMediaPath("/uploads/../../etc/passwd"), /invalid path segment/),
+  },
+  {
+    label: "a leading slash on any other path is still rejected",
+    run: () => assert.throws(() => normalizeMediaPath("/2026-09-27/a.webp"), /must be relative/),
   },
   {
     label: "empty path segment is rejected",

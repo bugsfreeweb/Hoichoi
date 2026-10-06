@@ -1455,11 +1455,21 @@ export async function listContentQueue(opts: {
  * check that only looked for forward slashes.
  */
 export function normalizeMediaPath(input: string): string | null {
-  const raw = input.trim();
+  let raw = input.trim();
   if (raw === "") return null; // empty = clear the image
   if (raw.length > 2000) throw new Error("media_path too long");
   if (/[\u0000-\u001f]/.test(raw)) throw new Error("media_path contains control characters");
   if (raw.includes("\\")) throw new Error("media_path must not contain backslashes");
+
+  // The admin field tells the operator to paste the path they copied off the
+  // site, which is served from /uploads/. Accept that public prefix in either
+  // the absolute form it appears in (`/uploads/2026-09-27/x.webp`) or without
+  // the leading slash, and store the path relative to the public folder — which
+  // is what `mediaUrl()` in the web app prepends back. Rejecting the exact
+  // string the UI advertises made the documented example an error.
+  const uploadsPrefix = raw.replace(/^\/+/, "").match(/^uploads\/(.+)$/i);
+  if (uploadsPrefix?.[1]) raw = uploadsPrefix[1];
+
   if (/^\/+/.test(raw)) throw new Error("media_path must be relative (drop the leading slash)");
 
   if (/^https?:\/\//i.test(raw)) {
