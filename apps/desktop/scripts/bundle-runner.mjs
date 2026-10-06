@@ -92,6 +92,12 @@ console.log(`[runner] bundled -> ${path.join(appDir, "cli.cjs")}`);
 // 2. Migrations next to the bundle (HOICHOI_MIGRATIONS_DIR points here).
 const migSrc = path.join(repo, "packages", "db", "migrations");
 const migDst = path.join(appDir, "migrations");
+// Rebuild this folder rather than copying over it. A merged directory keeps
+// files that were deleted from the source, so a migration withdrawn from the
+// repo (011_provider_google_openrouter.sql, which set Google to a model that
+// 404s on generation) stayed in the bundle and would have been applied to
+// every desktop database, re-introducing exactly the change it was removed for.
+fs.rmSync(migDst, { recursive: true, force: true });
 fs.mkdirSync(migDst, { recursive: true });
 for (const f of fs.readdirSync(migSrc)) {
   fs.copyFileSync(path.join(migSrc, f), path.join(migDst, f));
