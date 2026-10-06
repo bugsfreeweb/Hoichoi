@@ -61,6 +61,32 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 const SEM_THRESHOLD = 0.94;
 
 /**
+ * IMG-1 tolerance, in differing bits of the 64-bit perceptual hash.
+ *
+ * This was 10 - a 15.6% tolerance. Facebook news images are text-heavy
+ * screenshots that share page furniture, brand colours and headline bands, so
+ * unrelated pictures routinely land 8-12 bits apart. At a tolerance of 10 a
+ * run that hashed eight posts blocked six of them as `img-1` against a
+ * reference index of only eleven hashes, and published nothing while reporting
+ * no errors. DCT pHash only treats a handful of differing bits as the same
+ * image, so this is now tight enough that a match means the picture really did
+ * repeat.
+ */
+const IMAGE_DUP_MAX_DISTANCE = 4;
+
+/**
+ * Captions long enough to carry a story in their own right.
+ *
+ * Image dedup alone must not suppress a post that says something new. Facebook
+ * pages legitimately reuse one photo across several stories, and a stock or
+ * banner image showing up on two posts is normal editorial practice, not
+ * spam. When there is real text, SEM-1 (which compares the caption) is the
+ * correct gate; IMG-1 is reserved for near-identical pictures and for
+ * caption-less image posts, where the image is the entire post.
+ */
+const CAPTION_WORTH_DEDUPING = 40;
+
+/**
  * SEM-1 — semantic dedup against already-scraped rewritten posts.
  * Uses stored embeddings (JSON in posts.embedding). A native vec0
  * fast-path can be added when running on a Turso database.
@@ -113,8 +139,8 @@ export async function findImageDuplicates(
     const rec = row as Record<string, unknown>;
     if (excludeRawId && String(rec.id) === excludeRawId) continue;
     const other = String(rec.phash);
-    const dist = hammingDistance(phash, other);
-    if (isNearDuplicate(phash, other) && (!best || dist < best.dist)) {
+const dist = hammingDistance(phash, other);
+      if (isNearDuplicate(phash, other, IMAGE_DUP_MAX_DISTANCE) && (!best || dist < best.dist)) {
       const postId = await findPostForRaw(String(rec.id));
       best = { rawId: String(rec.id), postId, dist };
     }
@@ -174,22 +200,28 @@ export async function checkDedup(input: {
   phash: string | null;
   vector: number[] | null;
   skipExact?: boolean;
-  /** The caller's own raw_posts row, so it cannot dedup against itself. */
-  excludeRawId?: string;
-}): Promise<DedupResult> {
-  if (!input.skipExact && (await isExactDuplicate(input.fbPostUrl))) {
-    return { duplicate: true, reason: "exact-url" };
-  }
-  const img = await findImageDuplicates(input.phash, input.excludeRawId);
-  if (img) {
-    return {
-      duplicate: true,
-      reason: "img-1",
-      matchedRawId: img.rawId,
-      matchedPostId: img.postId ?? undefined,
-      score: 1 - img.dist / 64,
-    };
-  }
+/** The caller's own raw_posts row, so it cannot dedup against itself. */
+    excludeRawId?: string;
+  }): Promise<DedupResult> {
+    if (!input.skipExact && (await isExactDuplicate(input.fbPostUrl))) {
+      return { duplicate: true, reason: "exact-url" };
+    }
+    // A captioned post is judged on its words. Only fall through to IMG-1 when
+    // the caption is too thin to stand on its own, so that a shared photo can
+    // never delete a story that says something new.
+    const caption = (input.rawText ?? "").trim();
+    if (caption.length <= CAPTION_WORTH_DEDUPING) {
+      const img = await findImageDuplicates(input.phash, input.excludeRawId);
+      if (img) {
+        return {
+          duplicate: true,
+          reason: "img-1",
+          matchedRawId: img.rawId,
+          matchedPostId: img.postId ?? undefined,
+          score: 1 - img.dist / 64,
+        };
+      }
+    }
   const sem = await findSemanticDuplicates(input.vector);
   if (sem) {
     return {

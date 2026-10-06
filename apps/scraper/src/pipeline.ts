@@ -304,10 +304,10 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       stats.scraped++;
       // STEP 1: raw insert attempt (URL-level dedup first).
       if (await isExactDuplicate(sp.fbPostUrl)) continue;
-      const rawId = crypto.randomUUID();
+      let rawId: string = crypto.randomUUID();
       const mediaUrls = JSON.stringify(sp.mediaUrls ?? []);
       try {
-        await client.execute({
+        const ins = await client.execute({
           sql: `
             INSERT INTO raw_posts (id, source_id, fb_post_id, fb_post_url, raw_text, media_urls, scraped_at, raw_meta)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -319,7 +319,24 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
             author_url: sp.authorProfileUrl ?? null,
           })],
         });
-        stats.rawInserted++;
+        // `ON CONFLICT DO NOTHING` reports success while writing nothing, so a
+        // previously-collected post that Facebook serves under a different URL
+        // shape left `rawId` pointing at a row that was never created. Every
+        // later step that trusted it silently no-op'd: the pHash was computed,
+        // thrown away instead of stored, and `rawInserted` counted rows that did
+        // not exist. That is why runs looked busy while publishing nothing. Bind
+        // `rawId` to the row that is really there and count only real inserts.
+        if (!ins.rowsAffected) {
+          const existing = await client.execute({
+            sql: "SELECT id FROM raw_posts WHERE source_id = ? AND fb_post_id = ?",
+            args: [source.id, sp.fbPostId],
+          });
+          const found = existing.rows[0] as Record<string, unknown> | undefined;
+          if (!found) continue; // another run won the race
+          rawId = String(found.id);
+        } else {
+          stats.rawInserted++;
+        }
       } catch {
         continue; // UNIQUE conflict from concurrent run
       }
