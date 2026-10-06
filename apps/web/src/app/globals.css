@@ -420,6 +420,15 @@ body {
 .admin-console-main {
   flex: 1 0 auto;
   min-width: 0;
+  /* The footer is `position: sticky`, so it stays in flow and reserves its own
+     height - but only at the *end* of the column. While the operator is
+     scrolled higher up, the sticky footer is pinned to the viewport bottom and
+     paints over whatever content happens to sit there, which is why the last
+     rows of a table or the bottom of a form were unreachable: the content had
+     no padding to scroll clear of the bar. This reserve is the footer's own
+     height plus a gap, so the bottom of any column can always be scrolled
+     above it. */
+  padding-bottom: calc(var(--admin-footer-h, 2.25rem) + 1.5rem);
 }
 
 .admin-footer {
@@ -429,6 +438,14 @@ body {
   background: rgba(5, 6, 8, 0.94);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
+}
+
+/* The sticky sidebar stops above the sticky footer instead of running under it.
+   --admin-footer-h is measured from the live footer by AdminShell (see the
+   ResizeObserver there); the 2.25rem fallback matches a single-row footer so
+   the layout is still correct before hydration. */
+.admin-sidebar {
+  max-height: calc(100vh - 5rem - var(--admin-footer-h, 2.25rem) - 1.5rem);
 }
 /* Scoped off `.admin-console` on purpose: theme-audit.test.ts locates the light
    console token block by the first indexOf hit on the light-console selector

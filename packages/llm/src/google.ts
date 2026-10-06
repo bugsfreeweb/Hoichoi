@@ -101,12 +101,34 @@ export class GoogleGeminiProvider implements LLMProvider {
 
   async healthCheck(signal?: AbortSignal): Promise<HealthCheckResult> {
     const started = Date.now();
+    // Probe the *rewrite* path with a real, tiny generation call.
+    //
+    // The previous check did two things wrong:
+    //   1. it asked for `text-embedding-004`, a retired model that answers 404,
+    //      so a perfectly usable rewrite key was scored dead and skipped for
+    //      the whole run; and
+    //   2. it only did `GET /models/{id}`, which a model answers 200 for even
+    //      when generation is refused (gemini-2.5-flash lists but 404s on
+    //      :generateContent). A listing check therefore reports a model as
+    //      healthy and then every real rewrite fails.
+    // One max-token generation confirms the key, the model and the quota in the
+    // same round trip that rewrite() will actually use.
+    const model = this.row.model_name;
     try {
       const res = await fetch(
-        `${this.fetchBase()}/models/${encodeURIComponent(this.embeddingModel())}?key=${encodeURIComponent(this.key ?? "")}`,
-        { signal },
+        `${this.fetchBase()}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(this.key ?? "")}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          signal,
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: "hi" }] }],
+            generationConfig: { maxOutputTokens: 1 },
+          }),
+        },
       );
       if (!res.ok) classifyStatus(res.status, await res.text());
+      await res.json();
       return { ok: true, latencyMs: Date.now() - started };
     } catch (err) {
       const e = err as Error;

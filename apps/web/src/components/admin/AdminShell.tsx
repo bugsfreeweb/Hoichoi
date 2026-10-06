@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 import type { AdminUser } from "@hoichoi/shared-types";
 import { adminLogout } from "@/lib/auth-actions";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -71,6 +72,31 @@ export function AdminShell({ user, children }: { user: AdminUser; children: Reac
 function AdminChrome({ user, children }: { user: AdminUser; children: React.ReactNode }) {
   const path = usePathname();
   const { counts } = useQueueCounts();
+  const footerRef = useRef<HTMLElement>(null);
+
+  // The sticky footer overlaps content that scrolls beneath it, so the content
+  // column reserves exactly the footer's height plus a gap. Measuring it rather
+  // than hardcoding a value is what keeps that reserve correct: the footer is a
+  // wrapping grid, so it is one row on a wide window and two or three on a
+  // narrow one, and a fixed guess leaves content hidden again at some widths.
+  useEffect(() => {
+    const el = footerRef.current;
+    if (!el) return;
+    const apply = () => {
+      const h = Math.ceil(el.getBoundingClientRect().height);
+      if (h > 0) {
+        document.documentElement.style.setProperty("--admin-footer-h", `${h}px`);
+      }
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    window.addEventListener("resize", apply);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", apply);
+    };
+  }, []);
 
   return (
     <div className="admin-console bg-night-grid min-h-dvh text-[#e9e6da]">
@@ -121,7 +147,8 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
       */}
       <div className="admin-console-main flex w-full gap-6 px-4 pt-6 md:px-6">
         {/* ============ SIDEBAR ============ */}
-        <aside className="sticky top-20 hidden max-h-[calc(100vh-7.5rem)] w-60 shrink-0 flex-col rounded-2xl border border-white/8 bg-panel/60 lg:flex">
+
+        <aside className="admin-sidebar sticky top-20 hidden w-60 shrink-0 flex-col rounded-2xl border border-white/8 bg-panel/60 lg:flex">
           <div className="flex items-center gap-3 border-b border-white/8 px-2 py-4">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-alizarin font-serif-bn text-[17px] font-black text-white">
               হ
@@ -200,7 +227,7 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
       </div>
 
       {/* ============ STICKY FOOTER ============ */}
-      <AdminFooter path={path} email={user.email} />
+      <AdminFooter path={path} email={user.email} footerRef={footerRef} />
     </div>
   );
 }
@@ -210,10 +237,18 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
  * the "you are here" label stay visible on long queue pages instead of only
  * being reachable by scrolling back to the top.
  */
-function AdminFooter({ path, email }: { path: string; email: string }) {
+function AdminFooter({
+  path,
+  email,
+  footerRef,
+}: {
+  path: string;
+  email: string;
+  footerRef: React.RefObject<HTMLElement | null>;
+}) {
   const active = NAV.find((n) => path === n.href || path.startsWith(`${n.href}/`));
   return (
-    <footer className="admin-footer">
+    <footer ref={footerRef} className="admin-footer">
       {/*
         Three cells on a wrapping grid rather than justify-between on one row.
         A single row of nowrap items could not fit a narrow window, so the

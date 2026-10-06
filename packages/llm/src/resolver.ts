@@ -35,6 +35,12 @@ export class Resolver {
    */
   private lastSkipped: string[] = [];
 
+  /**
+   * Active rows that could not even be constructed. Reported alongside
+   * `lastSkipped` so a misconfigured row is visible rather than invisible.
+   */
+  private brokenProviders: string[] = [];
+
   constructor(private readonly opts: ResolverOptions = {}) {}
 
   async activeProviders(operation: Operation): Promise<ActiveProvider[]> {
@@ -45,16 +51,21 @@ export class Resolver {
       "SELECT * FROM llm_providers WHERE is_active = 1 AND (supports_rewrite = 1 OR supports_embeddings = 1) ORDER BY is_free_tier DESC, priority ASC",
     );
     const rows = res.rows.map((r) => mapProvider(r as Record<string, unknown>));
-    return rows
-      .filter((row) => operation === "rewrite" ? Boolean(row.supports_rewrite) : Boolean(row.supports_embeddings))
-      .map((row) => {
-        try {
-          return { row, provider: buildProvider(row, this.opts.keyStore ?? (() => null)) };
-        } catch {
-          return null;
-        }
-      })
-      .filter((p): p is ActiveProvider => p !== null);
+    const built: ActiveProvider[] = [];
+    const broken: string[] = [];
+    for (const row of rows) {
+      if (operation === "rewrite" ? !row.supports_rewrite : !row.supports_embeddings) continue;
+      try {
+        built.push({ row, provider: buildProvider(row, this.opts.keyStore ?? (() => null)) });
+      } catch (err) {
+        // A row that cannot be constructed is not a candidate, but dropping it
+        // silently meant a malformed base_url or unknown provider_key removed it
+        // from the chain with no trace at all. Recorded so `next()` can name it.
+        broken.push(`${row.display_name} (${row.provider_key}): ${(err as Error).message}`);
+      }
+    }
+    this.brokenProviders = broken;
+    return built;
   }
 
   /** First provider (free-first, priority) that is keyed, not cooling down and
@@ -107,7 +118,7 @@ export class Resolver {
       }
       return ap;
     }
-    this.lastSkipped = skipped;
+    this.lastSkipped = [...skipped, ...this.brokenProviders];
     return null;
   }
 
