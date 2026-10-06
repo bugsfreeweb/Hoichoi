@@ -9,7 +9,7 @@ import type {
 import { buildProvider } from "@hoichoi/llm";
 import { checkAndArchive } from "./archive";
 import { checkDedup } from "./dedup";
-import { isExactDuplicate } from "./dedup";
+import { canonicalPostUrl, isExactDuplicate } from "./dedup";
 import { scrapePage, type ScrapedPost } from "./facebook";
 import { imagePhash } from "./hash";
 import { isVideoUrl, mediaRoot, processImage, randomMediaName } from "./media";
@@ -300,6 +300,34 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       continue;
     }
 
+    // Facebook hands the crawler the same story under several URL shapes -
+    // the plain permalink and the same post with `?comment_id=` appended -
+    // so one post came back twice, and the second copy renders without a
+    // body. Recorded as a separate post it became a caption-less, image-less
+    // post that was counted, logged and thrown away, quietly doubling the
+    // empty count while the real copy was handled correctly. Collapse them
+    // to their canonical identity before anything counts them.
+    const seenUrls = new Set<string>();
+    const uniqueScraped: ScrapedPost[] = [];
+    for (const sp of scraped) {
+      const key = canonicalPostUrl(sp.fbPostUrl) || sp.fbPostUrl;
+      if (seenUrls.has(key)) continue;
+      seenUrls.add(key);
+      uniqueScraped.push(sp);
+    }
+    scraped = uniqueScraped;
+
+    // A run that scrapes seven posts and stores none looks identical to a run
+    // that works, because nothing above reports what was actually received.
+    // Log the yield at the source so a text or media regression is visible
+    // the moment it starts.
+    const withText = scraped.filter((p) => (p.rawText ?? "").trim().length > 0).length;
+    const withMedia = scraped.filter((p) => (p.mediaUrls?.length ?? 0) > 0).length;
+    log(
+      `[scrape] ${source.page_name}: ${withText}/${scraped.length} with text, ` +
+        `${withMedia}/${scraped.length} with media`,
+    );
+
     for (const sp of scraped) {
       stats.scraped++;
       // STEP 1: raw insert attempt (URL-level dedup first).
@@ -345,6 +373,10 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       // URL scraped from the post — the video first for a video post, then any
       // photos — so a failed video or 403'd image falls through to the next one.
       const media: { kind: "image" | "video" | "none"; path: string | null } = { kind: "none", path: null };
+      // Record why each candidate was rejected. Without this a post with
+      // media that quietly fails to mirror arrives at the text check with no
+      // picture and no explanation, and is reported as if it never had one.
+      const mediaProblems: string[] = [];
       try {
         const candidates = sp.mediaUrls ?? [];
         for (const mUrl of candidates) {
@@ -367,26 +399,41 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
                 media.path = result.rel;
                 break;
               }
+              mediaProblems.push("video: no output");
             } else {
               const rel = randomMediaName("img", "webp");
               const bufRes = await fetch(mUrl, mediaFetchInit());
-              if (bufRes.ok && bufRes.headers.get("content-length") !== "0") {
-                const buf = Buffer.from(await bufRes.arrayBuffer());
-                if (buf.length >= 1024) {
-                  await processImage(buf, rel, { maxWidthPx: 1280 });
-                  await client.execute({
-                    sql: "UPDATE raw_posts SET raw_meta = json_set(COALESCE(raw_meta,'{}'), '$.media_path', ?) WHERE id = ?",
-                    args: [rel, rawId],
-                  });
-                  media.kind = "image";
-                  media.path = rel;
-                  break;
-                }
+              if (!bufRes.ok) {
+                mediaProblems.push(`image: HTTP ${bufRes.status}`);
+                continue;
               }
+              if (bufRes.headers.get("content-length") === "0") {
+                mediaProblems.push("image: empty body");
+                continue;
+              }
+              const buf = Buffer.from(await bufRes.arrayBuffer());
+              if (buf.length < 1024) {
+                mediaProblems.push(`image: too small (${buf.length}b)`);
+                continue;
+              }
+              await processImage(buf, rel, { maxWidthPx: 1280 });
+              await client.execute({
+                sql: "UPDATE raw_posts SET raw_meta = json_set(COALESCE(raw_meta,'{}'), '$.media_path', ?) WHERE id = ?",
+                args: [rel, rawId],
+              });
+              media.kind = "image";
+              media.path = rel;
+              break;
             }
-          } catch {
-            // keep trying the next candidate
+          } catch (err) {
+            mediaProblems.push((err as Error).message);
           }
+        }
+        if (candidates.length > 0 && !media.path) {
+          log(
+            `[media] ${source.page_name}: ${candidates.length} candidate(s) rejected - ` +
+              (mediaProblems.join("; ") || "no reason recorded"),
+          );
         }
         // Push to remote storage when configured so the deployed web app can
         // serve the file (serverless can't reach this machine's disk). When no
