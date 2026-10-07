@@ -331,7 +331,11 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
     for (const sp of scraped) {
       stats.scraped++;
       // STEP 1: raw insert attempt (URL-level dedup first).
-      if (await isExactDuplicate(sp.fbPostUrl)) continue;
+      if (await isExactDuplicate(sp.fbPostUrl, sp.fbPostId)) {
+        log(`[dedup] already published ${sp.fbPostUrl}`);
+        stats.duplicatesBlocked++;
+        continue;
+      }
       let rawId: string = crypto.randomUUID();
       const mediaUrls = JSON.stringify(sp.mediaUrls ?? []);
       try {
@@ -362,6 +366,22 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           const found = existing.rows[0] as Record<string, unknown> | undefined;
           if (!found) continue; // another run won the race
           rawId = String(found.id);
+          // The raw row surviving from an earlier run says nothing about
+          // whether it has already been *published*, and no other guard asked:
+          // captions longer than 40 chars skip the image check, and until the
+          // embedding model was repaired no post carried a vector, so SEM-1 had
+          // nothing to compare. The same Facebook post was therefore rewritten
+          // and published again on every run under a freshly written title.
+          const made = await client.execute({
+            sql: "SELECT id, status FROM posts WHERE raw_post_id = ?",
+            args: [rawId],
+          });
+          const prior = made.rows[0] as Record<string, unknown> | undefined;
+          if (prior) {
+            log(`[dedup] already published as ${String(prior.id)} (${String(prior.status)})`);
+            stats.duplicatesBlocked++;
+            continue;
+          }
         } else {
           stats.rawInserted++;
         }

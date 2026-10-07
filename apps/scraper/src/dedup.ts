@@ -113,7 +113,7 @@ export async function findSemanticDuplicates(
 }
 
 /**
- * IMG-1 — image-only dedup using perceptual hash (≤ 10 bits of 64).
+ * IMG-1 — image-only dedup using perceptual hash (≤ 4 bits of 64), matching IMAGE_DUP_MAX_DISTANCE.
  * Exact pixel-level comparisons are not possible offline; the pHash is
  * computed locally and compared against prior raw_posts.
  *
@@ -168,28 +168,52 @@ async function findPostForRaw(rawId: string): Promise<string | null> {
  *    raw rows. Without that, a permalink whose raw row was purged looked brand
  *    new and the pipeline published a second copy of a live story.
  */
-export async function isExactDuplicate(fbPostUrl: string): Promise<boolean> {
+/**
+ * Has this Facebook post already produced a row in `posts`?
+ *
+ * Two guards used to run here and neither could ever fire. Matching raw URL
+ * strings compared Facebook's output against `canonicalPostUrl()`, which
+ * strips `www.` and the `?__cft__[0]=...` token - so the two sides were never
+ * equal. And the `raw_posts` hit it did look for only proved the post had been
+ * *seen*, which would also have blocked the legitimate retry of a post that
+ * was scraped empty on a previous run.
+ *
+ * Identity is therefore the digest `fbPostId` (stable across every URL shape
+ * Facebook hands out), resolved through `raw_posts` to the posts row built
+ * from it, with a normalised-URL fallback for posts whose raw row has since
+ * been deleted.
+ */
+export async function isExactDuplicate(fbPostUrl: string, fbPostId?: string | null): Promise<boolean> {
   const client = getClient();
+  if (fbPostId) {
+    const viaKey = await client.execute({
+      sql: `
+        SELECT 1 FROM posts p
+          JOIN raw_posts r ON r.id = p.raw_post_id
+         WHERE r.fb_post_id = ?
+         LIMIT 1
+      `,
+      args: [fbPostId],
+    });
+    if (viaKey.rows.length > 0) return true;
+  }
+
   const base = canonicalPostUrl(fbPostUrl);
   if (!base) return false;
-  // Same base, optionally followed by a tracking query or fragment.
-  const variants = [base, `${base}?%`, `${base}#%`];
-  const found = await client.execute({
-    sql: `
-      SELECT 1 FROM raw_posts
-       WHERE fb_post_url = ? OR fb_post_url LIKE ? OR fb_post_url LIKE ?
-       LIMIT 1
-    `,
-    args: variants,
-  });
-  if (found.rows.length > 0) return true;
+  // `posts.source_url` keeps the URL Facebook served - `www.`, tracking token,
+  // original path case - so both sides are normalised to canonical shape
+  // before they can be compared at all.
+  const norm = `rtrim(lower(replace(replace(replace(replace(replace(
+      source_url, 'https://www.', 'https://'), 'http://www.', 'https://'),
+      'https://m.', 'https://'), 'https://mbasic.', 'https://'),
+      'https://web.', 'https://')), '/')`;
   const foundPost = await client.execute({
     sql: `
       SELECT 1 FROM posts
-       WHERE source_url = ? OR source_url LIKE ? OR source_url LIKE ?
+       WHERE ${norm} = ? OR ${norm} LIKE ? OR ${norm} LIKE ?
        LIMIT 1
     `,
-    args: variants,
+    args: [base, `${base}?%`, `${base}#%`],
   });
   return foundPost.rows.length > 0;
 }

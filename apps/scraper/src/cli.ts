@@ -8,6 +8,7 @@ import { runArchivePass } from "./archive";
 import { cleanupMedia, storageRegistryCount } from "./storage";
 import { backfillMissingMedia, recoverOrphanedMedia, syncExistingMediaToWeb } from "./media-backfill";
 import { isVideoUrl } from "./media";
+import { newResolver } from "@hoichoi/llm";
 import {
   getClient,
   ensureSchema,
@@ -483,6 +484,70 @@ media
         : { skipped: true, hint: "pass --recover to re-visit permalinks" };
       const sync = await syncExistingMediaToWeb();
       console.log(JSON.stringify({ ok: true, ...result, recovered, sync }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+/* ------------------------------------------------------------------ *
+ * Semantic vectors - SEM-1 can only match against posts that have one *
+ * ------------------------------------------------------------------ */
+
+const embeddings = program
+  .command("embeddings")
+  .description("semantic vectors used by SEM-1 dedup");
+
+embeddings
+  .command("backfill")
+  .description("compute vectors for posts that have none")
+  .option("--limit <n>", "maximum posts to embed")
+  .option("--dry-run", "only count candidates, call no provider")
+  .action(async (opts: { limit?: string; dryRun?: boolean }) => {
+    try {
+      await ensureSchema(getClient());
+      const client = getClient();
+      const dryRun = opts.dryRun ?? false;
+      const limit = opts.limit !== undefined ? Number(opts.limit) : undefined;
+      // `posts.embedding` is what findSemanticDuplicates reads; `posts_vec` is
+      // vec0-only, sized for the old 1536-dimension model, and not consulted.
+      const sql =
+        "SELECT id, title_bn, summary_bn, body_bn FROM posts " +
+        "WHERE embedding IS NULL ORDER BY created_at" +
+        (limit !== undefined ? ` LIMIT ${limit}` : "");
+      const rows = await client.execute(sql);
+
+      if (dryRun) {
+        console.log(JSON.stringify({ ok: true, dryRun: true, candidates: rows.rows.length }, null, 2));
+        return;
+      }
+
+      const resolver = newResolver({});
+      const log = (m: string) => console.error(m);
+      let embedded = 0;
+      let failed = 0;
+      for (const row of rows.rows) {
+        const r = row as Record<string, unknown>;
+        // Same text rewrite.ts embeds, so backfilled vectors are comparable
+        // with freshly computed ones.
+        const text = `${r.title_bn ?? ""} ${r.summary_bn ?? ""} ${r.body_bn ?? ""}`.trim();
+        if (!text) continue;
+        try {
+          const { vector } = await resolver.embedText(text);
+          await client.execute({
+            sql: "UPDATE posts SET embedding = ?, updated_at = ? WHERE id = ?",
+            args: [JSON.stringify(vector), new Date().toISOString(), String(r.id)],
+          });
+          embedded++;
+          log(`[embed] ${embedded}/${rows.rows.length} (${vector.length} dims)`);
+        } catch (err) {
+          failed++;
+          log(`[embed] failed ${String(r.id)}: ${(err as Error).message}`);
+        }
+      }
+      console.log(
+        JSON.stringify({ ok: failed === 0, candidates: rows.rows.length, embedded, failed }, null, 2),
+      );
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
