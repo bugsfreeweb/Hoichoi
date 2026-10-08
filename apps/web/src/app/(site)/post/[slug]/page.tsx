@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublicPostBySlug, relatedPosts } from "@hoichoi/db";
-import { getPostComments } from "@hoichoi/db";
+import { getPostComments, getPostCommentCount } from "@hoichoi/db";
 import { getCategories, findCategory } from "@/lib/categories-server";
 import { readMinutesBn, shortId } from "@/lib/bn";
 import { bnDate, bnTime } from "@/lib/format";
@@ -97,11 +97,12 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   const post = await getPublicPostBySlug(slug);
   if (!post) notFound();
 
-  const [cats, settings, related, initialComments] = await Promise.all([
+  const [cats, settings, related, initialComments, commentCount] = await Promise.all([
     getCategories(),
     getSettings(),
     relatedPosts(post, 3),
-    getPostComments(post.id),
+    getPostComments(post.id, 10),
+    getPostCommentCount(post.id),
   ]);
   const cat = await findCategory(post.category);
   const isCsa = post.category === "child-sexual-abuse";
@@ -120,6 +121,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
       showHelplines={showHelplines}
       related={related}
       initialComments={initialComments}
+      initialCommentCount={commentCount}
       settings={settings}
       cat={cat}
     />
@@ -149,6 +151,7 @@ function PostContent({
   showHelplines,
   related,
   initialComments,
+  initialCommentCount,
   settings,
   cat,
 }: {
@@ -160,6 +163,7 @@ function PostContent({
   showHelplines: boolean;
   related: Awaited<ReturnType<typeof relatedPosts>>;
   initialComments: Awaited<ReturnType<typeof getPostComments>>;
+  initialCommentCount: number;
   settings: Awaited<ReturnType<typeof getSettings>>;
   cat: Awaited<ReturnType<typeof findCategory>>;
 }) {
@@ -452,7 +456,7 @@ function PostContent({
       </div>
 
       <ReportForm postId={post!.id} />
-      <CommentsSection postId={post!.id} initial={initialComments} />
+      <CommentsSection postId={post!.id} initial={initialComments} initialTotal={initialCommentCount} />
 
       {/* related */}
       {related.length > 0 && (

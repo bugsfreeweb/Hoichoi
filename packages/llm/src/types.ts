@@ -20,6 +20,10 @@ export interface ParsedRewrite {
 export interface RewriteContext extends RewriteInput {
   category: CategorySlug;
   categoryConfig: CategoryConfig;
+  /** Bangla display name of the category, used to frame the generic editorial prompt. */
+  categoryNameBn?: string;
+  /** Bangla description of the category, used to frame the generic editorial prompt. */
+  categoryDescriptionBn?: string;
   sourcePageName: string;
   /**
    * Sampling temperature for this call. Optional because a rewrite should never
@@ -66,13 +70,43 @@ export class ProviderError extends Error {
 }
 
 /**
- * A field starts a new section only when the line begins with an all-caps
- * label followed by a colon, e.g. `TITLE:` or `SAFETY_FLAG:`.
+ * Bangla aliases for the canonical labels. Some rerouted or fine-tuned models
+ * echo "শিরোনাম:" instead of "TITLE:", which the strict scanner could never
+ * see, so every rewrite from that model lost its headline. Recognising the
+ * aliases keeps a bad echo from silently dropping a section.
  */
-const FIELD_LABEL = /^([A-Z][A-Z0-9_]*):[ \t]?/;
+const BANGLA_LABEL_ALIASES: ReadonlyArray<readonly [string, readonly string[]]> = [
+  ["TITLE", ["শিরোনাম"]],
+  ["SUMMARY", ["সংক্ষিপ্ত বিবরণ", "সারসংক্ষেপ", "সারমর্ম", "সারাংশ"]],
+  ["BODY", ["মূল বিবরণ", "মূল অংশ", "মূল লেখা", "মূল বার্তা", "বিস্তারিত"]],
+  ["SAFETY_FLAG", ["নিরাপত্তা পতাকা", "নিরাপত্তা ফ্ল্যাগ"]],
+  ["CASE_STATUS", ["মামলার অবস্থা", "কেস স্ট্যাটাস"]],
+];
 
 /**
- * Parses strict `<LABEL>: <value>` output into structured fields.
+ * English label prefix: a line starts a new section when its leading token is
+ * one of the canonical labels, optionally bulleted (`-`/`*`/`•`) or double-
+ * starred bold, or spelled with spaces instead of underscores (`SAFETY FLAG`,
+ * `CASE STATUS`). The long labels must be tried before the short ones.
+ */
+const ENGLISH_LABEL_PREFIX =
+  /^[ \t]*(?:[-*•][ \t]+)?\*{0,2}[ \t]*((?:CASE[\s_\-]?STATUS|SAFETY[\s_\-]?FLAG|TITLE|SUMMARY|BODY))[ \t]*\*{0,2}[ \t]*(?::[ \t]*|$)/i;
+
+const CANONICAL_BY_NORM: Record<string, string> = {
+  title: "TITLE",
+  summary: "SUMMARY",
+  body: "BODY",
+  safetyflag: "SAFETY_FLAG",
+  casestatus: "CASE_STATUS",
+};
+
+/** Reads `field` directly when the model wrote it in canonical form. */
+function grabField(fields: Record<string, string>, name: string): string {
+  return fields[name] ?? "";
+}
+
+/**
+ * Parses `<LABEL>: <value>` output into structured fields.
  *
  * This walks the output line by line instead of using one regex per field.
  * The previous regex terminator was `(?=^[A-Z_]+:|\s*$)`; under the `m` flag
@@ -81,8 +115,18 @@ const FIELD_LABEL = /^([A-Z][A-Z0-9_]*):[ \t]?/;
  * article was silently reduced to its opening paragraph, which is why posts
  * read as a one-line brief instead of an article. A line scanner has no such
  * ambiguity and also tolerates Windows line endings.
+ *
+ * The scanner is lenient about presentation: a ``` fence around the whole
+ * answer, a preamble before the first label, bold `**TITLE:**`, bulleted
+ * `- TITLE:`, spaced `SAFETY FLAG`, and the Bangla aliases below are all
+ * accepted. Anything before the first label is discarded.
  */
 export function parseRewriteOutput(raw: string): ParsedRewrite {
+  let text = raw
+    .replace(/^```[a-zA-Z0-9_-]*[ \t]*\r?\n/, "")
+    .replace(/\r?\n```[ \t]*$/, "")
+    .trim();
+
   const fields: Record<string, string> = {};
   let label: string | null = null;
   let buffer: string[] = [];
@@ -91,42 +135,78 @@ export function parseRewriteOutput(raw: string): ParsedRewrite {
     if (label) fields[label] = buffer.join("\n").trim();
   };
 
-  for (const line of raw.split(/\r?\n/)) {
-    const m = FIELD_LABEL.exec(line);
+  const labelOf = (line: string): { label: string; value: string } | null => {
+    const stripped = line
+      .trim()
+      .replace(/^[-*•][ \t]+/, "")
+      .replace(/\*\*/g, "");
+    for (const [canon, aliases] of BANGLA_LABEL_ALIASES) {
+      for (const alias of aliases) {
+        if (stripped.startsWith(alias)) {
+          const rest = stripped.slice(alias.length);
+          if (/^[ \t]*(?::[ \t]*|$)/.test(rest)) {
+            return { label: canon, value: rest.replace(/^[ \t]*:[ \t]*/, "") };
+          }
+        }
+      }
+    }
+    const m = ENGLISH_LABEL_PREFIX.exec(stripped);
     if (m) {
+      const canon = CANONICAL_BY_NORM[m[1]!.toLowerCase().replace(/[^a-z]/g, "")];
+      if (canon) return { label: canon, value: stripped.slice(m[0].length) };
+    }
+    // Preserve the strict all-caps boundary: `NOTE:` or `UPDATE:` after BODY
+    // must close the body section even though they are not canonical fields.
+    const strict = /^([A-Z][A-Z0-9_]*):[ \t]?/.exec(stripped);
+    if (strict) return { label: strict[1]!, value: stripped.slice(strict[0].length) };
+    return null;
+  };
+
+  for (const line of text.split(/\r?\n/)) {
+    const hit = labelOf(line);
+    if (hit) {
       flush();
-      label = m[1]!;
-      // Keep the remainder of the label's own line, so single-line values work.
-      buffer = [line.slice(m[0].length)];
+      label = hit.label;
+      buffer = [hit.value];
     } else if (label) {
       buffer.push(line);
     }
   }
   flush();
 
-  const grab = (name: string) => fields[name] ?? "";
+  const title = grabField(fields, "TITLE");
+  const summary = grabField(fields, "SUMMARY");
+  const body = grabField(fields, "BODY");
 
-  const safetyRaw = grab("SAFETY_FLAG").toLowerCase();
-  const safetyFlag = (
-    ["minor_involved", "unverified_claim", "graphic_content"].includes(safetyRaw)
-      ? safetyRaw
-      : "none"
-  ) as ParsedRewrite["safety_flag"];
+  const norm = (v: string) => v.toLowerCase().replace(/[^a-z]/g, "");
+  const safetyRaw = norm(grabField(fields, "SAFETY_FLAG"));
+  const safetyMap: Record<string, ParsedRewrite["safety_flag"]> = {
+    minorinvolved: "minor_involved",
+    minor: "minor_involved",
+    unverifiedclaim: "unverified_claim",
+    unverified: "unverified_claim",
+    graphiccontent: "graphic_content",
+    graphic: "graphic_content",
+  };
+  const safetyFlag = safetyMap[safetyRaw] ?? "none";
 
-  const caseRaw = grab("CASE_STATUS").toLowerCase();
-  const caseStatus = (
-    ["active", "found", "unresolved", "false-alarm"].includes(caseRaw)
-      ? caseRaw
-      : undefined
-  ) as ParsedRewrite["case_status"];
+  const caseRaw = norm(grabField(fields, "CASE_STATUS"));
+  const caseMap: Record<string, ParsedRewrite["case_status"]> = {
+    active: "active",
+    found: "found",
+    unresolved: "unresolved",
+    falsealarm: "false-alarm",
+    unknown: "unknown",
+  };
+  const caseStatus = caseMap[caseRaw] ?? undefined;
 
   return {
     // Intentionally no "শিরোনাম ছাড়া" fallback: an absent title must stay
     // empty so the scraper rejects the post instead of storing a placeholder
     // headline on the site.
-    title_bn: grab("TITLE"),
-    summary_bn: grab("SUMMARY"),
-    body_bn: grab("BODY"),
+    title_bn: title,
+    summary_bn: summary,
+    body_bn: body,
     safety_flag: safetyFlag,
     case_status: caseStatus,
   };

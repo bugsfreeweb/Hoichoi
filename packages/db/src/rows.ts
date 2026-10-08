@@ -42,6 +42,8 @@ export function mapSource(row: Record<string, unknown>, categories?: CategorySlu
     page_name: String(row.page_name),
     category: row.category as CategorySlug,
     categories: categories ?? [], // Populated via source_categories join by callers
+    platform: (String(row.platform ?? "facebook") as Source["platform"]) || "facebook",
+    kind: String(row.kind) === "group" ? "group" : "page",
     is_verified: yesNo(row.is_verified),
     is_active: yesNo(row.is_active),
     last_scraped_at: (row.last_scraped_at as string | null) ?? null,
@@ -196,6 +198,13 @@ export const CATEGORY_SEED: CategoryMeta[] = [
       redaction_strict: "maximum",
       allow_identifying_details: false,
       publish_age_gate: false,
+      keywords: [
+        "ধর্ষণ", "ধর্ষণের", "ধর্ষকের", "ধর্ষিত", "যৌন নির্যাতন", "যৌন নির্যাতনে",
+        "যৌন হয়রানি", "অভিসার", "অভিসারে", "অভিসারের", "শ্লীলতাহানি", "ইভটিজিং",
+        "অশ্লীল", "পর্নো", "পর্নোগ্রাফি", "পর্নো ভিডিও", "নাবালক", "নাবালিকা",
+        "মাদ্রাসা ছাত্রী", "স্কুলছাত্রী", "ছাত্রীকে", "শিশুকে ধর্ষণ", "শিশু নির্যাতন",
+        "গণধর্ষণ", "অপ্রাপ্তবয়স্ক", "সঙ্গে জড়িত",
+      ],
     },
     showInFooter: true,
     createdAt: new Date().toISOString(),
@@ -219,6 +228,12 @@ export const CATEGORY_SEED: CategoryMeta[] = [
       redaction_strict: "standard",
       allow_identifying_details: true,
       use_allegation_language: true,
+      keywords: [
+        "পরকীয়া", "পরকীয়ায়", "পরকীয়া প্রেম", "ব্যভিচার", "ব্যভিচারে",
+        "অবৈধ সম্পর্ক", "অবৈধ সম্পর্কে", "শারীরিক সম্পর্ক", "স্বামীর প্রেমিকা",
+        "স্বামীর প্রেমিকার", "স্ত্রীর প্রেমিক", "স্ত্রীর সাথে প্রেম", "উপপত্নী",
+        "বৈবাহিক বে-ইমানি", "বিয়ে করে", "অন্য পুরুষের সাথে",
+      ],
     },
     showInFooter: true,
     createdAt: new Date().toISOString(),
@@ -244,10 +259,299 @@ export const CATEGORY_SEED: CategoryMeta[] = [
       supports_case_status: true,
       share_widely_cta: true,
       include_helpline_numbers: true,
+      keywords: [
+        "নিখোঁজ", "নিখোজ", "নিখুঁজ", "খোঁজা", "খুঁজছে", "হারিয়ে গেছে",
+        "হারিয়ে যাওয়া", "হারিয়ে যায়", "উধাও", "উধাও হয়েছে",
+        "খুঁজে পাওয়া যাচ্ছে না", "খুঁজে পাওয়া যায়নি", "সন্ধান চাই",
+        "সন্ধান চলছে", "অভিযোগ দায়ের", "এলাকা ছেড়ে", "নিজ বাড়ি থেকে",
+        "ছবি থেকে", "ছেলেটি", "মেয়েটি",
+      ],
     },
     showInFooter: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+  },
+];
+
+/**
+ * General editorial categories seeded idempotently (INSERT OR IGNORE) on every
+ * `ensureSchema` run.
+ *
+ * There are no longer only three "special" categories — the catalogue is a
+ * full, dynamic list. Each entry carries a `keywords` list so the classifier's
+ * topic detection (#4 in the classify book) actually has signal for these
+ * slugs, and they are READY to publish (routine config) so a helping or
+ * inspiration post is no longer parked under the extramarital/child-abuse
+ * frames. Admins can edit or archive these exactly like any other category.
+ */
+export const GENERAL_CATEGORY_SEED: Array<{
+  slug: string;
+  displayNameBn: string;
+  displayNameEn: string;
+  descriptionBn: string;
+  descriptionEn: string;
+  dot: string;
+  sortOrder: number;
+  keywords: string[];
+}> = [
+  {
+    slug: "health",
+    displayNameBn: "স্বাস্থ্য",
+    displayNameEn: "Health",
+    descriptionBn: "রোগ, চিকিৎসা, হাসপাতাল ও জনস্বাস্থ্য সেবা সংক্রান্ত সংবাদ।",
+    descriptionEn: "Health, treatment, hospitals, and public health news.",
+    dot: "16a34a",
+    sortOrder: 4,
+    keywords: [
+      "স্বাস্থ্য", "হাসপাতাল", "ডাক্তার", "চিকিৎসা", "চিকিৎসক", "রোগী", "জ্বর",
+      "ডেঙ্গু", "ভ্যাকসিন", "টিকা", "ক্যান্সার", "অপারেশন", "ওষুধ", "ক্লিনিক", "মহামারী",
+    ],
+  },
+  {
+    slug: "education",
+    displayNameBn: "শিক্ষা",
+    displayNameEn: "Education",
+    descriptionBn: "শিক্ষা প্রতিষ্ঠান, পরীক্ষা, ভর্তি ও শিক্ষার্থীদের সংবাদ।",
+    descriptionEn: "Educational institutions, exams, admissions, and student news.",
+    dot: "7c3aed",
+    sortOrder: 5,
+    keywords: [
+      "শিক্ষা", "শিক্ষক", "স্কুল", "কলেজ", "বিশ্ববিদ্যালয়", "পরীক্ষা", "ভর্তি",
+      "পাঠ্যবই", "শিক্ষার্থী", "মাদ্রাসা", "বোর্ড", "রেজাল্ট", "বৃত্তি", "হোস্টেল",
+    ],
+  },
+  {
+    slug: "sports",
+    displayNameBn: "খেলাধুলা",
+    displayNameEn: "Sports",
+    descriptionBn: "ক্রিকেট, ফুটবল ও জাতীয় দলের খেলার সংবাদ।",
+    descriptionEn: "Cricket, football, and national team news.",
+    dot: "0891b2",
+    sortOrder: 6,
+    keywords: [
+      "খেলা", "ক্রিকেট", "ফুটবল", "খেলোয়াড়", "টুর্নামেন্ট", "ম্যাচ", "মাঠ",
+      "স্টেডিয়াম", "উইকেট", "গোল", "হ্যাটট্রিক", "অলিম্পিক", "দল", "অভিষেক",
+    ],
+  },
+  {
+    slug: "politics",
+    displayNameBn: "রাজনীতি",
+    displayNameEn: "Politics",
+    descriptionBn: "দলীয় কর্মসূচি, নির্বাচন ও রাজনৈতিক নেতাদের সংবাদ।",
+    descriptionEn: "Party programs, elections, and national politics.",
+    dot: "dc2626",
+    sortOrder: 7,
+    keywords: [
+      "রাজনীতি", "রাজনৈতিক", "নির্বাচন", "সংসদ", "মন্ত্রী", "মন্ত্রণালয়", "সরকার",
+      "আন্দোলন", "সমাবেশ", "নেতা", "মেয়র", "চেয়ারম্যান", "কমিটি", "দল", "রাষ্ট্রপতি",
+    ],
+  },
+  {
+    slug: "corruption",
+    displayNameBn: "দুর্নীতি",
+    displayNameEn: "Corruption",
+    descriptionBn: "দুর্নীতি, ঘুষ ও সরকারি অনিয়ম সংক্রান্ত সংবাদ।",
+    descriptionEn: "Corruption, bribery, and public-sector irregularities.",
+    dot: "b45309",
+    sortOrder: 8,
+    keywords: [
+      "দুর্নীতি", "দুর্নীতিবাজ", "ঘুষ", "অনিয়ম", "অডিট", "অপচয়", "তহবিল আত্মসাৎ",
+      "সুবর্ণদুর্গ", "লুটপাট", "দালালি", "সরকারি হিসাব", "উন্মুক্ত আইন",
+    ],
+  },
+  {
+    slug: "environment",
+    displayNameBn: "পরিবেশ ও দুর্যোগ",
+    displayNameEn: "Environment & disasters",
+    descriptionBn: "প্রাকৃতিক দুর্যোগ, নদী, বন ও জলবায়ু পরিবর্তনের সংবাদ।",
+    descriptionEn: "Natural disasters, rivers, forests, and climate change.",
+    dot: "15803d",
+    sortOrder: 9,
+    keywords: [
+      "বন্যা", "ভূমিকম্প", "ঝড়", "ঘূর্ণিঝড়", "পরিবেশ", "দূষণ", "জলবায়ু", "নদী",
+      "হাওর", "আবাদ", "খরা", "তাপপ্রবাহ", "শৈত্যপ্রবাহ", "দুর্যোগ", "বজ্রপাত",
+    ],
+  },
+  {
+    slug: "accident",
+    displayNameBn: "দুর্ঘটনা",
+    displayNameEn: "Accidents",
+    descriptionBn: "সড়ক, নৌ ও অন্যান্য দুর্ঘটনার সংবাদ।",
+    descriptionEn: "Road, water, and other accident news.",
+    dot: "ea580c",
+    sortOrder: 10,
+    keywords: [
+      "দুর্ঘটনা", "সংঘর্ষ", "চাপা", "ধাক্কা", "দগ্ধ", "আহত", "ঘটনাস্থল", "বাস উল্টে",
+      "ট্রাকচাপা", "নৌকাডুবি", "ভেঙে", "ধসে", "আগুন", "বিস্ফোরণ", "পড়ে",
+    ],
+  },
+  {
+    slug: "crime",
+    displayNameBn: "অপরাধ",
+    displayNameEn: "Crime",
+    descriptionBn: "চুরি, ডাকাতি, খুন ও অপরাধ সংক্রান্ত সংবাদ।",
+    descriptionEn: "Theft, dacoity, homicide, and crime news.",
+    dot: "be123c",
+    sortOrder: 11,
+    keywords: [
+      "অপরাধ", "চুরি", "ডাকাতি", "ছিনতাই", "খুন", "হত্যা", "সন্ত্রাস", "মাদক",
+      "প্রতারক", "প্রতারণা", "ধর্ষণ", "মামলা", "গ্রেপ্তার", "অস্ত্র", "চাঁদাবাজি",
+    ],
+  },
+  {
+    slug: "inspiration",
+    displayNameBn: "অনুপ্রেরণা",
+    displayNameEn: "Inspiration",
+    descriptionBn: "স্বপ্ন, অর্জন ও অসাধারণ সাহসের গল্প।",
+    descriptionEn: "Dreams, achievements, and extraordinary courage stories.",
+    dot: "059669",
+    sortOrder: 12,
+    keywords: [
+      "অনুপ্রেরণা", "উদ্বোধক", "স্বপ্ন", "সাফল্য", "সফল", "সাহস", "উদ্যোগ", "সম্মাননা",
+      "অর্জন", "নজির", "আদর্শ", "অসাধারণ", "লড়াই", "জয়", "অভিনন্দন",
+    ],
+  },
+  {
+    slug: "helping-others",
+    displayNameBn: "মানবিক সহায়তা",
+    displayNameEn: "Helping others",
+    descriptionBn: "স্বেচ্ছাসেবা, দান, ত্রাণ ও সহায়তার সংবাদ।",
+    descriptionEn: "Volunteering, charity, relief, and support stories.",
+    dot: "0d9488",
+    sortOrder: 13,
+    keywords: [
+      "সাহায্য", "সহায়তা", "স্বেচ্ছাসেবী", "দান", "ত্রাণ", "ওষুধ বিলি", "রক্তদান",
+      "তহবিল", "উদ্যোগে", "হাত বাড়িয়ে", "পাশে দাঁড়িয়ে", "অর্থ সংগ্রহ", "খাদ্য বিতরণ",
+      "উপহার", "সাহায্যের হাত",
+    ],
+  },
+  {
+    slug: "history-traditions",
+    displayNameBn: "ঐতিহ্য ও ইতিহাস",
+    displayNameEn: "Heritage & history",
+    descriptionBn: "প্রাচীন ঐতিহ্য, সংস্কৃতি ও উৎসবের খবর।",
+    descriptionEn: "Ancient heritage, culture, and festival news.",
+    dot: "a16207",
+    sortOrder: 14,
+    keywords: [
+      "ঐতিহ্য", "ইতিহাস", "পুরাকীর্তি", "সংস্কৃতি", "উৎসব", "লোকশিল্প", "ঐতিহ্যবাহী",
+      "পহেলা", "বৈশাখ", "মেলায়", "মন্দির", "মসজিদ", "প্রাচীন", "শিল্প", "স্থাপত্য",
+    ],
+  },
+  {
+    slug: "economy",
+    displayNameBn: "অর্থনীতি",
+    displayNameEn: "Economy",
+    descriptionBn: "বাজার, দাম, রপ্তানি ও ব্যাংকের সংবাদ।",
+    descriptionEn: "Markets, prices, exports, and banking news.",
+    dot: "2563eb",
+    sortOrder: 15,
+    keywords: [
+      "অর্থনীতি", "বাজার", "দাম", "মজুরি", "রপ্তানি", "আমদানি", "মুদ্রা", "ব্যাংক",
+      "ঋণ", "অর্থ", "বিনিয়োগ", "শেয়ার", "ডলার", "টাকা", "সোনা",
+    ],
+  },
+  {
+    slug: "rural-life",
+    displayNameBn: "গ্রামজীবন",
+    displayNameEn: "Rural life",
+    descriptionBn: "কৃষি, ফসল, হাট-বাজার ও গ্রামীণ জীবনের সংবাদ।",
+    descriptionEn: "Farming, crops, markets, and rural life news.",
+    dot: "65a30d",
+    sortOrder: 16,
+    keywords: [
+      "কৃষক", "ফসল", "ধান", "হাট", "মেলা", "গ্রাম", "কৃষি", "মাছ", "গবাদি পশু",
+      "জমি", "চাষ", "বীজ", "সার", "খেত", "লোকজন",
+    ],
+  },
+  {
+    slug: "technology",
+    displayNameBn: "প্রযুক্তি",
+    displayNameEn: "Technology",
+    descriptionBn: "ইন্টারনেট, অ্যাপ, স্টার্টআপ ও ডিজিটাল খবর।",
+    descriptionEn: "Internet, apps, startups, and digital news.",
+    dot: "0ea5e9",
+    sortOrder: 17,
+    keywords: [
+      "প্রযুক্তি", "ইন্টারনেট", "অ্যাপ", "স্মার্টফোন", "স্টার্টআপ", "সাইবার", "ডিজিটাল",
+      "ল্যাপটপ", "কম্পিউটার", "কৃত্রিম বুদ্ধিমত্তা", "এআই", "সফটওয়্যার", "নেটওয়ার্ক",
+      "ডেটা", "অনলাইন",
+    ],
+  },
+  {
+    slug: "law-order",
+    displayNameBn: "আইন ও বিচার",
+    displayNameEn: "Law & justice",
+    descriptionBn: "আদালত, মামলা ও বিচার প্রক্রিয়ার সংবাদ।",
+    descriptionEn: "Courts, cases, and the justice process.",
+    dot: "475569",
+    sortOrder: 18,
+    keywords: [
+      "আদালত", "মামলা", "বিচার", "বিচারক", "পুলিশ", "এজাহার", "জামিন", "অভিযুক্ত",
+      "রায়", "আপিল", "আদালতে", "তদন্ত", "সাক্ষী", "প্রমাণ", "দণ্ড",
+    ],
+  },
+  {
+    slug: "opinion",
+    displayNameBn: "মতামত",
+    displayNameEn: "Opinion",
+    descriptionBn: "বিশ্লেষণ, কলাম ও পাঠক মতামত।",
+    descriptionEn: "Analysis, columns, and reader opinions.",
+    dot: "9333ea",
+    sortOrder: 19,
+    keywords: [
+      "মতামত", "বিশ্লেষণ", "কলাম", "খোলা চিঠি", "দৃষ্টিভঙ্গি", "প্রতিচ্ছবি", "মত",
+      "মন্তব্য", "পর্যালোচনা", "তাত্ত্বিক",
+    ],
+  },
+  {
+    slug: "research",
+    displayNameBn: "গবেষণা",
+    displayNameEn: "Research",
+    descriptionBn: "বিজ্ঞান, গবেষণা ও নতুন তথ্যের খবর।",
+    descriptionEn: "Science, research, and new discoveries.",
+    dot: "134e4a",
+    sortOrder: 20,
+    keywords: [
+      "গবেষণা", "গবেষক", "বিজ্ঞানী", "গবেষণাগার", "রিপোর্ট", "জরিপ", "পরিসংখ্যান",
+      "আবিষ্কার", "শিক্ষায়তন", "পরীক্ষা", "ন্যাশনাল", "সার্ভে",
+    ],
+  },
+  {
+    slug: "diaspora",
+    displayNameBn: "প্রবাস",
+    displayNameEn: "Diaspora",
+    descriptionBn: "প্রবাসে বাংলাদেশিদের জীবন ও স্মরণীয় ঘটনা।",
+    descriptionEn: "Life and milestones of Bangladeshis abroad.",
+    dot: "0f766e",
+    sortOrder: 21,
+    keywords: [
+      "প্রবাস", "প্রবাসী", "প্রবাসে", "অভিবাসী", "রেমিট্যান্স", "ওভারসিজ", "বিদেশে",
+      "আমেরিকা", "ইংল্যান্ড", "মালয়েশিয়া", "সৌদি", "দুবাই", "কায়িক শ্রমিক", "পাসপোর্ট",
+    ],
+  },
+  {
+    slug: "weather",
+    displayNameBn: "আবহাওয়া",
+    displayNameEn: "Weather",
+    descriptionBn: "আবহাওয়ার পূর্বাভাস ও বর্তমান অবস্থা।",
+    descriptionEn: "Weather forecasts and current conditions.",
+    dot: "0284c7",
+    sortOrder: 22,
+    keywords: [
+      "আবহাওয়া", "তাপমাত্রা", "বৃষ্টি", "আকাশ", "বায়ু", "আর্দ্রতা", "পূর্বাভাস",
+      "আবহাওয়া অধিদপ্তর", "বর্ষা", "ঝড়বৃষ্টি", "মেঘ", "রোদ",
+    ],
+  },
+  {
+    slug: "misc",
+    displayNameBn: "বিবিধ",
+    displayNameEn: "Miscellaneous",
+    descriptionBn: "অন্যান্য সব খবর যেগুলো অন্য শ্রেণিতে পড়ে না।",
+    descriptionEn: "Everything else that fits nowhere else.",
+    dot: "6b7280",
+    sortOrder: 23,
+    keywords: [],
   },
 ];
 
@@ -258,6 +562,30 @@ function normalizeDot(value: unknown, fallback: string): string {
   if (/^#[0-9a-fA-F]{3,8}$/.test(raw)) return raw;
   if (/^[0-9a-fA-F]{3,8}$/.test(raw)) return `#${raw}`;
   return fallback;
+}
+
+/**
+ * Accent palette for admin-created categories (CSS-ready `#hex`). Kept small
+ * and distinct from the built-in seed colors so a new section reads as its own
+ * color instead of silently sharing an existing one.
+ */
+export const CATEGORY_DOT_PALETTE = [
+  "#0ea5e9", "#f59e0b", "#ef4444", "#8b5cf6", "#14b8a6", "#f97316",
+  "#ec4899", "#22c55e", "#06b6d4", "#eab308", "#a855f7", "#84cc16",
+  "#f43f5e", "#10b981", "#3b82f6", "#d946ef",
+] as const;
+
+/**
+ * Deterministic dot pick for a new category: the palette entry least used by
+ * the categories that already exist. Idempotent and cheap, so callers can also
+ * run it as a backfill over rows whose `dot` is still empty.
+ */
+export function pickCategoryDot(taken: ReadonlyArray<string | null | undefined>): string {
+  const used = new Set(taken.filter((d): d is string => Boolean(d)).map((d) => d.toLowerCase()));
+  for (const color of CATEGORY_DOT_PALETTE) {
+    if (!used.has(color.toLowerCase())) return color;
+  }
+  return CATEGORY_DOT_PALETTE[taken.length % CATEGORY_DOT_PALETTE.length]!;
 }
 
 export function mapCategory(row: Record<string, unknown>): CategoryMeta {

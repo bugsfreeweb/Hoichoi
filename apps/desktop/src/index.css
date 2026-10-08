@@ -256,6 +256,13 @@ html[data-theme="light"] .text-alizarin {
 html[data-theme="light"] .text-lime {
   color: #5f8f0e !important;
 }
+/* `text-lime` is !important, so a plain Tailwind `hover:text-night` loses and
+   the label stays lime on a lime hover fill (invisible). Make the hover fill
+   authoritative: night is dark in both themes, so the text stays readable on
+   lime/white hover backgrounds everywhere. */
+.hover\:text-night:hover {
+  color: var(--color-night) !important;
+}
 .text-amberx {
   color: #f5b800 !important;
 }

@@ -20,8 +20,10 @@
  * keeps one storage layout for desktop, local dev and production.
  */
 import { findRepoRoot, getClient, nowIso } from "@hoichoi/db";
-import { downloadMedia, isVideoUrl, localMediaPath, mediaRoot, processImage } from "./media";
+import { downloadMedia, isVideoUrl, localMediaPath, mediaRoot, processImage, randomMediaName } from "./media";
 import { scrapePostUrls } from "./facebook";
+import { aiHeroEligible, generateAIHero } from "./ai-image";
+import { uploadRemote } from "./storage";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -249,6 +251,95 @@ export async function backfillMissingMedia(opts: {
     }
   }
   return { candidates: rows.length, attached, alreadyLocal, failed, dryRun: Boolean(opts.dryRun) };
+}
+
+interface PostNeedingAIHero {
+  id: string;
+  raw_post_id: string;
+  category: string | null;
+  title_bn: string | null;
+  summary_bn: string | null;
+}
+
+/**
+ * Generate AI fallback hero images for posts that have NO media and NO media
+ * URLs to re-download (disjoint from `backfillMissingMedia`). A Gemini
+ * `GOOGLE_API_KEY` must be present; sensitive categories are always skipped,
+ * and posts already given an AI image (raw_meta.ai_generated) are not retried.
+ */
+export async function aiFillMissingHeroes(opts: {
+  limit?: number;
+  dryRun?: boolean;
+  log?: (msg: string) => void;
+} = {}): Promise<{
+  candidates: number;
+  generated: number;
+  skippedSensitive: number;
+  failed: number;
+  dryRun: boolean;
+}> {
+  const log = opts.log ?? (() => undefined);
+  const client = getClient();
+  if (!process.env.GOOGLE_API_KEY) {
+    throw new Error("AI hero fill requires GOOGLE_API_KEY (Gemini). Set it and retry.");
+  }
+  const limit = Math.max(1, Math.min(500, opts.limit ?? 200));
+  const res = await client.execute({
+    sql: `
+      SELECT p.id, p.raw_post_id, p.category, p.title_bn, p.summary_bn
+      FROM posts p
+      JOIN raw_posts r ON r.id = p.raw_post_id
+      WHERE (p.media_path IS NULL OR p.media_path = '')
+        AND p.media_kind = 'none'
+        AND (r.media_urls IS NULL OR r.media_urls IN ('', '[]'))
+        AND json_extract(COALESCE(r.raw_meta, '{}'), '$.ai_generated') IS NULL
+      ORDER BY p.created_at DESC
+      LIMIT ?
+    `,
+    args: [limit],
+  });
+  const rows = res.rows as unknown as PostNeedingAIHero[];
+  let generated = 0;
+  let skippedSensitive = 0;
+  let failed = 0;
+
+  for (const row of rows) {
+    if (!aiHeroEligible(row.category)) {
+      skippedSensitive += 1;
+      continue;
+    }
+    if (opts.dryRun) {
+      generated += 1;
+      continue;
+    }
+    const rel = randomMediaName("img", "webp");
+    const ok = await generateAIHero({
+      title: row.title_bn ?? `post ${row.id.slice(0, 8)}`,
+      summary: row.summary_bn ?? "",
+      log,
+    });
+    if (!ok) {
+      failed += 1;
+      continue;
+    }
+    mirrorMediaFile(ok);
+    const pub = await uploadRemote(ok);
+    if (pub) {
+      log(`[ai-fill] ${row.id.slice(0, 8)} -> ${pub}`);
+    } else {
+      log(`[ai-fill] ${row.id.slice(0, 8)} -> ${ok}`);
+    }
+    await client.execute({
+      sql: "UPDATE posts SET media_path = ?, media_kind = 'image', updated_at = ? WHERE id = ?",
+      args: [ok, nowIso(), row.id],
+    });
+    await client.execute({
+      sql: "UPDATE raw_posts SET raw_meta = json_set(COALESCE(raw_meta,'{}'), '$.ai_generated', 1) WHERE id = ?",
+      args: [row.raw_post_id],
+    });
+    generated += 1;
+  }
+  return { candidates: rows.length, generated, skippedSensitive, failed, dryRun: Boolean(opts.dryRun) };
 }
 
 /** Re-download media that exists remotely but is missing from every local root. */

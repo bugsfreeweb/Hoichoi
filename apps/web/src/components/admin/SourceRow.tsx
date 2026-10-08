@@ -2,10 +2,29 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Source } from "@hoichoi/shared-types";
+import type { Source, SourcePlatform } from "@hoichoi/shared-types";
+import { normalizePlatform } from "@hoichoi/shared-types";
 import { ExternalLink } from "./ExternalLink";
 
 type CategoryOption = { slug: string; label: string };
+
+const PLATFORMS: { value: SourcePlatform; label: string }[] = [
+  { value: "facebook", label: "Facebook" },
+  { value: "x", label: "X / Twitter" },
+  { value: "news", label: "নিউজ ওয়েবসাইট" },
+  { value: "magazine", label: "ম্যাগাজিন" },
+  { value: "social", label: "অন্যান্য সোশ্যাল" },
+  { value: "other", label: "অন্যান্য" },
+];
+
+const PLATFORM_LABEL: Record<SourcePlatform, string> = {
+  facebook: "Facebook",
+  x: "X",
+  news: "News",
+  magazine: "Magazine",
+  social: "Social",
+  other: "Other",
+};
 
 export function SourceRow({
   source,
@@ -23,11 +42,15 @@ export function SourceRow({
   const [editForm, setEditForm] = useState<{
     pageUrl: string;
     pageName: string;
+    platform: SourcePlatform;
+    kind: "page" | "group";
     categories: string[];
     allCategories: boolean;
   }>({
     pageUrl: source.page_url,
     pageName: source.page_name,
+    platform: source.platform ?? "facebook",
+    kind: source.kind ?? "page",
     categories: source.categories.length ? source.categories : [source.category],
     allCategories: false,
   });
@@ -69,6 +92,8 @@ export function SourceRow({
           sourceId: source.id,
           pageUrl: editForm.pageUrl.trim(),
           pageName: editForm.pageName.trim(),
+          platform: editForm.platform,
+          kind: editForm.kind,
           categories: requested,
         }),
       });
@@ -130,6 +155,33 @@ export function SourceRow({
   if (editing) {
     return (
       <form onSubmit={saveEdit} className="grid gap-3 border border-ink/30 bg-paper-deep px-4 py-3">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">প্ল্যাটফর্ম</span>
+            <select
+              className={field}
+              value={editForm.platform}
+              onChange={(e) => setEditForm({ ...editForm, platform: normalizePlatform(e.target.value) })}
+            >
+              {PLATFORMS.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </label>
+          {editForm.platform === "facebook" && (
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">ধরন</span>
+              <select
+                className={field}
+                value={editForm.kind}
+                onChange={(e) => setEditForm({ ...editForm, kind: e.target.value === "group" ? "group" : "page" })}
+              >
+                <option value="page">পেজ</option>
+                <option value="group">গ্রুপ</option>
+              </select>
+            </label>
+          )}
+        </div>
         <label className="block">
           <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">পেজ URL</span>
           <input
@@ -203,9 +255,15 @@ export function SourceRow({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border border-ink/20 bg-paper-deep px-4 py-3">
       <div className="min-w-0">
-        <ExternalLink href={source.page_url} className="truncate text-[13.5px] font-bold text-ink hover:text-alizarin">
-          {source.page_name}
-        </ExternalLink>
+        <div className="flex flex-wrap items-center gap-2">
+          <ExternalLink href={source.page_url} className="truncate text-[13.5px] font-bold text-ink hover:text-alizarin">
+            {source.page_name}
+          </ExternalLink>
+          <span className="rounded-full border border-ink/30 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-widest text-ink-soft">
+            {PLATFORM_LABEL[source.platform ?? "facebook"]}
+            {source.kind === "group" ? " · গ্রুপ" : ""}
+          </span>
+        </div>
         <p className="truncate font-mono-x text-[11px] text-ink-soft">{source.page_url}</p>
       </div>
       <div className="flex items-center gap-3">

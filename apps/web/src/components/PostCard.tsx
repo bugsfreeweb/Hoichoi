@@ -29,7 +29,7 @@ export function PostCard({ post, cats }: { post: Post; cats: CategoryMeta[] }) {
         </span>
       </div>
       <div className="mt-4 flex flex-1 flex-col">
-        <p className="text-[10.5px] font-bold uppercase tracking-wide" style={{ color: `#${cats.find((c) => c.slug === post.category)?.dot ?? "0a0c10"}` }}>
+        <p className="text-[10.5px] font-bold uppercase tracking-wide" style={{ color: cats.find((c) => c.slug === post.category)?.dot ?? "#0a0c10" }}>
           {cats.find((c) => c.slug === post.category)?.displayNameBn ?? post.category}
         </p>
         <h3 className="link-sweep mt-1.5 inline font-serif-bn text-[17px] font-extrabold leading-snug">

@@ -79,6 +79,13 @@ export interface CategoryConfig {
   supports_case_status?: boolean;
   share_widely_cta?: boolean;
   include_helpline_numbers?: boolean;
+  /**
+   * Bangla signal words the content classifier uses to decide whether a scraped
+   * post belongs here. Admin-addable; empty falls back to the built-in topic
+   * profiles (inspiration, health, crime, sports, ...). Words are matched
+   * whole-word against the normalized Bangla text.
+   */
+  keywords?: string[];
 }
 
 export interface CategoryMeta {
@@ -106,10 +113,42 @@ export interface Source {
   category: CategorySlug;
   /** Array of category slugs this source belongs to (many-to-many via source_categories). */
   categories: CategorySlug[];
+  /**
+   * Where the content comes from. Facebook keeps page/group in `kind`; every
+   * other platform is fetched from its URL or feed and translated on rewrite.
+   */
+  platform: SourcePlatform;
+  /** Facebook page or group (only meaningful when platform = "facebook"). */
+  kind: SourceKind;
   is_verified: boolean;
   is_active: boolean;
   last_scraped_at: string | null;
   created_at: string;
+}
+
+export type SourcePlatform = "facebook" | "x" | "news" | "magazine" | "social" | "other";
+export type SourceKind = "page" | "group";
+
+/** Normalize a free-form platform string to the canonical {@link SourcePlatform}. */
+export function normalizePlatform(value: string | null | undefined): SourcePlatform {
+  const v = (value ?? "").trim().toLowerCase();
+  const aliases: Record<string, SourcePlatform> = {
+    facebook: "facebook",
+    fb: "facebook",
+    page: "facebook",
+    group: "facebook",
+    x: "x",
+    twitter: "x",
+    news: "news",
+    newspaper: "news",
+    magazine: "magazine",
+    social: "social",
+    instagram: "social",
+    youtube: "social",
+    tiktok: "social",
+    other: "other",
+  };
+  return aliases[v] ?? (v ? (v as SourcePlatform) : "facebook");
 }
 
 export interface RawPost {
@@ -409,6 +448,12 @@ export interface SiteAppConfig {
   show_rewrite_engine: boolean;
   /** Site footer. */
   show_footer: boolean;
+  /** When true the public site shows a maintenance screen; signed-in admins
+   *  keep full access (admin bypass), and the site is de-indexed meanwhile. */
+  maintenance_mode: boolean;
+  /** When true (and a Gemini GOOGLE_API_KEY is present) the collector
+   *  generates an AI hero image for posts that have no media at all. */
+  ai_hero_images: boolean;
   /** Default theme seeded before hydration (`light` | `dark`). */
   theme_default: "light" | "dark";
   /** New-posts surge threshold used by the live graph. */
@@ -523,6 +568,7 @@ export interface Comment {
   /** Optional — collected on the public form, never shown publicly. */
   email?: string | null;
   likes: number;
+  dislikes: number;
   status: CommentStatus;
   created_at: string;
 }

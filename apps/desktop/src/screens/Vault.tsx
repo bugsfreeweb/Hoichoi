@@ -13,13 +13,19 @@ import {
   HardDrive,
   Lock,
   RotateCw,
+  Download,
+  Upload,
   type LucideIcon,
 } from "lucide-react";
 import {
   type CredentialName,
   getCredential,
+  getCredentialRaw,
   getRunEnv,
   envNameFor,
+  exportEnv,
+  importEnv,
+  listVaultNames,
 } from "../lib/vault";
 import { deskProviders } from "../lib/tauri";
 import { toBn } from "../lib/format";
@@ -147,9 +153,13 @@ export default function Vault({
   onEdit?: (name: CredentialName) => void;
 }) {
   const [values, setValues] = useState<Partial<Record<CredentialName, string>>>({});
+  const [extra, setExtra] = useState<Array<{ name: string; value: string }>>([]);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState<Record<string, boolean>>({});
   const [copiedAll, setCopiedAll] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importMsg, setImportMsg] = useState("");
 
   useEffect(() => {
     let alive = true;
@@ -172,6 +182,21 @@ export default function Vault({
         /* provider list is optional */
       }
       if (alive) setValues(map);
+      // Imported / non-canonical keys (R2_*, ADMIN_AUTH_SECRET, …) are stored
+      // under their own ENV name; list them so the vault shows the full picture.
+      try {
+        const names = await listVaultNames();
+        const rows: Array<{ name: string; value: string }> = [];
+        for (const n of names) {
+          if ((ORDER as readonly string[]).includes(n)) continue;
+          if (n === "fb_cookie_expires" || n === "use_cloud") continue;
+          const v = await getCredentialRaw(n);
+          if (v) rows.push({ name: n, value: v });
+        }
+        if (alive) setExtra(rows.sort((a, b) => a.name.localeCompare(b.name)));
+      } catch {
+        /* vault unavailable */
+      }
     })();
     return () => {
       alive = false;
@@ -190,18 +215,50 @@ export default function Vault({
   };
 
   const copyAll = async () => {
-    const payload: string[] = [];
-    for (const name of ORDER) {
-      const envName = envNameFor(name);
-      const v = values[name];
-      if (envName && v) payload.push(`${envName}=${v}`);
-    }
     try {
-      await navigator.clipboard.writeText(payload.join("\n"));
+      await navigator.clipboard.writeText(await exportEnv());
       setCopiedAll(true);
       setTimeout(() => setCopiedAll(false), 1800);
     } catch {
       /* clipboard blocked */
+    }
+  };
+
+  const downloadEnv = async () => {
+    try {
+      const blob = new Blob([await exportEnv()], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = ".env";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      /* download blocked */
+    }
+  };
+
+  const runImport = async () => {
+    setImportMsg("");
+    const res = await importEnv(importText);
+    setImportMsg(
+      `${toBn(res.stored.length)} কী সংরক্ষিত${res.skipped.length ? ` · ${toBn(res.skipped.length)} বাদ` : ""}`,
+    );
+    setImportText("");
+    if (res.stored.length > 0) {
+      // Reload canonical + extra views from the (now updated) vault.
+      const map: Partial<Record<CredentialName, string>> = {};
+      for (const name of ORDER) map[name] = (await getCredential(name)) ?? undefined;
+      setValues(map);
+      const names = await listVaultNames();
+      const rows: Array<{ name: string; value: string }> = [];
+      for (const n of names) {
+        if ((ORDER as readonly string[]).includes(n)) continue;
+        if (n === "fb_cookie_expires" || n === "use_cloud") continue;
+        const v = await getCredentialRaw(n);
+        if (v) rows.push({ name: n, value: v });
+      }
+      setExtra(rows.sort((a, b) => a.name.localeCompare(b.name)));
     }
   };
 
@@ -223,13 +280,62 @@ export default function Vault({
             </p>
           </div>
           <button
-            onClick={() => void copyAll()}
+            onClick={() => setImportOpen((o) => !o)}
             className="ml-auto flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.05] px-3.5 py-2 text-[11px] font-semibold text-white/80 transition-all duration-300 hover:border-lime/50 hover:text-lime"
+          >
+            <Download size={12} />
+            Import (.env)
+          </button>
+          <button
+            onClick={() => void downloadEnv()}
+            className="flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.05] px-3.5 py-2 text-[11px] font-semibold text-white/80 transition-all duration-300 hover:border-lime/50 hover:text-lime"
+          >
+            <Upload size={12} />
+            Download
+          </button>
+          <button
+            onClick={() => void copyAll()}
+            className="flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.05] px-3.5 py-2 text-[11px] font-semibold text-white/80 transition-all duration-300 hover:border-lime/50 hover:text-lime"
           >
             {copiedAll ? <Check size={12} /> : <Copy size={12} />}
             {copiedAll ? "কপি হয়েছে (.env)" : "সব কপি করুন (.env)"}
           </button>
         </div>
+
+        {importOpen && (
+          <div className="border-b border-white/8 px-5 py-4">
+            <p className="font-mono-x text-[10px] tracking-[0.16em] text-white/50 uppercase">
+              .env পেস্ট করুন — কী=মান প্রতি লাইনে
+            </p>
+            <textarea
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              spellCheck={false}
+              placeholder={"TURSO_DATABASE_URL=libsql://…\nR2_ACCESS_KEY_ID=…\nANTHROPIC_API_KEY=…"}
+              className="field mt-2 h-40 font-mono-x text-[11px]"
+            />
+            <div className="mt-2 flex items-center gap-3">
+              <button onClick={() => void runImport()} className="btn px-4 py-2 text-[11px]">
+                ইমপোর্ট করুন
+              </button>
+              <button
+                onClick={() => {
+                  setImportOpen(false);
+                  setImportMsg("");
+                  setImportText("");
+                }}
+                className="btn-ghost px-4 py-2 text-[11px]"
+              >
+                বাতিল
+              </button>
+              {importMsg && <span className="text-[11px] text-lime">{importMsg}</span>}
+            </div>
+            <p className="mt-2 text-[10.5px] leading-relaxed text-white/40">
+              পরিচিত কী (Turso/GitHub/LLM) তাদের আসল ভল্ট স্লটে বসে; অচেনা কী
+              (যেমন R2_*, ADMIN_AUTH_SECRET) নিজের নামেই সংরক্ষিত হয় ও পাইপলাইনে চলে।
+            </p>
+          </div>
+        )}
 
         <div className="scroll-slim overflow-x-auto">
           <table className="w-full min-w-[900px] text-left">
@@ -330,6 +436,45 @@ export default function Vault({
             </tbody>
           </table>
         </div>
+
+        {extra.length > 0 && (
+          <div className="border-t border-white/8">
+            <p className="px-5 pt-4 font-mono-x text-[9.5px] tracking-[0.18em] text-white/35 uppercase">
+              ইমপোর্টেড কী · {toBn(extra.length)} · পাইপলাইনে সরাসরি যায়
+            </p>
+            <table className="w-full min-w-[700px] text-left">
+              <tbody className="divide-y divide-white/6">
+                {extra.map(({ name, value }) => {
+                  const isOpen = Boolean(revealed[name]);
+                  return (
+                    <tr key={name} className="group transition-colors duration-200 hover:bg-white/[0.035]">
+                      <td className="px-5 py-3 font-mono-x text-[11px] text-white/70">{name}</td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <code className="rounded-md border border-white/10 bg-night px-2.5 py-1.5 font-mono-x text-[10.5px] tracking-wide text-amberx/90">
+                            {isOpen ? value : mask(value)}
+                          </code>
+                          <button
+                            onClick={() => setRevealed((m) => ({ ...m, [name]: !m[name] }))}
+                            className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/60 transition-colors hover:border-white/40 hover:text-white"
+                            title={isOpen ? "লুকান" : "দেখান"}
+                          >
+                            {isOpen ? <EyeOff size={12} /> : <Eye size={12} />}
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-lime/12 px-2.5 py-1 text-[10px] font-semibold text-lime">
+                          <span className="h-1.5 w-1.5 rounded-full bg-lime" /> সক্রিয়
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
       <p className="mt-3 font-mono-x text-[10px] tracking-[0.14em] text-white/30 uppercase">
         মান Stronghold-এ এনক্রিপ্ট করা; রিভিল করলে UI-তে সাময়িক দেখায়, স্থায়ীভাবে নয়।

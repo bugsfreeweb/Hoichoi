@@ -197,7 +197,7 @@ export function AdSlot({
       )}
 
       {variant === "strip" && (
-        <div className="relative flex min-h-[64px] items-center justify-center gap-4 border border-dashed border-bandline/25 bg-band px-5 py-4 text-bandline transition-colors duration-300 hover:bg-[#241d12]">
+        <div className="ad-strip relative flex min-h-[64px] items-center justify-center gap-4 border border-dashed border-bandline/25 bg-band px-5 py-4 text-bandline">
           {bandBody}
           <span className="absolute top-2 right-2 flex items-center gap-1 rounded-sm border border-bandline/30 px-1.5 py-0.5 font-mono-x text-[8.5px] font-semibold tracking-[0.2em] text-bandline/70 uppercase">
             <MegaphoneIcon /> AD

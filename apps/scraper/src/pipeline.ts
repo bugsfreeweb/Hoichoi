@@ -1,4 +1,4 @@
-import { getClient, mapCategory, mapSource, nowIso, withTx, recordSourceError, clearSourceErrors } from "@hoichoi/db";
+import { getClient, mapCategory, mapSource, nowIso, parseAppConfig, withTx, recordSourceError, clearSourceErrors } from "@hoichoi/db";
 import { newResolver } from "@hoichoi/llm";
 import type {
   CategorySlug,
@@ -19,6 +19,8 @@ import { makeSlug, rewritePost } from "./rewrite";
 import { captureScreenshot } from "./screenshot";
 import { classifyContent } from "./classify";
 import { uploadRemote } from "./storage";
+import { aiHeroEligible, generateAIHero } from "./ai-image";
+import { fetchRssPosts, isFeedPlatform } from "./rss";
 
 /** Shared fetch options for CDN media: some providers 403 on the bare Node
  *  user-agent, so present a normal browser UA + image accept header. */
@@ -80,6 +82,8 @@ export interface PipelineStats {
   pendingReview: number;
   /** Posts held because the classifier's confidence fell under the fact-gate. */
   lowConfidence: number;
+  /** Posts that received an AI-generated fallback hero image. */
+  aiHero: number;
   providerUsed: string[] | null;
   errors: string[];
 }
@@ -227,6 +231,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
     published: 0,
     pendingReview: 0,
     lowConfidence: 0,
+    aiHero: 0,
     providerUsed: [],
     errors: [],
   };
@@ -251,6 +256,9 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
   const rewriteTemperature = Math.min(1, Math.max(0, Number(setRow.llm_temperature ?? 0.3)));
   // Fact-gate threshold as a whole percent, defaulting to the historical 90.
   const factGate = Math.min(100, Math.max(0, Number(setRow.fact_gate ?? 90)));
+  // AI fallback hero images: pipeline-side flag (default on) AND a Gemini key.
+  const appCfg = parseAppConfig(String(setRow.app_config_json ?? ""));
+  const aiHeroEnabled = Boolean(process.env.GOOGLE_API_KEY) && appCfg.ai_hero_images !== false;
 
   // Sources
   const srcRes = await client.execute(
@@ -285,13 +293,21 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
     log(`\n[scrape] ${source.page_name} (${source.category})`);
     let scraped: ScrapedPost[];
     try {
-      scraped = await scrapePage(source, {
-        sessionCookie,
-        maxPosts: opts.maxPosts ?? 200,
-        mock: opts.mock,
-        requestDelayMs: 3000,
-        log,
-      });
+      if (isFeedPlatform(source.platform)) {
+        scraped = await fetchRssPosts(source.page_url, {
+          feedName: source.page_name,
+          maxPosts: opts.maxPosts ?? 200,
+          log,
+        });
+      } else {
+        scraped = await scrapePage(source, {
+          sessionCookie,
+          maxPosts: opts.maxPosts ?? 200,
+          mock: opts.mock,
+          requestDelayMs: 3000,
+          log,
+        });
+      }
     } catch (err) {
       const msg = `[scrape] ${source.page_name}: ${(err as Error).message}`;
       log(msg);
@@ -474,6 +490,36 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         log(`[media] skip: ${(err as Error).message}`);
       }
 
+      // STEP 2.5: AI fallback hero image. Only when a post truly has no media
+      // (nothing re-downloadable), the operator left the feature on, and there
+      // is enough text to draw a subject from. Sensitive categories are always
+      // skipped; the prompt itself bans text, logos, real people and children.
+      if (
+        media.kind === "none" &&
+        aiHeroEnabled &&
+        aiHeroEligible(source.category) &&
+        (sp.rawText ?? "").trim().length >= 20
+      ) {
+        try {
+          const aiRel = await generateAIHero({ title: source.page_name, summary: sp.rawText ?? "", log });
+          if (aiRel) {
+            media.kind = "image";
+            media.path = aiRel;
+            const pub = await uploadRemote(aiRel);
+            if (pub) {
+              media.path = pub;
+              log(`[media] AI hero uploaded → ${pub}`);
+            } else {
+              const mirrored = mirrorMediaFile(aiRel);
+              if (mirrored.length > 0) log(`[media] AI hero mirrored → ${mirrored[0]}`);
+            }
+            stats.aiHero++;
+          }
+        } catch (err) {
+          log(`[media] AI hero failed: ${(err as Error).message}`);
+        }
+      }
+
       // STEP 3: screenshot evidence (optional, one browser per post — slow).
       if (opts.evidence) {
         const rel = randomMediaName("shot", "png");
@@ -555,7 +601,17 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         // Content-based re-detection: a source pinned to one category (e.g. the
         // CLI default "missing-children") may receive posts that clearly belong
         // elsewhere. Only override when the text strongly matches another slug.
-        const detected = classifyContent(sp.rawText, [...cats.keys()], source.category);
+        // The keyword pool is a pure DB read — each category's configured
+        // `keywords` list from `category_configs.config.keywords`, editable in
+        // the web admin AND the desktop desk. There is intentionally no
+        // hard-coded table in classify.ts: a code-level profile could not be
+        // corrected without a deploy, and the operator owns these terms.
+        const kwProfiles: Record<string, string[]> = {};
+        for (const c of cats.values()) {
+          const kw = c.config.keywords;
+          if (kw && kw.length) kwProfiles[c.slug] = kw;
+        }
+        const detected = classifyContent(sp.rawText, [...cats.keys()], source.category, kwProfiles);
         const postCategory: CategorySlug = detected?.slug ?? source.category;
         if (postCategory !== source.category) {
           log(
@@ -586,12 +642,54 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           );
           stats.lowConfidence++;
         }
+        // A post the classifier does not recognize at all falls back to its
+        // source category; that category is the source of record and is trusted.
+        // BUT when a source is pinned to a category that no longer exists in
+        // THIS database, there is no category of record — "which category is
+        // this?" is genuinely unknown. Per the "no more special categories"
+        // rule, an unclassifiable post goes to the moderation queue instead of
+        // being auto-published under a guess. The raw text (not an LLM draft
+        // framed by an unrelated prompt) is what lands on the desk.
+        const categoryMissingHere =
+          !cats.has(source.category) &&
+          !(source.categories ?? []).some((s) => cats.has(s as CategorySlug));
+        const confusedThisPost = detected === null && categoryMissingHere;
+        if (confusedThisPost) {
+          const slug = makeSlug(`${source.page_name} ${sp.fbPostId}`);
+          const now = nowIso();
+          await client.execute({
+            sql: `
+              INSERT INTO posts (
+                id, raw_post_id, source_id, category, title_bn, body_bn, summary_bn,
+                media_path, media_kind, source_url, source_name, slug, status,
+                safety_flags, embedding, case_status, original_author_name,
+                published_at, created_at, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `,
+            args: [
+              crypto.randomUUID(), rawId, source.id, source.category,
+              "ক্যাটাগরি নির্ধারণ করা হয়নি", sp.rawText, "",
+              media.path, media.kind,
+              sp.fbPostUrl, source.page_name, slug, "pending_review",
+              "[]", null, null,
+              sp.authorName ?? null, null, now, now,
+            ],
+          });
+          stats.lowConfidence++;
+          stats.pendingReview++;
+          log(
+            `[gate] "${source.page_name}" — no confident category and "${source.category}" is not in this DB — held for review · ${slug}`,
+          );
+          continue;
+        }
         const outcome = await rewritePost({
           rawText: sp.rawText,
           sourceName: source.id,
           sourcePageName: source.page_name,
           category: postCategory,
           categoryConfig: config,
+          categoryNameBn: cats.get(postCategory)?.displayNameBn,
+          categoryDescriptionBn: cats.get(postCategory)?.descriptionBn,
           originalAuthorName: sp.authorName ?? null,
           policeHelpline: String(setRow.police_helpline ?? "999"),
           childHelpline: String(setRow.child_helpline ?? "109"),
@@ -710,6 +808,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         emptyText: stats.emptyText,
         published: stats.published,
         pendingReview: stats.pendingReview,
+        aiHero: stats.aiHero,
       }),
       stats.providerUsed!.join(","),
       stats.errors.slice(0, 5).join(" | "),

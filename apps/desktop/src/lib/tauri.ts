@@ -305,6 +305,8 @@ export interface DeskCategory {
   sortOrder: number;
   /** Whether this category appears in the public site footer nav. */
   showInFooter: boolean;
+  /** Bangla keyword signals the classifier uses for this category (config.keywords). */
+  keywords: string[];
 }
 
 export async function deskCategories(env: Record<string, string>): Promise<DeskCategory[]> {
@@ -322,6 +324,7 @@ export async function deskAddCategory(
     descriptionEn?: string;
     dot?: string;
     showInFooter?: boolean;
+    keywords?: string[];
   },
 ): Promise<DeskCategory | null> {
   const args = [
@@ -334,6 +337,7 @@ export async function deskAddCategory(
   if (input.descriptionEn) args.push("--desc-en", input.descriptionEn);
   if (input.dot) args.push("--dot", input.dot);
   if (input.showInFooter !== undefined) args.push("--footer", input.showInFooter ? "true" : "false");
+  if (input.keywords !== undefined) args.push("--keywords", input.keywords.join(","));
   const res = await deskCall(args, env);
   return (res.category as DeskCategory | null) ?? null;
 }
@@ -349,6 +353,7 @@ export async function deskUpdateCategory(
     dot?: string;
     sortOrder?: number;
     showInFooter?: boolean;
+    keywords?: string[];
   },
 ): Promise<DeskCategory | null> {
   const args = ["categories", "update", "--slug", slug];
@@ -359,6 +364,7 @@ export async function deskUpdateCategory(
   if (fields.dot !== undefined) args.push("--dot", fields.dot);
   if (fields.sortOrder !== undefined) args.push("--sort", String(fields.sortOrder));
   if (fields.showInFooter !== undefined) args.push("--footer", fields.showInFooter ? "true" : "false");
+  if (fields.keywords !== undefined) args.push("--keywords", fields.keywords.join(","));
   const res = await deskCall(args, env);
   return (res.category as DeskCategory | null) ?? null;
 }

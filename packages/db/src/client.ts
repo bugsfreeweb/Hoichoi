@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { seedDefaults } from "./seed";
+import { CATEGORY_SEED, GENERAL_CATEGORY_SEED, pickCategoryDot } from "./rows";
 
 let cached: Client | null = null;
 let cachedUrl: string | null = null;
@@ -168,6 +169,9 @@ const DESK_SOURCE_COLUMNS: Array<[name: string, ddl: string]> = [
   ["fb_id", "TEXT"],
   ["topics", "TEXT NOT NULL DEFAULT '[]'"],
   ["health", "INTEGER NOT NULL DEFAULT 100"],
+  // Source platform: facebook | x | news | magazine | social | other. Pages and
+  // groups keep `kind`; everything non-Facebook is fetched by URL/feed.
+  ["platform", "TEXT NOT NULL DEFAULT 'facebook'"],
 ];
 
 /** Advertisement-slot columns added to `settings` (nullable raw ad HTML). */
@@ -236,12 +240,96 @@ export async function ensureDeskColumns(client: Client): Promise<void> {
   }
 }
 
+/**
+ * Idempotently seed the general editorial categories.
+ *
+ * `seedDefaults` only writes category rows on a FRESH database, so existing
+ * (production, synced, or desktop) databases would never gain the general
+ * categories — and without them the classifier has no target slugs for the
+ * helping/inspiration/etc. posts it keeps detecting. `INSERT OR IGNORE` keeps
+ * this safe to run on every `ensureSchema`/startup/deploy.
+ */
+export async function ensureGeneralCategories(client: Client): Promise<void> {
+  const now = new Date().toISOString();
+  for (const cat of GENERAL_CATEGORY_SEED) {
+    await client.execute({
+      sql: `INSERT OR IGNORE INTO category_configs
+        (slug, display_name_bn, display_name_en, description_bn, description_en,
+         is_active, sort_order, dot, config, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
+      args: [
+        cat.slug,
+        cat.displayNameBn,
+        cat.displayNameEn,
+        cat.descriptionBn,
+        cat.descriptionEn,
+        cat.sortOrder,
+        `#${cat.dot}`,
+        JSON.stringify({
+          requires_double_approval: false,
+          show_content_warning: false,
+          auto_pending_review: false,
+          redaction_strict: "standard",
+          allow_identifying_details: true,
+          use_allegation_language: false,
+          keywords: cat.keywords,
+        }),
+        now,
+        now,
+      ],
+    });
+  }
+}
+
 /** Seed dot colors for the three built-in categories (#hex, CSS-ready). */
 const CATEGORY_DOT_DEFAULTS: Record<string, string> = {
   "child-sexual-abuse": "#2563eb",
   "extramarital-crime": "#d2202c",
   "missing-children": "#0d9488",
 };
+
+/**
+ * Keyword seed defaults for the three built-in categories. These mirror
+ * `CATEGORY_SEED.config.keywords` for FRESH databases created through (001
+ * migrations run in `ensureSchema` on empty DBs).
+ *
+ * Holder for the upgrade backfill: the classifier reads keywords ONLY from
+ * `category_configs.config.keywords`, and both the web admin and the desktop
+ * desk edit that field, so a hard-coded profile in the runner could never be
+ * tuned without a deploy. Existing databases stored configs without the field,
+ * so the seed list must be written into the row ONCE; afterwards operator edits
+ * win and this never runs again for a filled list.
+ */
+export async function ensureCategoryKeywords(client: Client): Promise<void> {
+  const now = new Date().toISOString();
+  const defaults = new Map<string, string[]>();
+  for (const c of CATEGORY_SEED) {
+    const kw = (c.config as { keywords?: string[] }).keywords;
+    if (kw && kw.length) defaults.set(c.slug, kw);
+  }
+  for (const c of GENERAL_CATEGORY_SEED) {
+    if (c.keywords && c.keywords.length) defaults.set(c.slug, c.keywords);
+  }
+  const rows = await client.execute("SELECT slug, config FROM category_configs");
+  for (const row of rows.rows) {
+    const slug = String(row.slug);
+    const kw = defaults.get(slug);
+    if (!kw || kw.length === 0) continue;
+    let cfg: Record<string, unknown> = {};
+    try {
+      cfg = JSON.parse(String((row as Record<string, unknown>).config ?? "{}")) as Record<string, unknown>;
+    } catch {
+      cfg = {};
+    }
+    const existing = Array.isArray(cfg.keywords) ? (cfg.keywords as unknown[]) : [];
+    if (existing.some((k) => typeof k === "string" && (k as string).trim())) continue;
+    cfg.keywords = kw;
+    await client.execute({
+      sql: "UPDATE category_configs SET config = ?, updated_at = ? WHERE slug = ?",
+      args: [JSON.stringify(cfg), now, slug],
+    });
+  }
+}
 
 /**
  * Upgrade helper: adds `category_configs.dot` (category accent color). The
@@ -262,6 +350,21 @@ export async function ensureCategoryDotColumn(client: Client): Promise<void> {
       sql: "UPDATE category_configs SET dot = ? WHERE slug = ? AND (dot IS NULL OR dot = '' OR substr(dot, 1, 1) != '#')",
       args: [hex, slug],
     });
+  }
+  // Admin-created categories from before the color era have no `dot`. Give each
+  // a deterministic palette pick (least-used first) so no section renders with
+  // a dead dark chip. Idempotent: empty dots only, operator colors untouched.
+  const colorlessRes = await client.execute("SELECT slug FROM category_configs WHERE dot IS NULL OR dot = ''");
+  const colorless = colorlessRes.rows.map((r) => String(r.slug));
+  if (colorless.length > 0) {
+    const takenRes = await client.execute("SELECT dot FROM category_configs WHERE dot IS NOT NULL AND dot <> ''");
+    const taken = takenRes.rows.map((r) => String(r.dot));
+    for (const [i, slug] of colorless.entries()) {
+      await client.execute({
+        sql: "UPDATE category_configs SET dot = ? WHERE slug = ?",
+        args: [pickCategoryDot([...taken, ...colorless.slice(0, i)]), slug],
+      });
+    }
   }
   await client.execute(
     "UPDATE category_configs SET dot = '#' || dot WHERE dot IS NOT NULL AND dot != '' AND substr(dot, 1, 1) != '#'",
@@ -397,6 +500,7 @@ export async function ensureSchema(client: Client, externalUrl?: string): Promis
   await ensureNoticesTable(client);
   await ensureCommentsTable(client);
   await ensureCommentsEmailColumn(client);
+  await ensureCommentsDislikesColumn(client);
   await ensureProviderApiKeyColumn(client);
   await ensureProviderHealthColumns(client);
   await ensureDynamicProviderKeys(client);
@@ -413,6 +517,8 @@ export async function ensureSchema(client: Client, externalUrl?: string): Promis
   await ensureMediaStorageColumn(client);
   await ensureMediaObjectsTable(client);
   await seedDefaults(client, nowIso());
+  await ensureGeneralCategories(client);
+  await ensureCategoryKeywords(client);
   lastSchemaSig = sig;
 }
 
@@ -667,6 +773,7 @@ CREATE TABLE IF NOT EXISTS comments (
   author TEXT NOT NULL,
   body TEXT NOT NULL,
   likes INTEGER NOT NULL DEFAULT 0,
+  dislikes INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','blocked')),
   created_at TEXT NOT NULL
 );
@@ -681,6 +788,15 @@ export async function ensureCommentsEmailColumn(client: Client): Promise<void> {
   const existing = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));
   if (!existing.has("email")) {
     await client.execute("ALTER TABLE comments ADD COLUMN email TEXT");
+  }
+}
+
+/** Adds comments.dislikes (reader vote) to older databases. Idempotent. */
+export async function ensureCommentsDislikesColumn(client: Client): Promise<void> {
+  const info = await client.execute("PRAGMA table_info(comments)");
+  const existing = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));
+  if (!existing.has("dislikes")) {
+    await client.execute("ALTER TABLE comments ADD COLUMN dislikes INTEGER NOT NULL DEFAULT 0");
   }
 }
 

@@ -10,6 +10,8 @@ interface AppConfig {
   show_ads: boolean;
   show_rewrite_engine: boolean;
   show_footer: boolean;
+  maintenance_mode: boolean;
+  ai_hero_images: boolean;
   theme_default: "light" | "dark";
   surge_threshold: number;
 }
@@ -21,6 +23,8 @@ const DEFAULTS: AppConfig = {
   show_ads: true,
   show_rewrite_engine: true,
   show_footer: true,
+  maintenance_mode: false,
+  ai_hero_images: true,
   theme_default: "light",
   surge_threshold: 12,
 };
@@ -32,6 +36,7 @@ const ITEMS: Array<{ key: keyof AppConfig; label: string; hint: string }> = [
   { key: "show_ads", label: "বিজ্ঞাপন স্লট", hint: "সব ad slot জায়গা" },
   { key: "show_rewrite_engine", label: "রিরাইট ইঞ্জিন ব্যাজ", hint: "ডেস্কটপ অ্যাপ প্রচার-কার্ড" },
   { key: "show_footer", label: "ফুটার", hint: "নিচের ফুটার প্যানেল" },
+  { key: "ai_hero_images", label: "AI Fallback Image", hint: "মিডিয়া ছাড়া পোস্টে AI হিরো ছবি (Gemini)" },
 ];
 
 /** ওয়েবসাইটে কোন সেকশন দৃশ্যমান হবে — ডেস্কটপ Settings-এর "সাইট ও বিজ্ঞাপন" ট্যাবের সহোদর। */
@@ -119,6 +124,27 @@ export function VisibilityPanel() {
           </label>
         ))}
       </div>
+
+      <label className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-alizarin/45 bg-alizarin/5 px-3 py-2.5">
+        <span className="min-w-0">
+          <span className="block text-[13px] font-bold text-alizarin">{cfg.maintenance_mode ? "মেইনটেন্যান্স চলছে" : "মেইনটেন্যান্স মোড"}</span>
+          <span className="block text-[10.5px] text-ink-soft">
+            চালু করলে সাধারণ দর্শকরা মেইনটেন্যান্স পেজ দেখবে; লগ-ইন করা অ্যাডমিনদের জন্য সাইট খোলা থাকবে।
+          </span>
+        </span>
+        <button
+          type="button"
+          onClick={() => toggle("maintenance_mode")}
+          className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${cfg.maintenance_mode ? "bg-alizarin" : "bg-ink/25"}`}
+          aria-pressed={cfg.maintenance_mode === true}
+          aria-label="মেইনটেন্যান্স মোড"
+        >
+          <span
+            className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all"
+            style={{ left: cfg.maintenance_mode ? 18 : 2 }}
+          />
+        </button>
+      </label>
 
       <div className="mt-3 flex flex-wrap items-end gap-3">
         <label className="block">

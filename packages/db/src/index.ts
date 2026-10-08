@@ -37,7 +37,7 @@ import type {
 import type { InValue } from "@libsql/client";
 import { randomUUID } from "node:crypto";
 import { getClient, nowIso } from "./client";
-import { mapCategory, mapNotice, mapPost, parseJson } from "./rows";
+import { mapCategory, mapNotice, mapPost, parseJson, pickCategoryDot } from "./rows";
 
 /** Fallback remote-media storage policy (settings.media_storage_json). */
 export const DEFAULT_MEDIA_STORAGE: MediaStorageConfig = {
@@ -73,6 +73,8 @@ export const DEFAULT_APP_CONFIG: SiteAppConfig = {
   show_ads: true,
   show_rewrite_engine: true,
   show_footer: true,
+  maintenance_mode: false,
+  ai_hero_images: true,
   theme_default: "light",
   surge_threshold: 12,
 };
@@ -448,6 +450,15 @@ export async function createCategory(input: {
 }): Promise<void> {
   const client = getClient();
   const now = nowIso();
+  const existing = (await client.execute("SELECT dot, sort_order FROM category_configs")).rows as unknown as Array<{
+    dot: string | null;
+    sort_order: number | null;
+  }>;
+  // No color? Pick the palette entry fewest other categories use. No position?
+  // Append after the current last section so admin-created categories never
+  // collide with the seeded order or clobber an operator-assigned rank.
+  const dot = normalizeCategoryDot(input.dot) ?? pickCategoryDot(existing.map((r) => r.dot));
+  const sortOrder = input.sortOrder ?? Math.max(0, ...existing.map((r) => Number(r.sort_order ?? 0))) + 1;
   const defaultConfig: CategoryConfig = {
     requires_double_approval: false,
     show_content_warning: false,
@@ -471,8 +482,8 @@ export async function createCategory(input: {
       input.descriptionBn ?? "",
       input.descriptionEn ?? "",
       input.isActive === undefined ? 1 : input.isActive ? 1 : 0,
-      input.sortOrder ?? 99,
-      normalizeCategoryDot(input.dot),
+      sortOrder,
+      dot,
       input.showInFooter === undefined ? 1 : input.showInFooter ? 1 : 0,
       JSON.stringify(defaultConfig),
       now,
@@ -1640,19 +1651,55 @@ function mapComment(row: Record<string, unknown>): Comment {
     body: String(row.body),
     email: row.email ? String(row.email) : null,
     likes: Number(row.likes ?? 0),
+    dislikes: Number(row.dislikes ?? 0),
     status: (String(row.status ?? "pending") as CommentStatus),
     created_at: String(row.created_at),
   };
 }
 
-/** Public — only approved comments for one post, newest first. */
-export async function getPostComments(postId: string): Promise<Comment[]> {
+/**
+ * Public — newest approved comments for one post. Defaults to the 10 most
+ * recent (the post page shows a total counter beside them); `getPostCommentCount`
+ * supplies the total.
+ */
+export async function getPostComments(postId: string, limit = 10): Promise<Comment[]> {
   const client = getClient();
   const res = await client.execute({
-    sql: "SELECT * FROM comments WHERE post_id = ? AND status = 'approved' ORDER BY created_at DESC LIMIT 200",
-    args: [postId],
+    sql: "SELECT * FROM comments WHERE post_id = ? AND status = 'approved' ORDER BY created_at DESC LIMIT ?",
+    args: [postId, limit],
   });
   return res.rows.map((r) => mapComment(r as Record<string, unknown>));
+}
+
+/** Public — total number of approved comments on a post (counter beside the list). */
+export async function getPostCommentCount(postId: string): Promise<number> {
+  const client = getClient();
+  const res = await client.execute({
+    sql: "SELECT COUNT(*) AS n FROM comments WHERE post_id = ? AND status = 'approved'",
+    args: [postId],
+  });
+  const row = res.rows[0] as Record<string, unknown> | undefined;
+  return Number(row?.n ?? 0);
+}
+
+/** Public — one reader like/dislike per call; returns the fresh counters. */
+export async function voteComment(
+  id: string,
+  vote: "like" | "dislike",
+): Promise<{ likes: number; dislikes: number } | null> {
+  const client = getClient();
+  const column = vote === "like" ? "likes" : "dislikes";
+  await client.execute({
+    sql: `UPDATE comments SET ${column} = ${column} + 1 WHERE id = ? AND status = 'approved'`,
+    args: [id],
+  });
+  const res = await client.execute({
+    sql: "SELECT likes, dislikes FROM comments WHERE id = ?",
+    args: [id],
+  });
+  const row = res.rows[0] as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return { likes: Number(row.likes ?? 0), dislikes: Number(row.dislikes ?? 0) };
 }
 
 /** Admin/moderation — every comment joined with its parent post title/category. */
@@ -1695,6 +1742,7 @@ export async function createComment(input: {
     body: input.body.trim(),
     email: input.email?.trim() || null,
     likes: 0,
+    dislikes: 0,
     status: "pending",
     created_at: created,
   };

@@ -112,6 +112,20 @@ export async function getEnvFromVault(): Promise<Record<string, string>> {
   if (snap.github_pat && snap.github_repo) {
     out.STORAGE_ADAPTER = "github";
   }
+  // Raw imports live under their real ENV name (they have no canonical vault
+  // key), so surface every extra vault entry verbatim. Without this, keys pasted
+  // in through "Import .env" (R2_*, ADMIN_AUTH_SECRET, ANTHROPIC_API_KEY, …)
+  // would sit in the vault but never reach a pipeline run.
+  try {
+    for (const raw of await listVaultNames()) {
+      if ((CREDENTIAL_NAMES as readonly string[]).includes(raw)) continue;
+      if (out[raw]) continue;
+      const v = await getCredentialRaw(raw);
+      if (v) out[raw] = v;
+    }
+  } catch {
+    /* vault unavailable — canonical env is still returned */
+  }
   return out;
 }
 
@@ -178,6 +192,11 @@ function hasTauri(): boolean {
 }
 
 export async function getCredential(name: CredentialName): Promise<string | null> {
+  return getCredentialRaw(name);
+}
+
+/** Read any vault entry by its raw name (also covers imported `.env` keys). */
+export async function getCredentialRaw(name: string): Promise<string | null> {
   if (!hasTauri()) return null;
   try {
     await ensureOpen();
@@ -187,11 +206,27 @@ export async function getCredential(name: CredentialName): Promise<string | null
   }
 }
 
+/** Every key present in the encrypted vault (canonical credential names + raw imports). */
+export async function listVaultNames(): Promise<string[]> {
+  if (!hasTauri()) return [];
+  try {
+    await ensureOpen();
+    return await invoke<string[]>("vault_names");
+  } catch {
+    return [];
+  }
+}
+
 export async function hasCredential(name: CredentialName): Promise<boolean> {
   return (await getCredential(name)) !== null;
 }
 
 export async function storeCredential(name: CredentialName, value: string): Promise<void> {
+  await storeCredentialRaw(name, value);
+}
+
+/** Store any vault entry by raw name (used by `.env` import for unknown keys). */
+export async function storeCredentialRaw(name: string, value: string): Promise<void> {
   await ensureOpen();
   await invoke("vault_set", { name, value });
   invalidateSnapshot();
@@ -222,6 +257,90 @@ export async function listConfigured(): Promise<Record<CredentialName, boolean>>
 export function envNameFor(name: CredentialName): string | null {
   if (SKIP_ENV.includes(name)) return null;
   return ENV_MAP[name] ?? name;
+}
+
+/** Reverse lookup: real ENV name → canonical vault key (for `.env` import). */
+const ENV_TO_VAULT: Record<string, CredentialName> = (() => {
+  const map: Record<string, CredentialName> = {};
+  for (const name of CREDENTIAL_NAMES) {
+    if (SKIP_ENV.includes(name)) continue;
+    map[ENV_MAP[name] ?? name] = name;
+  }
+  return map;
+})();
+
+/** Parse a `.env` blob into key/value pairs (ignores comments + blank lines). */
+export function parseDotenv(text: string): Array<{ key: string; value: string }> {
+  const rows: Array<{ key: string; value: string }> = [];
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq <= 0) continue;
+    const key = line.slice(0, eq).trim();
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) continue;
+    let value = line.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"') && value.length >= 2) ||
+      (value.startsWith("'") && value.endsWith("'") && value.length >= 2)
+    ) {
+      value = value.slice(1, -1);
+    }
+    rows.push({ key, value });
+  }
+  return rows;
+}
+
+/**
+ * Import a `.env` blob into the vault. Known keys are folded onto their
+ * canonical vault entry (so `TURSO_DATABASE_URL=…` populates `turso_url`, which
+ * is what `isCloudSync` reads); unknown keys are stored under their own ENV
+ * name and passed straight through by `getEnvFromVault`.
+ */
+export async function importEnv(text: string): Promise<{ stored: string[]; skipped: string[] }> {
+  const stored: string[] = [];
+  const skipped: string[] = [];
+  for (const { key, value } of parseDotenv(text)) {
+    if (!value) {
+      skipped.push(key);
+      continue;
+    }
+    try {
+      const vaultName = ENV_TO_VAULT[key];
+      if (vaultName) await storeCredential(vaultName, value);
+      else await storeCredentialRaw(key, value);
+      stored.push(key);
+    } catch {
+      skipped.push(key);
+    }
+  }
+  return { stored, skipped };
+}
+
+/** Serialize the whole vault back to `.env` form (canonical keys first). */
+export async function exportEnv(): Promise<string> {
+  const lines: string[] = [];
+  const seen = new Set<string>();
+  for (const name of CREDENTIAL_NAMES) {
+    if (SKIP_ENV.includes(name)) continue;
+    const envName = ENV_MAP[name] ?? name;
+    if (seen.has(envName)) continue;
+    const v = await getCredentialRaw(name);
+    if (v) {
+      lines.push(`${envName}=${v}`);
+      seen.add(envName);
+    }
+  }
+  for (const name of await listVaultNames()) {
+    if ((CREDENTIAL_NAMES as readonly string[]).includes(name)) continue;
+    if (seen.has(name) || SKIP_ENV.includes(name as CredentialName)) continue;
+    const v = await getCredentialRaw(name);
+    if (v) {
+      lines.push(`${name}=${v}`);
+      seen.add(name);
+    }
+  }
+  return lines.join("\n");
 }
 
 /** Every stored secret with its real env name + value (used by the vault view). */

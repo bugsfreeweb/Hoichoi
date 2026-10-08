@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient, nowIso, mapSource, listCategories, getSourceCategories } from "@hoichoi/db";
 import type { CategorySlug } from "@hoichoi/shared-types";
+import { normalizePlatform } from "@hoichoi/shared-types";
 import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
 
 export async function GET() {
@@ -21,6 +22,8 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as {
     pageUrl?: string;
     pageName?: string;
+    platform?: string;
+    kind?: string;
     category?: CategorySlug;
     categories?: CategorySlug[];
     allCategories?: boolean;
@@ -42,11 +45,13 @@ export async function POST(req: NextRequest) {
 
   const client = getClient();
   const id = crypto.randomUUID();
+  const platform = normalizePlatform(body.platform);
+  const kind = body.kind === "group" ? "group" : "page";
   try {
     await client.execute({
       sql: `
-        INSERT INTO sources (id, page_url, page_name, category, is_verified, is_active, created_at)
-        VALUES (?, ?, ?, ?, ?, 1, ?)
+        INSERT INTO sources (id, page_url, page_name, category, is_verified, is_active, platform, kind, created_at)
+        VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)
       `,
       args: [
         id,
@@ -54,6 +59,8 @@ export async function POST(req: NextRequest) {
         body.pageName?.trim() || body.pageUrl,
         chosen[0]!,
         body.isVerified ? 1 : 0,
+        platform,
+        kind,
         nowIso(),
       ],
     });
@@ -84,6 +91,8 @@ export async function PUT(req: NextRequest) {
     sourceId?: string;
     pageUrl?: string;
     pageName?: string;
+    platform?: string;
+    kind?: string;
     category?: CategorySlug;
     categories?: CategorySlug[];
     isVerified?: boolean;
@@ -108,6 +117,14 @@ export async function PUT(req: NextRequest) {
   if (body.pageName !== undefined) {
     sets.push("page_name = ?");
     args.push(body.pageName.trim());
+  }
+  if (body.platform !== undefined) {
+    sets.push("platform = ?");
+    args.push(normalizePlatform(body.platform));
+  }
+  if (body.kind !== undefined) {
+    sets.push("kind = ?");
+    args.push(body.kind === "group" ? "group" : "page");
   }
 
   // A request that carries no `categories` key at all is a partial edit and

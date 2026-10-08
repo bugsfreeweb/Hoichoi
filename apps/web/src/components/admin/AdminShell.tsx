@@ -101,17 +101,17 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
   return (
     <div className="admin-console bg-night-grid min-h-dvh text-[#e9e6da]">
       {/* ============ TOP BAR ============ */}
-      <header className="sticky top-0 z-50 border-b border-white/8 bg-[#050608]/90 backdrop-blur">
+      <header className="sticky top-0 z-50 border-b border-ink/15 bg-paper-deep/90 backdrop-blur">
         <div className="mx-auto flex h-14 w-full items-center justify-between gap-4 px-4 md:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-alizarin font-serif-bn text-[15px] font-black text-white">
               হ
             </span>
             <div className="min-w-0">
-              <p className="truncate text-[14px] leading-tight font-bold text-white">
+              <p className="truncate text-[14px] leading-tight font-bold text-ink">
                 হৈচৈ কন্ট্রোল
               </p>
-              <p className="font-mono-x text-[8.5px] tracking-[0.2em] text-white/35 uppercase">
+              <p className="font-mono-x text-[8.5px] tracking-[0.2em] text-ink-soft uppercase">
                 WEB TWIN · DESK IS PRIMARY
               </p>
             </div>
@@ -119,7 +119,7 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
           <div className="flex shrink-0 items-center gap-3">
             <Link
               href="/"
-              className="hidden font-mono-x text-[9.5px] tracking-[0.16em] text-white/40 uppercase transition-colors hover:text-white sm:inline"
+              className="hidden font-mono-x text-[9.5px] tracking-[0.16em] text-ink-soft uppercase transition-colors hover:text-ink sm:inline"
             >
               পাবলিক সাইট ↘
             </Link>

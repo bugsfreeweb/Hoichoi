@@ -56,6 +56,7 @@ export default async function HomePage({
         dups={0}
         featuredImg={featured ? mediaUrl(featured) : null}
         featuredTitle={featured?.title_bn ?? null}
+        featuredCategory={featured ? categoryLabel(featured.category, catRows) : null}
       />
       )}
 

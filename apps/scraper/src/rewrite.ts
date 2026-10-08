@@ -86,6 +86,8 @@ export async function rewritePost(input: {
   sourcePageName: string;
   category: CategorySlug;
   categoryConfig: CategoryConfig;
+  categoryNameBn?: string;
+  categoryDescriptionBn?: string;
   originalAuthorName?: string | null;
   policeHelpline?: string;
   childHelpline?: string;
@@ -101,6 +103,8 @@ export async function rewritePost(input: {
     sourcePageName: input.sourcePageName,
     category: input.category,
     categoryConfig: input.categoryConfig,
+    categoryNameBn: input.categoryNameBn,
+    categoryDescriptionBn: input.categoryDescriptionBn,
     originalAuthorName: input.originalAuthorName ?? null,
     temperature: input.temperature,
   };

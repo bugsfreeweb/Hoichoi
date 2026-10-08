@@ -13,7 +13,8 @@ export function CategoryBadge({
 }) {
   const meta = cats?.find((c) => c.slug === slug);
   const label = meta?.displayNameBn ?? slug;
-  const color = meta?.dot ? `#${meta.dot}` : CATEGORY_DEFAULT_COLORS[slug] ?? "#4a4a4a";
+  // CategoryMeta.dot is already CSS-ready `#hex`; the built-in fallback is too.
+  const color = meta?.dot ?? (CATEGORY_DEFAULT_COLORS[slug] ?? "#4a4a4a");
   return (
     <Link
       href={`/category/${slug}`}

@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
     dot?: string;
     sortOrder?: number;
     showInFooter?: boolean;
+    config?: { keywords?: string[] };
   } | null;
   if (!body?.slug || !body.displayNameBn || !body.displayNameEn) {
     return NextResponse.json({ error: "slug, displayNameBn, displayNameEn required" }, { status: 400 });
@@ -58,6 +59,8 @@ export async function POST(req: NextRequest) {
       dot: body.dot?.trim() || undefined,
       sortOrder: body.sortOrder,
       showInFooter: body.showInFooter,
+      // Admin-tuned keyword signals feed the classifier's detection (classify.ts).
+      config: { keywords: (body.config?.keywords ?? []).map((k) => k.trim()).filter(Boolean) },
     });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "create failed" }, { status: 500 });
@@ -94,6 +97,16 @@ export async function PUT(req: NextRequest) {
       sortOrder: typeof body.fields.sortOrder === "number" ? body.fields.sortOrder : undefined,
       showInFooter: typeof body.fields.showInFooter === "boolean" ? body.fields.showInFooter : undefined,
       isActive: typeof body.fields.isActive === "boolean" ? body.fields.isActive : undefined,
+      config: (() => {
+        const cfg = body.fields.config as { keywords?: unknown } | undefined;
+        if (cfg && Array.isArray(cfg.keywords)) {
+          return {
+            ...cfg,
+            keywords: cfg.keywords.map((k) => String(k).trim()).filter(Boolean),
+          };
+        }
+        return undefined;
+      })(),
     });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "update failed" }, { status: 500 });

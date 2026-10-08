@@ -1112,3 +1112,14 @@ html[data-theme="light"] .admin-console .border-white\/30 { border-color: rgba(2
 html[data-theme="light"] .admin-console .hover\:bg-white\/15:hover { background-color: rgba(26, 20, 13, 0.15); }
 html[data-theme="light"] .admin-console .hover\:border-white\/40:hover { border-color: rgba(26, 20, 13, 0.4); }
 html[data-theme="light"] .admin-console .text-paper { color: #f3eee1; }
+
+/* Ad strip hover used a hardcoded dark fill (#241d12), which left the
+   bandline text dark-on-dark once the light theme flipped the band to a light
+   surface. Mix a token-driven wash instead: it darkens the light band and
+   lightens the dark band, so the label stays readable in both themes. */
+.ad-strip {
+  transition: background-color 0.3s ease;
+}
+.ad-strip:hover {
+  background-color: color-mix(in srgb, var(--color-bandline) 10%, var(--color-band));
+}

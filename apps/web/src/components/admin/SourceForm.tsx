@@ -1,13 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import { normalizePlatform, type SourcePlatform } from "@hoichoi/shared-types";
 
 type CategoryOption = { slug: string; label: string };
+
+const PLATFORMS: { value: SourcePlatform; label: string }[] = [
+  { value: "facebook", label: "Facebook" },
+  { value: "x", label: "X / Twitter" },
+  { value: "news", label: "নিউজ ওয়েবসাইট" },
+  { value: "magazine", label: "ম্যাগাজিন" },
+  { value: "social", label: "অন্যান্য সোশ্যাল" },
+  { value: "other", label: "অন্যান্য" },
+];
 
 export function SourceForm({ categories }: { categories: CategoryOption[] }) {
   const [form, setForm] = useState({
     pageUrl: "",
     pageName: "",
+    platform: "facebook" as SourcePlatform,
+    kind: "page" as "page" | "group",
     categories: [] as string[],
     allCategories: false,
   });
@@ -31,7 +43,7 @@ export function SourceForm({ categories }: { categories: CategoryOption[] }) {
       }
       if (!res.ok) throw new Error(data.error ?? "failed");
       setStatus("ok");
-      setForm({ pageUrl: "", pageName: "", categories: [], allCategories: false });
+      setForm({ pageUrl: "", pageName: "", platform: "facebook", kind: "page", categories: [], allCategories: false });
     } catch {
       setStatus("err");
     }
@@ -50,17 +62,44 @@ export function SourceForm({ categories }: { categories: CategoryOption[] }) {
   return (
     <form onSubmit={onSubmit} className="grid gap-3.5">
       <label className="block">
-        <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">পেজ URL</span>
+        <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">প্ল্যাটফর্ম</span>
+        <select
+          className={field}
+          value={form.platform}
+          onChange={(e) => setForm({ ...form, platform: normalizePlatform(e.target.value) })}
+        >
+          {PLATFORMS.map((p) => (
+            <option key={p.value} value={p.value}>{p.label}</option>
+          ))}
+        </select>
+      </label>
+      {form.platform === "facebook" && (
+        <label className="block">
+          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">ধরন</span>
+          <select
+            className={field}
+            value={form.kind}
+            onChange={(e) => setForm({ ...form, kind: e.target.value === "group" ? "group" : "page" })}
+          >
+            <option value="page">পেজ</option>
+            <option value="group">গ্রুপ</option>
+          </select>
+        </label>
+      )}
+      <label className="block">
+        <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+          {form.platform === "facebook" ? "পেজ URL" : "সোর্স URL / ফিড"}
+        </span>
         <input
           required
           className={field}
-          placeholder="https://www.facebook.com/pagename"
+          placeholder={form.platform === "facebook" ? "https://www.facebook.com/pagename" : "https://example.com/feed"}
           value={form.pageUrl}
           onChange={(e) => setForm({ ...form, pageUrl: e.target.value })}
         />
       </label>
       <label className="block">
-        <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">পেজ নাম</span>
+        <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">নাম</span>
         <input
           className={field}
           placeholder="ঐচ্ছিক"

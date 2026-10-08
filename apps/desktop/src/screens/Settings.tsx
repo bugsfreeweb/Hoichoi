@@ -127,6 +127,7 @@ const VIS_ITEMS: Array<{ key: keyof SiteAppConfig; label: string; hint: string }
   { key: "show_ads", label: "বিজ্ঞাপন স্লট", hint: "সব ad slot জায়গা" },
   { key: "show_rewrite_engine", label: "রিরাইট ইঞ্জিন ব্যাজ", hint: "ডেস্কটপ অ্যাপ প্রচার-কার্ড" },
   { key: "show_footer", label: "ফুটার", hint: "নিচের ফুটার প্যানেল" },
+  { key: "ai_hero_images", label: "AI Fallback Image", hint: "মিডিয়া ছাড়া পোস্টে AI হিরো ছবি (Gemini)" },
 ];
 
 interface SiteAppConfig {
@@ -136,6 +137,8 @@ interface SiteAppConfig {
   show_ads: boolean;
   show_rewrite_engine: boolean;
   show_footer: boolean;
+  maintenance_mode: boolean;
+  ai_hero_images: boolean;
   theme_default: "light" | "dark";
   surge_threshold: number;
 }
@@ -147,6 +150,8 @@ const VIS_DEFAULTS: SiteAppConfig = {
   show_ads: true,
   show_rewrite_engine: true,
   show_footer: true,
+  maintenance_mode: false,
+  ai_hero_images: true,
   theme_default: "dark",
   surge_threshold: 12,
 };
@@ -1207,6 +1212,28 @@ export default function Settings({
                   </label>
                 ))}
               </div>
+              <label className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-alizarin/45 bg-alizarin/10 px-3 py-2.5">
+                <span className="min-w-0">
+                  <span className="block text-[12.5px] font-bold text-alizarin">
+                    {vis.maintenance_mode ? "মেইনটেন্যান্স চলছে" : "মেইনটেন্যান্স মোড"}
+                  </span>
+                  <span className="block text-[10.5px] text-white/40">
+                    চালু করলে সাধারণ দর্শকরা মেইনটেন্যান্স পেজ দেখবে; লগ-ইন করা অ্যাডমিনদের জন্য সাইট খোলা থাকবে।
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setVis({ ...vis, maintenance_mode: !vis.maintenance_mode })}
+                  className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${vis.maintenance_mode ? "bg-alizarin" : "bg-white/15"}`}
+                  aria-pressed={vis.maintenance_mode === true}
+                  aria-label="মেইনটেন্যান্স মোড"
+                >
+                  <span
+                    className="absolute top-0.5 h-4 w-4 rounded-full bg-night transition-all"
+                    style={{ left: vis.maintenance_mode ? 18 : 2 }}
+                  />
+                </button>
+              </label>
               <div className="mt-3 flex flex-wrap items-end gap-3">
                 <label className="block">
                   <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">ডিফল্ট থিম</span>

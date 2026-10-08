@@ -10,7 +10,7 @@ export async function Footer() {
   const siteName = settings.site_name || BRAND.en;
   const about =
     settings.footer_about_bn ||
-    `${BRAND.tagline} — উন্মুক্ত ফেসবুক সূত্র থেকে স্বয়ংক্রিয়ভাবে সংগৃহীত, যাচাইকৃত ও সম্পাদনাগতভাবে প্রকাশিত প্রতিবেদনের সংবাদ-ধাঁচের সাইট।`;
+    `${BRAND.tagline} — ফেসবুক পেজ ও গ্রুপ, অনলাইন সংবাদপত্র, ম্যাগাজিন এবং সামাজিক মাধ্যমে ছড়িয়ে পড়া গল্প সংগ্রহ করে যাচাই, ডুপ্লিকেট-ফিল্টার ও এআই-সম্পাদনার পর বাংলায় প্রকাশিত সংবাদ-ধাঁচের সাইট।`;
   // The submit link is the site's only growth channel, so it is surfaced in the
   // footer nav and as its own call-to-action. It previously existed only at
   // /submit with no inbound link, so visitors could never find it.
@@ -28,37 +28,32 @@ export async function Footer() {
       <div className="mx-auto max-w-[1400px] px-4 py-12 md:px-8">
         <div className="grid gap-10 md:grid-cols-12">
           <div className="md:col-span-5">
-            <span className="group inline-flex items-center gap-2.5">
+            <Link href="/" className="group inline-flex items-center gap-2.5 group-hover:opacity-80">
               <img
                 src={BRAND.mark}
                 alt=""
-                className="h-9 w-9 rounded-full object-cover ring-1 ring-black/10"
+                className="h-9 w-9 rounded-full object-cover ring-1 ring-black/10 transition-transform duration-300 group-hover:scale-105"
               />
               <span className="font-serif-bn text-[34px] leading-none font-black text-ink">
                 {BRAND.bn}
                 <span className="text-alizarin">।</span>
               </span>
-            </span>
+            </Link>
             <p className="mt-4 max-w-xs text-[12.5px] leading-relaxed text-ink-soft">
               {about}
             </p>
           </div>
-          <div className="md:col-span-3">
+          <div className="md:col-span-4">
             <p className="font-mono-x text-[10px] tracking-[0.24em] text-ink-soft uppercase">
               বিভাগসমূহ
             </p>
-            <ul className="mt-4 space-y-2.5 text-[13px] font-medium">
-              {footerLinks.map((cat) => (
-                <li key={cat.slug} className="flex items-center gap-2">
-                  <span className="h-1 w-1 rotate-45 bg-alizarin" />
-                  <Link href={`/category/${cat.slug}`} className="hover:text-alizarin">
-                    {cat.displayNameBn || cat.displayNameEn}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            {footerLinks.length === 0 ? (
+              <p className="mt-4 text-[13px] text-ink-soft">কোনো বিভাগ এখনো যোগ হয়নি।</p>
+            ) : (
+              <CategoryColumns links={footerLinks} />
+            )}
           </div>
-          <div className="md:col-span-4">
+          <div className="md:col-span-3">
             <div className="border border-alizarin/40 bg-alizarin/[0.06] p-5">
               <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">
                 আপনি কি এমন কোনো ফেসবুক পেজ বা গ্রুপ জানেন?
@@ -106,5 +101,42 @@ export async function Footer() {
         </div>
       </div>
     </footer>
+  );
+}
+
+/**
+ * Footer category list, split into vertical columns of at most 10 links each.
+ *
+ * With ≤10 categories the single column is centered under the heading; past 10
+ * the list wraps into a second column (then a third, and so on), so adding
+ * categories never makes the list scroll or overflow the footer.
+ */
+function CategoryColumns({
+  links,
+  maxPerColumn = 10,
+}: {
+  links: Array<{ slug: string; displayNameBn: string; displayNameEn: string }>;
+  maxPerColumn?: number;
+}) {
+  const columns: typeof links[] = [];
+  for (let i = 0; i < links.length; i += maxPerColumn) {
+    columns.push(links.slice(i, i + maxPerColumn));
+  }
+  const centered = links.length <= maxPerColumn;
+  return (
+    <div className={`mt-4 flex gap-x-8 ${centered ? "justify-center" : ""}`}>
+      {columns.map((column, ci) => (
+        <ul key={ci} className="space-y-2.5 text-[13px] font-medium">
+          {column.map((cat) => (
+            <li key={cat.slug} className="flex items-center gap-2">
+              <span className="h-1 w-1 rotate-45 bg-alizarin" />
+              <Link href={`/category/${cat.slug}`} className="hover:text-alizarin">
+                {cat.displayNameBn || cat.displayNameEn}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ))}
+    </div>
   );
 }

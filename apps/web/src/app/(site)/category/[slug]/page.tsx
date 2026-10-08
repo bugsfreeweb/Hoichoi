@@ -40,7 +40,7 @@ export default async function CategoryPage({
   ]);
   if (!cat) notFound();
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const color = cat.dot ? `#${cat.dot}` : "#0a0c10";
+  const color = cat.dot ? cat.dot : "#0a0c10";
 
   return (
     <section className="mx-auto max-w-site px-4 py-14 md:px-8">

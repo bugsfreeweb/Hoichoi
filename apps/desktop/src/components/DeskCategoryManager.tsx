@@ -12,6 +12,7 @@ interface Form {
   descriptionEn: string;
   dot: string;
   showInFooter: boolean;
+  keywords: string;
 }
 
 const EMPTY: Form = {
@@ -22,7 +23,10 @@ const EMPTY: Form = {
   descriptionEn: "",
   dot: "#d64541",
   showInFooter: true,
+  keywords: "",
 };
+
+const splitKeywords = (raw: string): string[] => raw.split(",").map((k) => k.trim()).filter(Boolean);
 
 /** Category CRUD for the desk — mirrors the web admin's CategoryManager, dark console styling. */
 export default function DeskCategoryManager() {
@@ -73,6 +77,7 @@ export default function DeskCategoryManager() {
         descriptionEn: form.descriptionEn || undefined,
         dot: form.dot || undefined,
         showInFooter: form.showInFooter,
+        keywords: splitKeywords(form.keywords),
       });
       resetForm();
       await refresh();
@@ -95,6 +100,7 @@ export default function DeskCategoryManager() {
       descriptionEn: cat.descriptionEn ?? "",
       dot: cat.dot ?? "#d64541",
       showInFooter: cat.showInFooter ?? true,
+      keywords: (cat as { config?: { keywords?: string[] } }).config?.keywords?.join(", ") ?? "",
     });
   };
 
@@ -109,6 +115,7 @@ export default function DeskCategoryManager() {
         descriptionEn: editForm.descriptionEn,
         dot: editForm.dot || undefined,
         showInFooter: editForm.showInFooter,
+        keywords: splitKeywords(editForm.keywords),
       });
       setEditingSlug(null);
       setEditForm(null);
@@ -230,6 +237,21 @@ export default function DeskCategoryManager() {
               />
             </label>
           </div>
+          <label className="block">
+            <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+              চেনার কীওয়ার্ড (কমা দিয়ে আলাদা করুন)
+            </span>
+            <textarea
+              className="field mt-1 h-16 w-full resize-none text-[12px]"
+              value={form.keywords}
+              onChange={(e) => setForm({ ...form, keywords: e.target.value })}
+              placeholder="চিকিৎসা, হাসপাতাল, ডাক্তার"
+            />
+            <span className="mt-1 block text-[10px] leading-4 text-white/40">
+              ক্লাসিফায়ার এসব কীওয়ার্ড দিয়ে পোস্টের বিভাগ নির্ধারণ করে — Web অ্যাডমিন ও এই ডেস্ক উভয়
+              থেকেই ঠিক করা যায়। খালি রাখলে শুধু ডিফল্ট সীড ব্যবহার হবে।
+            </span>
+          </label>
           <label className="flex items-center gap-2 text-[12.5px] text-white/70">
             <input
               type="checkbox"
@@ -310,6 +332,16 @@ export default function DeskCategoryManager() {
                     </label>
                     <span className="font-mono-x text-[10px] text-ink-soft">স্লাগ: {cat.slug}</span>
                   </div>
+                  <label className="block">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                      চেনার কীওয়ার্ড (কমা দিয়ে)
+                    </span>
+                    <textarea
+                      className="field mt-1 h-16 w-full resize-none text-[12px]"
+                      value={editForm.keywords}
+                      onChange={(e) => setEditForm({ ...editForm, keywords: e.target.value })}
+                    />
+                  </label>
                   <div className="flex justify-end gap-2">
                     <button
                       className="btn-ghost"
@@ -343,6 +375,14 @@ export default function DeskCategoryManager() {
                     <p className="mt-1 font-mono-x text-[9px] tracking-wide text-white/35">
                       {cat.showInFooter ? "FOOTER: দেখানো হচ্ছে" : "FOOTER: লুকানো"}
                     </p>
+                    {(() => {
+                      const kw = (cat as { config?: { keywords?: string[] } }).config?.keywords ?? [];
+                      return kw.length > 0 ? (
+                        <p className="mt-1 line-clamp-1 font-mono-x text-[9px] tracking-wide text-lime/80">
+                          KEYWORDS: {kw.join(" · ")}
+                        </p>
+                      ) : null;
+                    })()}
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     <button

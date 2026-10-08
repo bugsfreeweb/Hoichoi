@@ -28,11 +28,15 @@ const Icons = {
 export function CommentsSection({
   postId,
   initial,
+  initialTotal,
 }: {
   postId: string;
   initial: Comment[];
+  initialTotal: number;
 }) {
   const [comments, setComments] = useState<Comment[]>(initial);
+  const [total, setTotal] = useState<number>(initialTotal);
+  const [votes, setVotes] = useState<Record<string, "like" | "dislike">>({});
   const [author, setAuthor] = useState("");
   const [email, setEmail] = useState("");
   const [body, setBody] = useState("");
@@ -42,7 +46,20 @@ export function CommentsSection({
   const [refreshError, setRefreshError] = useState(false);
   const [retry, setRetry] = useState(0);
 
-  useEffect(() => setComments(initial), [postId]);
+  useEffect(() => {
+    setComments(initial);
+    setTotal(initialTotal);
+  }, [postId]);
+
+  // One vote per comment per browser — a lightweight client-side guard.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("hoichoi_comment_votes");
+      if (raw) setVotes(JSON.parse(raw) as Record<string, "like" | "dislike">);
+    } catch {
+      /* private mode */
+    }
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -56,8 +73,9 @@ export function CommentsSection({
           signal: controller.signal,
         });
         if (!response.ok) throw new Error("Unavailable");
-        const data = (await response.json()) as { comments?: Comment[] };
+        const data = (await response.json()) as { comments?: Comment[]; total?: number };
         if (Array.isArray(data.comments)) setComments(data.comments);
+        if (typeof data.total === "number") setTotal(data.total);
         setRefreshError(false);
       } catch {
         if (!controller.signal.aborted) setRefreshError(true);
@@ -74,6 +92,40 @@ export function CommentsSection({
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [postId, retry]);
+
+  async function vote(comment: Comment, kind: "like" | "dislike") {
+    if (votes[comment.id]) return;
+    const next = { ...votes, [comment.id]: kind };
+    setVotes(next);
+    try {
+      localStorage.setItem("hoichoi_comment_votes", JSON.stringify(next));
+    } catch {
+      /* private mode */
+    }
+    // Optimistic — the endpoint returns authoritative counters.
+    setComments((list) =>
+      list.map((c) =>
+        c.id === comment.id
+          ? { ...c, likes: c.likes + (kind === "like" ? 1 : 0), dislikes: c.dislikes + (kind === "dislike" ? 1 : 0) }
+          : c,
+      ),
+    );
+    try {
+      const res = await fetch("/api/comments/vote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: comment.id, vote: kind }),
+      });
+      const data = (await res.json()) as { ok?: boolean; likes?: number; dislikes?: number };
+      if (data.ok && typeof data.likes === "number" && typeof data.dislikes === "number") {
+        setComments((list) =>
+          list.map((c) => (c.id === comment.id ? { ...c, likes: data.likes!, dislikes: data.dislikes! } : c)),
+        );
+      }
+    } catch {
+      /* keep optimistic value; next refresh reconciles */
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -110,7 +162,7 @@ export function CommentsSection({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-3 font-serif-bn text-[26px] font-black text-ink">
           {Icons.MessageCircle}
-          পাঠকের কথায় <span className="font-mono-x text-[13px] font-normal text-ink-soft">({toBn(comments.length)})</span>
+          পাঠকের কথায় <span className="font-mono-x text-[13px] font-normal text-ink-soft">({toBn(total)})</span>
         </h2>
         <span className="flex items-center gap-2 rounded-full border border-ink/20 px-3 py-1 text-[12px] text-ink-soft">
           {Icons.ShieldCheck}অনুমোদনের পর প্রকাশিত
@@ -118,6 +170,9 @@ export function CommentsSection({
       </div>
       <p className="mt-3 text-[13.5px] leading-relaxed text-ink-soft">
         মতামত দিন, ব্যক্তিগত আক্রমণ নয়। প্রতিটি নতুন মন্তব্য সম্পাদকীয় পর্যালোচনার পর প্রকাশ করা হয়।
+        {total > comments.length && (
+          <span className="ml-1 text-ink-soft/80">সর্বমোট {toBn(total)}টির মধ্যে সর্বশেষ {toBn(comments.length)}টি দেখানো হচ্ছে।</span>
+        )}
       </p>
 
       <form onSubmit={submit} className="mt-6 border border-ink/20 bg-paper-deep/40 p-5 sm:p-6">
@@ -220,6 +275,36 @@ export function CommentsSection({
             <p className="mt-3 text-[15px] leading-7 break-words whitespace-pre-wrap text-ink/85">
               {c.body}
             </p>
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void vote(c, "like")}
+                disabled={Boolean(votes[c.id])}
+                aria-pressed={votes[c.id] === "like"}
+                className={`flex items-center gap-1.5 border px-2.5 py-1 text-[12px] font-semibold transition-colors disabled:cursor-default ${
+                  votes[c.id] === "like"
+                    ? "border-cat-teal text-cat-teal"
+                    : "border-ink/20 text-ink-soft hover:border-cat-teal hover:text-cat-teal disabled:opacity-60"
+                }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+                {toBn(c.likes)}
+              </button>
+              <button
+                type="button"
+                onClick={() => void vote(c, "dislike")}
+                disabled={Boolean(votes[c.id])}
+                aria-pressed={votes[c.id] === "dislike"}
+                className={`flex items-center gap-1.5 border px-2.5 py-1 text-[12px] font-semibold transition-colors disabled:cursor-default ${
+                  votes[c.id] === "dislike"
+                    ? "border-alizarin text-alizarin"
+                    : "border-ink/20 text-ink-soft hover:border-alizarin hover:text-alizarin disabled:opacity-60"
+                }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>
+                {toBn(c.dislikes)}
+              </button>
+            </div>
           </article>
         ))}
         {!comments.length && (

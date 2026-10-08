@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   getPostComments,
+  getPostCommentCount,
   getAllComments,
   createComment,
   setCommentStatus,
@@ -24,8 +25,13 @@ export async function GET(req: NextRequest) {
   const ref = searchParams.get("postId")?.trim();
 
   if (ref) {
-    const rows = await getPostComments(ref);
-    return NextResponse.json({ ok: true, comments: rows });
+    // Public post page: only the newest 10 approved comments are rendered,
+    // alongside a total counter.
+    const [comments, total] = await Promise.all([
+      getPostComments(ref, 10),
+      getPostCommentCount(ref),
+    ]);
+    return NextResponse.json({ ok: true, comments, total });
   }
 
   // No postId → admin moderation queue.

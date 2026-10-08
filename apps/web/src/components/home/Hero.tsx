@@ -21,6 +21,7 @@ export default function Hero({
   dups,
   featuredImg,
   featuredTitle,
+  featuredCategory,
 }: {
   lastRunIso: string | null;
   collected: number;
@@ -28,6 +29,7 @@ export default function Hero({
   dups: number;
   featuredImg: string | null;
   featuredTitle: string | null;
+  featuredCategory: string | null;
 }) {
   const [idx, setIdx] = useState(0);
   useEffect(() => {
@@ -188,7 +190,7 @@ export default function Hero({
                 <div className="tauri-win rounded-xl p-4">
                   <p className="flex items-center gap-1.5 font-mono-x text-[9px] tracking-[0.2em] text-lime uppercase">
                     <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>
-                    প্রকাশিত · শিশু সুরক্ষা
+                    প্রকাশিত{featuredCategory ? ` · ${featuredCategory}` : ""}
                   </p>
                   <p className="mt-2 line-clamp-2 font-serif-bn text-[15px] leading-snug font-bold text-ink">
                     {featuredTitle}

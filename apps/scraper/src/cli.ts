@@ -6,7 +6,7 @@ import { createInterface } from "node:readline";
 import { runPipeline, type PipelineOptions } from "./pipeline";
 import { runArchivePass } from "./archive";
 import { cleanupMedia, storageRegistryCount } from "./storage";
-import { backfillMissingMedia, recoverOrphanedMedia, syncExistingMediaToWeb } from "./media-backfill";
+import { backfillMissingMedia, recoverOrphanedMedia, syncExistingMediaToWeb, aiFillMissingHeroes } from "./media-backfill";
 import { isVideoUrl } from "./media";
 import { newResolver } from "@hoichoi/llm";
 import {
@@ -61,7 +61,7 @@ import {
   listPostMediaCandidates,
   type PostUpdateFields,
 } from "@hoichoi/db";
-import { PROCESSOR_ENV_DEFAULTS, type CategorySlug, type MediaStorageConfig, type NoticeTone, type ProviderKey, type SiteSettings } from "@hoichoi/shared-types";
+import { PROCESSOR_ENV_DEFAULTS, normalizePlatform, type CategorySlug, type MediaStorageConfig, type NoticeTone, type ProviderKey, type SiteSettings } from "@hoichoi/shared-types";
 
 /** Structural match for @libsql/client's InValue (avoids pulling the dep into scraper). */
 type SqlValue = null | string | number | bigint | Uint8Array | ArrayBuffer;
@@ -489,6 +489,24 @@ media
       process.exitCode = 1;
     }
   });
+media
+  .command("ai-fill")
+  .description("generate AI hero images (Gemini) for posts that have no media and no media URLs")
+  .option("--limit <n>", "maximum posts to fill")
+  .option("--dry-run", "only count candidates, generate nothing")
+  .action(async (opts: { limit?: string; dryRun?: boolean }) => {
+    try {
+      await ensureSchema(getClient());
+      console.log(JSON.stringify(await aiFillMissingHeroes({
+        limit: opts.limit !== undefined ? Number(opts.limit) : undefined,
+        dryRun: opts.dryRun ?? false,
+        log: (m) => console.error(m),
+      }), null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
 
 /* ------------------------------------------------------------------ *
  * Semantic vectors - SEM-1 can only match against posts that have one *
@@ -572,6 +590,7 @@ function deskSourceRow(row: Record<string, unknown>) {
     page_url: String(row.page_url),
     page_name: String(row.page_name),
     kind: String(row.kind) === "group" ? "group" : "page",
+    platform: String(row.platform ?? "facebook") || "facebook",
     fb_id: (row.fb_id as string | null) ?? null,
     topics,
     category: row.category as CategorySlug,
@@ -650,6 +669,7 @@ async function addDeskSource(opts: {
   pageUrl: string;
   pageName: string;
   kind?: string;
+  platform?: string;
   category?: string;
   categories?: string;
   topics?: string;
@@ -704,15 +724,17 @@ async function addDeskSource(opts: {
   }
 
   const id = crypto.randomUUID();
+  const platform = normalizePlatform(opts.platform);
   await client.execute({
-    sql: `INSERT INTO sources (id, page_url, page_name, category, is_verified, is_active, kind, fb_id, topics, created_at)
-          VALUES (?, ?, ?, ?, 1, 1, ?, ?, ?, ?)`,
+    sql: `INSERT INTO sources (id, page_url, page_name, category, is_verified, is_active, kind, platform, fb_id, topics, created_at)
+          VALUES (?, ?, ?, ?, 1, 1, ?, ?, ?, ?, ?)`,
     args: [
       id,
       pageUrl,
       opts.pageName.trim(),
       categories[0] ?? "missing-children", // primary category for backward compat
       opts.kind === "group" ? "group" : "page",
+      platform,
       opts.fbId ?? null,
       JSON.stringify(topics),
       created,
@@ -749,6 +771,7 @@ async function updateDeskSource(
     pageUrl?: string;
     pageName?: string;
     kind?: string;
+    platform?: string;
     category?: string;
     categories?: string;
     topics?: string;
@@ -774,6 +797,10 @@ async function updateDeskSource(
   if (opts.kind !== undefined) {
     sets.push("kind = ?");
     args.push(opts.kind === "group" ? "group" : "page");
+  }
+  if (opts.platform !== undefined) {
+    sets.push("platform = ?");
+    args.push(normalizePlatform(opts.platform));
   }
   if (opts.category !== undefined) {
     sets.push("category = ?");
@@ -871,6 +898,7 @@ program
   .option("--page-url <url>", "page URL (add/update)")
   .option("--page-name <name>", "page name (add/update)")
   .option("--kind <kind>", "page | group (add/update)")
+  .option("--platform <platform>", "facebook | x | news | magazine | social | other (add/update)")
   .option("--category <slug>", "category slug (add/update)")
   .option("--topics <csv>", "comma-separated topics (add/update)")
   .option("--fb-id <id>", "facebook id (add/update)")
@@ -888,6 +916,7 @@ program
           pageUrl: opts.pageUrl,
           pageName: opts.pageName,
           kind: opts.kind,
+          platform: opts.platform,
           category: opts.category,
           categories: opts.categories,
           topics: opts.topics,
@@ -900,6 +929,7 @@ program
           pageUrl: opts.pageUrl,
           pageName: opts.pageName,
           kind: opts.kind,
+          platform: opts.platform,
           category: opts.category,
           categories: opts.categories,
           topics: opts.topics,
@@ -1104,6 +1134,7 @@ program
   .option("--dot <hex>", "dot color hex, omit to keep seed default (add/update)")
   .option("--sort <n>", "sort order (add/update)")
   .option("--footer <bool>", "true | false — show in the public site footer (add/update)")
+  .option("--keywords <csv>", "comma-separated Bangla keyword signals the classifier uses for this category (add/update — desktop + web admin must agree)")
   .action(async (action: string, opts: Record<string, string | undefined>) => {
     try {
       await ensureSchema(getClient());
@@ -1128,6 +1159,9 @@ program
           dot: opts.dot?.trim() || undefined,
           sortOrder: opts.sort !== undefined ? Number(opts.sort) : undefined,
           showInFooter: opts.footer === undefined ? undefined : opts.footer === "true" || opts.footer === "1",
+          config: opts.keywords !== undefined
+            ? { keywords: opts.keywords.split(",").map((k) => k.trim()).filter(Boolean) }
+            : undefined,
         });
         console.log(JSON.stringify({ ok: true, category: await getCategory(slug) }, null, 2));
       } else if (action === "update") {
@@ -1140,8 +1174,11 @@ program
         if (opts.dot !== undefined) fields.dot = opts.dot.trim();
         if (opts.sort !== undefined) fields.sortOrder = Number(opts.sort);
         if (opts.footer !== undefined) fields.showInFooter = opts.footer === "true" || opts.footer === "1";
+        if (opts.keywords !== undefined) {
+          fields.config = { keywords: opts.keywords.split(",").map((k) => k.trim()).filter(Boolean) };
+        }
         if (Object.keys(fields).length === 0) {
-          throw new Error("at least one field required (--name-bn, --name-en, --desc-bn, --desc-en, --dot, --sort, --footer)");
+          throw new Error("at least one field required (--name-bn, --name-en, --desc-bn, --desc-en, --dot, --sort, --footer, --keywords)");
         }
         await updateCategory(opts.slug, fields);
         console.log(JSON.stringify({ ok: true, category: await getCategory(opts.slug) }, null, 2));
@@ -1746,6 +1783,7 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
           pageUrl: flags["page-url"],
           pageName: flags["page-name"],
           kind: flags.kind,
+          platform: flags.platform,
           category: flags.category,
           categories: flags.categories,
           topics: flags.topics,
@@ -1758,6 +1796,7 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
           pageUrl: flags["page-url"],
           pageName: flags["page-name"],
           kind: flags.kind,
+          platform: flags.platform,
           category: flags.category,
           categories: flags.categories,
           topics: flags.topics,

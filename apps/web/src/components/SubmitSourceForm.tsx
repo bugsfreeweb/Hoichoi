@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import type { CategorySlug } from "@hoichoi/shared-types";
+import { useEffect, useState } from "react";
 
-const CATEGORIES: Array<{ slug: CategorySlug | ""; label: string }> = [
-  { slug: "", label: "বাছাই করুন…" },
+/** Fallback shown until the live category list loads. */
+const FALLBACK_CATEGORIES: Array<{ slug: string; label: string }> = [
   { slug: "child-sexual-abuse", label: "শিশু যৌন নির্যাতন" },
   { slug: "extramarital-crime", label: "পরকীয়া অপরাধ" },
   { slug: "missing-children", label: "নিখোঁজ শিশু" },
@@ -14,13 +13,38 @@ export function SubmitSourceForm() {
   const [form, setForm] = useState({
     pageUrl: "",
     pageName: "",
-    category: "" as CategorySlug | "",
+    category: "",
     submitterEmail: "",
     submitterName: "",
     notes: "",
   });
   const [status, setStatus] = useState<null | "ok" | "err" | "sending">(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [categories, setCategories] = useState(FALLBACK_CATEGORIES);
+
+  // Categories are DB-owned, so pull the live list (including any added in
+  // /admin/categories) instead of freezing the original three.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/categories", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          categories?: Array<{ slug: string; displayNameBn?: string; displayNameEn?: string; isActive?: boolean }>;
+        };
+        const rows = (data.categories ?? [])
+          .filter((c) => c.slug && c.isActive !== false)
+          .map((c) => ({ slug: c.slug, label: c.displayNameBn || c.displayNameEn || c.slug }));
+        if (alive && rows.length > 0) setCategories(rows);
+      } catch {
+        /* keep fallback */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // পাবলিক ফর্মে রেট লিমিট — প্রতি সাবমিশনে localStorage গার্ড।
   function recentSubmissionAllowed(): boolean {
@@ -82,9 +106,10 @@ export function SubmitSourceForm() {
         <select
           className={`${field} mt-1 w-full`}
           value={form.category}
-          onChange={(e) => setForm({ ...form, category: e.target.value as CategorySlug | "" })}
+          onChange={(e) => setForm({ ...form, category: e.target.value })}
         >
-          {CATEGORIES.map((c) => (
+          <option value="">বাছাই করুন…</option>
+          {categories.map((c) => (
             <option key={c.slug} value={c.slug}>{c.label}</option>
           ))}
         </select>

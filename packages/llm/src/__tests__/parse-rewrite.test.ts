@@ -55,4 +55,45 @@ assert.equal(titleless.title_bn, "", "title must stay empty so the post can be r
 assert.ok(isBengaliScript("আজ সকালে নিখোঁজ শিশুর খোঁজা শুরু হয়েছে।"));
 assert.ok(!isBengaliScript("This is plain english text that should fail"));
 
-console.log("[test] 5 parser checks passed");
+/** A ``` fence around the answer and a preamble before the labels must not hide fields. */
+const fenced = [
+  "```",
+  "নিচে একটি বিশদ প্রতিবেদন দেয়া হলো:",
+  "",
+  "TITLE: বিজ্ঞপ্তি",
+  "SUMMARY: সারাংশের লেখা।",
+  "BODY: প্রথম লাইন।",
+  "",
+  "দ্বিতীয় লাইন।",
+  "SAFETY_FLAG: graphic",
+  "CASE_STATUS: false alarm",
+  "```",
+].join("\n");
+const fen = parseRewriteOutput(fenced);
+assert.equal(fen.title_bn, "বিজ্ঞপ্তি", "heading must survive the fence and preamble");
+assert.match(fen.body_bn, /দ্বিতীয় লাইন।/);
+assert.equal(fen.safety_flag, "graphic_content", "shorthand 'graphic' must map to graphic_content");
+assert.equal(fen.case_status, "false-alarm", "spaced 'false alarm' must map to false-alarm");
+
+/** Bold, bulleted, and spaced labels are all accepted. */
+const styled = parseRewriteOutput(
+  ["- **TITLE:** বোল্ড শিরোনাম", "SAFETY FLAG: minor_involved", "Case status: active"].join("\n"),
+);
+assert.equal(styled.title_bn, "বোল্ড শিরোনাম");
+assert.equal(styled.safety_flag, "minor_involved");
+assert.equal(styled.case_status, "active");
+
+/** Bangla aliases replace the canonical labels without losing sections. */
+const bangla = parseRewriteOutput(
+  ["শিরোনাম: বাংলা শিরোনাম", "সারাংশ: এক লাইনের সারসংক্ষেপ।", "মূল অংশ: বিস্তারিত লেখা এখানে।"].join("\n"),
+);
+assert.equal(bangla.title_bn, "বাংলা শিরোনাম");
+assert.equal(bangla.summary_bn, "এক লাইনের সারসংক্ষেপ।");
+assert.match(bangla.body_bn, /বিস্তারিত লেখা/);
+
+/** A colon-less label followed by its value on the next line still works. */
+const nextLine = parseRewriteOutput("TITLE\nশিরোনাম পরের লাইনে\nBODY:\nশরীর।");
+assert.equal(nextLine.title_bn, "শিরোনাম পরের লাইনে");
+assert.equal(nextLine.body_bn, "শরীর।");
+
+console.log("[test] 10 parser checks passed");

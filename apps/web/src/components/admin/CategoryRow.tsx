@@ -18,6 +18,7 @@ export function CategoryRow({ category }: { category: CategoryMeta }) {
     sortOrder: category.sortOrder,
     showInFooter: category.showInFooter,
     isActive: category.isActive,
+    keywords: (category.config.keywords ?? []).join(", "),
   });
 
   const field = "mt-1 w-full border border-ink/30 bg-paper px-3 py-2 text-[13px] focus:outline-none focus:border-ink";
@@ -30,7 +31,22 @@ export function CategoryRow({ category }: { category: CategoryMeta }) {
       const res = await fetch("/api/categories", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ slug: category.slug, fields: form }),
+        body: JSON.stringify({
+          slug: category.slug,
+          fields: {
+            displayNameBn: form.displayNameBn,
+            displayNameEn: form.displayNameEn,
+            descriptionBn: form.descriptionBn,
+            descriptionEn: form.descriptionEn,
+            dot: form.dot,
+            sortOrder: form.sortOrder,
+            showInFooter: form.showInFooter,
+            isActive: form.isActive,
+            config: {
+              keywords: form.keywords.split(",").map((k) => k.trim()).filter(Boolean),
+            },
+          },
+        }),
       });
       const data = (await res.json()) as { error?: string };
       if (res.status === 401 || res.status === 403) {
@@ -116,6 +132,15 @@ export function CategoryRow({ category }: { category: CategoryMeta }) {
             </label>
           </div>
         </div>
+        <label className="block">
+          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">চেনার কীওয়ার্ড (কমা দিয়ে)</span>
+          <textarea rows={2} className={field} value={form.keywords} onChange={(e) => setForm({ ...form, keywords: e.target.value })} />
+        </label>
+        {(category.config.keywords?.length ?? 0) > 0 && (
+          <p className="font-mono-x text-[10.5px] leading-4 text-ink-soft">
+            {category.config.keywords!.slice(0, 12).join(" · ")}{(category.config.keywords!.length > 12) ? " · …" : ""}
+          </p>
+        )}
         {err && <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">{err}</p>}
         <div className="flex items-center gap-3">
           <button className="px-4 py-2 text-[12.5px] font-bold text-paper transition disabled:opacity-50 bg-ink hover:bg-alizarin" disabled={busy}>

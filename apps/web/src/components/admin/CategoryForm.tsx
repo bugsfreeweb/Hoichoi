@@ -14,6 +14,7 @@ export function CategoryForm() {
     dot: "",
     sortOrder: 99,
     showInFooter: true,
+    keywords: "",
   });
   const [status, setStatus] = useState<null | "ok" | "err" | "busy" | "denied">(null);
   const [err, setErr] = useState<string | null>(null);
@@ -28,7 +29,12 @@ export function CategoryForm() {
       const res = await fetch("/api/categories", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          config: {
+            keywords: form.keywords.split(",").map((k) => k.trim()).filter(Boolean),
+          },
+        }),
       });
       const data = (await res.json()) as { error?: string };
       if (res.status === 401 || res.status === 403) {
@@ -37,7 +43,7 @@ export function CategoryForm() {
       }
       if (!res.ok) throw new Error(data.error ?? "failed");
       setStatus("ok");
-      setForm({ slug: "", displayNameBn: "", displayNameEn: "", descriptionBn: "", descriptionEn: "", dot: "", sortOrder: 99, showInFooter: true });
+      setForm({ slug: "", displayNameBn: "", displayNameEn: "", descriptionBn: "", descriptionEn: "", dot: "", sortOrder: 99, showInFooter: true, keywords: "" });
       router.refresh();
     } catch (e) {
       setStatus("err");
@@ -125,6 +131,21 @@ export function CategoryForm() {
           className="accent-ink"
         />
         ফুটারে দেখাবে
+      </label>
+      <label className="block">
+        <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+          ক্যাটাগরি চেনার কীওয়ার্ড (কমা দিয়ে আলাদা করুন)
+        </span>
+        <span className="mt-0.5 block text-[11px] leading-4 text-ink-soft/80">
+          ক্লাসিফায়ার এগুলো দিয়ে পোস্টের বিভাগ ঠিক করে; খালি রাখলে শুধু বিল্ট-ইন প্রোফাইল ব্যবহার হবে।
+        </span>
+        <textarea
+          rows={3}
+          className={field}
+          placeholder="চিকিৎসা, হাসপাতাল, ডাক্তার"
+          value={form.keywords}
+          onChange={(e) => setForm({ ...form, keywords: e.target.value })}
+        />
       </label>
       {status === "ok" && <p className="border border-cat-teal bg-cat-teal/10 px-3 py-2 text-[12.5px] font-bold text-ink">✓ যোগ হয়েছে।</p>}
       {status === "err" && <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">{err ?? "✗ যোগ করা যায়নি।"}</p>}

@@ -128,6 +128,62 @@ Output format (strict):
   CASE_STATUS: <active | found | unresolved | false-alarm | unknown>`;
 }
 
+/**
+ * Generic editorial frame for categories outside the three original ones.
+ *
+ * There are no longer only three "special" categories: admins create the full
+ * list, and every other quiet category used to inherit the child-sexual-abuse
+ * prompt — which framed an inspiration or helping story as though it were CSA
+ * and forced survivor redaction onto unrelated content. This builds the frame
+ * from the category's own name/description and behavior flags instead.
+ */
+export function generalSystemPrompt(ctx: RewriteContext & { category: CategorySlug }): string {
+  const cfg = ctx.categoryConfig;
+  const nameBn = ctx.categoryNameBn || ctx.category;
+  const descBn = ctx.categoryDescriptionBn || "";
+  const rules: string[] = [
+    `This article belongs to the category "${nameBn}".`,
+  ];
+  if (descBn) rules.push(`Category context: ${descBn}`);
+  rules.push(
+    "- Output only valid Bangla (বাংলা) using Bengali script.",
+    "- Rewrite the given source post into a neutral, factual Bangla news article: reorder facts, remove noise, and keep every claim attributed to the source.",
+    "- If the source is from a non-Bengali platform (news site, X/Twitter, magazine), TRANSLATE it faithfully into Bengali — never paraphrase into invention.",
+    "- Do not moralize, speculate, or invent facts, names, dates, or quotes that are absent from the source.",
+  );
+  if (cfg.use_allegation_language) {
+    rules.push('- Use allegation language: "অভিযোগ", "দাবি", "প্রাথমিক তথ্য অনুযায়ী" — never assert guilt.');
+  }
+  if (cfg.allow_identifying_details) {
+    rules.push("- Identifying details may be kept when they appear in the source (the site relies on verified sources).");
+  } else {
+    rules.push("- Anonymize private individuals who are not public figures.");
+  }
+  if (cfg.redaction_strict === "maximum") {
+    rules.push('- Maximum redaction: strip names, schools, villages, thana/district, exact ages, and phone numbers. Use "ওই ব্যক্তি", "সংশ্লিষ্ট প্রতিষ্ঠান", "XXXX" placeholders.');
+  }
+  if (cfg.include_helpline_numbers) {
+    rules.push('- Where relevant, include the police helpline "৯৯৯" and child helpline "১০৯" in the body.');
+  }
+  rules.push(
+    "- Write a substantive article: 200–340 words with context, the reported timeline, and what is not yet known.",
+    `- End with "সূত্র: ${ctx.sourcePageName}".`,
+  );
+  return [
+    `You are a Bangla news editor for a public-interest website.`,
+    "",
+    "Strict rules:",
+    ...rules,
+    BODY_CONTRACT,
+    "",
+    "Output format (strict):",
+    "  TITLE: <one-line headline>",
+    "  SUMMARY: <one sentence>",
+    "  BODY: <article body>",
+    "  SAFETY_FLAG: <none | minor_involved | unverified_claim | graphic_content>",
+  ].join("\n");
+}
+
 export function getSystemPrompt(ctx: RewriteContext & { category: CategorySlug }): string {
   switch (ctx.category) {
     case "child-sexual-abuse":
@@ -137,7 +193,7 @@ export function getSystemPrompt(ctx: RewriteContext & { category: CategorySlug }
     case "missing-children":
       return missingChildrenSystemPrompt(ctx);
     default:
-      return childSexualAbuseSystemPrompt(ctx);
+      return generalSystemPrompt(ctx);
   }
 }
 
