@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPublicPostBySlug, relatedPosts } from "@hoichoi/db";
-import { getPostComments, getPostCommentCount } from "@hoichoi/db";
+import { getPublicPostBySlug, relatedPosts, getPostComments, getPostCommentCount, parseAppConfig } from "@hoichoi/db";
 import { getCategories, findCategory } from "@/lib/categories-server";
 import { readMinutesBn, shortId } from "@/lib/bn";
 import { bnDate, bnTime } from "@/lib/format";
@@ -97,11 +96,17 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   const post = await getPublicPostBySlug(slug);
   if (!post) notFound();
 
-  const [cats, settings, related, initialComments, commentCount] = await Promise.all([
+  const settings = await getSettings();
+  const cfg = parseAppConfig(settings.app_config_json);
+  // Admin-tunable counts: "একই বিভাগে আরও" grid size and approved comments
+  // shown before the "আরও দেখুন" button loads the rest client-side.
+  const relatedCount = Math.min(8, Math.max(1, cfg.detail_similar_count));
+  const commentLimit = Math.max(1, cfg.comments_show_count);
+
+  const [cats, related, initialComments, commentCount] = await Promise.all([
     getCategories(),
-    getSettings(),
-    relatedPosts(post, 3),
-    getPostComments(post.id, 10),
+    relatedPosts(post, relatedCount),
+    getPostComments(post.id, commentLimit),
     getPostCommentCount(post.id),
   ]);
   const cat = await findCategory(post.category);

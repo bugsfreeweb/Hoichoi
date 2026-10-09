@@ -12,6 +12,11 @@ export async function repoRoot(): Promise<string> {
   return invoke<string>("repo_root");
 }
 
+/** Write the exported env blob straight to the user's Downloads folder; returns the written path. */
+export async function saveEnvFile(content: string): Promise<string> {
+  return invoke<string>("save_env_file", { content });
+}
+
 export async function startPipeline(env: Record<string, string>): Promise<void> {
   await invoke("run_pipeline", { env });
 }

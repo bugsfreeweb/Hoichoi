@@ -297,7 +297,7 @@ Target Lighthouse mobile ≥ 90, desktop ≥ 95.
 - Replace "Pexels · 112 Uttar Pradesh · প্রতীকী" with real photo credits
 - Replace the mockup disclaimer in the footer with a real editorial disclaimer (see `editorial-policy.md`)
 - Replace `MOCKUP BUILD 2.4.1` with a real build / commit hash
-- The "486 comments · 193 shares" fake numbers — drop these (we don't have comments anyway, see Phase 8.1 in the prompt)
+- The mockup's "486 comments · 193 shares" fake counter is dropped (real comments are moderated-first — see §11)
 - Replace "FACT-GATE PASSED" / "ATTRIBUTE SAVED" mocks with real per-post metadata
 
 ---
@@ -326,13 +326,34 @@ Implemented in `apps/web` + `apps/desktop` (mockup = read-only new spec):
 - **Home category strip:** `categoriesWithCounts()` powers a "বিভাগসমূহ" section after Live Analytics — chips link to `/category/{slug}` with a `CATEGORY_TINT` dot and the published-post count in `bnNum`. Only categories having at least one published, non-archived post are shown.
 - **Rewrite slider:** FB-branded pill is hard-coded `#1877f2` (`bg-[#1877f2]`, not the `--color-fb` token whose dark theme flips to a pastel), the "A · কাঁচা ফিড" label is `mt-3`, and the band overlay is `p-8 md:p-12` (left panel matches so the clip seam lines up).
 - **Reader report form:** the post page `ReportForm` mirrors the mockup — collapsed header + fields `reporterName`/`reporterEmail`/`reason`/`details`, validates the shared `REPORT_REASONS` list (`apps/web/src/lib/report-reasons.ts`), posts to `/api/reports`. Never shown publicly; only the admin queue renders it.
-- **Comments section:** mockup parity — required email ("প্রকাশিত হয় না"), hidden `website` honeypot (server silently drops populated submissions with a 201), `৮০০`-char limit with live count, 10s polling + `visibilitychange` refresh (an `AbortController` + `retry` button on failure), `Array.from(author)[0]` avatar disc, "সম্পাদক অনুমোদিত" meta, and the "অনুমোদনের পর প্রকাশিত" pill. Comments keep the `/api/comments?postId=` endpoint; the DB gained a nullable `comments.email` column.
+- **Comments section:** mockup parity — required email ("প্রকাশিত হয় না"), hidden `website` honeypot (server silently drops populated submissions with a 201), `৮০০`-char limit with live count, 10s polling + `visibilitychange` refresh (an `AbortController` + `retry` button on failure), `Array.from(author)[0]` avatar disc, "সম্পাদক অনুমোদিত" meta, and the "অনুমোদনের পর প্রকাশিত" pill. Comments keep the `/api/comments?postId=` endpoint; the DB gained a nullable `comments.email` column. The approved-comment count served on a post is also hard-capped by `settings.app_config_json.comments_show_count` (server-side limit, clamp ≥ 1).
+- **Comments moderation queue:** the admin shell gained a dedicated **মন্তব্য
+  মডারেশন** page (`/admin/comments`, same `ModerationTable` over the `comments`
+  table with pending/approved/blocked tabs) beside the retitled **কনটেন্ট
+  মডারেশন** (`/admin/moderation` for posts). `pending_comments` is its own urgent
+  badge in the admin sidebar + `/admin/notifications` dropdown and the desktop
+  desk's pending badge (`countReviewQueues`).
+- **Maintenance screen (mockup-faithful, theme-proof):** the visitor-facing
+  `MaintenanceScreen` is fully self-contained — all `mc-*` CSS variables/tokens
+  live in a scoped `.maintenance-wrap` block in `globals.css`, so the site's dark
+  theme cannot wash out its editorial/newsprint/midnight/aurora variants. It
+  renders real data: `statsSnapshot` (collectedToday/published/duplicatesBlocked),
+  pending-comment count, and the last pipeline run; the gate from `(site)/layout.tsx`
+  applies to logged-out visitors only when `maintenance_mode` is on. The admin
+  রক্ষণাবেক্ষণ tab (`MaintenanceEditor`) edits every field with a live
+  `<MaintenanceScreen preview>`.
+- **Tabbed web settings console:** `/admin/settings` is a 5-tab console (সাইট /
+  ভিজিবিলিটি / বিজ্ঞাপন / রক্ষণাবেক্ষণ / অপারেশন) using the `.settings-tabs` pill
+  chrome; one save PATCHes `/api/settings`. The ভিজিবিলিটি tab owns the three feed
+  knobs (`home_post_count` 4–50, `detail_similar_count` 1–8, `comments_show_count`
+  1–50) + the maintenance toggle; অপারেশন shows the ManualRun card and the
+  রক্ষণাবেক্ষণ ইনবক্স snapshot.
 - **Dark data band:** `--color-band #1a140d` / `--color-bandline #f3eee1` (post "তথ্য শৃঙ্খলা" band and rewrite-slider band read in both themes); web `:root` and desktop dark `:root` both carry them.
 - **Desktop `--ds-*` tokens:** `apps/desktop/src/index.css` aliases the desk console palette (`--ds-bg`, `--ds-panel`, `--ds-text`, `--ds-muted`, `--ds-border`, `--ds-ink`, `--ds-chip`, `--ds-watch`, `--ds-fb`) in both dark `:root` and `html[data-theme="light"]` so the Watchlist renders mockup-identical in either theme.
 - **Watchlist parity:** add-row offers per-category chips + "সব বিভাগ" (stores `source_categories` junction through the runner CLI's `--categories`), sources render their category sub-chips, dead sources (health `0`) show a red TriangleAlert pill, and the header uses the same `--ds-*` density as the mockup desk.
 - **Settings tabs:** `apps/desktop/src/screens/Settings.tsx` splits the long settings
-  page into **10 pill tabs** (প্রেফারেন্স / সোর্স / বিভাগ / AI প্রোভাইডার / নোটিশ /
-  ক্লাউড সিঙ্ক / সাইট ও বিজ্ঞাপন / অ্যাডমিন / ব্যাকআপ / API ভল্ট), styled by
+  page into **11 pill tabs** (প্রেফারেন্স / সোর্স / বিভাগ / AI প্রোভাইডার / নোটিশ /
+  ক্লাউড সিঙ্ক / সাইট ও বিজ্ঞাপন / অ্যাডমিন / ব্যাকআপ / মিডিয়া স্টোরেজ / API ভল্ট), styled by
   `.settings-tabs` in `apps/desktop/src/index.css` — a duplicate of the `.mtabs` pill
   recipe (rounded-full, active = `var(--active-bg)` background with `var(--active-tx)`
   ink-on-white text, mono-uppercase tracked labels) so tab switching matches the

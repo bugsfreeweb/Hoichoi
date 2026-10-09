@@ -27,6 +27,7 @@ export type QueueCounts = {
   open_reports: number;
   new_submissions: number;
   active_notices: number;
+  pending_comments: number;
 };
 
 type Payload =
@@ -47,6 +48,7 @@ const EMPTY: QueueCounts = {
   open_reports: 0,
   new_submissions: 0,
   active_notices: 0,
+  pending_comments: 0,
 };
 
 type Store = { counts: QueueCounts; urgent: UrgentItem[]; stale: boolean; refresh: () => void };

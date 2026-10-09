@@ -27,7 +27,8 @@ import {
   importEnv,
   listVaultNames,
 } from "../lib/vault";
-import { deskProviders } from "../lib/tauri";
+import { deskProviders, saveEnvFile } from "../lib/tauri";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { toBn } from "../lib/format";
 
 const SERVICE_ICON: Record<string, LucideIcon> = {
@@ -157,6 +158,7 @@ export default function Vault({
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState<Record<string, boolean>>({});
   const [copiedAll, setCopiedAll] = useState(false);
+  const [downloadMsg, setDownloadMsg] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
   const [importMsg, setImportMsg] = useState("");
@@ -206,35 +208,55 @@ export default function Vault({
   const copyOne = async (name: CredentialName, v: string) => {
     const envName = envNameFor(name);
     try {
-      await navigator.clipboard.writeText(envName ? `${envName}=${v}` : v);
+      await writeText(envName ? `${envName}=${v}` : v);
       setCopied((m) => ({ ...m, [name]: true }));
       setTimeout(() => setCopied((m) => ({ ...m, [name]: false })), 1600);
     } catch {
-      /* clipboard blocked */
+      try {
+        await navigator.clipboard.writeText(envName ? `${envName}=${v}` : v);
+        setCopied((m) => ({ ...m, [name]: true }));
+        setTimeout(() => setCopied((m) => ({ ...m, [name]: false })), 1600);
+      } catch {
+        /* clipboard unavailable */
+      }
     }
   };
 
   const copyAll = async () => {
+    const payload = await exportEnv();
     try {
-      await navigator.clipboard.writeText(await exportEnv());
+      await writeText(payload);
       setCopiedAll(true);
       setTimeout(() => setCopiedAll(false), 1800);
     } catch {
-      /* clipboard blocked */
+      try {
+        await navigator.clipboard.writeText(payload);
+        setCopiedAll(true);
+        setTimeout(() => setCopiedAll(false), 1800);
+      } catch {
+        /* clipboard unavailable */
+      }
     }
   };
 
   const downloadEnv = async () => {
     try {
-      const blob = new Blob([await exportEnv()], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = ".env";
-      a.click();
-      URL.revokeObjectURL(url);
+      const path = await saveEnvFile(await exportEnv());
+      setDownloadMsg(`✅ .env লেখা হয়েছে:\n${path}`);
+      setTimeout(() => setDownloadMsg(""), 5000);
     } catch {
-      /* download blocked */
+      // Non-Tauri fallback (browser preview).
+      try {
+        const blob = new Blob([await exportEnv()], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = ".env";
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch {
+        /* download blocked */
+      }
     }
   };
 
@@ -283,15 +305,15 @@ export default function Vault({
             onClick={() => setImportOpen((o) => !o)}
             className="ml-auto flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.05] px-3.5 py-2 text-[11px] font-semibold text-white/80 transition-all duration-300 hover:border-lime/50 hover:text-lime"
           >
-            <Download size={12} />
+            <Upload size={12} />
             Import (.env)
           </button>
           <button
             onClick={() => void downloadEnv()}
             className="flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.05] px-3.5 py-2 text-[11px] font-semibold text-white/80 transition-all duration-300 hover:border-lime/50 hover:text-lime"
           >
-            <Upload size={12} />
-            Download
+            <Download size={12} />
+            Download (.env)
           </button>
           <button
             onClick={() => void copyAll()}
@@ -301,6 +323,12 @@ export default function Vault({
             {copiedAll ? "কপি হয়েছে (.env)" : "সব কপি করুন (.env)"}
           </button>
         </div>
+
+        {downloadMsg && (
+          <p className="whitespace-pre-line border-b border-white/8 bg-lime/10 px-5 py-2 font-mono-x text-[10.5px] text-lime">
+            {downloadMsg}
+          </p>
+        )}
 
         {importOpen && (
           <div className="border-b border-white/8 px-5 py-4">

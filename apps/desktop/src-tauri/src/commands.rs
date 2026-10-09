@@ -665,6 +665,23 @@ fn data_dir(app: &AppHandle) -> Result<PathBuf, String> {
         .map_err(|e| format!("app_data_dir failed: {e}"))
 }
 
+/// Write the exported env blob to the user's Downloads folder.
+///
+/// The webview's blob + `<a download>` path is silently blocked inside the
+/// Tauri shell on Windows, so the Vault's "Download .env" goes through the
+/// Rust side instead. Returns the absolute path that was written.
+#[tauri::command]
+pub async fn save_env_file(app: AppHandle, content: String) -> Result<String, String> {
+    let dir = app
+        .path()
+        .download_dir()
+        .map_err(|e| format!("download_dir failed: {e}"))
+        .or_else(|_| data_dir(&app))?;
+    let path = dir.join("hoichoi-vault.env");
+    std::fs::write(&path, content).map_err(|e| format!("write failed: {e}"))?;
+    Ok(path.to_string_lossy().to_string())
+}
+
 /// Encrypted full backup → `<app_data>/hoichoi-backup-<timestamp>.json`.
 #[tauri::command]
 pub async fn backup_export(

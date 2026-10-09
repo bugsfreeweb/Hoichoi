@@ -302,10 +302,12 @@ The desktop UI mirrors the `mockup/` desk controller exactly:
   `log-err`/`log-info` + `.log-warn` scan overlay) with Run / Stop; Stop terminates
   the child via `stop_pipeline` (Windows `taskkill /F /T`) (`screens/Collector.tsx`).
 - **Vault** — KeyVault-style table of the AES-256-GCM credential store with
-  reveal/copy per key + copy-all `.env` payload (`screens/Vault.tsx`).
+  reveal/copy per key, one-click copy-all `.env` (via the clipboard-manager plugin),
+  **Download (.env)** writing to the Downloads folder through the `save_env_file`
+  Rust command, and import of `.env` blobs (`screens/Vault.tsx`).
 - **Settings** — mockup preference panels above the real functional panels (cloud
   sync, branding, admin codes, backup/reset/sync) (`screens/Settings.tsx`). The
-  screen is organized into **10 pill tabs** (`.settings-tabs`, mirroring `.mtabs`)
+  screen is organized into **11 pill tabs** (`.settings-tabs`, mirroring `.mtabs`)
   so the long settings page no longer scrolls endlessly:
   1. **প্রেফারেন্স** (Sliders) — cron, model, temperature, fact-gate and toggles.
      **Cron, temperature, and the fact-gate persist to the shared `settings` row**
@@ -334,8 +336,10 @@ The desktop UI mirrors the `mockup/` desk controller exactly:
   8. **অ্যাডমিন** (UserCog) — one-time login codes **+ a লগইন লগ panel** (latest
      sign-in attempts through the runner `loginlog list|delete|clear`, same rows the
      web admin `/admin/logs` shows).
-  9. **ব্যাকআপ** (Archive) — backup / reset / resync (unchanged).
-  10. **API ভল্ট** (KeyRound) — vault fields table (unchanged).
+9. **ব্যাকআপ** (Archive) — backup / reset / resync (unchanged).
+   10. **মিডিয়া স্টোরেজ** (Cloud) — media-adapter settings panel (unchanged).
+   11. **API ভল্ট** (KeyRound) — vault fields table — see the Vault bullet's copy/
+       download notes.
 - **Moderation** — comment queue with pending/approved/blocked tabs and approve/block
   actions through the runner (`moderation list|set`) (`screens/Moderation.tsx`).
   Bulk approve/block counts progress (`done/total`) and reports **partial**
@@ -395,6 +399,21 @@ The desktop UI mirrors the `mockup/` desk controller exactly:
   `settingsSet { app_config_json: … }`, so the public web home sections switch
   instantly (and its sibling `VisibilityPanel` sits on the web admin settings page).
   Default theme seeds the site before hydration so first-time visitors don't flash.
+- **Visibility count knobs** — the same panel gained three numbered inputs that
+  drive the public feed sizes (clamped server-side to sane ranges on the web):
+  `home_post_count` (home "আজকের সংগ্রহ" per page, 4–50),
+  `detail_similar_count` (post-page "একই বিভাগে আরও" grid, 1–8) and
+  `comments_show_count` (approved comments rendered before "আরও দেখুন", 1–50).
+  These match the web admin's ভিজিবিলিটি tab and are saved with the same
+  `app_config_json` blob.
+- **API ভল্ট clipboard/download** — "সব কপি করুন (.env)" and the per-key copy
+  buttons now write through the `tauri-plugin-clipboard-manager` (falling back to
+  `navigator.clipboard`), which works reliably on the Windows webview. "Download
+  (.env)" no longer tries a blocked webview blob download: a new Rust command
+  `save_env_file` (`commands.rs`) writes the exported env to the user's
+  **Downloads** folder and shows the written path in the vault header.
+  (The Import/Download icons were also swapped so "Import" shows an upload arrow
+  and "Download" a download arrow.)
 - **Runner desk CLI** — new subcommands `stats`, `sources`, `queue`, `moderation`,
   `loginlog`, `cleanup temp` (all `apps/scraper/src/cli.ts`). Backend passthrough `desk_call`
   (Rust) + wrappers `deskCall`/`deskSources`/`deskQueue`/`deskStats`/`deskModeration`/

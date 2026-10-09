@@ -7,8 +7,10 @@ import {
   setCommentStatus,
   deleteComment,
   getPostById,
+  parseAppConfig,
 } from "@hoichoi/db";
 import { requireApiUser, unauthorized } from "@/lib/auth";
+import { getSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -25,10 +27,12 @@ export async function GET(req: NextRequest) {
   const ref = searchParams.get("postId")?.trim();
 
   if (ref) {
-    // Public post page: only the newest 10 approved comments are rendered,
-    // alongside a total counter.
+    // Public post page: only the newest N approved comments are rendered,
+    // alongside a total counter. N = admin "comments_show_count" knob.
+    const settings = await getSettings();
+    const limit = Math.max(1, parseAppConfig(settings.app_config_json).comments_show_count);
     const [comments, total] = await Promise.all([
-      getPostComments(ref, 10),
+      getPostComments(ref, limit),
       getPostCommentCount(ref),
     ]);
     return NextResponse.json({ ok: true, comments, total });

@@ -506,6 +506,7 @@ export async function ensureSchema(client: Client, externalUrl?: string): Promis
   await ensureDynamicProviderKeys(client);
   await ensureRuntimeProviders(client);
   await ensureReaderReportsTable(client);
+  await ensureMaintenanceTables(client);
   await ensureAdminLoginCodesTable(client);
   await ensureDeskColumns(client);
   await ensureSourceCategoriesTable(client);
@@ -944,5 +945,37 @@ CREATE TABLE IF NOT EXISTS reader_reports (
 );
 CREATE INDEX IF NOT EXISTS idx_reader_reports_status ON reader_reports (status, created_at);
 CREATE INDEX IF NOT EXISTS idx_reader_reports_post ON reader_reports (post_id);
+  `);
+}
+
+/**
+ * Maintenance-screen inbox: `maintenance_subscribers` (newsletter drops) and
+ * `maintenance_messages` (contact submits while the press is down). Idempotent.
+ */
+export async function ensureMaintenanceTables(client: Client): Promise<void> {
+  await client.executeMultiple(`
+CREATE TABLE IF NOT EXISTS maintenance_subscribers (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  name TEXT,
+  locale TEXT NOT NULL DEFAULT 'bn',
+  via TEXT NOT NULL DEFAULT 'maintenance',
+  created_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_maintenance_subscribers_email
+  ON maintenance_subscribers (email);
+
+CREATE TABLE IF NOT EXISTS maintenance_messages (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  topic TEXT,
+  body TEXT NOT NULL,
+  locale TEXT NOT NULL DEFAULT 'bn',
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','reviewed','archived')),
+  created_at TEXT NOT NULL,
+  reviewed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_maintenance_messages_status ON maintenance_messages (status, created_at);
   `);
 }

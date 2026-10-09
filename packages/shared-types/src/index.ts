@@ -434,6 +434,168 @@ export interface SourceError {
   last_seen_at: string;
 }
 
+/* ------------------------- maintenance page ------------------------ */
+
+/** Visual theme for the public maintenance screen. */
+export type MaintenanceThemeId = "editorial" | "newsprint" | "midnight" | "aurora";
+
+/** Locale the maintenance screen renders in (bn default). */
+export type MaintenanceLocale = "bn" | "en";
+
+/** The four hero-copy slots of the maintenance screen (badge/headline/sub/body). */
+export interface MaintenanceCopy {
+  badge: string;
+  headline: string;
+  subheadline: string;
+  body: string;
+}
+
+export interface MaintenanceCountdown {
+  enabled: boolean;
+  /** ISO timestamp the countdown counts down to. */
+  target: string;
+}
+
+export interface MaintenanceProgress {
+  enabled: boolean;
+  /** 0..100 sync-progress readout. */
+  value: number;
+}
+
+export interface MaintenanceSchedule {
+  enabled: boolean;
+  start: string;
+  end: string;
+  /** Show the live front page once the window passes, regardless of mode. */
+  autoLive: boolean;
+}
+
+export interface MaintenanceSocials {
+  facebook: string;
+  x: string;
+  instagram: string;
+  youtube: string;
+  github: string;
+  linkedin: string;
+}
+
+export interface MaintenanceEffects {
+  grain: boolean;
+  particles: boolean;
+  marquee: boolean;
+}
+
+interface MaintenanceColors {
+  bg: string;
+  surface: string;
+  text: string;
+  primary: string;
+  accent: string;
+}
+
+export interface MaintenanceSeo {
+  title: string;
+  description: string;
+  noIndex: boolean;
+}
+
+/**
+ * Design + copy configuration for the public maintenance screen. Nested under
+ * `SiteAppConfig.maintenance` inside `settings.app_config_json` (no schema
+ * change) and edited from the web admin "রক্ষণাবেক্ষণ" tab.
+ */
+export interface MaintenanceSiteConfig {
+  theme: MaintenanceThemeId;
+  language: MaintenanceLocale;
+  brand: {
+    mark: string;
+    name: string;
+    nameBn: string;
+  };
+  copyBn: MaintenanceCopy;
+  copyEn: MaintenanceCopy;
+  footerNoteBn: string;
+  footerNoteEn: string;
+  countdown: MaintenanceCountdown;
+  progress: MaintenanceProgress;
+  showPipeline: boolean;
+  showStats: boolean;
+  showTicker: boolean;
+  tickerBn: string[];
+  tickerEn: string[];
+  showNewsletter: boolean;
+  newsletterNoteBn: string;
+  newsletterNoteEn: string;
+  showContact: boolean;
+  contactEmail: string;
+  contactPhone: string;
+  socialsEnabled: boolean;
+  socials: MaintenanceSocials;
+  schedule: MaintenanceSchedule;
+  effects: MaintenanceEffects;
+  colors: MaintenanceColors;
+  seo: MaintenanceSeo;
+}
+
+/** Default maintenance-screen blueprint (editorial theme, Bengali first). */
+export function defaultMaintenanceConfig(): MaintenanceSiteConfig {
+  return {
+    theme: "editorial",
+    language: "bn",
+    brand: { mark: "হ", name: "HOICHOI।", nameBn: "হৈচৈ।" },
+    copyBn: {
+      badge: "জরুরি আপডেট",
+      headline: "ছাপাখানা থামেনি — কালি বদলাচ্ছে",
+      subheadline: "হৈচৈ পাইপলাইন যাচাই করছে — একটু পরেই ফিরছি",
+      body: "কালেক্টর সিঙ্ক হচ্ছে, Turso-তে হ্যাশ মিলিয়ে দেখা হচ্ছে আর এজ ক্যাশ গরম হচ্ছে। আপনার পড়ার তালিকা নিরাপদে আছে। ইমেইল রেখে যান — প্রথম পাতা লাইভ হওয়ামাত্র জানিয়ে দেব।",
+    },
+    copyEn: {
+      badge: "Scheduled maintenance",
+      headline: "The newsroom is reloading the press",
+      subheadline: "Hoichoi is verifying the pipeline — back in a moment",
+      body: "We are syncing the collector, re-checking hashes and warming the edge cache. Your reading list is safe. Leave your email and we will ping you the second the front page is live again.",
+    },
+    footerNoteBn: "© ২০২৬ হৈচৈ · BUGSFREE STUDIO · ASIA/UTC+6 · EDGE CACHE ON",
+    footerNoteEn: "© 2026 Hoichoi · BUGSFREE STUDIO · ASIA/UTC+6 · EDGE CACHE ON",
+    countdown: { enabled: false, target: "" },
+    progress: { enabled: true, value: 68 },
+    showPipeline: true,
+    showStats: true,
+    showTicker: true,
+    tickerBn: ["ডেটা যাচাই চলছে", "হৈচৈ নিউজরুম", "মানব পর্যালোচনা", "ফিড → শট → হ্যাশ → LLM → গিট → ডিপ্লয়"],
+    tickerEn: ["DATA VERIFICATION IN PROGRESS", "HOICHOI NEWSROOM", "HUMAN REVIEW", "FEED → SHOT → HASH → LLM → GIT → DEPLOY"],
+    showNewsletter: true,
+    newsletterNoteBn: "ফিরে এলে জানিয়ে দেব — স্প্যাম নয়, এক ক্লিকে আনসাবস্ক্রাইব।",
+    newsletterNoteEn: "Get notified when we're back. No spam, unsubscribe in a click.",
+    showContact: true,
+    contactEmail: "contact@hoichoi.local",
+    contactPhone: "",
+    socialsEnabled: true,
+    socials: {
+      facebook: "",
+      x: "",
+      instagram: "",
+      youtube: "",
+      github: "",
+      linkedin: "",
+    },
+    schedule: { enabled: false, start: "", end: "", autoLive: true },
+    effects: { grain: true, particles: true, marquee: true },
+    colors: {
+      bg: "#f3eee1",
+      surface: "#ffffff",
+      text: "#1a140d",
+      primary: "#d2202c",
+      accent: "#c8f65d",
+    },
+    seo: {
+      title: "হৈচৈ · রক্ষণাবেক্ষণ চলছে — শীঘ্রই ফিরছি",
+      description: "হৈচৈ নিউজরুম এখন পাইপলাইন যাচাই করছে। প্রথম পাতা লাইভ হওয়ামাত্র জানতে ইমেইল রেখে যান।",
+      noIndex: true,
+    },
+  };
+}
+
 /** Web-app visibility + behaviour knobs (stored in settings.app_config_json). */
 export interface SiteAppConfig {
   /** Masthead "newsroom in numbers" hero section. */
@@ -458,7 +620,33 @@ export interface SiteAppConfig {
   theme_default: "light" | "dark";
   /** New-posts surge threshold used by the live graph. */
   surge_threshold: number;
+  /** How many posts the home page list shows per page (12/14/16/20/custom). */
+  home_post_count: number;
+  /** How many same-category posts the article page shows under it. */
+  detail_similar_count: number;
+  /** How many approved comments a post page shows at once. */
+  comments_show_count: number;
+  /** Nested maintenance-screen design + copy. */
+  maintenance: MaintenanceSiteConfig;
 }
+
+/** App-config defaults (shared by the DB, the web admin and the desktop). */
+export const DEFAULT_APP_CONFIG: SiteAppConfig = {
+  show_hero: true,
+  show_live_graph: true,
+  show_categories: true,
+  show_ads: true,
+  show_rewrite_engine: true,
+  show_footer: true,
+  maintenance_mode: false,
+  ai_hero_images: true,
+  theme_default: "light",
+  surge_threshold: 12,
+  home_post_count: 12,
+  detail_similar_count: 3,
+  comments_show_count: 10,
+  maintenance: defaultMaintenanceConfig(),
+};
 
 /** Tone of an announcement. `alert` is the most urgent (used by the special
  * notice); all map to the same tone tokens as the safety/status chips.

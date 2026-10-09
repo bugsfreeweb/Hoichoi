@@ -1,6 +1,5 @@
-import { getAllComments, mapPost, pageRows } from "@hoichoi/db";
+import { mapPost, pageRows } from "@hoichoi/db";
 import { ModerationCard } from "@/components/admin/ModerationCard";
-import { ModerationTable } from "@/components/admin/ModerationTable";
 import { Paginator } from "@/components/admin/Paginator";
 
 export const dynamic = "force-dynamic";
@@ -35,17 +34,20 @@ export default async function AdminModerationPage({
       map: mapPost,
     }),
   ]);
-  // Reader comments are a separate moderation queue and were previously never
-  // rendered here (the table component existed but was never mounted).
-  const comments = await getAllComments(400).catch(() => []);
-
+  // Reader comments live on their own moderation page (/admin/comments) — the
+  // comment queue was split out of this content page so a post editor looking
+  // at article queues does not scroll past reader-submitted text to do their job.
   return (
     <div>
-      <PageHeading emoji="⚖️" kicker="DOUBLE-APPROVAL GATE" title="মডারেশন সারি" />
-      <div className="mt-6">
-        <ModerationTable rows={comments} />
-      </div>
-      <div className="mt-10 grid gap-10">
+      <PageHeading emoji="⚖️" kicker="DOUBLE-APPROVAL GATE" title="কনটেন্ট মডারেশন" />
+      <p className="mt-2 text-[12.5px] text-ink-soft">
+        প্রকাশের আগে দুই ধাপের যাচাই। পাঠকের মন্তব্য আলাদা কিউতে —{" "}
+        <a href="/admin/comments" className="font-bold text-alizarin underline underline-offset-2">
+          মন্তব্য মডারেশন ↗
+        </a>
+        .
+      </p>
+      <div className="mt-6 grid gap-10">
         <section>
           <QueueTitle color="amberx" count={pending.total} label="অনুমোদনের অপেক্ষায়" />
           <div className="mt-3 space-y-3">

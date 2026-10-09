@@ -5,6 +5,7 @@ mod vault;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
             commands::warm_daemon(app.handle());
             Ok(())
@@ -16,6 +17,7 @@ pub fn run() {
             commands::repo_root,
             commands::settings_get,
             commands::settings_set,
+            commands::save_env_file,
             commands::backup_export,
             commands::backup_import,
             commands::reset_db,

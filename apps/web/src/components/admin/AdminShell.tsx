@@ -24,7 +24,8 @@ type CountKey =
   | "approved"
   | "new_submissions"
   | "open_removals"
-  | "open_reports";
+  | "open_reports"
+  | "pending_comments";
 
 const NAV: Array<{
   href: string;
@@ -39,10 +40,16 @@ const NAV: Array<{
   {
     href: "/admin/moderation",
     emoji: "✅",
-    label: "মডারেশন কিউ",
+    label: "কনটেন্ট মডারেশন",
     // Both gates: an item waiting on the second approval is still an item an
     // operator has to act on, so showing only the first gate under-reports.
     countKeys: ["pending_review", "approved"],
+  },
+  {
+    href: "/admin/comments",
+    emoji: "💬",
+    label: "মন্তব্য মডারেশন",
+    countKeys: ["pending_comments"],
   },
   { href: "/admin/posts", emoji: "✏️", label: "পোস্ট এডিটর" },
   { href: "/admin/providers", emoji: "🤖", label: "AI প্রোভাইডার" },
@@ -174,7 +181,7 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
           */}
           <nav className="mt-4 min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-1 pb-2">
             <Link href="/admin/notices" className="mb-3 flex items-center justify-between rounded-lg border border-lime/30 bg-lime/10 px-3 py-3 text-[13px] font-bold text-lime transition-colors hover:bg-lime/15">নোটিশ ও ঘোষণা <span>↗</span></Link>
-            <Link href="/admin/moderation" className="mb-3 flex items-center justify-between rounded-lg border border-lime/30 bg-lime/10 px-3 py-3 text-[13px] font-bold text-lime transition-colors hover:bg-lime/15">মন্তব্য মডারেশন <span>↗</span></Link>
+            <Link href="/admin/comments" className="mb-3 flex items-center justify-between rounded-lg border border-lime/30 bg-lime/10 px-3 py-3 text-[13px] font-bold text-lime transition-colors hover:bg-lime/15">মন্তব্য মডারেশন <span>↗</span></Link>
             <ul className="space-y-0.5 font-sans-bn text-[12.5px] font-medium">
               {NAV.map((n) => {
                 const active = path === n.href || path.startsWith(`${n.href}/`);

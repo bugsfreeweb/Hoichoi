@@ -2,9 +2,10 @@ import { Footer } from "@/components/Footer";
 import { BreakingTicker } from "@/components/BreakingTicker";
 import { TopBar } from "@/components/TopBar";
 import { NoticeBanner } from "@/components/NoticeBanner";
+import { MaintenanceScreen } from "@/components/maintenance/MaintenanceScreen";
 import { currentUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
-import { getSpecialNotice, parseAppConfig } from "@hoichoi/db";
+import { countReviewQueues, getSpecialNotice, parseAppConfig, recentPipelineRuns, statsSnapshot } from "@hoichoi/db";
 import type { Metadata } from "next";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -31,6 +32,11 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   // the news chrome. The admin session bypasses it (cookie read + DB join only
   // happens when maintenance_mode is actually on, keeping the happy path cheap).
   if (cfg.maintenance_mode && !(await currentUser())) {
+    const [stats, queues, runs] = await Promise.all([
+      statsSnapshot().catch(() => null),
+      countReviewQueues().catch(() => null),
+      recentPipelineRuns(1).catch(() => []),
+    ]);
     return (
       <div className="page-chrome">
         <script
@@ -38,17 +44,20 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
             __html: `(function(){try{if(localStorage.getItem("hoichoi-theme-explicit")!=="1"){document.documentElement.setAttribute("data-theme","${themeDefault}")}}catch(e){}})();`,
           }}
         />
-        <main className="flex min-h-screen items-center justify-center px-6">
-          <div className="max-w-md text-center">
-            <p className="font-mono-x text-[10.5px] uppercase tracking-[0.3em] text-alizarin">Maintenance</p>
-            <h1 className="mt-3 font-serif-bn text-[40px] font-black text-ink md:text-[48px]">{settings.site_name}</h1>
-            <p className="mt-4 text-[14.5px] leading-relaxed text-ink-soft">
-              সাইটটি সংক্ষিপ্ত রক্ষণাবেক্ষণের জন্য বন্ধ রয়েছে।
-              <br />
-              খুব শীঘ্রই সব সংবাদ আবার চালু হবে।
-            </p>
-          </div>
-        </main>
+        <MaintenanceScreen
+          config={cfg.maintenance}
+          lastRunIso={runs[0]?.started_at ?? null}
+          stats={
+            stats && queues
+              ? {
+                  collectedToday: stats.collectedToday,
+                  published: stats.published,
+                  duplicates: stats.duplicatesBlocked,
+                  pendingComments: queues.pending_comments,
+                }
+              : null
+          }
+        />
       </div>
     );
   }

@@ -11,17 +11,21 @@ Live site: <https://hoichoifeed.vercel.app> · Source: <https://github.com/bugsf
 ```
 Web (apps/web)        Next.js 15 public site (SSR feed, /sitemap, OG images, visitor
                       announcement bell + pinned banner, DB-driven footer) + admin shell
-                      (/notices, /moderation, /posts, /providers, /reports, /logs, …),
-                      /desk preview, live /api/stats.
+                      (/notices, /moderation, /comments, /posts, /providers, /reports,
+                      /logs, /settings, …), /desk preview, live /api/stats.
                       Home sections are gated by settings.app_config_json
-                      (show_hero / show_ads / … / maintenance_mode / ai_hero_images).
+                      (show_hero / show_ads / … / maintenance_mode / ai_hero_images);
+                      admin Settings is a tabbed console (সাইট / ভিজিবিলিটি / বিজ্ঞাপন /
+                      রক্ষণাবেক্ষণ / অপারেশন) with a single save → PATCH /api/settings.
 Scraper               Collection pipeline: ingest → dedup → classify → rewrite → moderate →
                       publish. Multi-platform: facebook (browser scrape) + news/magazine
                       (RSS/Atom fetch). AI fallback hero images for media-less posts.
 Desktop (apps/desktop)  Tauri 2 desktop admin + local collector controller — Settings has
-                      10 pill tabs incl. inline সোর্স editing, AI প্রোভাইডার, নোটিশ, a shared
-                      ওয়েব ভিজিবিলিটি ও থিম (app_config_json) panel, footer branding +
-                      per-category footer visibility, এবং admin লগইন লগ panel.
+                      11 pill tabs incl. inline সোর্স/বিভাগ editing, AI প্রোভাইডার, নোটিশ,
+                      a shared ওয়েব ভিজিবিলিটি ও থিম (app_config_json) panel with the
+                      home/similar/comments count knobs, footer branding + per-category
+                      footer visibility, এবং admin লগইন লগ panel. API ভল্ট কপি/ডাউনলোড
+                      clipboard-plugin + Downloads ফাইলের মাধ্যমে।
 DB/LLM/Types          packages/db (Turso/libSQL), packages/llm (multi-provider resolver),
                       shared-types.
 ```
@@ -86,9 +90,27 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   (missing-children / child-sexual-abuse / extramarital-crime) are **always**
   excluded, and the prompt itself bans text, logos, real people and children.
   `media ai-fill` repairs already-published media-less posts.
-- **Maintenance mode.** `maintenance_mode` (app_config_json) shows a
-  maintenance screen to logged-out visitors, keeps full access for signed-in
-  admins, and de-indexes the site meanwhile.
+- **Maintenance mode.** `maintenance_mode` (app_config_json) shows a full
+  maintenance screen to logged-out visitors (mockup-faithful paper/ink design,
+  Bangla+English copy blocks, countdown, progress bar, live site stats and last
+  pipeline run), keeps full access for signed-in admins, and de-indexes the site
+  meanwhile. Visitors can **subscribe for the return** or send a **contact
+  message** — both POST to public `/api/maintenance/*` routes and land in new
+  `maintenance_subscribers` / `maintenance_messages` tables, surfaced in the
+  admin Settings → অপারেশন tab. The whole screen (colors, theme variant, copy,
+  countdown, schedule, socials, effects, SEO) is editable live from the
+  রক্ষণাবেক্ষণ tab with a real-time preview; toggling the mode off is one switch
+  in the ভিজিবিলিটি tab.
+- **Moderation split.** The admin console now has separate queues: **কনটেন্ট
+  মডারেশন** (`/admin/moderation`) for posts and **মন্তব্য মডারেশন**
+  (`/admin/comments`) for comments, each with pending/approved/blocked tabs and
+  batch actions. `pending_comments` is a distinct urgent badge in the admin nav +
+  notifications dropdown.
+- **Visibility counts.** `home_post_count` (homepage pages, default 12),
+  `detail_similar_count` (post-page related grid, default 3) and
+  `comments_show_count` (approved comments shown before "আরও দেখুন", default 10)
+  are admin-tunable in the ভিজিবিলিটি tab (web + desktop) and honored by the home
+  page, post page and `/api/comments`.
 
 ## Environment variables
 

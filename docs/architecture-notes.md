@@ -246,8 +246,8 @@ What broke and what didn't:
 
 ## 9. Things I deliberately did NOT include (updated)
 
-- **No comments / reactions** on the public site. It's a content pipeline, not a community.
-- **No email newsletter.** Skip for v1; add later with Resend free tier.
+- **No reactions/likes** on the public site. Comments exist but are **moderated-first** (`comments.status = pending → approved/blocked` via its own `/admin/comments` queue); it's a content pipeline, not a community.
+- **No email newsletter.** Skip for v1; add later with Resend free tier. (Maintenance-mode *email subscribe* inbox is a stop/notice channel, not a newsletter.)
 - **No mobile app.** Tauri desktop covers desktop. Mobile can come later via Tauri Mobile once v1 is stable.
 - **No multi-tenant admin.** One operator, one org.
 - **No real-time push.** ISR is enough for news.
@@ -317,3 +317,14 @@ Exceptions:
 8. **Move screenshots to a dedicated private bucket** once the configured media adapter becomes the bottleneck.
 9. **Vector dedup of the re-processed media** (so a repost with a different crop but same visual content is caught even if the original screenshot is different).
 10. **Auto-publish via Vercel deploy hook only** (skip ISR for breaking-news categories) — adds a manual "publish now" button in the admin.
+
+---
+
+## 12. Maintenance mode + feed-count knobs (v1.1.7)
+
+- **Where it lives:** nested inside `settings.app_config_json` (`maintenance` subtree, typed `MaintenanceSiteConfig`). No new columns — `parseAppConfig` deep-merges it via `parseMaintenanceConfig` in `@hoichoi/db`, so an untouched row renders the built-in defaults.
+- **Gate:** `(site)/layout.tsx` checks `cfg.maintenance_mode` for logged-out visitors only. Signed-in admins see the site normally. `robots.txt` disallows while active.
+- **Screen:** `apps/web/src/components/maintenance/MaintenanceScreen.tsx` is fully self-contained (`mc-*` CSS variables/tokens) so the mockup look survives any theme change. It renders real data: `statsSnapshot` (collectedToday/published/duplicatesBlocked) + `countReviewQueues().pending_comments` + the latest `pipeline_runs` row.
+- **Catch basin:** two public, insert-only routes (`POST /api/maintenance/subscribe`, `POST /api/maintenance/contact`) write into `maintenance_subscribers` / `maintenance_messages` (created by `ensureMaintenanceTables()` in `client.ts`). The admin Settings → অপারেশন tab snapshots both counts via `maintenanceInboxSnapshot()`.
+- **Editing:** the রক্ষণাবেক্ষণ tab (`MaintenanceEditor`) edits every visual/copy field with a live `<MaintenanceScreen preview>`; saves through the single tabbed console PATCH → `/api/settings`.
+- **Feed-count knobs:** `home_post_count` (homepage `pageSize()` clamp 4–50), `detail_similar_count` (post-page related grid, clamp 1–8), `comments_show_count` (server-side `/api/comments` limit sanitized `Math.max(1, n)`). Desktop Settings mirrors the same three fields and reads the same merged config, so counts survive cloud sync.

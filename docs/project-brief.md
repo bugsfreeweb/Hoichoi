@@ -100,10 +100,26 @@ Providers are runtime records in the `llm_providers` table, editable from the ad
 
 ## How to approve a post
 
-1. **Admin → Moderation queue**. Filter by category.
+1. **Admin → কনটেন্ট মডারেশন** (`/admin/moderation`). Filter by category.
 2. Review the rewritten Bangla, the re-processed media, and the **private reference screenshot** (signed, admin-only — never shown publicly).
 3. Edit the body if needed → **Approve**. Posts tagged `needs_double_approval` (child-sexual-abuse) require approval from **two different admins**.
 4. The post appears on the public site within the ISR revalidation window (300s).
+
+## How to moderate comments
+
+Reader comments are **not public-first** — they land as `pending` and appear only after approval.
+
+1. **Admin → মন্তব্য মডারেশন** (`/admin/comments`, same queue UI as posts, over the `comments` table).
+2. Approve (visible with the "সম্পাদক অনুমোদিত" meta) or Block (hidden). The pending count shows as its own urgent badge in the admin nav + `/admin/notifications` and in the desktop desk badge.
+3. How many approved comments render on the post page + `/api/comments` is capped by `settings.app_config_json.comments_show_count`.
+
+## How to flip maintenance mode
+
+A one-click kill-switch for the public site without any deploy.
+
+1. **Admin → Settings → ভিজিবিলিটি tab → maintenance toggle** (or desktop সাইট ও বিজ্ঞাপন tab), then Save.
+2. Logged-out visitors get the mockup-faithful **maintenance screen** with live stats (posts collected/published, duplicates blocked, pending comments, last run) + subscribe/contact forms landing in the রক্ষণাবেক্ষণ ইনবক্স (Settings → অপারেশন tab).
+3. Signed-in admins keep normal access; `robots.txt` de-indexes while active. The screen's copy/colors/progress/countdown are all editable in the রক্ষণাবেক্ষণ tab with a live preview.
 
 ## How to handle a takedown request
 

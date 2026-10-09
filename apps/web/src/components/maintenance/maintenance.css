@@ -1,0 +1,155 @@
+/* ============================================================
+   Public maintenance screen (editorial theme, mockup-faithful).
+   Self-contained so the site dark theme cannot wash it out.
+   ============================================================ */
+
+.mc-root {
+  --mc-bg: #f3eee1;
+  --mc-surface: #ffffff;
+  --mc-text: #1a140d;
+  --mc-primary: #d2202c;
+  --mc-accent: #c8f65d;
+  background: var(--mc-bg);
+  color: var(--mc-text);
+  position: relative;
+}
+
+/* centered editorial column */
+.mc-wrap {
+  width: 100%;
+  max-width: 1080px;
+  margin-inline: auto;
+}
+
+/* ticker edge fade */
+.mc-mask {
+  mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+}
+
+/* Bengali-numeral tabular alignment */
+.mc-tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.mc-ink-soft { color: color-mix(in srgb, var(--mc-text) 64%, transparent); }
+.mc-ink-faint { color: color-mix(in srgb, var(--mc-text) 45%, transparent); }
+
+.mc-surface {
+  background: var(--mc-surface);
+  border: 1px solid color-mix(in srgb, var(--mc-text) 13%, transparent);
+}
+
+.mc-rule { border-color: color-mix(in srgb, var(--mc-text) 15%, transparent); }
+
+.mc-primary-btn {
+  background: var(--mc-primary);
+  color: #ffffff;
+}
+.mc-primary-btn:hover { filter: brightness(1.06); }
+
+.mc-accent-btn {
+  background: var(--mc-accent);
+  color: var(--mc-text);
+}
+.mc-accent-btn:hover { filter: brightness(1.03); }
+
+/* animated grain */
+.mc-grain::after {
+  content: "";
+  position: absolute;
+  inset: -60%;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0.14;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='0.55'/></svg>");
+  animation: mc-grain-shift 0.7s steps(3) infinite;
+}
+@keyframes mc-grain-shift {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(-6%, 4%); }
+  66% { transform: translate(4%, -6%); }
+  100% { transform: translate(0, 0); }
+}
+
+/* rising particles */
+@keyframes mc-rise {
+  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0; }
+  10% { opacity: 0.9; }
+  100% { transform: translate3d(var(--mc-dx, 12px), -110vh, 0) scale(0.4); opacity: 0; }
+}
+.mc-dust {
+  position: absolute;
+  bottom: -8%;
+  border-radius: 999px;
+  background: var(--mc-accent);
+  opacity: 0;
+  animation: mc-rise var(--mc-dur, 9s) linear infinite;
+  filter: blur(0.4px);
+  box-shadow: 0 0 12px var(--mc-accent);
+}
+
+/* passing marquee */
+@keyframes mc-marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+.mc-marquee {
+  display: flex;
+  width: max-content;
+  animation: mc-marquee 28s linear infinite;
+}
+.mc-marquee-reverse {
+  animation-direction: reverse;
+}
+
+/* live pulse dot */
+.mc-live-dot { position: relative; }
+.mc-live-dot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  opacity: 0.6;
+  animation: mc-live-pulse 1.8s ease-out infinite;
+}
+@keyframes mc-live-pulse {
+  0% { transform: scale(0.5); opacity: 0.8; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* breaking-band shine */
+.mc-breaking {
+  background: linear-gradient(100deg, var(--mc-primary), var(--mc-primary) 30%, color-mix(in srgb, var(--mc-primary) 70%, #fff) 50%, var(--mc-primary) 70%);
+  background-size: 220% 100%;
+  animation: mc-band-shine 4.5s linear infinite;
+}
+@keyframes mc-band-shine {
+  from { background-position: 200% 0; }
+  to { background-position: -20% 0; }
+}
+
+/* line arrows of the pipeline strip */
+.mc-pipe-line {
+  height: 1px;
+  background: color-mix(in srgb, var(--mc-text) 30%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mc-root *,
+  .mc-root *::before,
+  .mc-root *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.05s !important;
+  }
+}
+
+/* pause everything (admin preview) */
+.mc-paused *,
+.mc-paused *::before,
+.mc-paused *::after {
+  animation-play-state: paused !important;
+}

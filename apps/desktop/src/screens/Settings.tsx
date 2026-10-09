@@ -141,6 +141,9 @@ interface SiteAppConfig {
   ai_hero_images: boolean;
   theme_default: "light" | "dark";
   surge_threshold: number;
+  home_post_count: number;
+  detail_similar_count: number;
+  comments_show_count: number;
 }
 
 const VIS_DEFAULTS: SiteAppConfig = {
@@ -154,6 +157,9 @@ const VIS_DEFAULTS: SiteAppConfig = {
   ai_hero_images: true,
   theme_default: "dark",
   surge_threshold: 12,
+  home_post_count: 12,
+  detail_similar_count: 3,
+  comments_show_count: 10,
 };
 
 const PREF_DEFAULTS = {
@@ -1253,6 +1259,45 @@ export default function Settings({
                     className="field mt-1 w-32"
                     value={vis.surge_threshold}
                     onChange={(e) => setVis({ ...vis, surge_threshold: Number(e.target.value) })}
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                    হোমপেজ কালেকশন
+                  </span>
+                  <input
+                    type="number"
+                    min={4}
+                    max={50}
+                    className="field mt-1 w-32"
+                    value={vis.home_post_count}
+                    onChange={(e) => setVis({ ...vis, home_post_count: Math.min(50, Math.max(4, Number(e.target.value) || 12)) })}
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                    সম্পর্কিত পোস্ট
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={8}
+                    className="field mt-1 w-32"
+                    value={vis.detail_similar_count}
+                    onChange={(e) => setVis({ ...vis, detail_similar_count: Math.min(8, Math.max(1, Number(e.target.value) || 3)) })}
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                    মন্তব্য দেখানো
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    className="field mt-1 w-32"
+                    value={vis.comments_show_count}
+                    onChange={(e) => setVis({ ...vis, comments_show_count: Math.min(50, Math.max(1, Number(e.target.value) || 10)) })}
                   />
                 </label>
                 <div className="flex flex-wrap gap-2">

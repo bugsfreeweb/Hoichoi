@@ -119,8 +119,14 @@ pnpm --filter @hoichoi/web build
   (`published`/`removed`), or delete it (admin only). Every change is logged in
   `admin_actions` (target_table `posts`). Editing a title keeps the stable slug
   (URL unchanged). Content lives in the shared Turso DB, so edits reflect on the
-  public site immediately. Note: there is no comment system in the schema, so
-  "comment" moderation is not applicable.
+  public site immediately.
+- **Moderation split (posts vs comments):** the admin console has two separate
+  queues — **কনটেন্ট মডারেশন** `/admin/moderation` (posts: pending/approved/blocked
+  tabs, batch approve/block, the double-approval enforcement, inline edit) and
+  **মন্তব্য মডারেশন** `/admin/comments` (same `ModerationTable` over the `comments`
+  table). `pending_comments` is counted as its own urgent badge in the admin nav
+  and the `/admin/notifications` dropdown, and appears in the desktop desk's
+  pending badge too.
 - **Data control:** `/admin/backup` (admin) adds a content-level export/import
   and a full reset. **Export** downloads a plain-JSON snapshot of all content
   tables (posts, sources, settings, configs, logs — never credentials); HTTPS is
@@ -186,14 +192,36 @@ pnpm --filter @hoichoi/web build
 - **Web-visibility gating (`settings.app_config_json`)** — the `settings` row carries a
   JSON `SiteAppConfig` (fields `show_hero`, `show_live_graph`, `show_categories`,
   `show_ads`, `show_rewrite_engine`, `show_footer`,
-  `theme_default`, `surge_threshold`) parsed with `parseAppConfig` in `@hoichoi/db`
+  `theme_default`, `surge_threshold`, `ai_hero_images`, **`maintenance_mode`**,
+  and the three feed-count knobs `home_post_count` / `detail_similar_count` /
+  `comments_show_count`) parsed with `parseAppConfig` (deep-merging the nested
+  `maintenance` subtree via `parseMaintenanceConfig`) in `@hoichoi/db`
   and honored by the public homepage — it gates the hero, the lead story, all three
   ad slots + the infeed (`ArticleGrid ads={cfg.show_ads}`), the live-analytics strip,
   the category chips, the pipeline/rewrite showcase band and
   the footer. "Off" hides the section entirely (ads included — not just the default
-  sponsor card). Edited from the web admin settings page (`VisibilityPanel`, PATCH
+  sponsor card). The count knobs drive the homepage pagination size, the
+  post-page "একই বিভাগে আরও" grid and `/api/comments` + the post page's initial
+  approved-comment count. Edited from the web admin settings **tabbed console**
+  (সাইট / ভিজিবিলিটি / বিজ্ঞাপন / রক্ষণাবেক্ষণ / অপারেশন — one PATCH to
   `/api/settings`) or the desktop's সাইট ও বিজ্ঞাপন tab; both persist the same
   `app_config_json` to the shared settings row.
+- **Maintenance mode** — flipping `maintenance_mode` (ভিজিবিলিটি tab) renders the
+  full mockup-faithful **maintenance screen** to logged-out visitors
+  (`apps/web/src/components/maintenance/MaintenanceScreen.tsx` — self-contained
+  `mc-*` CSS + tokens so the site theme can't wash it out) while signed-in admins
+  keep normal access (checked in `(site)/layout.tsx`). The screen shows live stats
+  (`statsSnapshot` collectedToday/published/duplicatesBlocked + `countReviewQueues`
+  pending comments) and the last pipeline run. Two public forms let visitors
+  **subscribe** (`POST /api/maintenance/subscribe`, unique email → `subscribed` /
+  `duplicate`) or **send a message** (`POST /api/maintenance/contact`) into new
+  `maintenance_subscribers` / `maintenance_messages` tables (`ensureMaintenanceTables`),
+  whose counts appear on the admin Settings → অপারেশন tab as the রক্ষণাবেক্ষণ ইনবক্স
+  snapshot. The screen's whole appearance and copy are editable live — colors,
+  theme variant (`editorial`/`newsprint`/`midnight`/`aurora`), progress bar value/
+  label, countdown datetime, ticker, contact/socials, effects, SEO — in the
+  রক্ষণাবেক্ষণ tab (`MaintenanceEditor`, real-time `<MaintenanceScreen preview>`),
+  and share a single `<SiteAppConfig>` save. `robots.txt` de-indexes while active.
 - **Breaking-news ticker** reuses the mockup marquee: `.ticker-track` in
   `apps/web/src/app/globals.css` is `display:flex; width:max-content` with a
   52 s linear loop (hover pauses) so the headline strip scrolls seamlessly.
@@ -216,11 +244,12 @@ pnpm --filter @hoichoi/web build
   the footer chip and the live-analytics footnote link were removed to satisfy
   the "one link" rule.
 - **Admin console shell** — `/admin/*` renders inside a persistent `AdminShell`
-  sidebar (dashboard, sources, moderation, posts, providers, **notices**, submissions,
-  removals, reports, archive, backup, logs, settings — with quick "নোটিশ ও ঘোষণা" and
-  "মন্তব্য মডারেশন" jump links on top); the category editor lives on a standalone
-  `/admin/categories` page (same `CategoryManager` component the desktop desk uses).
-  `/admin` is the
+  sidebar (dashboard, sources, **কনটেন্ট মডারেশন**, **মন্তব্য মডারেশন**, posts, providers,
+  notices, submissions, removals, reports, archive, backup, logs, **tabbed settings** —
+  with a "মন্তব্য মডারেশন" jump link on the sidebar top); the category editor lives on
+  a standalone `/admin/categories` page (same `CategoryManager` component the desktop
+  desk uses). The sidebar/notification badges are driven by `countReviewQueues()`,
+  which now includes a separate `pending_comments` count. `/admin` is the
   dashboard home with live stat tiles; the shell mirrors the desktop desk chrome and
   its TopBar has the `ThemeToggle` + logout. Reader reports from `/api/reports`
   (public post) land in the `/admin/reports` queue with open → reviewed/dismissed

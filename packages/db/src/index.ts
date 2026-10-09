@@ -11,6 +11,11 @@ export * from "./admin-auth";
 export * from "./source-errors";
 export * from "./media-objects";
 
+import {
+  DEFAULT_APP_CONFIG,
+  type MaintenanceSiteConfig,
+  type SiteAppConfig,
+} from "@hoichoi/shared-types";
 import type {
   AnalyticsRange,
   AnalyticsSnapshot,
@@ -30,7 +35,6 @@ import type {
   ReaderReport,
   ReaderReportStatus,
   ReaderReportWithPost,
-  SiteAppConfig,
   SiteSettings,
   StatsSnapshot,
 } from "@hoichoi/shared-types";
@@ -62,33 +66,107 @@ export function parseMediaStorage(raw: string | null | undefined): MediaStorageC
   return merged;
 }
 
+/** Deep-merge a raw nested `maintenance` value over the blueprint. */
+export function parseMaintenanceConfig(
+  value: unknown,
+): MaintenanceSiteConfig {
+  const merged: MaintenanceSiteConfig = JSON.parse(JSON.stringify(DEFAULT_APP_CONFIG.maintenance));
+  if (!value || typeof value !== "object" || Array.isArray(value)) return merged;
+  const p = value as Record<string, unknown>;
+
+  if (typeof p.theme === "string") merged.theme = p.theme as MaintenanceSiteConfig["theme"];
+  if (typeof p.language === "string") merged.language = p.language as MaintenanceSiteConfig["language"];
+  if (p.brand && typeof p.brand === "object") {
+    const b = p.brand as Record<string, unknown>;
+    if (typeof b.mark === "string" && b.mark) merged.brand.mark = b.mark;
+    if (typeof b.name === "string" && b.name) merged.brand.name = b.name;
+    if (typeof b.nameBn === "string" && b.nameBn) merged.brand.nameBn = b.nameBn;
+  }
+  const copy = (key: "copyBn" | "copyEn") => {
+    const c = p[key] as Record<string, unknown> | undefined;
+    if (!c || typeof c !== "object") return;
+    for (const slot of ["badge", "headline", "subheadline", "body"] as const) {
+      if (typeof c[slot] === "string" && c[slot]) merged[key][slot] = c[slot];
+    }
+  };
+  copy("copyBn");
+  copy("copyEn");
+  for (const key of ["footerNoteBn", "footerNoteEn", "contactEmail", "contactPhone"] as const) {
+    if (typeof p[key] === "string") (merged as unknown as Record<string, string>)[key] = p[key];
+  }
+  for (const key of ["showPipeline", "showStats", "showTicker", "showNewsletter", "showContact", "socialsEnabled"] as const) {
+    if (typeof p[key] === "boolean") (merged as unknown as Record<string, boolean>)[key] = p[key];
+  }
+  if (p.countdown && typeof p.countdown === "object") {
+    const c = p.countdown as Record<string, unknown>;
+    if (typeof c.enabled === "boolean") merged.countdown.enabled = c.enabled;
+    if (typeof c.target === "string") merged.countdown.target = c.target;
+  }
+  if (p.progress && typeof p.progress === "object") {
+    const c = p.progress as Record<string, unknown>;
+    if (typeof c.enabled === "boolean") merged.progress.enabled = c.enabled;
+    if (typeof c.value === "number" && Number.isFinite(c.value)) merged.progress.value = Math.max(0, Math.min(100, c.value));
+  }
+  if (p.schedule && typeof p.schedule === "object") {
+    const c = p.schedule as Record<string, unknown>;
+    if (typeof c.enabled === "boolean") merged.schedule.enabled = c.enabled;
+    if (typeof c.start === "string") merged.schedule.start = c.start;
+    if (typeof c.end === "string") merged.schedule.end = c.end;
+    if (typeof c.autoLive === "boolean") merged.schedule.autoLive = c.autoLive;
+  }
+  for (const lang of ["tickerBn", "tickerEn"] as const) {
+    if (Array.isArray(p[lang])) merged[lang] = (p[lang] as unknown[]).filter((x) => typeof x === "string").map(String);
+  }
+  if (p.socials && typeof p.socials === "object") {
+    const s = p.socials as Record<string, unknown>;
+    for (const key of ["facebook", "x", "instagram", "youtube", "github", "linkedin"] as const) {
+      if (typeof s[key] === "string") merged.socials[key] = s[key];
+    }
+  }
+  if (p.effects && typeof p.effects === "object") {
+    const e = p.effects as Record<string, unknown>;
+    for (const key of ["grain", "particles", "marquee"] as const) {
+      if (typeof e[key] === "boolean") merged.effects[key] = e[key];
+    }
+  }
+  if (p.colors && typeof p.colors === "object") {
+    const c = p.colors as Record<string, unknown>;
+    for (const key of ["bg", "surface", "text", "primary", "accent"] as const) {
+      if (typeof c[key] === "string" && c[key]) merged.colors[key] = c[key];
+    }
+  }
+  if (p.seo && typeof p.seo === "object") {
+    const s = p.seo as Record<string, unknown>;
+    if (typeof s.title === "string") merged.seo.title = s.title;
+    if (typeof s.description === "string") merged.seo.description = s.description;
+    if (typeof s.noIndex === "boolean") merged.seo.noIndex = s.noIndex;
+  }
+  return merged;
+}
+
 /**
  * Default web-app visibility knobs. Stored serialized on the settings row
  * (`app_config_json`) so the desktop app and the web admin share one source.
+ * `DEFAULT_APP_CONFIG` lives in shared-types so client components (web admin,
+ * desktop settings) can construct full objects without bundling the DB.
  */
-export const DEFAULT_APP_CONFIG: SiteAppConfig = {
-  show_hero: true,
-  show_live_graph: true,
-  show_categories: true,
-  show_ads: true,
-  show_rewrite_engine: true,
-  show_footer: true,
-  maintenance_mode: false,
-  ai_hero_images: true,
-  theme_default: "light",
-  surge_threshold: 12,
-};
+export { DEFAULT_APP_CONFIG };
 
 export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
-  const merged: SiteAppConfig = { ...DEFAULT_APP_CONFIG };
+  const merged: SiteAppConfig = JSON.parse(JSON.stringify(DEFAULT_APP_CONFIG));
   if (!raw) return merged;
   try {
     const parsed = JSON.parse(raw) as Partial<SiteAppConfig>;
     for (const k of Object.keys(merged) as Array<keyof SiteAppConfig>) {
       const v = parsed[k];
       if (v === undefined || v === null) continue;
-      if (typeof v === "boolean") (merged as unknown as Record<string, boolean>)[k] = v;
-      else if (typeof v === "string" || typeof v === "number") (merged as unknown as Record<string, string | number>)[k] = v;
+      if (k === "maintenance") {
+        merged.maintenance = parseMaintenanceConfig(v);
+      } else if (typeof v === "boolean") {
+        (merged as unknown as Record<string, boolean>)[k] = v;
+      } else if (typeof v === "string" || typeof v === "number") {
+        (merged as unknown as Record<string, string | number>)[k] = v;
+      }
     }
   } catch {
     /* corrupt blob → defaults */
@@ -1129,6 +1207,8 @@ export async function countReviewQueues(): Promise<{
   open_reports: number;
   new_submissions: number;
   active_notices: number;
+  /** Reader comments waiting for a moderator (separate queue, /admin/comments). */
+  pending_comments: number;
 }> {
   const client = getClient();
   const res = await client.execute({
@@ -1144,7 +1224,8 @@ export async function countReviewQueues(): Promise<{
       (SELECT COUNT(*) FROM submitted_pages
          WHERE status IN ('new','reviewing'))                        AS new_submissions,
       (SELECT COUNT(*) FROM notices
-         WHERE is_active = 1 AND (expires_at IS NULL OR expires_at > ?)) AS active_notices
+         WHERE is_active = 1 AND (expires_at IS NULL OR expires_at > ?)) AS active_notices,
+      (SELECT COUNT(*) FROM comments WHERE status = 'pending')       AS pending_comments
   `,
     args: [nowIso()],
   });
@@ -1160,6 +1241,100 @@ export async function countReviewQueues(): Promise<{
     open_reports: n("open_reports"),
     new_submissions: n("new_submissions"),
     active_notices: n("active_notices"),
+    pending_comments: n("pending_comments"),
+  };
+}
+
+export interface MaintenanceSubscriber {
+  id: string;
+  email: string;
+  name: string;
+  locale: string;
+  created_at: string;
+}
+
+export interface MaintenanceMessage {
+  id: string;
+  name: string;
+  email: string;
+  topic: string;
+  body: string;
+  locale: string;
+  status: "open" | "reviewed" | "archived";
+  created_at: string;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Maintenance-screen newsletter drop. `duplicate` = already subscribed. */
+export async function subscribeMaintenance(
+  input: { email: string; name?: string; locale?: string },
+): Promise<{ status: "subscribed" | "duplicate" }> {
+  const email = String(input.email ?? "").trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) {
+    throw new Error("INVALID_EMAIL");
+  }
+  const client = getClient();
+  const existing = await client.execute({
+    sql: "SELECT 1 FROM maintenance_subscribers WHERE email = ?",
+    args: [email],
+  });
+  if (existing.rows.length > 0) return { status: "duplicate" };
+  await client.execute({
+    sql: "INSERT INTO maintenance_subscribers (id, email, name, locale, via, created_at) VALUES (?, ?, ?, ?, 'maintenance', ?)",
+    args: [randomUUID(), email, String(input.name ?? "").trim() || null, input.locale === "en" ? "en" : "bn", nowIso()],
+  });
+  return { status: "subscribed" };
+}
+
+/** Maintenance-screen contact form submit. */
+export async function bookMaintenanceMessage(
+  input: { name: string; email: string; topic?: string; body: string; locale?: string },
+): Promise<void> {
+  const client = getClient();
+  const name = String(input.name ?? "").trim();
+  const email = String(input.email ?? "").trim().toLowerCase();
+  const body = String(input.body ?? "").trim();
+  if (!name || !EMAIL_RE.test(email) || !body) {
+    throw new Error("INVALID_INPUT");
+  }
+  await client.execute({
+    sql: "INSERT INTO maintenance_messages (id, name, email, topic, body, locale, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'open', ?)",
+    args: [
+      randomUUID(),
+      name,
+      email,
+      String(input.topic ?? "").trim() || null,
+      body,
+      input.locale === "en" ? "en" : "bn",
+      nowIso(),
+    ],
+  });
+}
+
+/** Admin — maintenance inbox dimensions (used by the operations viewer). */
+export async function maintenanceInboxSnapshot(): Promise<{
+  subscribers: number;
+  newSubscribersToday: number;
+  messages: number;
+  openMessages: number;
+}> {
+  const client = getClient();
+  const today = nowIso().slice(0, 10);
+  const [sCount, sToday, mCount, mOpen] = await Promise.all([
+    client.execute("SELECT count(*) AS n FROM maintenance_subscribers"),
+    client.execute({
+      sql: "SELECT count(*) AS n FROM maintenance_subscribers WHERE created_at LIKE ?",
+      args: [`${today}%`],
+    }),
+    client.execute("SELECT count(*) AS n FROM maintenance_messages"),
+    client.execute("SELECT count(*) AS n FROM maintenance_messages WHERE status = 'open'"),
+  ]);
+  return {
+    subscribers: Number(sCount.rows[0]?.n ?? 0),
+    newSubscribersToday: Number(sToday.rows[0]?.n ?? 0),
+    messages: Number(mCount.rows[0]?.n ?? 0),
+    openMessages: Number(mOpen.rows[0]?.n ?? 0),
   };
 }
 

@@ -19,9 +19,12 @@ import { mediaUrl } from "@/lib/media";
 
 export const revalidate = 300;
 
-/** Today's collection — max 25 posts per page (24 on page 1 after the
- *  featured lead is pulled out), the rest paginated via `?page=N`. */
-const PAGE_SIZE = 25;
+/** Per-page home count comes from the admin "ভিজিবিলিটি" knob (12/14/16/20/
+ *  custom). Sanity-clamped server-side so a corrupt setting can never render
+ *  an empty page (min 4) or a fingerprint (max 50). */
+function pageSize(v: number): number {
+  return Math.min(50, Math.max(4, Math.trunc(v) || 12));
+}
 
 export default async function HomePage({
   searchParams,
@@ -30,19 +33,20 @@ export default async function HomePage({
 }) {
   const sp = await searchParams;
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
+  const settings = await getSettings();
+  const cfg = parseAppConfig(settings.app_config_json);
+  const PAGE_SIZE = pageSize(cfg.home_post_count);
   const offset = (page - 1) * PAGE_SIZE;
-  const [posts, total, catStats, settings, catRows] = await Promise.all([
+  const [posts, total, catStats, catRows] = await Promise.all([
     windowPosts({ limit: PAGE_SIZE, offset }),
     countWindowPosts(),
     categoriesWithCounts(),
-    getSettings(),
     listCategories(),
   ]);
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const featured = page === 1 ? (posts[0] ?? null) : null;
   const rest = page === 1 ? posts.filter((p) => p.id !== featured?.id) : posts;
   const topPicks = rest.slice(0, 3);
-  const cfg = parseAppConfig(settings.app_config_json);
 
   return (
     <HomeLiveProvider>
