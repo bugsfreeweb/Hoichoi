@@ -1,8 +1,10 @@
 import type { Config } from "tailwindcss";
+import dashPreset from "../../packages/dash/tailwind-preset.js";
 
 /** Design tokens straight from design-system.md + mockup.html. */
 export default {
-  content: ["./src/**/*.{ts,tsx}"],
+  content: ["./src/**/*.{ts,tsx}", "../../packages/dash/src/**/*.{ts,tsx}"],
+  presets: [dashPreset as Config],
   theme: {
     extend: {
       colors: {

@@ -7,7 +7,9 @@
 > vault is **AES-256-GCM** (not Stronghold), and admin auth uses **one-time
 > codes** minted in the desktop app (no password, `admin_login_codes`). The
 > desktop console is an **8-tab mockup-parity desk** (Monitor … Ads) with a
-> live sync bar. See `README.md`, `docs/DEPLOY_WEB.md`, `docs/DESKTOP.md` and
+> live sync bar, whose মনিটর tab and the web admin home both render the **shared
+> `@hoichoi/dash` five-tab dashboard** (data comes from the app, UI comes from
+> the package). See `README.md`, `docs/DEPLOY_WEB.md`, `docs/DESKTOP.md` and
 > `docs/design-system.md` for the authoritative current state.
 
 Companion to `coding-agent-prompt.md`. Read this for the *why* before pasting the prompt.

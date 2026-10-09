@@ -228,8 +228,8 @@ apps/desktop/
 ## Keeping web & desktop separate
 
 - The desktop **must not** be imported by the web app. The web app's only
-  shared dependency is `@hoichoi/db` (Turso), `@hoichoi/llm`, and
-  `@hoichoi/shared-types`.
+  shared dependency is `@hoichoi/db` (Turso), `@hoichoi/llm`,
+  `@hoichoi/shared-types`, and `@hoichoi/dash` (the shared dashboard UI).
 - Vercel ignores `apps/desktop/` and `apps/scraper/` via `.vercelignore` and
   builds only `apps/web` (see `docs/DEPLOY_WEB.md`).
 
@@ -278,12 +278,16 @@ The desktop UI mirrors the `mockup/` desk controller exactly:
   (`mockup/src/components/admin/ads-panel.tsx`) wired to the real `settings` ad
   slots via `settingsGet`/`settingsSet`: the four toggles, four HTML textareas,
   save and reset as described under *Centralized site settings & branding* above.
-- **Monitor** — 4 stat tiles (আজ সংগৃহীত / লাইভ প্রকাশিত / ডুপ্লিকেট ব্লকড / গড় রান)
-  + the mockup **countdown ring**, pipeline-health and source-health panels, latest
-  collector logs and the recent content queue (`screens/Dashboard.tsx`). A barley
-  **activity-trend chart** (last 8 runs' published counts) sits below the queue.
-  Panel labels match the mockup: "TAURI CONTROLLER · LIVE" and the pipeline row
-  reads "AI Agent → Web · hoichoi-content · READY".
+- **Monitor** — the মনিটর tab renders the **shared `@hoichoi/dash`
+  `DashboardView`**, the exact same five-tab dashboard (সারসংক্ষেপ · বিশ্লেষণ ·
+  পাইপলাইন · ইনসাইট · কনটেন্ট ডেস্ক) as the web admin home: KPI cards, area/bar/
+  donut/radar/treemap/funnel charts, run history, source health, insights and the
+  content queue. Unlike the web (which builds the model server-side from
+  `@hoichoi/db`), the desk builds the `DashModel` **client-side**
+  (`screens/Dashboard.tsx` → `lib/desk-model.ts`) from the runner's
+  `stats`/`sources`/`queue`/`radar`/`categories` payloads, and its header actions
+  map onto the App's existing run/refresh handlers. Every panel is bound to real
+  rows — the old hardcoded pipeline-health list was removed.
 - **Scroll** — every tab scrolls independently (all roots are `scroll-slim
   overflow-auto`); Vault and Settings got root scroll containers too.
 - **Watchlist** — real source CRUD against the runner
@@ -332,7 +336,9 @@ The desktop UI mirrors the `mockup/` desk controller exactly:
      `packages/db/src/transfer.ts`).
   7. **সাইট ও বিজ্ঞাপন** (Palette) — branding fields + four ad-slot HTML
      textareas (same as the old inline section) **+ the shared ওয়েব ভিজিবিলিটি ও থিম
-     panel** (`app_config_json`) — see below.
+     panel** (`app_config_json`). The panel has **Save visibility & theme** and a
+     non-destructive **⟲ Reset to defaults** that restores `VIS_DEFAULTS`
+     (`DEFAULT_APP_CONFIG` parity) and saves in one click — see below.
   8. **অ্যাডমিন** (UserCog) — one-time login codes **+ a লগইন লগ panel** (latest
      sign-in attempts through the runner `loginlog list|delete|clear`, same rows the
      web admin `/admin/logs` shows).

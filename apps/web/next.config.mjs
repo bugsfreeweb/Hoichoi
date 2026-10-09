@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ["@hoichoi/db", "@hoichoi/shared-types", "@hoichoi/llm"],
+  transpilePackages: ["@hoichoi/dash", "@hoichoi/db", "@hoichoi/shared-types", "@hoichoi/llm"],
   serverExternalPackages: [
     "@libsql/client",
     "bcryptjs",

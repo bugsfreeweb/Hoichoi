@@ -728,7 +728,8 @@ export interface AnalyticsSnapshot {
     pendingArticles: number;
   };
   allArticles: { published: number; pending: number; duplicate: number };
-  categories: { key: string; count: number }[];
+  /** Published-post distribution by active category — labelled from `category_configs`. */
+  categories: { key: string; name: string; dot: string; count: number }[];
   series: AnalyticsPoint[];
   sources: { watching: number; paused: number; error: number; total: number };
   collector: {

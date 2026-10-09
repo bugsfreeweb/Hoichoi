@@ -29,12 +29,8 @@ const IconRefreshCw = (p: IconProps = {}) => <Svg {...p}><path d="M21 12a9 9 0 1
 const IconShieldCheck = (p: IconProps = {}) => <Svg {...p}><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="m9 12 2 2 4-4" /></Svg>;
 const IconWifi = (p: IconProps = {}) => <Svg {...p}><path d="M5 13a10 10 0 0 1 14 0" /><path d="M8.5 16.5a5 5 0 0 1 7 0" /><path d="M12 20h.01" /></Svg>;
 
-/* ---- category labels (mirror of @hoichoi/db CATEGORY_SEED slugs) ---- */
-const CATEGORY_META: { key: string; label: string; color: string }[] = [
-  { key: "child-sexual-abuse", label: "শিশু যৌন নির্যাতন", color: "#f38e98" },
-  { key: "extramarital-crime", label: "পরকীয়া অপরাধ", color: "#eac181" },
-  { key: "missing-children", label: "নিখোঁজ শিশু", color: "#8faeff" },
-];
+/* Category labels/colours come from the database (`category_configs`) via the
+   snapshot; nothing here is hardcoded, so admin edits show up on the homepage. */
 
 const timeLabel = (at: string, short = false) =>
   new Intl.DateTimeFormat("bn-BD", {
@@ -99,6 +95,7 @@ export default function LiveAnalytics() {
   const worker = data?.collector.status;
   const workerReady = worker === "ready" || worker === "working";
   const workerLabel = worker === "working" ? "কাজ চলছে" : worker === "ready" ? "প্রস্তুত" : worker === "offline" ? "অফলাইন" : worker === "error" ? "ত্রুটি" : "সংযুক্ত নয়";
+  const catMax = Math.max(1, ...(data?.categories.map((c) => c.count) ?? [0]));
   return <section id="live-insights" className={s.section}>
     <div className={s.inner}>
       <header className={s.header}><div><div className={s.eyebrow}>THE NEWSROOM, IN NUMBERS</div><h2 className={s.title}>হৈচৈ চলছে। <span>দেখুন সংখ্যায়।</span></h2><p className={s.intro}>কত খবর এল, কতটি প্রকাশ হলো, আর কত মন্তব্য অনুমোদন পেল—ডাটাবেসের তথ্যেই পুরো ছবিটা দেখুন।</p></div><div className={s.livePill + (paused || error ? ` ${s.paused}` : "")} role="status"><i className={s.dot} />{connection}</div></header>
@@ -110,7 +107,7 @@ export default function LiveAnalytics() {
         <article className={s.card}><div className={s.cardHeader}><div><h3 className={s.cardTitle}>কনটেন্টের অবস্থা</h3><p className={s.cardSub}>ডেটাবেসের সব রেকর্ড · লাইভ গণনা</p></div><IconFiles size={17} color="#9dad96" /></div>{data ? <ContentDonut values={data.allArticles} /> : <div className={s.skeleton} />}</article>
       </div>
       <div className={s.bottomGrid}>
-        <article className={s.card}><div className={s.cardHeader}><div><h3 className={s.cardTitle}>কোন বিষয়ে কত খবর</h3><p className={s.cardSub}>নির্বাচিত সময়ে সংগৃহীত রেকর্ড</p></div></div><div className={s.categories}>{CATEGORY_META.map(k => { const value = data?.categories.find(c => c.key === k.key)?.count || 0; const max = Math.max(1, ...(data?.categories.map(c => c.count) || [])); return <div key={k.key} className={s.categoryRow}><span>{k.label}</span><div className={s.barTrack}><div className={s.barFill} style={{ width: `${(value / max) * 100}%`, background: k.color }} /></div><b>{data ? bnNum(value) : "—"}</b></div>; })}</div></article>
+        <article className={s.card}><div className={s.cardHeader}><div><h3 className={s.cardTitle}>কোন বিষয়ে কত খবর</h3><p className={s.cardSub}>নির্বাচিত সময়ে প্রকাশিত · শীর্ষ ৫ বিষয়</p></div></div><div className={s.categories}>{data ? data.categories.map(c => <div key={c.key} className={s.categoryRow}><span>{c.name}</span><div className={s.barTrack}><div className={s.barFill} style={{ width: `${(c.count / catMax) * 100}%`, background: c.dot }} /></div><b>{bnNum(c.count)}</b></div>) : <div className={s.skeleton} />}{data && data.categories.length === 0 && <p className={s.empty}>এখনো কোনো প্রকাশিত প্রতিবেদন নেই।</p>}</div></article>
         <article className={s.card}><div className={s.cardHeader}><div><h3 className={s.cardTitle}>সর্বশেষ প্রকাশনা</h3><p className={s.cardSub}>প্রকাশিত সময় অনুযায়ী · স্বয়ংক্রিয় আপডেট</p></div><IconArrowUpRight size={16} color="#a0b290" /></div><div className={s.activity}>{data?.activity.slice(0, 3).map(a => <Link href={a.href} key={a.id}><i /><div><p>{a.text}</p><span>{timeLabel(a.at)}</span></div></Link>)}{data && !data.activity.length && <p className={s.empty}>এখনো কোনো প্রকাশিত প্রতিবেদন নেই।</p>}</div></article>
         <article className={s.card}><div className={s.cardHeader}><div><h3 className={s.cardTitle}>এই মুহূর্তের অবস্থা</h3><p className={s.cardSub}>পরীক্ষিত সংযোগ, অনুমান নয়</p></div><IconRadio size={17} color="#c8f65d" /></div><div className={s.services}>
           <div className={s.service}><IconDatabase size={16} /><p>{data?.database.driver || "TURSO"} ডাটাবেস<small>{data ? `${data.database.mode.toUpperCase()} · ${data.database.latencyMs}ms query` : "পরীক্ষা চলছে"}</small></p><span className={s.serviceStatus + (!data || error || paused ? ` ${s.warn}` : "")}><i />{error ? "অফলাইন" : paused ? "শেষ ফল" : data ? "সংযুক্ত" : "অপেক্ষা"}</span></div>

@@ -11,6 +11,7 @@
     "test": "tsx src/__tests__/category-style.test.ts && tsx scripts/theme-audit.test.ts && tsx scripts/external-links.test.ts && tsx scripts/setup-readiness.test.ts && tsx scripts/cron.test.ts"
   },
   "dependencies": {
+    "@hoichoi/dash": "workspace:*",
     "@hoichoi/db": "workspace:*",
     "@hoichoi/llm": "workspace:*",
     "@hoichoi/shared-types": "workspace:*",

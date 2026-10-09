@@ -9,7 +9,7 @@ page explains the exact, unambiguous path from push → Vercel.
 | Ships | Excluded (`.vercelignore`) |
 |---|---|
 | `apps/web` | `apps/desktop` (native app — separate product) |
-| `packages/db`, `packages/llm`, `packages/shared-types` | `apps/scraper` (runs on the desktop/CI, not serverless) |
+| `packages/db`, `packages/llm`, `packages/shared-types`, `packages/dash` | `apps/scraper` (runs on the desktop/CI, not serverless) |
 | `vercel.json`, `.vercelignore`, `pnpm.*`, `tsconfig.base.json` | `mockup` (static design reference) |
 
 The web app no longer depends on `@hoichoi/scraper` — the two helpers it used
@@ -135,7 +135,10 @@ pnpm --filter @hoichoi/web build
   settings/categories/providers/blocklist defaults while keeping the admin
   user. The desktop app offers the same operations plus credential-bearing,
   passphrase-encrypted backups and one-click local↔Turso sync (see
-  `docs/DESKTOP.md`).
+  `docs/DESKTOP.md`). Separately, the **ভিজিবিলিটি** tab's **⟲ ডিফল্টে রিসেট**
+  button restores only the `app_config_json` visibility/maintenance knobs to
+  `DEFAULT_APP_CONFIG` — it is non-destructive and never touches content,
+  categories or providers (the desktop Settings panel has the same button).
 - **Centralized branding:** the `settings` row (Turso) now carries the site
   identity — `site_name`, `slogan_bn`, `tagline`, `logo_url`, `favicon_url`,
   `accent_color` — edited from the web admin settings screen **or** the desktop
@@ -250,7 +253,10 @@ pnpm --filter @hoichoi/web build
   a standalone `/admin/categories` page (same `CategoryManager` component the desktop
   desk uses). The sidebar/notification badges are driven by `countReviewQueues()`,
   which now includes a separate `pending_comments` count. `/admin` is the
-  dashboard home with live stat tiles; the shell mirrors the desktop desk chrome and
+  dashboard home: the shared `@hoichoi/dash` five-tab dashboard (সারসংক্ষেপ ·
+  বিশ্লেষণ · পাইপলাইন · ইনসাইট · কনটেন্ট ডেস্ক) built server-side from
+  `@hoichoi/db` and rendered by the same `DashboardView` the desktop **মনিটর**
+  tab uses; the shell mirrors the desktop desk chrome and
   its TopBar has the `ThemeToggle` + logout. Reader reports from `/api/reports`
   (public post) land in the `/admin/reports` queue with open → reviewed/dismissed
   transitions.

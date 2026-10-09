@@ -28,6 +28,9 @@ Desktop (apps/desktop)  Tauri 2 desktop admin + local collector controller — S
                       clipboard-plugin + Downloads ফাইলের মাধ্যমে।
 DB/LLM/Types          packages/db (Turso/libSQL), packages/llm (multi-provider resolver),
                       shared-types.
+Dash UI               packages/dash — shared admin-dashboard kit + 5-tab view (React 19 +
+                      Tailwind v3, source-only) rendered by BOTH the web admin home and
+                      the desktop Monitor so the two stay pixel-identical.
 ```
 
 ## Quickstart
@@ -58,6 +61,9 @@ packages/
   db/         Turso/libSQL client, migrations, seeds, shared archive/media helpers
   llm/        Multi-provider resolver (Gemini/Groq/OpenRouter/Ollama/…) with fail-over
   shared-types/  Post/RawPost/Source/Category types shared by all apps
+  dash/       Shared dashboard: chart kit, `DashModel` contract, and the 5-tab
+              DashboardView. Consumed by apps/web (admin home) and apps/desktop
+              (Monitor); every panel maps to a real DB row — no fabricated telemetry.
 docs/         All documentation (deploy, desktop build, design system, editorial policy)
 mockup/       Static design reference (do not deploy; not part of the build)
 .github/workflows/   ci · pipeline-cron (every 2h) · rolling-archive · keep-alive · deploy-web
@@ -111,6 +117,14 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   `comments_show_count` (approved comments shown before "আরও দেখুন", default 10)
   are admin-tunable in the ভিজিবিলিটি tab (web + desktop) and honored by the home
   page, post page and `/api/comments`.
+- **One dashboard, two apps.** The web admin home (`/admin`) and the desktop
+  **মনিটর** now render the *same* five-tab dashboard (সারসংক্ষেপ · বিশ্লেষণ ·
+  পাইপলাইন · ইনসাইট · কনটেন্ট ডেস্ক) from the shared `@hoichoi/dash` package. The
+  web builds the `DashModel` server-side from `@hoichoi/db`; the desk builds it
+  client-side from the runner. Every panel is bound to real rows — no panel shows
+  invented telemetry. Both consoles also have a one-click **⟲ ডিফল্টে রিসেট** for
+  the `app_config_json` visibility/maintenance knobs (`DEFAULT_APP_CONFIG`); it is
+  non-destructive and never touches content.
 
 ## Environment variables
 

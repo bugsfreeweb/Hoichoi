@@ -132,6 +132,30 @@ export function SettingsConsole({
     }
   };
 
+  const resetDefaults = async () => {
+    if (!window.confirm("visibility ও maintenance কনফিগ সব ডিফল্টে ফিরে যাবে — Nনিশ্চিত?")) return;
+    const base: SiteAppConfig = JSON.parse(JSON.stringify(DEFAULT_APP_CONFIG));
+    setCfgRaw(base);
+    setSaving(true);
+    setStatus(null);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ app_config_json: JSON.stringify(base) }),
+      });
+      if (res.status === 401 || res.status === 403) return setStatus("denied");
+      if (!res.ok) return setStatus("err");
+      setDirty(false);
+      setStatus("ok");
+      setTimeout(() => setStatus(null), 4000);
+    } catch {
+      setStatus("err");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <SettingsCtx.Provider value={ctx}>
       <div className="mt-6">
@@ -171,6 +195,13 @@ export function SettingsConsole({
             className="flex items-center gap-2 border-2 border-ink bg-ink px-6 py-2.5 text-[13px] font-bold text-paper transition hover:bg-alizarin disabled:cursor-not-allowed disabled:opacity-40"
           >
             {saving ? "সংরক্ষণ হচ্ছে…" : dirty ? "সংরক্ষণ করুন →" : "✓ সংরক্ষিত"}
+          </button>
+          <button
+            onClick={() => void resetDefaults()}
+            disabled={saving}
+            className="flex items-center gap-2 border-2 border-ink/30 px-5 py-2.5 text-[13px] font-bold text-ink-soft transition hover:border-alizarin hover:text-alizarin disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            ⟲ ডিফল্টে রিসেট
           </button>
           {status === "ok" && <span className="text-[12.5px] font-bold text-ink">সব সেটিংস সংরক্ষিত — পাবলিক সাইট এখনই নতুন কনফিগ অনুসরণ করবে।</span>}
           {status === "err" && <span className="text-[12.5px] font-bold text-alizarin">ব্যর্থ — আবার চেষ্টা করুন।</span>}

@@ -984,7 +984,7 @@ export async function analyticsSnapshot(
 ): Promise<AnalyticsSnapshot> {
   const start = performance.now();
   const client = getClient();
-  const [posts, rawPosts, commentRows, sourceRows, runRows, published] =
+  const [posts, rawPosts, commentRows, sourceRows, runRows, published, cats] =
     await Promise.all([
       client.execute(
         "SELECT id, status, category, created_at, published_at FROM posts",
@@ -1000,6 +1000,7 @@ export async function analyticsSnapshot(
       client.execute(
         "SELECT id, slug, title_bn, published_at FROM posts_current_window ORDER BY published_at DESC LIMIT 6",
       ),
+      listCategories(),
     ]);
   const latencyMs = Math.max(1, Math.round(performance.now() - start));
 
@@ -1073,12 +1074,10 @@ export async function analyticsSnapshot(
       totals.published++;
       const bin = series[index(publishedAt)];
       if (bin) bin.published++;
+      const key = String(p.category);
+      if (key) categoryCounts[key] = (categoryCounts[key] ?? 0) + 1;
     }
     if (st === "pending_review" && inside(pt(p.created_at))) totals.pendingArticles++;
-    const key = String(p.category);
-    if (st === "published" && key) {
-      categoryCounts[key] = (categoryCounts[key] ?? 0) + 1;
-    }
   }
 
   for (const c of comments) {
@@ -1134,7 +1133,15 @@ export async function analyticsSnapshot(
     database: { driver, mode, latencyMs },
     totals,
     allArticles,
-    categories: Object.entries(categoryCounts).map(([key, count]) => ({ key, count })),
+    categories: cats
+      .map((c) => ({
+        key: c.slug,
+        name: c.displayNameBn || c.displayNameEn || c.slug,
+        dot: c.dot ? (c.dot.startsWith("#") ? c.dot : `#${c.dot}`) : "#64748b",
+        count: categoryCounts[c.slug] ?? 0,
+      }))
+      .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key))
+      .slice(0, 5),
     series,
     sources: sourceStates,
     collector: {
@@ -1243,6 +1250,49 @@ export async function countReviewQueues(): Promise<{
     active_notices: n("active_notices"),
     pending_comments: n("pending_comments"),
   };
+}
+
+export interface DashboardSourceRow {
+  id: string;
+  name: string;
+  active: boolean;
+  postsToday: number;
+  openErrors: number;
+}
+
+/**
+ * Compact source list for the admin dashboard's source-health panels. One round
+ * trip for names + today's intake + open scrape errors; the UI derives a health
+ * score from the error count, so nothing here is invented.
+ */
+export async function dashboardSources(): Promise<DashboardSourceRow[]> {
+  const client = getClient();
+  const today = nowIso().slice(0, 10);
+  const [srcs, posts, errs] = await Promise.all([
+    client.execute("SELECT id, page_name, is_active FROM sources ORDER BY page_name"),
+    client.execute({
+      sql: "SELECT source_id, count(*) AS n FROM raw_posts WHERE scraped_at LIKE ? GROUP BY source_id",
+      args: [`${today}%`],
+    }),
+    client.execute({
+      sql: "SELECT source_id, count(*) AS n FROM source_errors WHERE status = 'open' GROUP BY source_id",
+      args: [],
+    }),
+  ]);
+  const postMap = new Map<string, number>();
+  for (const r of posts.rows) postMap.set(String(r.source_id), Number(r.n ?? 0));
+  const errMap = new Map<string, number>();
+  for (const r of errs.rows) errMap.set(String(r.source_id), Number(r.n ?? 0));
+  return srcs.rows.map((r) => {
+    const id = String(r.id);
+    return {
+      id,
+      name: String(r.page_name ?? ""),
+      active: String(r.is_active) === "1" || r.is_active === 1,
+      postsToday: postMap.get(id) ?? 0,
+      openErrors: errMap.get(id) ?? 0,
+    };
+  });
 }
 
 export interface MaintenanceSubscriber {

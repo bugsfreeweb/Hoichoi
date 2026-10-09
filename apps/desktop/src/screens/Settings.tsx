@@ -434,6 +434,19 @@ export default function Settings({
     }
   };
 
+  const resetVis = async () => {
+    if (!window.confirm("ভিজিবিলিটি ও থিম কনফিগ সব ডিফল্টে ফিরে যাবে — নিশ্চিত?")) return;
+    setVis(VIS_DEFAULTS);
+    try {
+      await settingsSet(await getRunEnv(), { app_config_json: JSON.stringify(VIS_DEFAULTS) });
+      setVisMsg("ডিফল্টে রিসেট হয়েছে — web সাইট এখনই নতুন কনফিগ ব্যবহার করবে");
+      setVisErr(null);
+      await autoPush();
+    } catch (e) {
+      setVisErr(String(e));
+    }
+  };
+
   const doRefreshWeb = async () => {
     setWebMsg(null);
     setWebErr(null);
@@ -1306,6 +1319,9 @@ export default function Settings({
                   </button>
                   <button className="btn-ghost" onClick={() => void loadAdSlots()}>
                     Load current
+                  </button>
+                  <button className="btn-ghost" onClick={() => void resetVis()}>
+                    ⟲ Reset to defaults
                   </button>
                 </div>
               </div>

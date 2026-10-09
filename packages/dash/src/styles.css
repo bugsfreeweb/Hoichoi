@@ -1,0 +1,200 @@
+/* ==========================================================================
+   @hoichoi/dash — shared dashboard design system
+   Ported from admin-dashboard-mockup/src/index.css. All rules are either
+   class-scoped or namespaced under `.hoichoi-dash` so they never restyle the
+   host marketing site / desktop chrome. Plain CSS only (no @apply) so it is
+   safe to import from either a Tailwind v3 globals.css or index.css.
+   ========================================================================== */
+
+.hoichoi-dash {
+  color: #e8ecf5;
+  font-family: var(--dash-font-sans, "Inter", "Noto Sans Bengali", ui-sans-serif, system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
+}
+.hoichoi-dash .bn {
+  font-family: var(--dash-font-bn, "Noto Sans Bengali", "Inter", sans-serif);
+}
+.hoichoi-dash .mono {
+  font-family: var(--dash-font-mono, "JetBrains Mono", ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+}
+.hoichoi-dash .tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* scrollbar (scoped) */
+.hoichoi-dash ::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.hoichoi-dash ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.hoichoi-dash ::-webkit-scrollbar-thumb {
+  background: #232a39;
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.hoichoi-dash ::-webkit-scrollbar-thumb:hover {
+  background: #37405a;
+  background-clip: content-box;
+}
+.hoichoi-dash .no-scrollbar {
+  scrollbar-width: none;
+}
+.hoichoi-dash .no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------- surfaces ---------- */
+.hoichoi-dash .panel {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0)),
+    rgba(14, 17, 24, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 18px;
+  backdrop-filter: blur(14px);
+}
+.hoichoi-dash .panel-hover {
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.35s ease,
+    box-shadow 0.35s ease;
+}
+.hoichoi-dash .panel-hover:hover {
+  transform: translateY(-3px);
+  border-color: rgba(245, 165, 36, 0.35);
+  box-shadow:
+    0 18px 50px -20px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(245, 165, 36, 0.08);
+}
+.hoichoi-dash .glow-ring::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(130deg, rgba(245, 165, 36, 0.5), transparent 40%, rgba(34, 211, 238, 0.4));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+.hoichoi-dash .glow-ring:hover::after {
+  opacity: 1;
+}
+.hoichoi-dash .grid-bg {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
+}
+
+/* cursor spotlight on panels */
+.hoichoi-dash .panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(340px circle at var(--mx, 50%) var(--my, 0%), rgba(245, 165, 36, 0.09), transparent 65%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.hoichoi-dash .panel:hover::before {
+  opacity: 1;
+}
+
+/* ---------- animations ---------- */
+@keyframes dashFloatUp {
+  from { opacity: 0; translate: 0 14px; }
+  to { opacity: 1; translate: 0 0; }
+}
+.hoichoi-dash .anim-in { animation: dashFloatUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes dashFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.hoichoi-dash .anim-fade { animation: dashFadeIn 0.5s ease both; }
+
+@keyframes dashPopIn {
+  0% { opacity: 0; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.hoichoi-dash .anim-pop { animation: dashPopIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+@keyframes dashPulseRing {
+  0% { transform: scale(0.8); opacity: 0.85; }
+  80%, 100% { transform: scale(2.3); opacity: 0; }
+}
+.hoichoi-dash .pulse-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: currentColor;
+  animation: dashPulseRing 1.9s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@keyframes dashShimmer { 100% { transform: translateX(200%); } }
+.hoichoi-dash .shimmer { position: relative; overflow: hidden; }
+.hoichoi-dash .shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.09), transparent);
+  animation: dashShimmer 2.4s infinite;
+}
+
+@keyframes dashMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.hoichoi-dash .marquee-track {
+  display: flex;
+  width: max-content;
+  animation: dashMarquee 38s linear infinite;
+}
+.hoichoi-dash .marquee-track:hover { animation-play-state: paused; }
+
+@keyframes dashFlow { to { stroke-dashoffset: -200; } }
+.hoichoi-dash .dash-flow {
+  stroke-dasharray: 6 10;
+  animation: dashFlow 6s linear infinite;
+}
+
+@keyframes dashSpinSlow { to { transform: rotate(360deg); } }
+.hoichoi-dash .spin-slow { animation: dashSpinSlow 14s linear infinite; }
+
+@keyframes dashBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.hoichoi-dash .blink { animation: dashBlink 1.6s ease-in-out infinite; }
+
+@keyframes dashAurora {
+  0% { transform: translate3d(-6%, -4%, 0) scale(1); }
+  50% { transform: translate3d(6%, 4%, 0) scale(1.12); }
+  100% { transform: translate3d(-6%, -4%, 0) scale(1); }
+}
+.hoichoi-dash .aurora { animation: dashAurora 18s ease-in-out infinite; }
+
+@keyframes dashSvgPing {
+  0% { transform: scale(0.6); opacity: 0.6; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+.hoichoi-dash .svg-ping {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dashSvgPing 1.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@keyframes dashBellRing {
+  0%, 100% { transform: rotate(0deg); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-12deg); }
+  45% { transform: rotate(9deg); }
+  60% { transform: rotate(-6deg); }
+  75% { transform: rotate(3deg); }
+}
+.hoichoi-dash .bell-ring { animation: dashBellRing 0.9s ease; transform-origin: 50% 10%; }

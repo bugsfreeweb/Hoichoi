@@ -17,6 +17,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@hoichoi/dash':
+        specifier: workspace:*
+        version: link:../../packages/dash
       '@tauri-apps/api':
         specifier: ^2.0.0
         version: 2.11.1
@@ -113,6 +116,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@hoichoi/dash':
+        specifier: workspace:*
+        version: link:../../packages/dash
       '@hoichoi/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -171,6 +177,25 @@ importers:
       tsx:
         specifier: ^4.19.2
         version: 4.23.13
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
+  packages/dash:
+    dependencies:
+      react:
+        specifier: ^19.0.0
+        version: 19.2.8
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.8(react@19.2.8)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.18
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.7(@types/react@19.2.18)
       typescript:
         specifier: ^5.7.3
         version: 5.9.3

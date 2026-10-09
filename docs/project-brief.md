@@ -42,6 +42,8 @@ Exceptions: active `missing-children` cases stay public until resolved; `legal_h
 ├── packages/
 │   ├── shared-types/ Types shared everywhere
 │   ├── db/           Turso/libSQL client, migrations, seeds, + shared archive/media helpers
+│   ├── dash/         Shared dashboard kit + `DashModel` + 5-tab view rendered by BOTH
+│   │                 the web admin home and the desktop Monitor
 │   └── llm/          Multi-provider LLM abstraction (8 providers + resolver + prompts)
 ├── docs/             index + DEPLOY_WEB, DESKTOP, design system, editorial policy, etc.
 ├── vercel.json       scopes Vercel to apps/web (web/desktop are separate deploys)
@@ -49,9 +51,9 @@ Exceptions: active `missing-children` cases stay public until resolved; `legal_h
 ```
 
 > **Web ⇄ Desktop separation.** The web app (`apps/web`) depends only on the
-> `@hoichoi/db|llm|shared-types` packages. It never imports `@hoichoi/scraper`
-> or `@hoichoi/desktop`, so uploading/deploying the web app to Vercel is
-> unambiguous and never drags in Playwright, tsx, or the native app. See
+> `@hoichoi/db|llm|shared-types|dash` packages. It never imports
+> `@hoichoi/scraper` or `@hoichoi/desktop`, so uploading/deploying the web app to
+> Vercel is unambiguous and never drags in Playwright, tsx, or the native app. See
 > [`docs/DEPLOY_WEB.md`](docs/DEPLOY_WEB.md) (deploy) and
 > [`docs/DESKTOP.md`](docs/DESKTOP.md) (standalone desktop build).
 

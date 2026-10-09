@@ -571,10 +571,13 @@ export default function App() {
                   sources={sources}
                   queueRows={queueRows}
                   statsData={statsData}
-                  logs={logs}
-                  onOpen={jump}
-                  hours={hours}
+                  radarData={radarData}
                   cats={cats}
+                  running={running}
+                  dbDriver={dbDriver}
+                  onOpen={jump}
+                  onRun={() => void runNow()}
+                  onRefresh={() => void refresh()}
                 />
               </section>
 

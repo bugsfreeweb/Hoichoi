@@ -1,7 +1,9 @@
 import type { Config } from "tailwindcss";
+import dashPreset from "../../packages/dash/tailwind-preset.js";
 
 export default {
-  content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  content: ["./index.html", "./src/**/*.{ts,tsx}", "../../packages/dash/src/**/*.{ts,tsx}"],
+  presets: [dashPreset],
   theme: {
     extend: {
       colors: {

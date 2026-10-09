@@ -216,6 +216,30 @@ Use **shadcn/ui** as the base, but heavily restyle it with these tokens. Don't u
 
 Custom components needed (in `apps/web/components/`):
 
+### Admin dashboard kit (`@hoichoi/dash`)
+
+The admin/monitor consoles are built from a **shared, source-only** package
+`packages/dash` so the web admin home and the desktop **মনিটর** tab are
+pixel-identical:
+
+- `src/styles.css` — the dark dashboard palette scoped under `.hoichoi-dash`
+  (its own tokens: `ink-950…600`, `mute`, `amber-brand #f5a524`,
+  `flame #ff6b1a`, `cyan-brand #22d3ee`, `violet-brand #a855f7`,
+  `emerald-brand #34d399`, `rose-brand #fb7185`), imported from each app's
+  global CSS and additive to the existing tokens above.
+- `tailwind-preset.js` — a Tailwind **preset** both apps merge into their own
+  config (the preset only *adds* tokens; it never removes the brand tokens).
+- `src/kit.tsx` — charts (Area/Bar/Donut/Radar/Sparkline/Heatmap/Funnel/
+  Treemap) with no chart dependency.
+- `src/model.ts` — the `DashModel` data contract (apps supply data; the view
+  never invents any).
+- `src/views.tsx` — `DashboardView({ model, actions })`, the five tabs
+  (সারসংক্ষেপ · বিশ্লেষণ · পাইপলাইন · ইনসাইট · কনটেন্ট ডেস্ক).
+
+Because it renders on the dark `ink` surface (an island inside the otherwise
+cream/light console), it is deliberately excluded from the light-theme audit
+which scans only `apps/web/src/{components,app}/admin/**`.
+
 | Component | Purpose |
 |---|---|
 | `<TopBar />` | The sticky 40px ink bar with brand + nav + auto-ship indicator |
