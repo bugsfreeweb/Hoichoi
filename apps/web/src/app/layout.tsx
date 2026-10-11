@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Hind_Siliguri, JetBrains_Mono, Noto_Serif_Bengali, Space_Grotesk } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { siteUrl } from "../lib/site";
 
@@ -66,6 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${serifBn.variable} ${sansBn.variable} ${grotesk.variable} ${mono.variable} grain`}
       >
         {children}
+        <Analytics />
       </body>
     </html>
   );
