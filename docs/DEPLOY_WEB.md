@@ -301,3 +301,10 @@ pnpm --filter @hoichoi/web build
 - **Theme + overflow:** `html[data-theme="light"]` themes the shared `.hoichoi-dash`
   dashboard; page/chrome overflow is clipped so the maintenance overlay and ticker
   no longer create a stray horizontal scrollbar.
+- **Self-hosted fonts:** the four Google fonts (Noto Serif Bengali, Hind Siliguri,
+  Space Grotesk, JetBrains Mono) are committed under `apps/web/public/fonts/` with
+  their `@font-face` rules in `apps/web/src/app/fonts.css`, and the family tokens
+  are declared in `globals.css` `:root`. `next/font/google` was removed so the
+  Vercel build no longer fetches `fonts.googleapis.com` (that fetch failed
+  intermittently and broke deploys). To refresh a font, re-pull its CSS from the
+  Google Fonts API and re-download the `fonts.gstatic.com` woff2 files.

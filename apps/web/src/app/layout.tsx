@@ -1,32 +1,11 @@
 import type { Metadata } from "next";
-import { Hind_Siliguri, JetBrains_Mono, Noto_Serif_Bengali, Space_Grotesk } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+// Fonts are self-hosted (see `fonts.css` + `public/fonts/`) so the production
+// build never depends on a live fonts.googleapis.com fetch. The @font-face
+// rules and their exact `unicode-range` subsets are the ones Google served.
+import "./fonts.css";
 import "./globals.css";
 import { siteUrl } from "../lib/site";
-
-const serifBn = Noto_Serif_Bengali({
-  subsets: ["bengali"],
-  weight: ["400", "600", "700", "800", "900"],
-  variable: "--font-serif-bn",
-});
-
-const sansBn = Hind_Siliguri({
-  subsets: ["bengali"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-sans-bn",
-});
-
-const grotesk = Space_Grotesk({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-grotesk",
-});
-
-const mono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  variable: "--font-mono",
-});
 
 const SITE_URL = siteUrl();
 
@@ -63,9 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body
-        className={`${serifBn.variable} ${sansBn.variable} ${grotesk.variable} ${mono.variable} grain`}
-      >
+      <body className="grain">
         {children}
         <Analytics />
       </body>

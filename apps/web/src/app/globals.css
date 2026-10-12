@@ -103,6 +103,13 @@ overrides appended below still win. */
 /* Design tokens live on CSS variables so the theme toggle can swap the whole
    palette (mockup option-a pattern: `html[data-theme="dark|light"]`). */
 :root {
+  /* Font family tokens are declared here (self-hosted @font-face lives in
+     fonts.css); `next/font` used to emit them, but it fetched Google Fonts at
+     build time and made Vercel builds flaky. */
+  --font-serif-bn: "Noto Serif Bengali", serif;
+  --font-sans-bn: "Hind Siliguri", sans-serif;
+  --font-grotesk: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
   --font-jb: var(--font-mono, "JetBrains Mono", monospace);
   --font-noto-bn: var(--font-serif-bn, "Noto Serif Bengali", serif);
 
