@@ -162,3 +162,20 @@ The pipeline doesn't crash. It:
 The admin sees a "LLM providers offline" banner in the desktop and web admin UIs, and gets a notification (via `tauri-plugin-notification` on desktop, browser push on web).
 
 **This is by design.** Better to have a pile of unrewritten `pending_review` posts than to crash and lose data.
+
+---
+
+## Purpose (`text` / `image`) and multi-key overrides (v1.1.9)
+
+- Every row in `llm_providers` carries a **`purpose`**: `text` (default) or `image`.
+  The rewrite/classification chain selects only `COALESCE(purpose,'text') = 'text'`;
+  AI hero images are resolved by a dedicated `ImageResolver` (`@hoichoi/llm`) from
+  rows whose `purpose = 'image'`. The two chains fail over independently, so a
+  free text provider and an image provider can coexist at different priorities.
+- Providers may hold **several keys** and an optional per-row **`api_key`
+  override** that takes precedence over the stronghold vault and env. The unique
+  constraint is `(provider_key, purpose)` (non-unique index), not `provider_key`
+  alone.
+- CLI: `providers add … --purpose image` (the desktop provider manager and the
+  web `/admin/providers` form expose the same select). `Group by purpose` in the
+  admin so an image model never lands in the text fallback chain.

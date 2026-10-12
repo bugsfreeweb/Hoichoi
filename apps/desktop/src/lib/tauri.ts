@@ -654,6 +654,7 @@ export interface DeskProvider {
   is_free_tier: boolean;
   supports_rewrite: boolean;
   supports_embeddings: boolean;
+  purpose?: "text" | "image";
   last_ok_at: string | null;
   last_error_at: string | null;
   error_count: number;
@@ -678,6 +679,7 @@ export interface DeskProviderInput {
   free?: boolean;
   rewrite?: boolean;
   embed?: boolean;
+  purpose?: "text" | "image";
   isActive?: boolean;
 }
 
@@ -697,6 +699,7 @@ export async function deskUpsertProvider(
   if (input.free !== undefined) args.push("--free", input.free ? "true" : "false");
   if (input.rewrite !== undefined) args.push("--rewrite", input.rewrite ? "true" : "false");
   if (input.embed !== undefined) args.push("--embed", input.embed ? "true" : "false");
+  if (input.purpose !== undefined) args.push("--purpose", input.purpose);
   if (input.isActive !== undefined) args.push("--is-active", input.isActive ? "true" : "false");
   const res = await deskCall(args, env);
   return res.provider as DeskProvider;

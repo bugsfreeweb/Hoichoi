@@ -330,3 +330,35 @@ Exceptions:
 - **Catch basin:** two public, insert-only routes (`POST /api/maintenance/subscribe`, `POST /api/maintenance/contact`) write into `maintenance_subscribers` / `maintenance_messages` (created by `ensureMaintenanceTables()` in `client.ts`). The admin Settings → অপারেশন tab snapshots both counts via `maintenanceInboxSnapshot()`.
 - **Editing:** the রক্ষণাবেক্ষণ tab (`MaintenanceEditor`) edits every visual/copy field with a live `<MaintenanceScreen preview>`; saves through the single tabbed console PATCH → `/api/settings`.
 - **Feed-count knobs:** `home_post_count` (homepage `pageSize()` clamp 4–50), `detail_similar_count` (post-page related grid, clamp 1–8), `comments_show_count` (server-side `/api/comments` limit sanitized `Math.max(1, n)`). Desktop Settings mirrors the same three fields and reads the same merged config, so counts survive cloud sync.
+
+---
+
+## 13. Provider purpose, dashboard live controls, and the variant engine (v1.1.9)
+
+- **Provider purpose (`llm_providers.purpose`).** `text` (default) or `image`.
+  The rewrite/classify chain resolves only `COALESCE(purpose,'text') = 'text'`;
+  AI hero images resolve through a separate `ImageResolver` in `@hoichoi/llm`.
+  A provider row may also carry an **API key override** (`api_key`) that beats
+  vault/env, and `(provider_key, purpose)` is a non-unique index — so the same
+  provider key can exist for text and image without collision. `ensureProviderPurposeColumn`
+  / `ensureProviderMultiKey` migrate old rows in place.
+- **Live dashboard controls.** `GET /api/admin/dashboard?range=24h|7d|all` returns
+  a freshly-built `DashModel`; `POST /api/admin/run-pipeline` starts a run (or
+  `501 { local: true }` when no deploy hook is configured). `GET /api/admin/runs?limit=1`
+  reports the newest `pipeline_runs` row, so the web dashboard polls for the
+  terminal row and toasts on completion. The desktop runner emits `pipeline://done`
+  carrying the exit code for the same toast.
+- **Section variant engine (scaffold).** `SECTION_REGISTRY` (in `@hoichoi/shared-types`)
+  maps each public-site section to selectable variants; today every section's only
+  available variant is `default` (the shipped design). Persistence is the new
+  `sections` table (`key`, `variant`, `enabled`, `sort_order`, `config_json`) plus
+  `settings.default_variant`, both created by `ensureSectionsTable` /
+  `ensureDefaultVariantColumn` in `client.ts`. `/admin/appearance` exposes the
+  switcher; unknown variants are rejected by the data layer, and mockup-only
+  variants are catalogued but disabled until ported — so the live output is
+  unchanged.
+- **Theme + overflow.** `html[data-theme="light"]` now also themes the shared
+  `.hoichoi-dash` kit (web dashboard + desktop Monitor) via an appended override
+  block in `packages/dash/src/styles.css`. Horizontal overflow is clipped at
+  `html`/`body`/`.page-chrome`/`.admin-console` (and `.mc-root` for the maintenance
+  screen) so the grain overlay and ticker no longer make a stray scrollbar.

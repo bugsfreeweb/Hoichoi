@@ -29,6 +29,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       is_free_tier: body.is_free_tier,
       supports_rewrite: body.supports_rewrite,
       supports_embeddings: body.supports_embeddings,
+      purpose: typeof body.purpose === "string" ? (body.purpose === "image" ? "image" : "text") : undefined,
     };
     for (const [k, v] of Object.entries(fields)) {
       if (v !== undefined) {

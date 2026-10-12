@@ -12,11 +12,12 @@ Live site: <https://hoichoifeed.vercel.app> · Source: <https://github.com/bugsf
 Web (apps/web)        Next.js 15 public site (SSR feed, /sitemap, OG images, visitor
                       announcement bell + pinned banner, DB-driven footer) + admin shell
                       (/notices, /moderation, /comments, /posts, /providers, /reports,
-                      /logs, /settings, …), /desk preview, live /api/stats.
+                      /logs, /settings, /appearance, …), /desk preview, live /api/stats.
                       Home sections are gated by settings.app_config_json
                       (show_hero / show_ads / … / maintenance_mode / ai_hero_images);
                       admin Settings is a tabbed console (সাইট / ভিজিবিলিটি / বিজ্ঞাপন /
                       রক্ষণাবেক্ষণ / অপারেশন) with a single save → PATCH /api/settings.
+                      /appearance is the section-variant switcher (default-only scaffold).
 Scraper               Collection pipeline: ingest → dedup → classify → rewrite → moderate →
                       publish. Multi-platform: facebook (browser scrape) + news/magazine
                       (RSS/Atom fetch). AI fallback hero images for media-less posts.
@@ -30,7 +31,9 @@ DB/LLM/Types          packages/db (Turso/libSQL), packages/llm (multi-provider r
                       shared-types.
 Dash UI               packages/dash — shared admin-dashboard kit + 5-tab view (React 19 +
                       Tailwind v3, source-only) rendered by BOTH the web admin home and
-                      the desktop Monitor so the two stay pixel-identical.
+                      the desktop Monitor so the two stay pixel-identical. The dashboard
+                      header has a live ⟲ রিফ্রেশ + ▶ পাইপলাইন চালান (manual run with
+                      progress polling and a completion toast on web and desktop).
 ```
 
 ## Quickstart
@@ -125,6 +128,32 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   invented telemetry. Both consoles also have a one-click **⟲ ডিফল্টে রিসেট** for
   the `app_config_json` visibility/maintenance knobs (`DEFAULT_APP_CONFIG`); it is
   non-destructive and never touches content.
+- **Live dashboard + manual run.** The shared dashboard header carries **⟲ রিফ্রেশ**
+  (re-snapshots `GET /api/admin/dashboard?range=…`) and **▶ পাইপলাইন চালান**
+  (`POST /api/admin/run-pipeline`). On the web a run is polled via
+  `GET /api/admin/runs?limit=1` until a new terminal row appears, then a fixed
+  toast reports success/failure; on the desktop the runner emits
+  `pipeline://done` with the exit code and the same toast fires. When no deploy
+  hook is configured the API answers `501` and the UI falls back to the local
+  desktop runner (`pnpm scrape`).
+- **Provider purpose + multi-key.** `llm_providers.purpose` is `text` (default)
+  or `image`, so image models resolve through a dedicated `ImageResolver`
+  independent of the text chain. An optional per-provider **API key override**
+  is stored on the row (takes precedence over vault/env), and a provider may
+  hold several keys; the text chain only ever considers `purpose = 'text'`.
+- **Optional variant engine (scaffold).** The shipped design is the single
+  `default` variant for every section. A registry
+  (`SECTION_REGISTRY` in `@hoichoi/shared-types`) maps each public-site section
+  (per `multi-style-web-mockup` slug) to its selectable variants, and the
+  `sections` table + `settings.default_variant` persist the choice. Admin →
+  **ডিজাইন ভ্যারিয়েন্ট** (`/admin/appearance`) exposes the switcher, but only
+  `default` is available today; mockup variants are catalogued and disabled until
+  ported, so **the live design never changes**.
+- **Light theme everywhere.** `html[data-theme="light"]` is honored across the
+  web public site, the `.hoichoi-dash` kit (web dashboard + desktop Monitor) and
+  the desktop shell, and the admin notification bell + maintenance preview are
+  theme-aware. Horizontal overflow is clipped at the page/chrome level so the
+  maintenance grain overlay and ticker no longer create stray scrollbars.
 
 ## Environment variables
 
@@ -152,7 +181,9 @@ Provider keys can also be registered per-provider from the admin `AI প্র�
 page: an optional **API key override** is stored on the `llm_providers` row
 (takes precedence over vault/env) and the **⚡ মডেল অটো-ফেচ** button pulls the
 provider's `/v1/models` list (OpenRouter auto-filtered to free models) so you can
-pick without hand-typing. Custom OpenAI-compatible providers get automatic
+pick without hand-typing. Providers are tagged **text** or **image** (`--purpose`
+on the CLI, a select in the admin form) so the rewrite chain and the AI hero-image
+generator resolve independently. Custom OpenAI-compatible providers get automatic
 `/v1`/`/openai/v1` endpoint fallback, and rewrite output is parsed leniently
 (fences, bold/bullet labels, Bangla aliases and value shorthands).
 
@@ -171,7 +202,7 @@ Run from anywhere with `npx tsx --env-file=.env apps/scraper/src/cli.ts <cmd>`.
 | `settings set <key> <value>` / `settings show` | Read/update the shared settings row |
 | `sync push` / `sync pull` | Copy content tables between DBs (includes `llm_providers`) |
 | `export` / `import` | Encrypted vault backups |
-| `providers list` / `providers add --base-url …` | LLM provider registry |
+| `providers list` / `providers add --base-url … [--purpose text\|image]` | LLM provider registry |
 
 ## Deployments
 

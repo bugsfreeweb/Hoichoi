@@ -40,6 +40,7 @@ import Ads from "./screens/Ads";
 import ThemeToggle from "./components/ThemeToggle";
 import DeskSyncBar from "./components/DeskSyncBar";
 import { ToastHost } from "./components/ToastHost";
+import PaneBoundary from "./components/PaneBoundary";
 import { toast } from "./lib/toast";
 
 export type View =
@@ -331,10 +332,16 @@ export default function App() {
       setLogs((prev) => [...prev.slice(-399), e.payload]);
     });
     const undone = listen<number>("pipeline://done", async (e) => {
+      const code = Number(e.payload);
       setRunning(false);
-      setLogs((prev) => [...prev, `── exit code ${e.payload} ──`]);
+      setLogs((prev) => [...prev, `── exit code ${code} ──`]);
       await refresh();
       if (hoursRef.current > 0) setNextRunAt(Date.now() + hoursRef.current * 3_600_000);
+      if (code === 0) {
+        toast.ok("পাইপলাইন সম্পন্ন", "নতুন রান সফলভাবে শেষ হয়েছে — মনিটর হালনাগাদ।");
+      } else {
+        toast.err("পাইপলাইন ব্যর্থ", `রান exit code ${code} নিয়ে শেষ হয়েছে — কালেক্টর লগ দেখুন।`);
+      }
       void maybeAutoBackup();
       void maybeRevalidate();
       void maybeCleanup();
@@ -386,6 +393,12 @@ export default function App() {
     } catch (err) {
       setLogs((prev) => [...prev, `[desk] stop failed: ${String(err)}`]);
     }
+  };
+
+  /** Dashboard header refresh: reload the snapshot and surface the result. */
+  const manualRefresh = async () => {
+    await refresh();
+    toast.ok("স্ন্যাপশট রিফ্রেশ হয়েছে", "মনিটর ও কনটেন্ট সারি হালনাগাদ হয়েছে।");
   };
 
   if (!onboarded) {
@@ -567,6 +580,7 @@ export default function App() {
 
             <main className="stage">
               <section className="pane" id="pane-dashboard" hidden={view !== "dashboard"}>
+                <PaneBoundary name="dashboard">
                 <Dashboard
                   sources={sources}
                   queueRows={queueRows}
@@ -577,19 +591,25 @@ export default function App() {
                   dbDriver={dbDriver}
                   onOpen={jump}
                   onRun={() => void runNow()}
-                  onRefresh={() => void refresh()}
+                  onRefresh={() => void manualRefresh()}
                 />
+                </PaneBoundary>
               </section>
 
               <section className="pane col" id="pane-watchlist" hidden={view !== "watchlist"}>
-                <Watchlist sources={sources} refresh={refresh} />
+                <PaneBoundary name="watchlist">
+                  <Watchlist sources={sources} refresh={refresh} />
+                </PaneBoundary>
               </section>
 
               <section className="pane col" id="pane-queue" hidden={view !== "queue"}>
-                <Queue rows={queueRows} refresh={refresh} cats={cats} />
+                <PaneBoundary name="queue">
+                  <Queue rows={queueRows} refresh={refresh} cats={cats} />
+                </PaneBoundary>
               </section>
 
               <section className="pane col" id="pane-collector" hidden={view !== "collector"}>
+                <PaneBoundary name="collector">
                 <Collector
                   logs={logs}
                   running={running}
@@ -602,22 +622,31 @@ export default function App() {
                   radarData={radarData}
                   queueRows={queueRows}
                 />
+                </PaneBoundary>
               </section>
 
               <section className="pane col" id="pane-vault" hidden={view !== "vault"}>
-                <Vault configured={configured} onEdit={() => jump("settings")} />
+                <PaneBoundary name="vault">
+                  <Vault configured={configured} onEdit={() => jump("settings")} />
+                </PaneBoundary>
               </section>
 
               <section className="pane" id="pane-settings" hidden={view !== "settings"}>
-                <Settings refresh={refresh} refreshBrand={refresh} />
+                <PaneBoundary name="settings">
+                  <Settings refresh={refresh} refreshBrand={refresh} />
+                </PaneBoundary>
               </section>
 
               <section className="pane" id="pane-moderation" hidden={view !== "moderation"}>
-                <Moderation />
+                <PaneBoundary name="moderation">
+                  <Moderation />
+                </PaneBoundary>
               </section>
 
               <section className="pane" id="pane-ads" hidden={view !== "ads"}>
-                <Ads refreshBrand={refresh} />
+                <PaneBoundary name="ads">
+                  <Ads refreshBrand={refresh} />
+                </PaneBoundary>
               </section>
             </main>
           </div>

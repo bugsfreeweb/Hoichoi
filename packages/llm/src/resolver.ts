@@ -4,7 +4,7 @@ import { buildProvider, type KeyStore } from "./build";
 import type { LLMProvider, ParsedRewrite, RewriteContext } from "./types";
 import { ProviderError } from "./types";
 
-export type Operation = "rewrite" | "embed";
+export type Operation = "rewrite" | "embed" | "image";
 
 export interface ActiveProvider {
   row: LLMProviderRow;
@@ -45,10 +45,16 @@ export class Resolver {
 
   async activeProviders(operation: Operation): Promise<ActiveProvider[]> {
     const client = getClient();
+    const purposeClause =
+      operation === "image" ? "purpose = 'image'" : "COALESCE(purpose, 'text') = 'text'";
+    const supportClause =
+      operation === "image"
+        ? "1=1"
+        : "(supports_rewrite = 1 OR supports_embeddings = 1)";
     const res = await client.execute(
       // Free tiers first (so a paid fallback never shadows a usable free one,
       // regardless of admin priorities), then priority within each tier.
-      "SELECT * FROM llm_providers WHERE is_active = 1 AND (supports_rewrite = 1 OR supports_embeddings = 1) ORDER BY is_free_tier DESC, priority ASC",
+      `SELECT * FROM llm_providers WHERE is_active = 1 AND (${purposeClause}) AND (${supportClause}) ORDER BY is_free_tier DESC, priority ASC`,
     );
     const rows = res.rows.map((r) => mapProvider(r as Record<string, unknown>));
     const built: ActiveProvider[] = [];

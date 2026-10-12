@@ -787,6 +787,62 @@ html[data-theme="light"] .theme-toggle .t-moon {
   display: none;
 }
 
+/* Per-pane crash fallback (see PaneBoundary). Keeps a fault local to its tab so
+   the window never blanks; themed with the desk tokens for both light + dark. */
+.pane-fallback {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--ds-t2);
+}
+.pane-fallback .pf-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ds-t1);
+}
+.pane-fallback .pf-sub {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ds-t5);
+}
+.pane-fallback .pf-detail {
+  max-width: 640px;
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-align: left;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ds-rose);
+  background: var(--ds-kb);
+  border: 1px solid var(--ds-bd);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.pane-fallback .pf-retry {
+  margin-top: 4px;
+  padding: 8px 18px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 9px;
+  border: 1px solid var(--ds-bd-2);
+  background: var(--ds-kb8);
+  color: var(--ds-t1);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.pane-fallback .pf-retry:hover {
+  background: var(--ds-kb10);
+  border-color: var(--ds-acc);
+}
+
 .bg-night-grid {
   background-color: var(--color-night-grid);
   background-image:

@@ -12,6 +12,10 @@
   background: var(--mc-bg);
   color: var(--mc-text);
   position: relative;
+  /* The grain overlay uses inset:-60% and the ticker uses width:max-content;
+     neither should ever push the page (or the admin preview box) sideways.
+     `clip` contains them without becoming a scrollport. */
+  overflow-x: clip;
 }
 
 /* centered editorial column */

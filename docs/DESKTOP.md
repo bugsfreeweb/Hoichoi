@@ -457,3 +457,25 @@ root, gitignored) and upload the same set to the GitHub release:
 
 The installer bundles the runner (≈225 MB) and needs **no** `SODIUM_DIST_DIR` —
 libsodium is no longer a dependency since the AES-256-GCM vault replaced Stronghold.
+
+---
+
+## v1.1.9 — Monitor live controls, pane resilience, provider purpose
+
+- **Monitor ⟲ রিফ্রেশ / ▶ পাইপলাইন চালান:** the মনিটর tab is the shared
+  `@hoichoi/dash` dashboard. `refresh()` re-snapshots the desk model and toasts;
+  `runNow()` starts the bundled runner. When the runner finishes, `App.tsx`'s
+  `pipeline://done` handler reads the exit code from the event payload and fires a
+  success/failure toast (the web app gets the same result via run polling).
+- **Pane error boundary:** every desk pane (`dashboard`, `watchlist`, `queue`,
+  `collector`, `vault`, `settings`, `moderation`, `ads`) is wrapped in
+  `PaneBoundary` (`apps/desktop/src/components/PaneBoundary.tsx`). A render error
+  in one tab now shows a themed retry card instead of a white screen, and logs
+  `[desk:pane:<name>]` to the dev console.
+- **Monitor light theme:** the shared `.hoichoi-dash` light overrides (see
+  `design-system.md`) make the Monitor legible under the desktop's
+  `html[data-theme="light"]` toggle; the desk's own `index.css` already carried a
+  broad `.text-white/*`, `.border-white/*`, `.bg-white/*` light block.
+- **Provider purpose:** the desk provider manager can tag a provider `text`
+  (default) or `image` and store a per-row API-key override, matching the web
+  admin.

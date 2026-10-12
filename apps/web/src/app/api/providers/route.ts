@@ -27,33 +27,40 @@ export async function POST(req: NextRequest) {
     isFreeTier?: boolean;
     supportsRewrite?: boolean;
     supportsEmbeddings?: boolean;
+    purpose?: string;
   } | null;
   if (!body?.providerKey || !body?.modelName || !KEYS.includes(body.providerKey)) {
     return NextResponse.json({ error: "providerKey + modelName required" }, { status: 400 });
   }
-  const client = getClient();
-  await client.execute({
-    sql: `
-      INSERT INTO llm_providers (
-        id, provider_key, display_name, base_url, model_name, api_key_env_var, api_key,
-        priority, is_active, is_free_tier, supports_rewrite, supports_embeddings, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
-    `,
-    args: [
-      crypto.randomUUID(),
-      body.providerKey,
-      body.displayName?.trim() || body.providerKey,
-      body.baseUrl?.trim() || null,
-      body.modelName,
-      body.apiKeyEnvVar?.trim() || PROCESSOR_ENV_DEFAULTS[body.providerKey],
-      body.api_key?.trim() || null,
-      Number(body.priority ?? 100),
-      body.isFreeTier ? 1 : 0,
-      body.supportsRewrite ?? 1,
-      body.supportsEmbeddings ?? 0,
-      nowIso(),
-      nowIso(),
-    ],
-  });
-  return NextResponse.json({ ok: true });
+  try {
+    const client = getClient();
+    const purposeVal = body.purpose?.trim() === "image" ? "image" : "text";
+    await client.execute({
+      sql: `
+        INSERT INTO llm_providers (
+          id, provider_key, display_name, base_url, model_name, api_key_env_var, api_key,
+          priority, is_active, is_free_tier, supports_rewrite, supports_embeddings, purpose, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
+      `,
+      args: [
+        crypto.randomUUID(),
+        body.providerKey,
+        body.displayName?.trim() || body.providerKey,
+        body.baseUrl?.trim() || null,
+        body.modelName,
+        body.apiKeyEnvVar?.trim() || PROCESSOR_ENV_DEFAULTS[body.providerKey],
+        body.api_key?.trim() || null,
+        Number(body.priority ?? 100),
+        body.isFreeTier ? 1 : 0,
+        body.supportsRewrite ?? 1,
+        body.supportsEmbeddings ?? 0,
+        purposeVal,
+        nowIso(),
+        nowIso(),
+      ],
+    });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  }
 }

@@ -394,3 +394,16 @@ Implemented in `apps/web` + `apps/desktop` (mockup = read-only new spec):
   + `NoticeBanner` (pinned "special notice", above the masthead) use the shared tone
   tokens (`info|success|warn|alert`) from `@hoichoi/shared-types`; managed from
   `/admin/notices` (web) and the desk নোটিশ tab (desktop).
+- **Shared dash light theme (v1.1.9):** the `.hoichoi-dash` kit (`packages/dash/src/styles.css`)
+  is class-scoped, so `html[data-theme="light"] .hoichoi-dash …` remaps the kit's
+  `text-white/*`, `border-white/*`, `bg-white/*` utilities, `.panel`/`.panel-hover`
+  and `.grid-bg` to a cool slate ink — making the web dashboard and the desktop
+  Monitor legible on cream without restyling host chrome.
+- **Theme-aware admin:** the web admin notification bell uses semantic tokens
+  (`bg-paper`, `border-ink/20`, `text-ink`, `text-ink-soft`, `hover:bg-ink/5`) so it
+  reads on both themes; `apps/web/scripts/theme-audit.test.ts` guards admin
+  coverage + contrast.
+- **Variant engine surface (scaffold):** admin → ডিজাইন ভ্যারিয়েন্ট
+  (`/admin/appearance`) lists each public section's variants. Only the shipped
+  `default` variant is available; mockup variants render as disabled "শীঘ্রই"
+  options, so the current design/structure/layout is the DEFAULT and unchanged.

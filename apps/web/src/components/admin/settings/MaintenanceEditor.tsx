@@ -240,7 +240,7 @@ export function MaintenanceEditor() {
       </Section>
 
       <Section kicker="Live preview" title="প্রিভিউ" hint="উপরের সব সেটিংস এখানে পর্দার মতো দেখতে পাবেন — ক্লিকযোগ্য নয়, শুধু লাইভ আপডেট।">
-        <div className="h-[520px] overflow-y-auto rounded-lg border border-ink/20">
+        <div className="h-[520px] overflow-y-auto overflow-x-hidden rounded-lg border border-ink/20">
           <MaintenanceScreen config={cfg.maintenance} preview />
         </div>
       </Section>

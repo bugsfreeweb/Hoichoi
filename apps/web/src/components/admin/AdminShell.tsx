@@ -62,6 +62,7 @@ const NAV: Array<{
   { href: "/admin/logs", emoji: "📜", label: "লগ" },
   { href: "/admin/setup", emoji: "🔑", label: "সেটআপ গাইড" },
   { href: "/admin/settings", emoji: "⚙️", label: "সেটিংস" },
+  { href: "/admin/appearance", emoji: "🎨", label: "ডিজাইন ভ্যারিয়েন্ট" },
 ];
 
 export function AdminShell({ user, children }: { user: AdminUser; children: React.ReactNode }) {

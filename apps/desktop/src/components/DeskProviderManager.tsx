@@ -36,6 +36,7 @@ interface Form {
   priority: number;
   free: boolean;
   embed: boolean;
+  purpose: "text" | "image";
 }
 
 const EMPTY: Form = {
@@ -49,6 +50,7 @@ const EMPTY: Form = {
   priority: 100,
   free: true,
   embed: false,
+  purpose: "text",
 };
 
 /** AI provider manager for the desk — mirrors the web admin's provider panel. */
@@ -101,6 +103,7 @@ export default function DeskProviderManager() {
       priority: p.priority,
       free: p.is_free_tier,
       embed: p.supports_embeddings,
+      purpose: p.purpose === "image" ? "image" : "text",
     });
     setOpen(true);
     setModels(null);
@@ -144,6 +147,7 @@ export default function DeskProviderManager() {
         priority: Number(form.priority),
         free: form.free,
         embed: form.embed,
+        purpose: form.purpose,
       });
       resetForm();
       await refresh();
@@ -307,6 +311,17 @@ export default function DeskProviderManager() {
                 onChange={(e) => setForm({ ...form, embed: e.target.checked })}
               />
               Embeddings সমর্থন
+            </label>
+            <label className="block">
+              <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">Purpose</span>
+              <select
+                className="field mt-1 w-full"
+                value={form.purpose}
+                onChange={(e) => setForm({ ...form, purpose: e.target.value as "text" | "image" })}
+              >
+                <option value="text">Text (rewrite/content)</option>
+                <option value="image">Image (AI generation)</option>
+              </select>
             </label>
           </div>
 

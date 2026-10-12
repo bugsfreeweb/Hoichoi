@@ -163,6 +163,35 @@ CREATE INDEX IF NOT EXISTS idx_admin_codes_email ON admin_login_codes (email);
   `);
 }
 
+/**
+ * Section variant engine (scaffold). `sections` holds the per-section variant
+ * choice for the public site; the shipped design is always `variant = 'default'`,
+ * and the field is reserved for the optional mockup variants. `settings.default_variant`
+ * records the site-wide default. Purely additive — nothing reads it unless the
+ * admin switches a section away from `default`.
+ */
+export async function ensureSectionsTable(client: Client): Promise<void> {
+  await client.executeMultiple(`
+CREATE TABLE IF NOT EXISTS sections (
+  key TEXT PRIMARY KEY,
+  variant TEXT NOT NULL DEFAULT 'default',
+  enabled INTEGER NOT NULL DEFAULT 1,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  config_json TEXT,
+  updated_at TEXT
+);
+  `);
+}
+
+/** Upgrade helper: adds `settings.default_variant` on existing databases. */
+export async function ensureDefaultVariantColumn(client: Client): Promise<void> {
+  const info = await client.execute("PRAGMA table_info(settings)");
+  const existing = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));
+  if (!existing.has("default_variant")) {
+    await client.execute("ALTER TABLE settings ADD COLUMN default_variant TEXT NOT NULL DEFAULT 'default'");
+  }
+}
+
 /** Desk/console watchlist columns added to `sources` for the desktop UI. */
 const DESK_SOURCE_COLUMNS: Array<[name: string, ddl: string]> = [
   ["kind", "TEXT NOT NULL DEFAULT 'page'"],
@@ -502,6 +531,8 @@ export async function ensureSchema(client: Client, externalUrl?: string): Promis
   await ensureCommentsEmailColumn(client);
   await ensureCommentsDislikesColumn(client);
   await ensureProviderApiKeyColumn(client);
+  await ensureProviderPurposeColumn(client);
+  await ensureProviderMultiKey(client);
   await ensureProviderHealthColumns(client);
   await ensureDynamicProviderKeys(client);
   await ensureRuntimeProviders(client);
@@ -517,6 +548,8 @@ export async function ensureSchema(client: Client, externalUrl?: string): Promis
   await ensureSourceErrorsTable(client);
   await ensureMediaStorageColumn(client);
   await ensureMediaObjectsTable(client);
+  await ensureSectionsTable(client);
+  await ensureDefaultVariantColumn(client);
   await seedDefaults(client, nowIso());
   await ensureGeneralCategories(client);
   await ensureCategoryKeywords(client);
@@ -810,6 +843,15 @@ export async function ensureProviderApiKeyColumn(client: Client): Promise<void> 
   }
 }
 
+/** Adds llm_providers.purpose (text | image). Idempotent. */
+export async function ensureProviderPurposeColumn(client: Client): Promise<void> {
+  const info = await client.execute("PRAGMA table_info(llm_providers)");
+  const existing = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));
+  if (!existing.has("purpose")) {
+    await client.execute("ALTER TABLE llm_providers ADD COLUMN purpose TEXT NOT NULL DEFAULT 'text'");
+  }
+}
+
 /** Adds llm_providers runtime health columns + the provider_key uniqueness
  *  guard. The resolver persists last ok/error timestamps here so a dead
  *  provider (retired model, bad key) is skipped on the next run instead of
@@ -822,9 +864,6 @@ export async function ensureProviderHealthColumns(client: Client): Promise<void>
   if (!existing.has("error_count")) {
     await client.execute("ALTER TABLE llm_providers ADD COLUMN error_count INTEGER NOT NULL DEFAULT 0");
   }
-  await client.execute(
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_llm_providers_provider_key ON llm_providers (provider_key)",
-  );
 }
 
 /**
@@ -877,8 +916,13 @@ export async function ensureDynamicProviderKeys(client: Client): Promise<void> {
     await client.execute('DROP TABLE IF EXISTS "__r_llm_providers"');
   }
   await client.execute("CREATE INDEX IF NOT EXISTS idx_providers_active ON llm_providers (is_active, priority)");
+}
+
+/** Drop unique constraint on provider_key to allow multiple keys per provider_key (multi-key mode). */
+export async function ensureProviderMultiKey(client: Client): Promise<void> {
+  await client.execute("DROP INDEX IF EXISTS idx_llm_providers_provider_key");
   await client.execute(
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_llm_providers_provider_key ON llm_providers (provider_key)",
+    "CREATE INDEX IF NOT EXISTS idx_llm_providers_provider_key_purpose ON llm_providers (provider_key, purpose)",
   );
 }
 

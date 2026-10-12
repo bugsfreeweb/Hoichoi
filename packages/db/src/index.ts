@@ -13,7 +13,11 @@ export * from "./media-objects";
 
 import {
   DEFAULT_APP_CONFIG,
+  DEFAULT_VARIANT,
+  SECTION_REGISTRY,
   type MaintenanceSiteConfig,
+  type SectionRow,
+  type SectionState,
   type SiteAppConfig,
 } from "@hoichoi/shared-types";
 import type {
@@ -209,6 +213,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   ad_strip_html: null,
   app_config_json: JSON.stringify(DEFAULT_APP_CONFIG),
   media_storage_json: JSON.stringify(DEFAULT_MEDIA_STORAGE),
+  default_variant: DEFAULT_VARIANT,
 };
 
 export function mapSettings(row: Record<string, unknown>): SiteSettings {
@@ -238,6 +243,7 @@ export function mapSettings(row: Record<string, unknown>): SiteSettings {
     ad_strip_html: (row.ad_strip_html as string | null) ?? null,
     app_config_json: (row.app_config_json as string | null) ?? JSON.stringify(DEFAULT_APP_CONFIG),
     media_storage_json: (row.media_storage_json as string | null) ?? JSON.stringify(DEFAULT_MEDIA_STORAGE),
+    default_variant: str(row.default_variant, DEFAULT_VARIANT),
   };
 }
 
@@ -274,6 +280,7 @@ export async function updateSettings(fields: Partial<SiteSettings>): Promise<voi
     "ad_strip_html",
     "app_config_json",
     "media_storage_json",
+    "default_variant",
   ];
   if (fields.logo_url === "") fields.logo_url = null;
   if (fields.favicon_url === "") fields.favicon_url = null;
@@ -296,6 +303,98 @@ export async function updateSettings(fields: Partial<SiteSettings>): Promise<voi
   sets.push("updated_at = ?");
   args.push(nowIso());
   await client.execute({ sql: `UPDATE settings SET ${sets.join(", ")} WHERE id = 1`, args });
+}
+
+/* ---------------- section variant engine (scaffold, default-only) ---------------- */
+
+function mapSectionRow(row: Record<string, unknown>): SectionRow {
+  let config: Record<string, unknown> | null = null;
+  if (row.config_json) {
+    try {
+      const parsed = JSON.parse(String(row.config_json));
+      if (parsed && typeof parsed === "object") config = parsed as Record<string, unknown>;
+    } catch {
+      config = null;
+    }
+  }
+  return {
+    key: String(row.key),
+    variant: String(row.variant ?? DEFAULT_VARIANT),
+    enabled: Number(row.enabled ?? 1) !== 0,
+    sort_order: Number(row.sort_order ?? 0),
+    config_json: config,
+    updated_at: (row.updated_at as string | null) ?? null,
+  };
+}
+
+/**
+ * Every registry section merged with its persisted row (if any). The result is
+ * always the complete registry — sections never disappear — and `variant`
+ * falls back to the shipped `"default"`.
+ */
+export async function listSections(): Promise<SectionState[]> {
+  const client = getClient();
+  const res = await client.execute("SELECT * FROM sections");
+  const byKey = new Map<string, SectionRow>();
+  for (const r of res.rows) {
+    const row = mapSectionRow(r as Record<string, unknown>);
+    byKey.set(row.key, row);
+  }
+  return SECTION_REGISTRY.map((meta, index) => {
+    const row = byKey.get(meta.key);
+    return {
+      meta,
+      key: meta.key,
+      variant: row?.variant ?? meta.defaultVariant,
+      enabled: row?.enabled ?? meta.defaultVisible,
+      sort_order: row?.sort_order ?? index,
+    };
+  });
+}
+
+/**
+ * Persist a section's variant/enabled choice. The variant is validated against
+ * the registry, so an unknown id is rejected rather than silently stored.
+ */
+export async function setSectionState(
+  key: string,
+  fields: { variant?: string; enabled?: boolean; sort_order?: number },
+): Promise<boolean> {
+  const meta = SECTION_REGISTRY.find((s) => s.key === key);
+  if (!meta) return false;
+  if (fields.variant !== undefined) {
+    const known = meta.variants.some((v) => v.id === fields.variant);
+    if (!known) return false;
+  }
+  const client = getClient();
+  const variant = fields.variant ?? meta.defaultVariant;
+  const enabled = fields.enabled === undefined ? 1 : fields.enabled ? 1 : 0;
+  const sortOrder = fields.sort_order ?? 0;
+  await client.execute({
+    sql: `INSERT INTO sections (key, variant, enabled, sort_order, updated_at)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(key) DO UPDATE SET
+            variant = excluded.variant,
+            enabled = excluded.enabled,
+            sort_order = excluded.sort_order,
+            updated_at = excluded.updated_at`,
+    args: [key, variant, enabled, sortOrder, nowIso()],
+  });
+  return true;
+}
+
+/** The site-wide default variant (always `"default"` today). */
+export async function getSiteVariant(): Promise<string> {
+  const settings = await getSettings();
+  return settings.default_variant || DEFAULT_VARIANT;
+}
+
+/** Records the site-wide default variant. Reserved for the mockup variants. */
+export async function setSiteVariant(variant: string): Promise<boolean> {
+  const known = variant === DEFAULT_VARIANT || SECTION_REGISTRY.some((s) => s.variants.some((v) => v.id === variant));
+  if (!known) return false;
+  await updateSettings({ default_variant: variant });
+  return true;
 }
 
 /* ---------- notices (announcements + special notice banner) ---------- */

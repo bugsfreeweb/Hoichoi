@@ -212,6 +212,8 @@ export interface SubmittedPage {
   created_at: string;
 }
 
+export type ProviderPurpose = "text" | "image";
+
 export interface LLMProviderRow {
   id: string;
   provider_key: ProviderKey;
@@ -227,6 +229,9 @@ export interface LLMProviderRow {
   is_free_tier: boolean;
   supports_rewrite: boolean;
   supports_embeddings: boolean;
+  /** Provider purpose: `text` for content generation/rewrite (default),
+   *  `image` for image generation. Allows same provider_key with multiple keys. */
+  purpose?: ProviderPurpose;
   rate_limit_rpm: number | null;
   config: Record<string, unknown> | null;
   /** Runtime health: set by the resolver on every attempt (free-first picking). */
@@ -380,6 +385,158 @@ export interface SiteSettings {
    * desktop "মিডিয়া স্টোরেজ" settings panel; consumed by the runner pipeline.
    */
   media_storage_json: string | null;
+  /**
+   * Site-wide default section variant. Always `"default"` (the shipped design);
+   * reserved for the optional mockup variant engine — see {@link SectionMeta}.
+   */
+  default_variant: string;
+}
+
+/* ------------------------- section variant engine ------------------------- */
+
+/**
+ * Section variant engine (scaffold). Each entry maps a public-site section to
+ * the variants that can render it. The current implementation ships only the
+ * `"default"` variant — the design that is live today — so switching a section
+ * never changes the rendered output until a mockup variant is ported.
+ */
+export type SectionScope = "global" | "home" | "post";
+export type SectionZone = "header" | "hero" | "main" | "major" | "footer";
+
+/** The one variant that is guaranteed to exist for every section. */
+export const DEFAULT_VARIANT = "default";
+
+export interface SectionVariant {
+  id: string;
+  /** Bengali display label. */
+  label: string;
+  blurb: string;
+  /** `false` = catalogued from the mockup but not yet ported into this app. */
+  available: boolean;
+}
+
+export interface SectionMeta {
+  key: string;
+  scope: SectionScope;
+  zone: SectionZone;
+  label: string;
+  /** Internal/admin-only English label; the public UI uses `label`. */
+  labelEn: string;
+  description: string;
+  /** The shipped design; always present and always available. */
+  defaultVariant: string;
+  defaultVisible: boolean;
+  variants: SectionVariant[];
+}
+
+/** A persisted per-section row (see the `sections` table). */
+export interface SectionRow {
+  key: string;
+  variant: string;
+  enabled: boolean;
+  sort_order: number;
+  config_json: Record<string, unknown> | null;
+  updated_at: string | null;
+}
+
+export interface SectionState {
+  meta: SectionMeta;
+  /** Convenience alias for `meta.key`. */
+  key: string;
+  variant: string;
+  enabled: boolean;
+  sort_order: number;
+}
+
+const variant = (id: string, label: string, blurb: string, available: boolean): SectionVariant => ({
+  id,
+  label,
+  blurb,
+  available,
+});
+
+/** Only the shipped design is available; mockup variant ids are catalogued in the blurb. */
+const withDefault = (label: string, description: string): SectionVariant[] => [
+  variant(DEFAULT_VARIANT, label, description, true),
+];
+
+const section = (
+  key: string,
+  scope: SectionScope,
+  zone: SectionZone,
+  label: string,
+  description: string,
+  defaultVisible = true,
+): SectionMeta => ({
+  key,
+  scope,
+  zone,
+  label,
+  labelEn: key,
+  description,
+  defaultVariant: DEFAULT_VARIANT,
+  defaultVisible,
+  variants: withDefault(label, description),
+});
+
+/**
+ * Registry of every configurable public-site section, keyed to match the
+ * `multi-style-web-mockup` section slugs. All sections currently resolve to the
+ * `"default"` variant (the shipped design).
+ */
+export const SECTION_REGISTRY: SectionMeta[] = [
+  section("ticker", "global", "header", "জরুরি সংবাদ ও তথ্যপট্টি", "শীর্ষে চলমান সংবাদ, সংগ্রহের অবস্থা ও জরুরি ঘোষণার নকশা।"),
+  section("navbar", "global", "header", "প্রধান শিরোনাম ও নেভিগেশন", "বাংলা মেনু, ডেস্কে যাওয়ার পথ ও আলো-অন্ধকারের সুইচ।"),
+  section("footer", "global", "footer", "সাইটের শেষাংশ", "সাইট-মানচিত্র, সম্পাদকীয় পরিচয়, যোগাযোগ ও প্রকাশনা তথ্য।"),
+  section("hero", "home", "hero", "হোমের প্রধান পরিচিতি", "প্রথম দেখায় হৈচৈয়ের কাজ, যাচাই নীতি ও সর্বশেষ অবস্থার পরিচয়।"),
+  section("kpi", "home", "hero", "সংবাদ-সংগ্রহের মূল সংখ্যা", "সংগৃহীত, প্রকাশিত, পুনরাবৃত্তি ও পাঠকের অংশগ্রহণ।"),
+  section("insights", "home", "main", "লাইভ তথ্যচিত্র", "সময়ের সঙ্গে প্রতিবেদন, বিষয়ভিত্তিক বণ্টন ও প্রকাশের অগ্রগতি।"),
+  section("pipeline", "home", "main", "সংবাদ যাচাই ও প্রকাশের ধাপ", "উৎস সংগ্রহ, ছবি সংরক্ষণ, পুনরাবৃত্তি যাচাই, পুনর্লিখন ও প্রকাশ।"),
+  section("wire", "home", "main", "নিউজরুম লাইভ ওয়্যার", "সংগ্রহ, হ্যাশ-যাচাই, পুনর্লিখন ও প্রকাশের চলমান ঘটনা।"),
+  section("briefing", "home", "main", "সকালের সংক্ষিপ্ত ব্রিফিং", "দিনের সবচেয়ে গুরুত্বপূর্ণ যাচাইকৃত প্রতিবেদনের সারসংক্ষেপ।"),
+  section("lead", "home", "main", "আজকের প্রধান প্রতিবেদন", "পাঠকের জন্য বাছাই করা প্রধান প্রতিবেদন ও উৎস-যাচাই।"),
+  section("latest", "home", "main", "সর্বশেষ প্রতিবেদন", "প্রকাশিত প্রতিবেদন তারিখ, বিষয়, উৎস ও যাচাই-চিহ্নসহ।"),
+  section("home-ad", "home", "major", "হোম পৃষ্ঠার বিজ্ঞাপন", "বিজ্ঞাপনদাতার পরিচয়, লেখা ও লিংক।"),
+  section("academy", "home", "major", "যাচাই একাডেমি", "সম্পাদকীয় পদ্ধতি অনুসরণ করে পাঠক নিজেই খবর যাচাই শিখবেন।"),
+  section("categories", "home", "major", "বিষয়ভিত্তিক সংবাদ", "কোন বিষয়ে কত প্রতিবেদন এবং তার অগ্রাধিকার।"),
+  section("health", "home", "major", "সাইট ও পাইপলাইনের অবস্থা", "ডেটাবেস, সংগ্রাহক, প্রকাশনা ও পাঠকসংক্রান্ত স্বাস্থ্য।"),
+  section("newsletter", "home", "major", "পাঠক বার্তা ও সাবস্ক্রিপশন", "নিয়মিত সম্পাদকীয় সংক্ষিপ্তসার পাওয়ার আমন্ত্রণ।"),
+  section("post-hero", "post", "hero", "প্রতিবেদনের শিরোনাম", "প্রতিবেদনের নাম, সারাংশ, বিষয়, সময় ও উৎস।"),
+  section("post-factbar", "post", "hero", "যাচাইয়ের আস্থা ও উৎস", "ফ্যাক্ট-গেট, মূল উৎস, লেখক এবং প্রতিবেদন-পরিচিতি।"),
+  section("post-tools", "post", "hero", "পাঠকের পড়ার সরঞ্জাম", "প্রতিবেদন শোনা, লেখা বড়-ছোট করা, সংরক্ষণ, উদ্ধৃতি কপি ও প্রিন্ট।"),
+  section("post-glance", "post", "main", "এক নজরে মূল তথ্য", "প্রতিবেদনের গুরুত্বপূর্ণ বিষয় সহজভাবে তুলে ধরে।"),
+  section("post-body", "post", "main", "সম্পূর্ণ প্রতিবেদন", "পুনর্লিখিত প্রতিবেদন, উদ্ধৃতি, দলিল ও অনুচ্ছেদ।"),
+  section("post-lesson", "post", "major", "পড়া শেষে শেখার উপকরণ", "পড়ার পর মূল শিক্ষা, ভাবনার প্রশ্ন ও করণীয়।"),
+  section("post-ad", "post", "major", "প্রতিবেদনের মাঝের বিজ্ঞাপন", "আলাদা করে চিহ্নিত স্পনসর বিজ্ঞাপন।"),
+  section("post-timeline", "post", "main", "ঘটনার সময়রেখা", "ঘটনার গুরুত্বপূর্ণ মুহূর্তগুলো সময়ক্রমে দেখায়।"),
+  section("post-verify", "post", "major", "সূত্র ও দাবি যাচাই", "যাচাই, আংশিক যাচাই বা বাতিল হওয়া তথ্যের বিবরণ।"),
+  section("post-analytics", "post", "main", "প্রতিবেদনের পাঠক-পরিসংখ্যান", "ভিউ, প্রতিক্রিয়া, পাঠ-সময় ও পাঠকের আগ্রহের চার্ট।"),
+  section("post-comments", "post", "major", "পাঠকের মন্তব্য", "পাঠক নামসহ মন্তব্য করতে পারবেন।"),
+  section("post-report", "post", "major", "প্রতিবেদনে ভুল জানান", "ভুল তথ্য, সূত্র বা উপস্থাপনা সম্পাদককে জানানোর ফর্ম।"),
+  section("post-share", "post", "major", "ভাগ করুন ও প্রতিক্রিয়া দিন", "প্রতিবেদন ভাগ করা, লিংক কপি ও পাঠকের প্রতিক্রিয়া।"),
+  section("post-related", "post", "major", "আরও পড়ুন", "একই বিষয় বা সম্পাদকীয় বিভাগের সম্পর্কিত প্রতিবেদন।"),
+];
+
+export const ZONE_LABELS: Record<SectionZone, { bn: string; en: string }> = {
+  header: { bn: "শিরোনাম ও নেভিগেশন", en: "Header" },
+  hero: { bn: "প্রধান পরিচিতি", en: "Hero" },
+  main: { bn: "প্রধান বিষয়বস্তু", en: "Main content" },
+  major: { bn: "বিশেষ অংশ", en: "Featured sections" },
+  footer: { bn: "সাইটের শেষাংশ", en: "Footer" },
+};
+
+export const SCOPE_LABELS: Record<SectionScope, { bn: string; en: string }> = {
+  global: { bn: "সব পৃষ্ঠা", en: "Global" },
+  home: { bn: "হোম পৃষ্ঠা", en: "Home" },
+  post: { bn: "প্রতিবেদন পৃষ্ঠা", en: "Post" },
+};
+
+export function getSectionMeta(key: string): SectionMeta | undefined {
+  return SECTION_REGISTRY.find((s) => s.key === key);
+}
+
+export function sectionsForScope(scope: SectionScope): SectionMeta[] {
+  return SECTION_REGISTRY.filter((s) => s.scope === scope || s.scope === "global");
 }
 
 /* ------------------------- media storage config ------------------------- */

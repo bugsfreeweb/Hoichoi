@@ -278,3 +278,26 @@ pnpm --filter @hoichoi/web build
   HTML and revalidates in the background.
 - Sitemap: `apps/web/src/app/sitemap.ts` lists static + category + live post
   URLs; add a production `SITE_URL` so links are absolute.
+
+---
+
+## v1.1.9 — dashboard live controls, variant switcher, provider purpose
+
+- **Dashboard ⟲ রিফ্রেশ / ▶ পাইপলাইন চালান:** `/admin` (the shared
+  `@hoichoi/dash` home) now re-snapshots via `GET /api/admin/dashboard?range=24h|7d|all`
+  and can start a run via `POST /api/admin/run-pipeline`. Without a configured
+  deploy hook that route returns `501 { local: true, setupGuide: "/admin/setup" }`
+  and the UI points to the desktop runner. A started run is polled through
+  `GET /api/admin/runs?limit=1` until a new terminal `completed`/`failed` row
+  appears, then a toast fires. Range changes push `/admin?range=…` (server-rendered).
+- **Section variant switcher:** `/admin/appearance` renders `VariantSwitcher`
+  (backed by `GET`/`PUT /api/admin/sections`). It is a **default-only scaffold** —
+  the current design is the `default` variant for every section and mockup variants
+  are disabled until ported, so the deployed site is unchanged. `PUT` is
+  admin-role only.
+- **Provider purpose:** `/admin/providers` tags each provider `text` or `image`
+  (and supports a multi-key `api_key` override), storing `llm_providers.purpose`
+  so the rewrite chain and AI hero-image `ImageResolver` resolve independently.
+- **Theme + overflow:** `html[data-theme="light"]` themes the shared `.hoichoi-dash`
+  dashboard; page/chrome overflow is clipped so the maintenance overlay and ticker
+  no longer create a stray horizontal scrollbar.

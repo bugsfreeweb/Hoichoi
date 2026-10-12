@@ -1238,6 +1238,7 @@ interface ProviderUpsert {
   free?: string;
   rewrite?: string;
   embed?: string;
+  purpose?: string;
   isActive?: string;
 }
 
@@ -1260,6 +1261,7 @@ async function upsertProvider(o: ProviderUpsert) {
     if (o.free !== undefined) put("is_free_tier", o.free === "true" ? 1 : 0);
     if (o.rewrite !== undefined) put("supports_rewrite", o.rewrite === "true" ? 1 : 0);
     if (o.embed !== undefined) put("supports_embeddings", o.embed === "true" ? 1 : 0);
+    if (o.purpose !== undefined) put("purpose", o.purpose.trim() === "image" ? "image" : "text");
     if (o.isActive !== undefined) put("is_active", o.isActive === "true" ? 1 : 0);
     if (sets.length > 0) {
       sets.push("updated_at = ?");
@@ -1273,18 +1275,18 @@ async function upsertProvider(o: ProviderUpsert) {
   if (!key) throw new Error("--key required (or --id to edit)");
   if (!PROVIDER_KEYS.includes(key as ProviderKey)) throw new Error(`unknown provider_key: ${key}`);
   const now = nowIso();
-  const existing = await client.execute({ sql: "SELECT id FROM llm_providers WHERE provider_key = ?", args: [key] });
-  const rowId = existing.rows[0]?.id ?? crypto.randomUUID();
+  const rowId = crypto.randomUUID();
+  const purposeVal = o.purpose?.trim() === "image" ? "image" : "text";
   await client.execute({
     sql: `INSERT INTO llm_providers (
       id, provider_key, display_name, base_url, model_name, api_key_env_var, api_key,
-      priority, is_active, is_free_tier, supports_rewrite, supports_embeddings, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
+      priority, is_active, is_free_tier, supports_rewrite, supports_embeddings, purpose, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`,
     args: [
       rowId, key, o.name?.trim() || key, o.base?.trim() || null,
       o.model?.trim() || "", o.env?.trim() || (PROCESSOR_ENV_DEFAULTS as Record<string, string>)[key] || `${key.toUpperCase().replace(/-/g, "_")}_API_KEY`,
       o.apiKey?.trim() || null, Number(o.priority ?? 100),
-      o.free === "false" ? 0 : 1, o.rewrite === "false" ? 0 : 1, o.embed === "true" ? 1 : 0, now, now,
+      o.free === "false" ? 0 : 1, o.rewrite === "false" ? 0 : 1, o.embed === "true" ? 1 : 0, purposeVal, now, now,
     ],
   });
   const row = await client.execute({ sql: "SELECT * FROM llm_providers WHERE id = ?", args: [rowId] });
@@ -1339,6 +1341,7 @@ program
   .option("--free <bool>", "true | false free tier (upsert)")
   .option("--rewrite <bool>", "true | false rewrite support (upsert)")
   .option("--embed <bool>", "true | false embeddings support (upsert)")
+  .option("--purpose <text|image>", "provider purpose (upsert)")
   .option("--is-active <bool>", "true | false active (upsert)")
   .option("--active-only", "list only active (list)")
   .action(async (action: string, opts: Record<string, string | undefined>) => {
@@ -1349,7 +1352,7 @@ program
         const out = opts.activeOnly ? providers.filter((p) => p.is_active) : providers;
         console.log(JSON.stringify({ ok: true, providers: out }, null, 2));
       } else if (action === "upsert") {
-        const provider = await upsertProvider({ ...opts, key: opts.key, name: opts.name, model: opts.model, base: opts.base, env: opts.env, apiKey: opts.apiKey, priority: opts.priority, free: opts.free, rewrite: opts.rewrite, embed: opts.embed, isActive: opts.isActive });
+        const provider = await upsertProvider({ ...opts, key: opts.key, name: opts.name, model: opts.model, base: opts.base, env: opts.env, apiKey: opts.apiKey, priority: opts.priority, free: opts.free, rewrite: opts.rewrite, embed: opts.embed, purpose: opts.purpose, isActive: opts.isActive });
         console.log(JSON.stringify({ ok: true, provider }, null, 2));
       } else if (action === "toggle") {
         if (!opts.id) throw new Error("--id required");

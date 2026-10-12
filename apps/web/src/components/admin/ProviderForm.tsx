@@ -29,6 +29,7 @@ export function ProviderForm() {
     apiKey: "",
     priority: 100,
     free: true,
+    purpose: "text" as "text" | "image",
   });
   const [status, setStatus] = useState<null | "ok" | "err" | "denied">(null);
   const [fetching, setFetching] = useState(false);
@@ -51,6 +52,7 @@ export function ProviderForm() {
           api_key: form.apiKey || undefined,
           priority: Number(form.priority),
           isFreeTier: form.free,
+          purpose: form.purpose,
         }),
       });
       if (res.status === 401 || res.status === 403) return setStatus("denied");
@@ -58,7 +60,7 @@ export function ProviderForm() {
       setStatus("ok");
       setModels(null);
       setFetchError("");
-      setForm({ providerKey: "google", displayName: "", baseUrl: "", modelName: "", apiKey: "", priority: 100, free: true });
+      setForm({ providerKey: "google", displayName: "", baseUrl: "", modelName: "", apiKey: "", priority: 100, free: true, purpose: "text" });
     } catch {
       setStatus("err");
     }
@@ -127,6 +129,17 @@ export function ProviderForm() {
       <label className="block">
         <span className="text-[11px] font-bold uppercase text-ink-soft">Priority</span>
         <input type="number" className={field} value={form.priority} onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })} />
+      </label>
+      <label className="block">
+        <span className="text-[11px] font-bold uppercase text-ink-soft">Purpose</span>
+        <select
+          className={field}
+          value={form.purpose}
+          onChange={(e) => setForm({ ...form, purpose: e.target.value as "text" | "image" })}
+        >
+          <option value="text">Text (rewrite/content)</option>
+          <option value="image">Image (AI generation)</option>
+        </select>
       </label>
       <label className="flex items-center gap-2 text-[12.5px] font-medium text-ink">
         <input type="checkbox" checked={form.free} onChange={(e) => setForm({ ...form, free: e.target.checked })} />

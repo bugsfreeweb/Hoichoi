@@ -114,6 +114,7 @@ export function mapSubmittedPage(row: Record<string, unknown>): SubmittedPage {
 }
 
 export function mapProvider(row: Record<string, unknown>): LLMProviderRow {
+  const purpose = (row.purpose as string | undefined) ?? "text";
   return {
     id: String(row.id),
     provider_key: row.provider_key as LLMProviderRow["provider_key"],
@@ -127,6 +128,7 @@ export function mapProvider(row: Record<string, unknown>): LLMProviderRow {
     is_free_tier: yesNo(row.is_free_tier),
     supports_rewrite: yesNo(row.supports_rewrite),
     supports_embeddings: yesNo(row.supports_embeddings),
+    purpose: (purpose === "image" ? "image" : "text") as LLMProviderRow["purpose"],
     rate_limit_rpm: (row.rate_limit_rpm as number | null) ?? null,
     config: parseJson<Record<string, unknown> | null>(row.config as string, null),
     last_ok_at: (row.last_ok_at as string | null | undefined) ?? null,

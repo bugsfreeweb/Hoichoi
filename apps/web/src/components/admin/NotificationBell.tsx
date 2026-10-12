@@ -76,13 +76,13 @@ export function NotificationBell() {
           id="queue-bell-panel"
           role="group"
           aria-label="কিউ আপডেট"
-          className="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-white/12 bg-[#0b0d10] p-2 shadow-2xl"
+          className="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-ink/20 bg-paper p-2 shadow-2xl text-ink"
         >
-          <p className="px-2 py-1.5 font-mono-x text-[9.5px] tracking-[0.18em] text-white/50 uppercase">
+          <p className="px-2 py-1.5 font-mono-x text-[9.5px] tracking-[0.18em] text-ink-soft uppercase">
             কিউ আপডেট{stale ? " (অসাময়িক)" : ""}
           </p>
           {urgent.length === 0 && (
-            <p className="px-2 py-3 text-[12px] text-white/60">
+            <p className="px-2 py-3 text-[12px] text-ink-soft">
               {stale ? "সংযোগ ব্যর্থ — আপডেট আনা যায়নি।" : "কোনো তথ্য পাওয়া যায়নি।"}
             </p>
           )}
@@ -91,19 +91,19 @@ export function NotificationBell() {
               key={i.key}
               href={i.href}
               onClick={() => setOpen(false)}
-              className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-white/8"
+              className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-ink/5"
             >
-              <span className="text-[12.5px] font-semibold text-white">{i.label}</span>
+              <span className="text-[12.5px] font-semibold text-ink">{i.label}</span>
               <span
                 className={`rounded-full px-2 py-0.5 font-mono-x text-[10px] font-bold ${
-                  i.count > 0 ? "bg-alizarin text-white" : "bg-white/10 text-white/60"
+                  i.count > 0 ? "bg-alizarin text-paper" : "bg-ink/10 text-ink-soft"
                 }`}
               >
                 {toBn(i.count)}
               </span>
             </Link>
           ))}
-          <p className="border-t border-white/10 px-2 pt-2 pb-1 font-mono-x text-[9.5px] text-white/40">
+          <p className="border-t border-ink/10 px-2 pt-2 pb-1 font-mono-x text-[9.5px] text-ink-soft">
             {stale ? "সংযোগ ফিরে এলে হালনাগাদ হবে" : `${POLL_MS / 1000}s পরপর হালনাগাদ হয়`}
           </p>
         </div>
