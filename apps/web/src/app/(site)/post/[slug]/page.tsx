@@ -16,6 +16,9 @@ import { CommentsSection } from "@/components/CommentsSection";
 import { AdSlot } from "@/components/AdSlot";
 import { FbPost } from "@/components/FbPost";
 import { getSettings } from "@/lib/settings";
+import { loadLive } from "@/lib/mv/live";
+import { isMvMode } from "@/lib/mv/variant";
+import MvPost from "@/components/mv/MvPost";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +96,10 @@ function keyPointsFrom(paragraphs: string[], limit = 4): string[] {
 
 export default async function PostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const live = await loadLive().catch(() => null);
+  if (live && isMvMode(live)) {
+    return <MvPost slug={slug} live={live} />;
+  }
   const post = await getPublicPostBySlug(slug);
   if (!post) notFound();
 

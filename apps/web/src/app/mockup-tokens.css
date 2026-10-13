@@ -1,0 +1,93 @@
+/* generated token utilities for the [data-mv] mockup design layer (Tailwind v3 + var colors) */
+[data-mv] .bg-azure-500\/10 { background-color: color-mix(in srgb, var(--color-azure-500) 10%, transparent); }
+[data-mv] .bg-ember-500 { background-color: var(--color-ember-500); }
+[data-mv] .bg-ember-500\/10 { background-color: color-mix(in srgb, var(--color-ember-500) 10%, transparent); }
+[data-mv] .bg-gold-400\/80 { background-color: color-mix(in srgb, var(--color-gold-400) 80%, transparent); }
+[data-mv] .bg-gold-500\/10 { background-color: color-mix(in srgb, var(--color-gold-500) 10%, transparent); }
+[data-mv] .bg-ink-800 { background-color: var(--color-ink-800); }
+[data-mv] .bg-ink-900 { background-color: var(--color-ink-900); }
+[data-mv] .bg-ink-900\/40 { background-color: color-mix(in srgb, var(--color-ink-900) 40%, transparent); }
+[data-mv] .bg-ink-900\/50 { background-color: color-mix(in srgb, var(--color-ink-900) 50%, transparent); }
+[data-mv] .bg-ink-900\/70 { background-color: color-mix(in srgb, var(--color-ink-900) 70%, transparent); }
+[data-mv] .bg-ink-900\/80 { background-color: color-mix(in srgb, var(--color-ink-900) 80%, transparent); }
+[data-mv] .bg-ink-900\/85 { background-color: color-mix(in srgb, var(--color-ink-900) 85%, transparent); }
+[data-mv] .bg-ink-900\/90 { background-color: color-mix(in srgb, var(--color-ink-900) 90%, transparent); }
+[data-mv] .bg-ink-900\/92 { background-color: color-mix(in srgb, var(--color-ink-900) 92%, transparent); }
+[data-mv] .bg-ink-900\/95 { background-color: color-mix(in srgb, var(--color-ink-900) 95%, transparent); }
+[data-mv] .bg-ink-950 { background-color: var(--color-ink-950); }
+[data-mv] .bg-ink-950\/50 { background-color: color-mix(in srgb, var(--color-ink-950) 50%, transparent); }
+[data-mv] .bg-ink-950\/60 { background-color: color-mix(in srgb, var(--color-ink-950) 60%, transparent); }
+[data-mv] .bg-ink-950\/70 { background-color: color-mix(in srgb, var(--color-ink-950) 70%, transparent); }
+[data-mv] .bg-ink-950\/75 { background-color: color-mix(in srgb, var(--color-ink-950) 75%, transparent); }
+[data-mv] .bg-ink-950\/80 { background-color: color-mix(in srgb, var(--color-ink-950) 80%, transparent); }
+[data-mv] .bg-ink-950\/85 { background-color: color-mix(in srgb, var(--color-ink-950) 85%, transparent); }
+[data-mv] .bg-ink-950\/88 { background-color: color-mix(in srgb, var(--color-ink-950) 88%, transparent); }
+[data-mv] .bg-ink-950\/90 { background-color: color-mix(in srgb, var(--color-ink-950) 90%, transparent); }
+[data-mv] .bg-ink-950\/92 { background-color: color-mix(in srgb, var(--color-ink-950) 92%, transparent); }
+[data-mv] .bg-ink-950\/95 { background-color: color-mix(in srgb, var(--color-ink-950) 95%, transparent); }
+[data-mv] .bg-mint-400 { background-color: var(--color-mint-400); }
+[data-mv] .bg-mint-400\/80 { background-color: color-mix(in srgb, var(--color-mint-400) 80%, transparent); }
+[data-mv] .bg-mint-500\/10 { background-color: color-mix(in srgb, var(--color-mint-500) 10%, transparent); }
+[data-mv] .bg-mint-500\/5 { background-color: color-mix(in srgb, var(--color-mint-500) 5%, transparent); }
+[data-mv] .bg-mist-100 { background-color: var(--color-mist-100); }
+[data-mv] .bg-mist-500 { background-color: var(--color-mist-500); }
+[data-mv] .bg-rose-400\/10 { background-color: color-mix(in srgb, var(--color-rose-400) 10%, transparent); }
+[data-mv] .bg-rose-400\/80 { background-color: color-mix(in srgb, var(--color-rose-400) 80%, transparent); }
+[data-mv] .bg-violet-400\/10 { background-color: color-mix(in srgb, var(--color-violet-400) 10%, transparent); }
+[data-mv] .border-azure-500\/35 { border-color: color-mix(in srgb, var(--color-azure-500) 35%, transparent); }
+[data-mv] .border-ember-500\/35 { border-color: color-mix(in srgb, var(--color-ember-500) 35%, transparent); }
+[data-mv] .border-gold-500\/30 { border-color: color-mix(in srgb, var(--color-gold-500) 30%, transparent); }
+[data-mv] .border-gold-500\/35 { border-color: color-mix(in srgb, var(--color-gold-500) 35%, transparent); }
+[data-mv] .border-mint-400 { border-color: var(--color-mint-400); }
+[data-mv] .border-mint-500\/25 { border-color: color-mix(in srgb, var(--color-mint-500) 25%, transparent); }
+[data-mv] .border-mint-500\/30 { border-color: color-mix(in srgb, var(--color-mint-500) 30%, transparent); }
+[data-mv] .border-mint-500\/35 { border-color: color-mix(in srgb, var(--color-mint-500) 35%, transparent); }
+[data-mv] .border-mint-500\/40 { border-color: color-mix(in srgb, var(--color-mint-500) 40%, transparent); }
+[data-mv] .border-mint-500\/50 { border-color: color-mix(in srgb, var(--color-mint-500) 50%, transparent); }
+[data-mv] .border-rose-400\/40 { border-color: color-mix(in srgb, var(--color-rose-400) 40%, transparent); }
+[data-mv] .border-violet-400\/35 { border-color: color-mix(in srgb, var(--color-violet-400) 35%, transparent); }
+[data-mv] .from-ink-900 { --tw-gradient-from: var(--color-ink-900) var(--tw-gradient-from-position, 0%); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+[data-mv] .from-ink-950 { --tw-gradient-from: var(--color-ink-950) var(--tw-gradient-from-position, 0%); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+[data-mv] .from-ink-950\/70 { --tw-gradient-from: color-mix(in srgb, var(--color-ink-950) 70%, transparent) var(--tw-gradient-from-position, 0%); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+[data-mv] .from-ink-950\/85 { --tw-gradient-from: color-mix(in srgb, var(--color-ink-950) 85%, transparent) var(--tw-gradient-from-position, 0%); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+[data-mv] .from-mist-200 { --tw-gradient-from: var(--color-mist-200) var(--tw-gradient-from-position, 0%); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+[data-mv] .ring-ink-900 { --tw-ring-color: var(--color-ink-900); }
+[data-mv] .text-azure-400 { color: var(--color-azure-400); }
+[data-mv] .text-ember-400 { color: var(--color-ember-400); }
+[data-mv] .text-gold-400 { color: var(--color-gold-400); }
+[data-mv] .text-ink-950 { color: var(--color-ink-950); }
+[data-mv] .text-ink-950\/60 { color: color-mix(in srgb, var(--color-ink-950) 60%, transparent); }
+[data-mv] .text-ink-950\/70 { color: color-mix(in srgb, var(--color-ink-950) 70%, transparent); }
+[data-mv] .text-ink-950\/75 { color: color-mix(in srgb, var(--color-ink-950) 75%, transparent); }
+[data-mv] .text-mint-400 { color: var(--color-mint-400); }
+[data-mv] .text-mint-400\/80 { color: color-mix(in srgb, var(--color-mint-400) 80%, transparent); }
+[data-mv] .text-mint-400\/85 { color: color-mix(in srgb, var(--color-mint-400) 85%, transparent); }
+[data-mv] .text-mist-100 { color: var(--color-mist-100); }
+[data-mv] .text-mist-100\/90 { color: color-mix(in srgb, var(--color-mist-100) 90%, transparent); }
+[data-mv] .text-mist-200 { color: var(--color-mist-200); }
+[data-mv] .text-mist-300 { color: var(--color-mist-300); }
+[data-mv] .text-mist-300\/90 { color: color-mix(in srgb, var(--color-mist-300) 90%, transparent); }
+[data-mv] .text-mist-400 { color: var(--color-mist-400); }
+[data-mv] .text-mist-400\/40 { color: color-mix(in srgb, var(--color-mist-400) 40%, transparent); }
+[data-mv] .text-mist-400\/50 { color: color-mix(in srgb, var(--color-mist-400) 50%, transparent); }
+[data-mv] .text-mist-400\/60 { color: color-mix(in srgb, var(--color-mist-400) 60%, transparent); }
+[data-mv] .text-mist-400\/70 { color: color-mix(in srgb, var(--color-mist-400) 70%, transparent); }
+[data-mv] .text-mist-400\/80 { color: color-mix(in srgb, var(--color-mist-400) 80%, transparent); }
+[data-mv] .text-rose-400 { color: var(--color-rose-400); }
+[data-mv] .text-violet-400 { color: var(--color-violet-400); }
+[data-mv] .to-ink-700 { --tw-gradient-to: var(--color-ink-700) var(--tw-gradient-to-position, 100%); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+[data-mv] .to-ink-950 { --tw-gradient-to: var(--color-ink-950) var(--tw-gradient-to-position, 100%); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+[data-mv] .to-ink-950\/15 { --tw-gradient-to: color-mix(in srgb, var(--color-ink-950) 15%, transparent) var(--tw-gradient-to-position, 100%); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+[data-mv] .to-ink-950\/20 { --tw-gradient-to: color-mix(in srgb, var(--color-ink-950) 20%, transparent) var(--tw-gradient-to-position, 100%); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+[data-mv] .to-ink-950\/45 { --tw-gradient-to: color-mix(in srgb, var(--color-ink-950) 45%, transparent) var(--tw-gradient-to-position, 100%); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+[data-mv] .to-mist-300 { --tw-gradient-to: var(--color-mist-300) var(--tw-gradient-to-position, 100%); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+[data-mv] .via-ink-900\/25 { --tw-gradient-to: var(--tw-gradient-to-color, transparent) var(--tw-gradient-to-position, 100%); --tw-gradient-stops: var(--tw-gradient-from), color-mix(in srgb, var(--color-ink-900) 25%, transparent) var(--tw-gradient-via-position, 50%), var(--tw-gradient-to); }
+[data-mv] .via-ink-950\/40 { --tw-gradient-to: var(--tw-gradient-to-color, transparent) var(--tw-gradient-to-position, 100%); --tw-gradient-stops: var(--tw-gradient-from), color-mix(in srgb, var(--color-ink-950) 40%, transparent) var(--tw-gradient-via-position, 50%), var(--tw-gradient-to); }
+[data-mv] .via-ink-950\/50 { --tw-gradient-to: var(--tw-gradient-to-color, transparent) var(--tw-gradient-to-position, 100%); --tw-gradient-stops: var(--tw-gradient-from), color-mix(in srgb, var(--color-ink-950) 50%, transparent) var(--tw-gradient-via-position, 50%), var(--tw-gradient-to); }
+[data-mv] .via-ink-950\/55 { --tw-gradient-to: var(--tw-gradient-to-color, transparent) var(--tw-gradient-to-position, 100%); --tw-gradient-stops: var(--tw-gradient-from), color-mix(in srgb, var(--color-ink-950) 55%, transparent) var(--tw-gradient-via-position, 50%), var(--tw-gradient-to); }
+[data-mv] .via-ink-950\/72 { --tw-gradient-to: var(--tw-gradient-to-color, transparent) var(--tw-gradient-to-position, 100%); --tw-gradient-stops: var(--tw-gradient-from), color-mix(in srgb, var(--color-ink-950) 72%, transparent) var(--tw-gradient-via-position, 50%), var(--tw-gradient-to); }
+[data-mv] .via-ink-950\/75 { --tw-gradient-to: var(--tw-gradient-to-color, transparent) var(--tw-gradient-to-position, 100%); --tw-gradient-stops: var(--tw-gradient-from), color-mix(in srgb, var(--color-ink-950) 75%, transparent) var(--tw-gradient-via-position, 50%), var(--tw-gradient-to); }
+[data-mv] .via-ink-950\/80 { --tw-gradient-to: var(--tw-gradient-to-color, transparent) var(--tw-gradient-to-position, 100%); --tw-gradient-stops: var(--tw-gradient-from), color-mix(in srgb, var(--color-ink-950) 80%, transparent) var(--tw-gradient-via-position, 50%), var(--tw-gradient-to); }
+[data-mv] .via-mist-100 { --tw-gradient-to: var(--tw-gradient-to-color, transparent) var(--tw-gradient-to-position, 100%); --tw-gradient-stops: var(--tw-gradient-from), var(--color-mist-100) var(--tw-gradient-via-position, 50%), var(--tw-gradient-to); }
+[data-mv] .via-mist-400 { --tw-gradient-to: var(--tw-gradient-to-color, transparent) var(--tw-gradient-to-position, 100%); --tw-gradient-stops: var(--tw-gradient-from), var(--color-mist-400) var(--tw-gradient-via-position, 50%), var(--tw-gradient-to); }
+

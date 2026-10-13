@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiUser, requiresRole, unauthorized, forbidden } from "@/lib/auth";
 import { listSections, setSectionState, getSiteVariant, setSiteVariant } from "@hoichoi/db";
-import { DEFAULT_VARIANT } from "@hoichoi/shared-types";
+import { DEFAULT_VARIANT, PRESETS } from "@hoichoi/shared-types";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +47,18 @@ export async function PUT(request: Request) {
     if (typeof body.siteVariant === "string") {
       const ok = await setSiteVariant(body.siteVariant);
       if (!ok) return NextResponse.json({ ok: false, error: "অজানা ভ্যারিয়েন্ট।" }, { status: 400 });
+      return NextResponse.json({ ok: true });
+    }
+
+    // Whole-site preset: applies every section's value from `PRESETS` and
+    // records the look id as the site-wide default.
+    if (typeof body.preset === "string") {
+      const preset = PRESETS.find((p) => p.id === body.preset);
+      if (!preset) return NextResponse.json({ ok: false, error: "অজানা প্রিসেট।" }, { status: 400 });
+      for (const [key, variant] of Object.entries(preset.values)) {
+        await setSectionState(key, { variant });
+      }
+      await setSiteVariant(preset.id);
       return NextResponse.json({ ok: true });
     }
 

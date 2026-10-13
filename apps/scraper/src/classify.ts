@@ -96,7 +96,7 @@ export function classifyContent(
   // unless the content strongly clears it too.
   if (best === sourceCategory) return { slug: null, confidence: 0, matches: [] };
 
-  const confident = bestScore >= 4 && bestScore - secondScore >= 2;
+  const confident = bestScore >= 4 && bestScore - secondScore > 1; // >= 2 margin
   if (!confident) return { slug: null, confidence: 0, matches: [] };
   return {
     slug: best as CategorySlug,

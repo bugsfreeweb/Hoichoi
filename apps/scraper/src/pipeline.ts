@@ -612,7 +612,8 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           if (kw && kw.length) kwProfiles[c.slug] = kw;
         }
         const detected = classifyContent(sp.rawText, [...cats.keys()], source.category, kwProfiles);
-        const postCategory: CategorySlug = detected?.slug ?? source.category;
+        const postCategory: CategorySlug =
+          detected && typeof detected.slug === "string" ? (detected.slug as CategorySlug) : source.category;
         if (postCategory !== source.category) {
           log(
             `[classify] "${source.page_name}" → ${postCategory} (${detected!.confidence}% · ${detected!.matches.length} hits)`,
@@ -634,7 +635,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         // operator raising it see anything. The source's own category is treated
         // as authoritative, so an unrecognised post is not punished for the
         // source's configuration.
-        const gateApplies = detected !== null && postCategory !== source.category;
+        const gateApplies = detected !== null && detected.slug && postCategory !== source.category;
         const lowConfidenceThisPost = gateApplies && detected.confidence < factGate;
         if (lowConfidenceThisPost) {
           log(

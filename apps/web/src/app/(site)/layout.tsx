@@ -6,6 +6,9 @@ import { MaintenanceScreen } from "@/components/maintenance/MaintenanceScreen";
 import { currentUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { countReviewQueues, getSpecialNotice, parseAppConfig, recentPipelineRuns, statsSnapshot } from "@hoichoi/db";
+import { loadLive } from "@/lib/mv/live";
+import { isMvMode } from "@/lib/mv/variant";
+import MvChrome from "@/components/mv/MvChrome";
 import type { Metadata } from "next";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -59,6 +62,16 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
           }
         />
       </div>
+    );
+  }
+  // Mockup design engine: when the admin picks any non-default variant, the
+  // whole site renders the scoped [data-mv] chrome around the page content.
+  const live = await loadLive().catch(() => null);
+  if (live && isMvMode(live)) {
+    return (
+      <MvChrome live={live} accent={settings.accent_color}>
+        {children}
+      </MvChrome>
     );
   }
   return (

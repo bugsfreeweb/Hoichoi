@@ -1,4 +1,5 @@
 @import "../../../../packages/dash/src/styles.css";
+@import "./mockup.css";
 
 @tailwind base;
 @tailwind components;
