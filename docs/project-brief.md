@@ -155,3 +155,17 @@ Estimated LLM cost at up to 1,000 posts/day: **$0/mo**. At extreme volume, or fo
 - **Submit a Facebook Page:** `/submit`.
 - Every public page footer shows **জরুরি সহায়তা: পুলিশ ৯৯৯ · শিশু হেল্পলাইন ১০৯**.
 - See `/about`, `/terms`, `/privacy`, `/dmca`, `/contact` for legal posture. **A qualified lawyer must review the legal pages before public launch.**
+
+## Traffic analytics & footer socials (v1.1.10)
+
+- **Cookie-less traffic analytics** are built in — no third-party analytics service.
+  Anonymous page views (`page_views`) and ad view/click events (`ad_events`) are
+  recorded by a beacon, with no raw IP stored (a daily-rotating hash counts unique
+  visitors). The admin console shows five groups at **/admin/traffic** (and the desk
+  **ট্রাফিক** tab): live visitors by country/flag, most-read content, comments,
+  page-view/OS/browser/device mix, and ad views/clicks/CTR.
+- **Footer social links** are admin-editable (settings → সাইট) — no code change to
+  add a Facebook/YouTube/Telegram/etc. link.
+- **On-demand image generation:** any post's hero can be generated from the post
+  editor, the desk, or `media generate <id>` (subject to the same category safety
+  rules as the automatic fallback).

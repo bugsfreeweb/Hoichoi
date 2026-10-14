@@ -1230,6 +1230,105 @@ export interface AnalyticsSnapshot {
   runSummary: { count: number; durationSec: number | null; lastAt: string | null };
 }
 
+/* ---------- first-party traffic telemetry (admin analytics groups) ---------- */
+
+/** Period selector for the traffic analytics groups (day / week / month). */
+export type TrafficRange = "24h" | "7d" | "30d";
+
+/** A country bucket with an ISO-2 code and a flag emoji. */
+export interface TrafficCountry {
+  country: string;
+  countryCode: string;
+  flag: string;
+  count: number;
+}
+
+/** One most-read content row with its top countries. */
+export interface TrafficTopContent {
+  postId: string | null;
+  title: string;
+  slug: string;
+  href: string;
+  views: number;
+  countries: TrafficCountry[];
+}
+
+/** A comment row with its parent post resolved for linking. */
+export interface TrafficCommentRow {
+  id: string;
+  author: string;
+  body: string;
+  postTitle: string;
+  postSlug: string;
+  href: string;
+  likes: number;
+  createdAt: string;
+}
+
+/** Ranked breakdown bucket (OS / browser / device). */
+export interface TrafficBucket {
+  key: string;
+  count: number;
+}
+
+/**
+ * Cookie-less traffic snapshot powering the five admin analytics groups:
+ * live visitors, most-read content, comments, page-view/OS/browser breakdown,
+ * and ad views.
+ */
+export interface TrafficSnapshot {
+  ok: true;
+  generatedAt: string;
+  range: TrafficRange;
+  from: string;
+  to: string;
+  /** Group 1 — visitors online right now (last N minutes). */
+  online: {
+    visitors: number;
+    windowMin: number;
+    countries: TrafficCountry[];
+  };
+  /** Group 1b — unique visitors + page views over the selected range. */
+  visitors: {
+    total: number;
+    pageViews: number;
+    countries: TrafficCountry[];
+  };
+  /** Group 2 — hottest / most-read content with counters + countries. */
+  topContent: TrafficTopContent[];
+  /** Group 3 — comment totals, recent, and most popular. */
+  comments: {
+    total: number;
+    recent: TrafficCommentRow[];
+    popular: TrafficCommentRow[];
+  };
+  /** Group 4 — page views, bounce, and OS / browser / device mix. */
+  traffic: {
+    pageViews: number;
+    sessions: number;
+    bounced: number;
+    bounceRate: number;
+    os: TrafficBucket[];
+    browser: TrafficBucket[];
+    devices: TrafficBucket[];
+  };
+  /** Group 5 — ad slot views / clicks / CTR. */
+  ads: {
+    views: number;
+    clicks: number;
+    ctr: number;
+    bySlot: { slot: string; views: number; clicks: number; ctr: number }[];
+    byPost: {
+      postId: string | null;
+      title: string;
+      slug: string;
+      href: string;
+      views: number;
+      clicks: number;
+    }[];
+  };
+}
+
 export type CommentStatus = "pending" | "approved" | "blocked";
 
 export interface Comment {

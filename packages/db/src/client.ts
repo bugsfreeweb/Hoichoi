@@ -498,6 +498,53 @@ CREATE INDEX IF NOT EXISTS idx_media_objects_url ON media_objects (url);
   `);
 }
 
+/**
+ * First-party, cookie-less traffic telemetry: one row per page view plus ad
+ * slot view/click rows. No raw IP is ever stored — the route hashes IP+UA+day
+ * into `visitor_id` before insert, and `session_id` is a per-tab random id.
+ * Aggregated by `trafficSnapshot` for the admin analytics groups.
+ */
+export async function ensureTrafficTables(client: Client): Promise<void> {
+  await client.executeMultiple(`
+CREATE TABLE IF NOT EXISTS page_views (
+  id TEXT PRIMARY KEY,
+  path TEXT NOT NULL,
+  post_id TEXT,
+  post_slug TEXT,
+  session_id TEXT NOT NULL,
+  visitor_id TEXT NOT NULL,
+  country TEXT,
+  country_code TEXT,
+  region TEXT,
+  city TEXT,
+  os TEXT,
+  browser TEXT,
+  device TEXT,
+  referrer TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_page_views_created ON page_views (created_at);
+CREATE INDEX IF NOT EXISTS idx_page_views_post ON page_views (post_id);
+CREATE INDEX IF NOT EXISTS idx_page_views_session ON page_views (session_id);
+CREATE INDEX IF NOT EXISTS idx_page_views_visitor ON page_views (visitor_id);
+
+CREATE TABLE IF NOT EXISTS ad_events (
+  id TEXT PRIMARY KEY,
+  slot TEXT NOT NULL,
+  event TEXT NOT NULL DEFAULT 'view' CHECK (event IN ('view','click')),
+  post_id TEXT,
+  path TEXT,
+  session_id TEXT,
+  visitor_id TEXT,
+  country TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ad_events_created ON ad_events (created_at);
+CREATE INDEX IF NOT EXISTS idx_ad_events_slot ON ad_events (slot);
+CREATE INDEX IF NOT EXISTS idx_ad_events_post ON ad_events (post_id);
+  `);
+}
+
 let lastSchemaSig: string | null = null;
 
 /**
@@ -548,6 +595,7 @@ export async function ensureSchema(client: Client, externalUrl?: string): Promis
   await ensureSourceErrorsTable(client);
   await ensureMediaStorageColumn(client);
   await ensureMediaObjectsTable(client);
+  await ensureTrafficTables(client);
   await ensureSectionsTable(client);
   await ensureDefaultVariantColumn(client);
   await seedDefaults(client, nowIso());

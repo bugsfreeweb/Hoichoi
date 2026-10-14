@@ -11,6 +11,7 @@ export * from "./transfer";
 export * from "./admin-auth";
 export * from "./source-errors";
 export * from "./media-objects";
+export * from "./traffic";
 
 import {
   DEFAULT_APP_CONFIG,

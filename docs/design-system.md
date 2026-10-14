@@ -407,3 +407,25 @@ Implemented in `apps/web` + `apps/desktop` (mockup = read-only new spec):
   (`/admin/appearance`) lists each public section's variants. Only the shipped
   `default` variant is available; mockup variants render as disabled "শীঘ্রই"
   options, so the current design/structure/layout is the DEFAULT and unchanged.
+
+## 12. Footer socials + the traffic console (v1.1.10)
+
+- **Footer socials (public site).** The footer's social row is data-driven:
+  `SiteAppConfig.footer_socials` (`FooterSocialLink[] = { label, url, icon }`) is
+  edited in admin → সেটিংস → সাইট via `SocialLinksEditor`. `FooterSocials.tsx`
+  renders each link with an inline SVG from a fixed icon map (Facebook, X, YouTube,
+  Instagram, Telegram, WhatsApp, website, email, RSS) and falls back to a generic
+  globe for unknown keys, so an operator can add a link without a code change. A
+  `LocalZone.tsx` client component stamps the reader's live Bangladesh-time zone
+  next to the `BUGSFREE STUDIO · LOCALHOST/… · EDGE CACHE ON` build stamp.
+- **Traffic console (web + desk).** `/admin/traffic` (web) and the desk **ট্রাফিক**
+  tab render the shared `TrafficView` (`packages/dash/src/traffic.tsx`) — the same
+  five analytics groups on both surfaces, so the console design matches the
+  dashboard exactly. It reuses the kit primitives (`KpiCard`, `DonutChart`,
+  `RankBars`, `SegMent`, `Card`, `Badge`) with the standard `COLORS` palette and a
+  `24h | 7d | 30d` segmented range selector, keeping the editorial dark-panel look
+  already used by the 5-tab dashboard. Country rows pair a flag emoji with the
+  `Intl.DisplayNames` country name; the ad group shows views/clicks/CTR with a
+  `Badge tone="brand"`.
+- **Admin nav.** `AdminShell` gains a **📈 ট্রাফিক অ্যানালিটিক্স** row directly under
+  the dashboard, matching the desk tab order.

@@ -20,6 +20,9 @@ importers:
       '@hoichoi/dash':
         specifier: workspace:*
         version: link:../../packages/dash
+      '@hoichoi/shared-types':
+        specifier: workspace:*
+        version: link:../../packages/shared-types
       '@tauri-apps/api':
         specifier: ^2.0.0
         version: 2.11.1
@@ -195,6 +198,9 @@ importers:
 
   packages/dash:
     dependencies:
+      '@hoichoi/shared-types':
+        specifier: workspace:*
+        version: link:../shared-types
       react:
         specifier: ^19.0.0
         version: 19.2.8
