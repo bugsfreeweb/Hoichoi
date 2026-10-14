@@ -165,6 +165,7 @@ export default function App() {
   const [view, setView] = useState<View>("dashboard");
   const [configured, setConfigured] = useState<Partial<Record<CredentialName, boolean>>>({});
   const [running, setRunning] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [sources, setSources] = useState<DeskSource[]>([]);
   const [queueRows, setQueueRows] = useState<DeskQueueRow[]>([]);
@@ -270,7 +271,7 @@ export default function App() {
     }
   };
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<{ ok: boolean; error?: string }> => {
     try {
       const env = await getRunEnv();
       // Merge DB provider key overrides into the vault "configured" map so
@@ -311,8 +312,11 @@ export default function App() {
         void notify("হৈচৈ ডেস্ক — অপেক্ষমাণ মন্তব্য", `${toBn(pending)}টি মন্তব্য মডারেশনের অপেক্ষায় আছে।`);
       }
       prevPendingRef.current = pending;
-    } catch {
-      /* partial refresh failures are non-fatal */
+      return { ok: true };
+    } catch (err) {
+      // Surface the actual runner error so a failed refresh is not mistaken for
+      // a healthy but empty desk.
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
   }, []);
 
@@ -395,10 +399,20 @@ export default function App() {
     }
   };
 
-  /** Dashboard header refresh: reload the snapshot and surface the result. */
+  /** Dashboard header refresh: reload the snapshot and surface the real result. */
   const manualRefresh = async () => {
-    await refresh();
-    toast.ok("স্ন্যাপশট রিফ্রেশ হয়েছে", "মনিটর ও কনটেন্ট সারি হালনাগাদ হয়েছে।");
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const r = await refresh();
+      if (r.ok) {
+        toast.ok("স্ন্যাপশট রিফ্রেশ হয়েছে", "মনিটর ও কনটেন্ট সারি হালনাগাদ হয়েছে।");
+      } else {
+        toast.err("রিফ্রেশ ব্যর্থ", r.error ?? "রানার উত্তর দেয়নি — সংযোগ ও কি যাচাই করুন।");
+      }
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   if (!onboarded) {
@@ -592,6 +606,7 @@ export default function App() {
                   onOpen={jump}
                   onRun={() => void runNow()}
                   onRefresh={() => void manualRefresh()}
+                  refreshing={refreshing}
                 />
                 </PaneBoundary>
               </section>

@@ -68,6 +68,7 @@ export default async function HomePage({
         featuredImg={featured ? mediaUrl(featured) : null}
         featuredTitle={featured?.title_bn ?? null}
         featuredCategory={featured ? categoryLabel(featured.category, catRows) : null}
+        showLiveGraph={cfg.show_live_graph}
       />
       )}
 

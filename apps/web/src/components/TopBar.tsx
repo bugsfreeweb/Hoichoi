@@ -29,8 +29,9 @@ const LINKS = [
   },
 ];
 
-export function TopBar() {
+export function TopBar({ pipelineHours = 2 }: { pipelineHours?: number }) {
   const pathname = usePathname();
+  const shipHours = Number.isFinite(pipelineHours) && pipelineHours > 0 ? pipelineHours : 2;
   if (pathname.startsWith("/desk")) return null;
   return (
     <>
@@ -46,7 +47,7 @@ export function TopBar() {
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-alizarin" />
             </span>
             HOICHOI <span className="hidden text-white/40 sm:inline">·</span>
-            <span className="hidden text-white/40 sm:inline">TAURI DESK</span>
+            <span className="hidden text-white/40 sm:inline">HOICHOI DESK</span>
           </Link>
 
           <nav className="flex items-center gap-1">
@@ -78,7 +79,7 @@ export function TopBar() {
             <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6a9 9 0 0 0-9 9V3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/></svg>
             <span>→</span>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l10 18H2L12 3z"/></svg>
-            <span className="text-white/50">AUTO-SHIP · EVERY 2H</span>
+            <span className="text-white/50">AUTO-SHIP · EVERY {shipHours}H</span>
           </div>
         </div>
       </header>

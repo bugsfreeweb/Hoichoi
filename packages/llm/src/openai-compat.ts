@@ -1,7 +1,16 @@
 import type { HealthCheckResult, LLMProviderRow } from "@hoichoi/shared-types";
-import { ProviderError, type LLMProvider, type ParsedRewrite, type RewriteContext } from "./types";
+import {
+  ProviderError,
+  composeImagePrompt,
+  type ImageGenRequest,
+  type ImageGenResult,
+  type LLMProvider,
+  type ParsedRewrite,
+  type RewriteContext,
+} from "./types";
 import { getSystemPrompt } from "./prompts";
 import { parseRewriteOutput, resolveTemperature } from "./types";
+import { decodeBase64, sniffImageMime } from "./image-util";
 
 export interface OpenAICompatOptions {
   row: LLMProviderRow;
@@ -80,6 +89,7 @@ export class OpenAICompatProvider implements LLMProvider {
   readonly providerKey: LLMProviderRow["provider_key"];
   readonly isFreeTier: boolean;
   readonly supportsEmbeddings: boolean;
+  readonly supportsImage = true;
   private readonly row: LLMProviderRow;
   private readonly key: string | null;
   private readonly baseUrl: string;
@@ -138,6 +148,115 @@ export class OpenAICompatProvider implements LLMProvider {
       extractEmbedding,
       signal,
     );
+  }
+
+  /**
+   * Text-to-image via the OpenAI `/images/generations` shape, which most
+   * gateways (OpenAI, Azure-style, Together, DeepInfra, custom BYOK) speak.
+   * `gpt-image-*` models reject `response_format`, so it is requested only for
+   * DALL·E-style models and retried without it if the provider complains.
+   */
+  async generateImage(req: ImageGenRequest, signal?: AbortSignal): Promise<ImageGenResult> {
+    const model = req.model?.trim() || this.row.model_name;
+    const prompt = composeImagePrompt(req);
+    const body: Record<string, unknown> = {
+      model,
+      prompt,
+      n: Math.max(1, Math.min(4, req.count ?? 1)),
+    };
+    if (req.size) body.size = req.size;
+    if (req.style) body.style = req.style;
+    if (req.quality) body.quality = req.quality;
+    const tryB64 = !/gpt-image/i.test(model);
+    if (tryB64) body.response_format = "b64_json";
+    return this.postImageUntilOk(this.imageCandidates(), body, { model, prompt }, signal);
+  }
+
+  /** The `/images/generations` analog of {@link chatCandidates}. */
+  private imageCandidates(): string[] {
+    const out: string[] = [];
+    const seen = new Set<string>();
+    const push = (u: string) => {
+      if (!/^https?:\/\//i.test(u) || seen.has(u)) return;
+      seen.add(u);
+      out.push(u);
+    };
+    if (/\/images\/generations\/?$/i.test(this.baseUrl)) push(this.baseUrl);
+    push(`${this.baseUrl}/images/generations`);
+    push(`${this.baseUrl}/v1/images/generations`);
+    return out;
+  }
+
+  private async postImageUntilOk(
+    candidates: string[],
+    baseBody: Record<string, unknown>,
+    meta: { model: string; prompt: string },
+    signal?: AbortSignal,
+  ): Promise<ImageGenResult> {
+    let lastReason: Error | null = null;
+    for (const url of candidates) {
+      const body = { ...baseBody };
+      for (let attempt = 0; attempt < 2; attempt++) {
+        let res: Response;
+        try {
+          res = await fetch(url, {
+            method: "POST",
+            headers: this.headers,
+            signal,
+            body: JSON.stringify(body),
+          });
+        } catch (err) {
+          lastReason = err instanceof Error ? err : new Error(String(err));
+          break;
+        }
+        if (res.ok) return this.decodeImageResponse(await res.json(), meta);
+        const text = await res.text();
+        // gpt-image-1 rejects `response_format`; drop it and retry once.
+        if (res.status === 400 && body.response_format !== undefined && /response_format/i.test(text)) {
+          delete body.response_format;
+          continue;
+        }
+        if (res.status === 404 || res.status === 405 || res.status === 501) {
+          lastReason = new ProviderError("bad_output", `no image endpoint at ${url} (${res.status})`);
+          break;
+        }
+        classifyStatus(res.status, text);
+      }
+    }
+    if (lastReason) throw lastReason;
+    throw new ProviderError("bad_output", `no usable image endpoint under base_url "${this.baseUrl}"`);
+  }
+
+  private async decodeImageResponse(
+    raw: unknown,
+    meta: { model: string; prompt: string },
+  ): Promise<ImageGenResult> {
+    const data =
+      raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+    const arr = Array.isArray(data.data) ? (data.data as Array<Record<string, unknown> | null>) : [];
+    const first = arr.find((d) => d && (typeof d.b64_json === "string" || typeof d.url === "string")) ?? arr[0] ?? null;
+    if (!first) {
+      const err = (data.error as { message?: string } | undefined)?.message;
+      throw new ProviderError("bad_output", err ?? "image response contained no image");
+    }
+    if (typeof first.b64_json === "string" && first.b64_json) {
+      const bytes = decodeBase64(first.b64_json);
+      return { bytes, contentType: sniffImageMime(bytes), provider: this.name, model: meta.model, prompt: meta.prompt };
+    }
+    if (typeof first.url === "string" && first.url) {
+      const res = await fetch(first.url, { signal: AbortSignal.timeout(60_000) });
+      if (!res.ok) throw new ProviderError("network", `image download failed: ${res.status}`);
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      const ct = res.headers.get("content-type");
+      return {
+        bytes,
+        contentType: ct && ct.startsWith("image/") ? ct : sniffImageMime(bytes),
+        provider: this.name,
+        model: meta.model,
+        prompt: meta.prompt,
+      };
+    }
+    throw new ProviderError("bad_output", "image response had neither b64_json nor url");
   }
 
   async healthCheck(signal?: AbortSignal): Promise<HealthCheckResult> {

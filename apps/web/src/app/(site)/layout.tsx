@@ -81,7 +81,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
           __html: `(function(){try{if(localStorage.getItem("hoichoi-theme-explicit")!=="1"){document.documentElement.setAttribute("data-theme","${themeDefault}")}}catch(e){}})();`,
         }}
       />
-      <TopBar />
+      <TopBar pipelineHours={settings.pipeline_hours} />
       <BreakingTicker />
       <NoticeBanner notice={specialNotice} />
       {children}

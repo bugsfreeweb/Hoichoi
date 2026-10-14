@@ -26,6 +26,7 @@ export default function Dashboard({
   onOpen,
   onRun,
   onRefresh,
+  refreshing,
 }: {
   sources: DeskSource[];
   queueRows: DeskQueueRow[];
@@ -37,6 +38,7 @@ export default function Dashboard({
   onOpen: (tab: View) => void;
   onRun: () => void;
   onRefresh: () => void;
+  refreshing?: boolean;
 }) {
   const model = useMemo(
     () => buildDeskModel({ statsData, sources, queueRows, radarData, cats: cats ?? null, running, dbDriver }),
@@ -48,6 +50,7 @@ export default function Dashboard({
     onRun,
     running,
     onRefresh,
+    refreshing,
   };
 
   return (

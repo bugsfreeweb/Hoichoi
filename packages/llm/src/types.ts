@@ -49,7 +49,63 @@ export interface LLMProvider {
   readonly supportsEmbeddings: boolean;
   rewrite(ctx: RewriteContext, signal?: AbortSignal): Promise<ParsedRewrite>;
   embed?(text: string, signal?: AbortSignal): Promise<number[]>;
+  /** True when the provider can render an image from a text prompt. */
+  readonly supportsImage?: boolean;
+  /**
+   * Text-to-image generation. Optional: only image-purpose providers implement
+   * it, and callers must check `supportsImage` before relying on it.
+   */
+  generateImage?(req: ImageGenRequest, signal?: AbortSignal): Promise<ImageGenResult>;
   healthCheck(signal?: AbortSignal): Promise<HealthCheckResult>;
+}
+
+/**
+ * Free-form request for one image. Providers pick the fields they understand
+ * and ignore the rest, so the manual generator can expose one option panel for
+ * every backend (Gemini, OpenAI images, OpenAI-compatible gateways).
+ */
+export interface ImageGenRequest {
+  /** What to draw. */
+  prompt: string;
+  /** Model override; falls back to the provider row's model name. */
+  model?: string;
+  /** "1024x1024" style (OpenAI images); ignored by providers that size off ratio. */
+  size?: string;
+  /** "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | "3:2" | "2:3". */
+  aspectRatio?: string;
+  /** "natural" | "vivid" (OpenAI DALL·E style hint). */
+  style?: string;
+  /** "standard" | "hd" | "low" | "medium" | "high". */
+  quality?: string;
+  /** What to avoid (folded into the prompt when there is no native field). */
+  negativePrompt?: string;
+  /** Number of images, default 1. */
+  count?: number;
+}
+
+export interface ImageGenResult {
+  /** Raw encoded image bytes. */
+  bytes: Uint8Array;
+  /** MIME type, e.g. "image/png". */
+  contentType: string;
+  /** Human label of the provider that produced it. */
+  provider: string;
+  /** Model id that produced it. */
+  model: string;
+  /** The prompt actually sent (options may have been folded in). */
+  prompt: string;
+}
+
+/**
+ * Fold the option fields a provider may not support natively into the prompt,
+ * so every backend produces broadly the same picture from the same panel.
+ */
+export function composeImagePrompt(req: ImageGenRequest): string {
+  const parts = [req.prompt.trim()];
+  if (req.aspectRatio && !req.size) parts.push(`Compose for a ${req.aspectRatio} aspect ratio.`);
+  if (req.quality && !/^(standard|hd|low|medium|high)$/i.test(req.quality)) parts.push(`Quality: ${req.quality}.`);
+  if (req.negativePrompt?.trim()) parts.push(`Do not include: ${req.negativePrompt.trim()}.`);
+  return parts.filter((p) => p && p.length > 0).join("\n");
 }
 
 /** Resolves a key for a provider at runtime (env → vault). */

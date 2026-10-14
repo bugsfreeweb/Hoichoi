@@ -28,7 +28,7 @@ export default function DeskSyncBar({
   onSynced,
 }: {
   queueRows: DeskQueueRow[];
-  onSynced: () => Promise<void> | void;
+  onSynced: () => Promise<unknown> | void;
 }) {
   const [busy, setBusy] = useState<Action | null>(null);
   const [note, setNote] = useState("");

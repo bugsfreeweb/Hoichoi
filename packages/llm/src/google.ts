@@ -1,14 +1,23 @@
 import type { HealthCheckResult, LLMProviderRow } from "@hoichoi/shared-types";
 import { classifyStatus } from "./openai-compat";
 import { getSystemPrompt } from "./prompts";
-import { ProviderError, type LLMProvider, type ParsedRewrite, type RewriteContext } from "./types";
+import {
+  ProviderError,
+  composeImagePrompt,
+  type ImageGenRequest,
+  type ImageGenResult,
+  type LLMProvider,
+  type ParsedRewrite,
+  type RewriteContext,
+} from "./types";
 import { parseRewriteOutput, resolveTemperature } from "./types";
+import { decodeBase64, sniffImageMime } from "./image-util";
 
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
 interface GeminiResponse {
   candidates?: Array<{
-    content?: { parts?: Array<{ text?: string }> };
+    content?: { parts?: Array<{ text?: string; inlineData?: { data?: string; mimeType?: string } }> };
   }>;
   error?: { message?: string; code?: number };
 }
@@ -23,6 +32,7 @@ export class GoogleGeminiProvider implements LLMProvider {
   readonly providerKey: LLMProviderRow["provider_key"];
   readonly isFreeTier: boolean;
   readonly supportsEmbeddings: boolean;
+  readonly supportsImage = true;
   private readonly row: LLMProviderRow;
   private readonly key: string | null;
 
@@ -97,6 +107,45 @@ export class GoogleGeminiProvider implements LLMProvider {
       throw new ProviderError("bad_output", data.error?.message ?? "gemini returned no embedding");
     }
     return values;
+  }
+
+  /**
+   * Text-to-image through Gemini's native `:generateContent` with
+   * `responseModalities: ["TEXT", "IMAGE"]` (gemini-2.5-flash-image et al).
+   * `aspectRatio` maps to `generationConfig.imageConfig`, which the image
+   * models accept; older text models simply ignore the config.
+   */
+  async generateImage(req: ImageGenRequest, signal?: AbortSignal): Promise<ImageGenResult> {
+    const model = req.model?.trim() || process.env.GEMINI_IMAGE_MODEL || this.row.model_name || "gemini-2.5-flash-image";
+    const prompt = composeImagePrompt(req);
+    const generationConfig: Record<string, unknown> = { responseModalities: ["TEXT", "IMAGE"] };
+    if (req.aspectRatio) generationConfig.imageConfig = { aspectRatio: req.aspectRatio };
+    const res = await fetch(
+      `${this.fetchBase()}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(this.key ?? "")}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        signal,
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig,
+        }),
+      },
+    );
+    if (!res.ok) classifyStatus(res.status, await res.text());
+    const data = (await res.json()) as GeminiResponse;
+    const inline = data.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData;
+    if (!inline?.data) {
+      throw new ProviderError("bad_output", data.error?.message ?? "gemini returned no inline image");
+    }
+    const bytes = decodeBase64(inline.data);
+    return {
+      bytes,
+      contentType: inline.mimeType && inline.mimeType.startsWith("image/") ? inline.mimeType : sniffImageMime(bytes),
+      provider: this.name,
+      model,
+      prompt,
+    };
   }
 
   async healthCheck(signal?: AbortSignal): Promise<HealthCheckResult> {

@@ -1064,9 +1064,21 @@ export function defaultMaintenanceConfig(): MaintenanceSiteConfig {
   };
 }
 
+/**
+ * One admin-managed footer social/contact link. Rendered below the footer's
+ * about paragraph; icon is a short key the web/desktop map to an inline SVG.
+ */
+export interface FooterSocialLink {
+  /** Accessible label + tooltip. */
+  label: string;
+  /** Absolute URL (opened in a new tab). */
+  url: string;
+  /** Icon key: facebook | x | youtube | instagram | tiktok | linkedin | whatsapp | telegram | github | rss | mail | link. */
+  icon: string;
+}
+
 /** Web-app visibility + behaviour knobs (stored in settings.app_config_json). */
-export interface SiteAppConfig {
-  /** Masthead "newsroom in numbers" hero section. */
+export interface SiteAppConfig {  /** Masthead "newsroom in numbers" hero section. */
   show_hero: boolean;
   /** Live analytics graph strip. */
   show_live_graph: boolean;
@@ -1096,6 +1108,8 @@ export interface SiteAppConfig {
   comments_show_count: number;
   /** Nested maintenance-screen design + copy. */
   maintenance: MaintenanceSiteConfig;
+  /** Admin-managed footer social/contact links (empty = none shown). */
+  footer_socials: FooterSocialLink[];
 }
 
 /** App-config defaults (shared by the DB, the web admin and the desktop). */
@@ -1114,6 +1128,7 @@ export const DEFAULT_APP_CONFIG: SiteAppConfig = {
   detail_similar_count: 3,
   comments_show_count: 10,
   maintenance: defaultMaintenanceConfig(),
+  footer_socials: [],
 };
 
 /** Tone of an announcement. `alert` is the most urgent (used by the special

@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./archive": "./src/archive.ts",
-    "./media": "./src/media.ts"
+    "./media": "./src/media.ts",
+    "./storage": "./src/storage.ts"
   },
   "scripts": {
     "migrate": "tsx scripts/migrate.ts",

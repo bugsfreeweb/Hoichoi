@@ -32,7 +32,7 @@ export default function Watchlist({
   refresh,
 }: {
   sources: DeskSource[];
-  refresh: () => Promise<void>;
+  refresh: () => Promise<unknown> | void;
 }) {
   const [q, setQ] = useState("");
   const [kind, setKind] = useState<"all" | "page" | "group">("all");

@@ -2,6 +2,97 @@
 
 import { Field, Section, TextArea, TextInput, NumberInput } from "./ui";
 import { useSettings } from "./state";
+import type { FooterSocialLink } from "@hoichoi/shared-types";
+
+const SOCIAL_ICONS = [
+  "facebook",
+  "x",
+  "youtube",
+  "instagram",
+  "tiktok",
+  "linkedin",
+  "whatsapp",
+  "telegram",
+  "github",
+  "rss",
+  "mail",
+  "link",
+] as const;
+
+const SELECT =
+  "w-full border border-ink/30 bg-paper px-2 py-2 text-[13px] text-ink focus:border-alizarin focus:outline-none";
+
+function SocialLinksEditor() {
+  const { cfg, setCfg } = useSettings();
+  const links = cfg.footer_socials;
+  const update = (next: FooterSocialLink[]) =>
+    setCfg((c) => ({ ...c, footer_socials: next }));
+  return (
+    <Section
+      kicker="Footer socials"
+      title="ফুটার সোশ্যাল লিংক"
+      hint="ফুটারের লোগো/সম্পর্কে অংশের নিচে দেখানো হয় — খালি রাখলে কিছুই দেখা যাবে না।"
+    >
+      {links.length === 0 && (
+        <p className="text-[12.5px] text-ink-soft">এখনো কোনো লিংক নেই।</p>
+      )}
+      <div className="space-y-3">
+        {links.map((l, i) => (
+          <div key={i} className="grid items-end gap-3 border border-ink/15 bg-ink/[0.03] p-3 md:grid-cols-[9rem_1fr_1fr_auto]">
+            <Field label="আইকন">
+              <select
+                className={SELECT}
+                value={(SOCIAL_ICONS as readonly string[]).includes(l.icon) ? l.icon : "link"}
+                onChange={(e) =>
+                  update(links.map((x, j) => (j === i ? { ...x, icon: e.target.value } : x)))
+                }
+              >
+                {SOCIAL_ICONS.map((ic) => (
+                  <option key={ic} value={ic}>
+                    {ic}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="লেবেল">
+              <TextInput
+                value={l.label}
+                placeholder="আমাদের ফেসবুক"
+                onChange={(e) =>
+                  update(links.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))
+                }
+              />
+            </Field>
+            <Field label="URL">
+              <TextInput
+                value={l.url}
+                placeholder="https://…"
+                onChange={(e) =>
+                  update(links.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))
+                }
+              />
+            </Field>
+            <button
+              type="button"
+              onClick={() => update(links.filter((_, j) => j !== i))}
+              className="mb-0.5 border border-ink/30 px-3 py-2 text-[12px] font-bold text-ink-soft transition hover:border-alizarin hover:text-alizarin"
+              title="লিংক মুছুন"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => update([...links, { label: "", url: "", icon: "facebook" }])}
+        className="border-2 border-ink/30 px-4 py-2 text-[12.5px] font-bold text-ink transition hover:border-alizarin hover:text-alizarin"
+      >
+        + লিংক যোগ করুন
+      </button>
+    </Section>
+  );
+}
 
 export function SiteSection() {
   const { identity, setIdentity } = useSettings();
@@ -37,6 +128,8 @@ export function SiteSection() {
           <TextArea rows={3} value={identity.footer_about_bn} onChange={(e) => setIdentity({ footer_about_bn: e.target.value })} placeholder="সাইট/এই ডেস্ক about-অনুচ্ছেদ…" />
         </Field>
       </Section>
+
+      <SocialLinksEditor />
 
       <Section kicker="Contact & trust" title="যোগাযোগ ও জরুরি লাইন">
         <div className="grid gap-4 md:grid-cols-3">

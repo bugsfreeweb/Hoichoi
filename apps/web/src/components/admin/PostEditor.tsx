@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Post, PostStatus, CaseStatus, CategorySlug } from "@hoichoi/shared-types";
+import { PostImageGenerator } from "./PostImageGenerator";
 
 const CATEGORY_LABELS: Record<CategorySlug, string> = {
   "child-sexual-abuse": "শিশু যৌন নির্যাতন",
@@ -408,6 +409,15 @@ export function PostEditor({ post }: { post: Post }) {
             </>
           )}
         </div>
+
+        <PostImageGenerator
+          postId={post.id}
+          onAttached={(path) => {
+            setMediaPath(path);
+            setMediaMsg("✓ এআই-তৈরি ছবি যুক্ত হয়েছে");
+            setMediaErr(null);
+          }}
+        />
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-2">

@@ -132,6 +132,8 @@ export interface DashActions {
   running?: boolean;
   /** Re-fetch the snapshot. */
   onRefresh?: () => void;
+  /** True while a refresh is in flight (animates the header button). */
+  refreshing?: boolean;
   /** Change the analytics range (web only; desktop shows all-time). */
   onRangeChange?: (range: DashRange) => void;
 }

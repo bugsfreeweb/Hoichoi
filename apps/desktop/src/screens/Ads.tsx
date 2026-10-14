@@ -35,7 +35,7 @@ const SLOTS: { key: string; label: string; hint: string; placeholder: string }[]
  * বিজ্ঞাপন ম্যানেজার — mockup desk parity, driven by the real settings DB.
  * Every empty slot falls back to the default sponsor card on the web.
  */
-export default function Ads({ refreshBrand }: { refreshBrand?: () => Promise<void> }) {
+export default function Ads({ refreshBrand }: { refreshBrand?: () => Promise<unknown> | void }) {
   const [slots, setSlots] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);

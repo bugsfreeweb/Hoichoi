@@ -5,4 +5,5 @@ export * from "./openai-compat";
 export { GoogleGeminiProvider } from "./google";
 export { AnthropicProvider } from "./anthropic";
 export * from "./prompts";
+export * from "./image-util";
 export * from "./image-resolver";

@@ -6,7 +6,7 @@ import { createInterface } from "node:readline";
 import { runPipeline, type PipelineOptions } from "./pipeline";
 import { runArchivePass } from "./archive";
 import { cleanupMedia, storageRegistryCount } from "./storage";
-import { backfillMissingMedia, recoverOrphanedMedia, syncExistingMediaToWeb, aiFillMissingHeroes } from "./media-backfill";
+import { backfillMissingMedia, recoverOrphanedMedia, syncExistingMediaToWeb, aiFillMissingHeroes, generateManualImage } from "./media-backfill";
 import { isVideoUrl } from "./media";
 import { newResolver } from "@hoichoi/llm";
 import {
@@ -507,11 +507,62 @@ media
       process.exitCode = 1;
     }
   });
+media
+  .command("generate")
+  .description("manually generate an image for one post (any image-purpose provider) and attach it")
+  .requiredOption("--id <postId>", "post id to attach the generated image to")
+  .option("--prompt <text>", "what to draw (defaults to the post title + summary)")
+  .option("--provider <id>", "force one image-provider row id (default: free-first chain)")
+  .option("--ratio <w:h>", "aspect ratio, e.g. 16:9")
+  .option("--size <WxH>", "size, e.g. 1024x1024")
+  .option("--style <name>", "style hint (natural | vivid)")
+  .option("--quality <name>", "quality (standard | hd | low | medium | high)")
+  .option("--negative <text>", "what to avoid")
+  .option("--no-attach", "generate and store but leave the post's media_path unchanged")
+  .action(async (opts: {
+    id: string;
+    prompt?: string;
+    provider?: string;
+    ratio?: string;
+    size?: string;
+    style?: string;
+    quality?: string;
+    negative?: string;
+    attach?: boolean;
+  }) => {
+    try {
+      await ensureSchema(getClient());
+      const client = getClient();
+      const row = (
+        await client.execute({ sql: "SELECT title_bn, summary_bn FROM posts WHERE id = ?", args: [opts.id] })
+      ).rows[0] as { title_bn?: string; summary_bn?: string } | undefined;
+      if (!row) throw new Error(`post not found: ${opts.id}`);
+      const subject = [row.title_bn, row.summary_bn].filter(Boolean).join(" — ").slice(0, 500);
+      const prompt =
+        opts.prompt?.trim() ||
+        `Editorial news illustration, clean modern flat style with soft natural light, dignified print-journalism tone, no text, no logos, no watermarks.\n\nবিষয়: ${subject}`;
+      const result = await generateManualImage({
+        postId: opts.id,
+        prompt,
+        providerId: opts.provider,
+        size: opts.size,
+        aspectRatio: opts.ratio,
+        style: opts.style,
+        quality: opts.quality,
+        negativePrompt: opts.negative,
+        attach: opts.attach !== false,
+        log: (m) => console.error(m),
+      });
+      console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+    } catch (err) {
+      console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
+      process.exitCode = 1;
+    }
+  });
 
 /* ------------------------------------------------------------------ *
  * Semantic vectors - SEM-1 can only match against posts that have one *
  * ------------------------------------------------------------------ */
-
 const embeddings = program
   .command("embeddings")
   .description("semantic vectors used by SEM-1 dedup");
@@ -1816,7 +1867,7 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
         await removeDeskSource(flags.id);
         console.log(JSON.stringify({ ok: true }));
       } else if (action === "errors") {
-        const { positional } = parseArgs(args.slice(3));
+        const { positional } = parseArgs(args.slice(2));
         const [sub, target] = positional;
         if (sub === "list") {
           console.log(JSON.stringify({ ok: true, errors: await listSourceErrors() }, null, 2));

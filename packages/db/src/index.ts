@@ -6,6 +6,7 @@ export * from "./client";
 export * from "./rows";
 export * from "./archive";
 export * from "./media";
+export * from "./media-storage";
 export * from "./transfer";
 export * from "./admin-auth";
 export * from "./source-errors";
@@ -31,7 +32,6 @@ import type {
   CommentStatus,
   CommentWithPost,
   CurrentWindowPost,
-  MediaStorageConfig,
   Notice,
   NoticeTone,
   Post,
@@ -46,29 +46,7 @@ import type { InValue } from "@libsql/client";
 import { randomUUID } from "node:crypto";
 import { getClient, nowIso } from "./client";
 import { mapCategory, mapNotice, mapPost, parseJson, pickCategoryDot } from "./rows";
-
-/** Fallback remote-media storage policy (settings.media_storage_json). */
-export const DEFAULT_MEDIA_STORAGE: MediaStorageConfig = {
-  adapters: [],
-  purge_local_after_upload: false,
-  retention_months: 1,
-  cleanup_enabled: false,
-};
-
-export function parseMediaStorage(raw: string | null | undefined): MediaStorageConfig {
-  const merged: MediaStorageConfig = { ...DEFAULT_MEDIA_STORAGE };
-  if (!raw) return merged;
-  try {
-    const parsed = JSON.parse(raw) as Partial<MediaStorageConfig>;
-    if (Array.isArray(parsed.adapters)) merged.adapters = parsed.adapters;
-    if (typeof parsed.purge_local_after_upload === "boolean") merged.purge_local_after_upload = parsed.purge_local_after_upload;
-    if (typeof parsed.retention_months === "number" && Number.isFinite(parsed.retention_months)) merged.retention_months = parsed.retention_months;
-    if (typeof parsed.cleanup_enabled === "boolean") merged.cleanup_enabled = parsed.cleanup_enabled;
-  } catch {
-    /* corrupt blob → defaults */
-  }
-  return merged;
-}
+import { DEFAULT_MEDIA_STORAGE } from "./media-storage";
 
 /** Deep-merge a raw nested `maintenance` value over the blueprint. */
 export function parseMaintenanceConfig(
@@ -166,6 +144,17 @@ export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
       if (v === undefined || v === null) continue;
       if (k === "maintenance") {
         merged.maintenance = parseMaintenanceConfig(v);
+      } else if (k === "footer_socials") {
+        if (Array.isArray(v)) {
+          merged.footer_socials = (v as unknown[])
+            .filter((x): x is Record<string, unknown> => !!x && typeof x === "object")
+            .map((x) => ({
+              label: String(x.label ?? "").slice(0, 60),
+              url: String(x.url ?? "").slice(0, 500),
+              icon: String(x.icon ?? "link").slice(0, 24),
+            }))
+            .filter((x) => x.url.length > 0);
+        }
       } else if (typeof v === "boolean") {
         (merged as unknown as Record<string, boolean>)[k] = v;
       } else if (typeof v === "string" || typeof v === "number") {
@@ -176,17 +165,6 @@ export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
     /* corrupt blob → defaults */
   }
   return merged;
-}
-
-/** Read the live media-storage policy from settings (parsed + defaulted). */
-export async function getMediaStorageConfig(): Promise<MediaStorageConfig> {
-  const s = await getSettings();
-  return parseMediaStorage(s.media_storage_json);
-}
-
-/** Persist the media-storage policy as settings.media_storage_json. */
-export async function saveMediaStorageConfig(cfg: MediaStorageConfig): Promise<void> {
-  await updateSettings({ media_storage_json: JSON.stringify(cfg) });
 }
 
 /** Fallback branding used when no settings row exists / columns are absent. */
@@ -1122,9 +1100,17 @@ export async function analyticsSnapshot(
     .filter((p) => p.published_at && String(p.status) === "published")
     .map((p) => pt(p.published_at))
     .filter(Boolean);
+  // Spread a large array into Math.min() overflows the call stack
+  // ("Maximum call stack size exceeded") once intake passes ~100k rows, so the
+  // minimum is folded with a plain loop instead.
+  const minOf = (values: number[], fallback: number) => {
+    let m = fallback;
+    for (const v of values) if (v < m) m = v;
+    return m;
+  };
   const earliest = Math.min(
-    collectedTimes.length ? Math.min(...collectedTimes) : now,
-    publishedTimes.length ? Math.min(...publishedTimes) : now,
+    collectedTimes.length ? minOf(collectedTimes, now) : now,
+    publishedTimes.length ? minOf(publishedTimes, now) : now,
   );
   const from =
     range === "24h"

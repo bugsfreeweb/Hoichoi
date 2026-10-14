@@ -2,11 +2,14 @@ import Link from "next/link";
 import { toBn } from "@/lib/format";
 import { BRAND } from "@/lib/brand";
 import { SITE_BUILD } from "@/lib/build";
-import { listFooterCategories, getSettings } from "@hoichoi/db";
+import { listFooterCategories, getSettings, parseAppConfig } from "@hoichoi/db";
+import { FooterSocials } from "./FooterSocials";
+import LocalZone from "./LocalZone";
 
 export async function Footer() {
   const [categories, settings] = await Promise.all([listFooterCategories(), getSettings()]);
   const footerLinks = categories.length > 0 ? categories : [];
+  const appConfig = parseAppConfig(settings.app_config_json);
   const siteName = settings.site_name || BRAND.en;
   const about =
     settings.footer_about_bn ||
@@ -42,6 +45,7 @@ export async function Footer() {
             <p className="mt-4 max-w-xs text-[12.5px] leading-relaxed text-ink-soft">
               {about}
             </p>
+            <FooterSocials links={appConfig.footer_socials} />
           </div>
           <div className="md:col-span-4">
             <p className="font-mono-x text-[10px] tracking-[0.24em] text-ink-soft uppercase">
@@ -96,7 +100,7 @@ export async function Footer() {
           </span>
           <span className="flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-            BUGSFREE STUDIO · ASIA/UTC+6 · EDGE CACHE ON
+            BUGSFREE STUDIO · LOCALHOST/<LocalZone /> · EDGE CACHE ON
           </span>
         </div>
       </div>

@@ -191,8 +191,8 @@ export default function Settings({
   refresh,
   refreshBrand,
 }: {
-  refresh: () => Promise<void>;
-  refreshBrand: () => Promise<void>;
+  refresh: () => Promise<unknown> | void;
+  refreshBrand: () => Promise<unknown> | void;
 }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<string | null>(null);

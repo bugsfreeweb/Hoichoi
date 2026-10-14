@@ -922,29 +922,55 @@ function sliceDice(
   w: number,
   h: number,
   out: (TItem & { x: number; y: number; w: number; h: number })[] = [],
+  depth = 0,
 ) {
   if (!items.length) return out;
-  if (items.length === 1) {
+  if (items.length === 1 || depth > 32) {
     out.push({ ...items[0]!, x, y, w, h });
+    // Depth guard: dump any remainder as zero-size boxes rather than dropping
+    // them, so a pathological distribution can never recurse forever.
+    for (let i = 1; i < items.length; i++) out.push({ ...items[i]!, x, y, w: 0, h: 0 });
     return out;
   }
-  const total = items.reduce((a, b) => a + b.value, 0);
+  let total = 0;
+  for (const it of items) total += Math.max(0, it.value);
+  // All-zero (or negative) values made `frac = 0/0 = NaN` and the split never
+  // shrank the slice, so sliceDice recursed until the stack overflowed
+  // ("Maximum call stack size exceeded") on any dashboard with categories that
+  // had no posts yet. Lay the boxes out evenly instead.
+  if (total <= 0) {
+    const n = items.length;
+    if (w >= h) {
+      const each = w / n;
+      items.forEach((it, i) => out.push({ ...it, x: x + i * each, y, w: each, h }));
+    } else {
+      const each = h / n;
+      items.forEach((it, i) => out.push({ ...it, x, y: y + i * each, w, h: each }));
+    }
+    return out;
+  }
   let acc = 0;
   let idx = 0;
   for (let i = 0; i < items.length; i++) {
-    if (i > 0 && acc + items[i]!.value > total / 2) break;
-    acc += items[i]!.value;
+    const v = Math.max(0, items[i]!.value);
+    if (i > 0 && acc + v > total / 2) break;
+    acc += v;
     idx = i + 1;
   }
+  // Guarantee a strictly smaller split on both sides (progress ⇒ termination).
+  if (idx <= 0) idx = 1;
+  if (idx >= items.length) idx = items.length - 1;
+  acc = 0;
+  for (let i = 0; i < idx; i++) acc += Math.max(0, items[i]!.value);
   const frac = acc / total;
   const first = items.slice(0, idx);
   const second = items.slice(idx);
   if (w >= h) {
-    sliceDice(first, x, y, w * frac, h, out);
-    sliceDice(second, x + w * frac, y, w * (1 - frac), h, out);
+    sliceDice(first, x, y, w * frac, h, out, depth + 1);
+    sliceDice(second, x + w * frac, y, w * (1 - frac), h, out, depth + 1);
   } else {
-    sliceDice(first, x, y, w, h * frac, out);
-    sliceDice(second, x, y + h * frac, w, h * (1 - frac), out);
+    sliceDice(first, x, y, w, h * frac, out, depth + 1);
+    sliceDice(second, x, y + h * frac, w, h * (1 - frac), out, depth + 1);
   }
   return out;
 }

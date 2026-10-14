@@ -19,7 +19,8 @@
  * The original relative `media_path` is preserved (no CDN URL rewriting), which
  * keeps one storage layout for desktop, local dev and production.
  */
-import { findRepoRoot, getClient, nowIso } from "@hoichoi/db";
+import { findRepoRoot, getClient, nowIso, updatePost } from "@hoichoi/db";
+import { composeImagePrompt, generateImage as llmGenerateImage } from "@hoichoi/llm";
 import { downloadMedia, isVideoUrl, localMediaPath, mediaRoot, processImage, randomMediaName } from "./media";
 import { scrapePostUrls } from "./facebook";
 import { aiHeroEligible, generateAIHero } from "./ai-image";
@@ -452,3 +453,77 @@ export async function recoverOrphanedMedia(opts: {
 }
 
 export { downloadMedia, localMediaPath };
+
+export interface ManualImageResult {
+  media_path: string;
+  provider: string;
+  model: string;
+  contentType: string;
+  bytes: number;
+  attached: boolean;
+}
+
+/**
+ * Manually generate an image for one post and attach it — the on-demand twin of
+ * `generateAIHero` used by the editor's "generate image" panel (web + desktop).
+ *
+ * Unlike the pipeline's automatic hero, this respects the operator's provider,
+ * prompt and option choices, and works with any image-purpose provider (Gemini
+ * or any OpenAI-compatible images endpoint). The bytes are re-encoded to webp,
+ * mirrored into the web `public/uploads` tree, pushed to the remote adapter
+ * chain when configured, and written to the post's `media_path`.
+ */
+export async function generateManualImage(opts: {
+  postId: string;
+  prompt: string;
+  providerId?: string;
+  size?: string;
+  aspectRatio?: string;
+  style?: string;
+  quality?: string;
+  negativePrompt?: string;
+  attach?: boolean;
+  log?: (msg: string) => void;
+}): Promise<ManualImageResult> {
+  const log = opts.log ?? (() => undefined);
+  const prompt = composeImagePrompt({
+    prompt: opts.prompt,
+    aspectRatio: opts.aspectRatio,
+    quality: opts.quality,
+    negativePrompt: opts.negativePrompt,
+  });
+  const result = await llmGenerateImage(
+    {
+      prompt,
+      providerId: opts.providerId,
+      size: opts.size,
+      aspectRatio: opts.aspectRatio,
+      style: opts.style,
+      quality: opts.quality,
+      negativePrompt: opts.negativePrompt,
+      count: 1,
+    },
+    AbortSignal.timeout(110_000),
+  );
+  // processImage always writes webp (and re-encodes/resizes), so the media name
+  // must carry the .webp extension regardless of what the provider returned.
+  const rel = randomMediaName("img", "webp");
+  await processImage(Buffer.from(result.bytes), rel, { maxWidthPx: MAX_WIDTH_PX });
+  mirrorMediaFile(rel);
+  const pub = await uploadRemote(rel, opts.postId);
+  const applied = pub ?? rel;
+  log(`[img-gen] ${opts.postId.slice(0, 8)} -> ${applied} via ${result.provider} (${result.model})`);
+
+  const attach = opts.attach !== false;
+  if (attach) {
+    await updatePost(opts.postId, { media_path: applied });
+  }
+  return {
+    media_path: applied,
+    provider: result.provider,
+    model: result.model,
+    contentType: result.contentType,
+    bytes: result.bytes.length,
+    attached: attach,
+  };
+}

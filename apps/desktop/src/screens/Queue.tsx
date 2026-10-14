@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, RefreshCw, Eye, ExternalLink, CircleCheck, Clock3, Ban, Pencil, Trash2, X, Loader2, ShieldCheck } from "lucide-react";
+import { Search, RefreshCw, Eye, ExternalLink, CircleCheck, Clock3, Ban, Pencil, Trash2, X, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { POST_STATUS_LABEL, bnTime, toBn } from "../lib/format";
 import { categoryLabel, categoryTint, bySortOrder, type CatMeta } from "../lib/category-style";
-import { deskCategories, deskQueueBulk, deskQueueMediaCandidates, deskQueueRemove, deskQueueSet, deskQueueUpdate, openAdmin, isTauri, type DeskCategory, type DeskMediaCandidate, type DeskQueueRow } from "../lib/tauri";
+import { deskCategories, deskQueueBulk, deskQueueGenerateImage, deskQueueMediaCandidates, deskQueueRemove, deskQueueSet, deskQueueUpdate, deskImageProviders, openAdmin, isTauri, type DeskCategory, type DeskMediaCandidate, type DeskProvider, type DeskQueueRow } from "../lib/tauri";
 import { getRunEnv } from "../lib/vault";
 import { toast } from "../lib/toast";
 import { SITE_URL } from "../lib/site";
@@ -52,6 +52,15 @@ function EditModal({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // Manual AI image generation (used when the pipeline produced no image).
+  const [genProviders, setGenProviders] = useState<DeskProvider[]>([]);
+  const [genProvider, setGenProvider] = useState("");
+  const [genPrompt, setGenPrompt] = useState("");
+  const [genRatio, setGenRatio] = useState("16:9");
+  const [genBusy, setGenBusy] = useState(false);
+  const [genMsg, setGenMsg] = useState<string | null>(null);
+  const [genErr, setGenErr] = useState<string | null>(null);
+
   useEffect(() => {
     let live = true;
     void (async () => {
@@ -83,6 +92,46 @@ function EditModal({
       live = false;
     };
   }, []);
+
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      try {
+        const env = await getRunEnv();
+        const list = await deskImageProviders(env);
+        if (!live) return;
+        setGenProviders(list);
+        const usable = list.find((p) => Boolean(p.api_key) || Boolean(p.api_key_env_var));
+        setGenProvider(usable?.id ?? list[0]?.id ?? "");
+      } catch {
+        /* generator is optional; the manual URL field still works */
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  async function generateImage() {
+    setGenBusy(true);
+    setGenErr(null);
+    setGenMsg(null);
+    try {
+      const env = await getRunEnv();
+      const r = await deskQueueGenerateImage(env, row.id, {
+        prompt: genPrompt.trim() || undefined,
+        providerId: genProvider || undefined,
+        aspectRatio: genRatio || undefined,
+        attach: true,
+      });
+      setMedia(r.media_path);
+      setGenMsg(`✓ ছবি তৈরি হয়েছে (${r.provider} · ${r.model}) ও যুক্ত হয়েছে`);
+    } catch (e) {
+      setGenErr(e instanceof Error ? e.message : "ছবি তৈরি ব্যর্থ।");
+    } finally {
+      setGenBusy(false);
+    }
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -212,6 +261,51 @@ function EditModal({
               ))}
             </div>
           )}
+
+          {/* Manual AI image generation — the pipeline twin of the web panel. */}
+          <div className="mt-3 border-t border-white/10 pt-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">✨ এআই দিয়ে ছবি তৈরি করুন</p>
+              <span className="text-[9.5px] text-white/30">
+                {genProviders.length === 0 ? "প্রোভাইডার নেই" : `${genProviders.length} প্রোভাইডার`}
+              </span>
+            </div>
+            <textarea
+              rows={2}
+              className={`${field} mt-2`}
+              value={genPrompt}
+              placeholder="প্রম্পট (খালি = শিরোনাম/সারাংশ থেকে স্বয়ংক্রিয়)"
+              onChange={(e) => setGenPrompt(e.target.value)}
+            />
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <select className={`${field} mt-0 flex-1`} value={genProvider} onChange={(e) => setGenProvider(e.target.value)}>
+                <option value="">স্বয়ংক্রিয় (ফ্রি আগে)</option>
+                {genProviders.map((p) => (
+                  <option key={p.id} value={p.id} className="bg-panel text-white">
+                    {p.display_name} · {p.model_name}
+                  </option>
+                ))}
+              </select>
+              <select className={`${field} mt-0 w-24`} value={genRatio} onChange={(e) => setGenRatio(e.target.value)}>
+                {["1:1", "16:9", "9:16", "4:3", "3:4", "3:2"].map((r) => (
+                  <option key={r} value={r} className="bg-panel text-white">
+                    {r}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => void generateImage()}
+                disabled={genBusy}
+                className="flex items-center gap-1.5 rounded-lg bg-lime px-3 py-2 text-[11.5px] font-bold text-night transition-colors hover:bg-lime/85 disabled:opacity-50"
+              >
+                {genBusy ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                {genBusy ? "তৈরি হচ্ছে…" : "তৈরি + যুক্ত"}
+              </button>
+            </div>
+            {genMsg && <p className="mt-2 text-[11px] font-bold text-lime">{genMsg}</p>}
+            {genErr && <p className="mt-2 text-[11px] text-rose-300">{genErr}</p>}
+          </div>
         </div>
         {err && <p className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-300">{err}</p>}
         <div className="mt-5 flex items-center gap-2.5">
@@ -241,7 +335,7 @@ export default function Queue({
   cats,
 }: {
   rows: DeskQueueRow[];
-  refresh: () => Promise<void>;
+  refresh: () => Promise<unknown> | void;
   cats?: DeskCategory[] | null;
 }) {
   const [tab, setTab] = useState<Tab>("all");

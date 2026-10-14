@@ -22,6 +22,7 @@ export default function Hero({
   featuredImg,
   featuredTitle,
   featuredCategory,
+  showLiveGraph = true,
 }: {
   lastRunIso: string | null;
   collected: number;
@@ -30,6 +31,7 @@ export default function Hero({
   featuredImg: string | null;
   featuredTitle: string | null;
   featuredCategory: string | null;
+  showLiveGraph?: boolean;
 }) {
   const [idx, setIdx] = useState(0);
   useEffect(() => {
@@ -202,6 +204,7 @@ export default function Hero({
         </div>
       </div>
 
+      {showLiveGraph && (
       <div className="relative border-t border-ink/8">
         <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-8">
           <p className="font-mono-x text-[9.5px] tracking-[0.24em] text-ink/35 uppercase">
@@ -215,6 +218,7 @@ export default function Hero({
           </div>
         </div>
       </div>
+      )}
     </section>
   );
 }

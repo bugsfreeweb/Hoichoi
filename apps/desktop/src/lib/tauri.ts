@@ -421,6 +421,52 @@ export async function deskQueueMediaCandidates(
   };
 }
 
+export interface DeskImageGenInput {
+  prompt?: string;
+  providerId?: string;
+  aspectRatio?: string;
+  size?: string;
+  style?: string;
+  quality?: string;
+  negativePrompt?: string;
+  attach?: boolean;
+}
+
+export interface DeskImageGenResult {
+  media_path: string;
+  provider: string;
+  model: string;
+  contentType: string;
+  bytes: number;
+  attached: boolean;
+}
+
+/** Manually generate an image for a queued post via the bundled runner. */
+export async function deskQueueGenerateImage(
+  env: Record<string, string>,
+  id: string,
+  input: DeskImageGenInput,
+): Promise<DeskImageGenResult> {
+  const args = ["media", "generate", "--id", id];
+  if (input.prompt) args.push("--prompt", input.prompt);
+  if (input.providerId) args.push("--provider", input.providerId);
+  if (input.aspectRatio) args.push("--ratio", input.aspectRatio);
+  if (input.size) args.push("--size", input.size);
+  if (input.style) args.push("--style", input.style);
+  if (input.quality) args.push("--quality", input.quality);
+  if (input.negativePrompt) args.push("--negative", input.negativePrompt);
+  if (input.attach === false) args.push("--no-attach");
+  const res = await deskCall(args, env);
+  return res as unknown as DeskImageGenResult;
+}
+
+/** Image-purpose providers (for the manual generator's picker). */
+export async function deskImageProviders(env: Record<string, string>): Promise<DeskProvider[]> {
+  const all = await deskProviders(env);
+  return all.filter((p) => (p.purpose ?? "text") === "image" && p.is_active);
+}
+
+
 export async function deskQueueRemove(env: Record<string, string>, id: string): Promise<void> {
   await deskCall(["queue", "remove", id], env);
 }
