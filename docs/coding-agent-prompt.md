@@ -1340,3 +1340,42 @@ The README should include:
 ---
 
 **Stop after Phase 1 and confirm the directory layout with the user before continuing.**
+
+---
+
+## Appendix — additions after the original prompt (through v1.1.10)
+
+The phases above built v1. Reference these later additions for the current feature
+set; they are documented in depth in `architecture-notes.md`, `database-decision.md`,
+`DESKTOP.md`, `DEPLOY_WEB.md`, `ai-provider-strategy.md`, and `design-system.md`.
+
+- **v1.1.7 — maintenance mode + feed-count knobs.** `app_config_json` gained
+  `maintenance_mode`, `home_post_count`, `detail_similar_count`, `comments_show_count`
+  and the maintenance screen/subscriber/message tables; admin Settings is a tabbed
+  console with one PATCH save.
+- **v1.1.9 — provider purpose, dashboard live controls, variant engine.**
+  `llm_providers.purpose` (`text`/`image`) + per-row API-key override; live dashboard
+  range/refresh + manual pipeline run; `/admin/appearance` variant switcher
+  (`default`-only scaffold, `sections` table + `settings.default_variant`); shared
+  `.hoichoi-dash` light theme.
+- **v1.1.10 — traffic analytics, media refactor, manual image generation, footer
+  socials, refresh feedback.**
+  - *First-party cookie-less analytics:* `page_views` + `ad_events`
+    (`migrations/011_traffic.sql`, `ensureTrafficTables`), `visitorFingerprint`
+    (daily-rotating SHA-256, no raw IP), geo from Vercel edge headers, UA sniff, bots
+    and internal paths dropped. Beacon `POST /api/track`; snapshot
+    `trafficSnapshot(range)` (pure SQL) served by `GET /api/admin/traffic` and rendered
+    by the shared `TrafficView` on web `/admin/traffic` and the desk ট্রাফিক tab.
+  - *Media refactor:* the uploader moved into `@hoichoi/db`
+    (`media-storage.ts`/`storage.ts`, `uploadBufferRemote`, `writeGeneratedMedia`) so
+    both scraper and web can write media.
+  - *Manual image generation:* optional `generateImage` on the `@hoichoi/llm`
+    provider interface, `composeImagePrompt`, `listImageProviders`; surfaced via
+    `media generate <id>`, `POST /api/posts/[id]/generate-image`, and the desk queue
+    panel — same category safety rules as the automatic fallback.
+  - *Footer socials:* `SiteAppConfig.footer_socials` edited in admin settings and
+    rendered by `FooterSocials.tsx`.
+  - *Desktop* gained the 9th ট্রাফিক tab (runner `traffic <range>` command in
+    `dispatchCmd`); `refresh()` now returns `{ ok, error }` and drives an animated
+    refresh button + result toast. **Re-run `bundle:runner` before `tauri build`**
+    whenever `cli.ts` or `packages/db/migrations/` change.

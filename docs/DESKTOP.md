@@ -479,3 +479,28 @@ libsodium is no longer a dependency since the AES-256-GCM vault replaced Strongh
 - **Provider purpose:** the desk provider manager can tag a provider `text`
   (default) or `image` and store a per-row API-key override, matching the web
   admin.
+
+---
+
+## v1.1.10 — Traffic tab, refresh feedback, manual image generation
+
+- **New ট্রাফিক tab (9th tab, `apps/desktop/src/screens/Traffic.tsx`).** Renders the
+  same first-party analytics as the web **/admin/traffic** page via the shared
+  `TrafficView` from `@hoichoi/dash`. Data comes from the runner's new
+  **`traffic <range>`** command (`24h|7d|30d`) through
+  `deskTraffic(env, range)` → `deskCall(["traffic", range])`. The tab sits directly
+  after মনিটর; keyboard shortcuts are now **1–9**, and the run-command names live in
+  `dispatchCmd` (so the long-lived `daemon` runner serves it, not just the one-shot
+  CLI).
+- **Truthful refresh feedback.** `refresh()` now returns `{ ok, error }`; the
+  dashboard header button animates **REFRESH NOW → REFRESHING…** (`DashActions.refreshing`
+  drives it in `packages/dash/src/views.tsx`) and the desk toasts success or the
+  real runner error, so a failed refresh no longer looks like a healthy empty desk.
+- **Manual AI image generation.** The কনটেন্ট সারি (Queue) rows expose an **AI ছবি
+  তৈরি** action (`deskQueueGenerateImage` / `deskImageProviders`) that renders a hero
+  for a single post through the same image-provider chain as the web editor and CLI
+  (`media generate <id>`), subject to the category safety rules.
+- **Runner rebuild note.** Because `apps/scraper/src/cli.ts` gained the `traffic`
+  command and `packages/db` gained the traffic module, `bundle:runner` **must** be
+  re-run before `tauri build`; the embedded migrations snapshot now includes
+  `011_traffic.sql`.

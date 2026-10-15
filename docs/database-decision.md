@@ -50,3 +50,21 @@ That's why Supabase wins: it trades a daily ping for a much simpler architecture
 | You start doing image-heavy video processing | Move the scraper off GH Actions to a small VPS ($5/mo Hetzner) |
 
 None of these are v1 problems.
+
+---
+
+## Content tables added in v1.1.10 (traffic analytics)
+
+The first-party analytics layer adds two tables, created by
+`ensureTrafficTables` in `packages/db/src/client.ts` (runtime `ensureSchema` path)
+and by `packages/db/migrations/011_traffic.sql` (server `db:migrate` path):
+
+| Table | Key columns | Notes |
+|---|---|---|
+| `page_views` | `id`, `visitor_fingerprint`, `session_id`, `path`, `slug`, `post_id`, `country`, `country_code`, `region`, `city`, `os`, `browser`, `device`, `is_bot`, `created_at` | One row per anonymous page view. No raw IP is stored — `visitor_fingerprint` is `sha256(ip\|ua\|yyyy-mm-dd).slice(0,16)` (daily-rotating). Bots and `/admin`,`/desk`,`/api` paths are filtered before insert. |
+| `ad_events` | `id`, `visitor_fingerprint`, `session_id`, `slot`, `post_id`, `kind`, `created_at` | `kind` is `view` or `click`; powers the ad views/clicks/CTR group. |
+
+Both are indexed on `created_at` (and `slug` / `slot`) so the range aggregation in
+`trafficSnapshot` (`24h | 7d | 30d`) stays cheap. Aggregation is pure SQL
+(`COUNT(DISTINCT …)`, `GROUP BY`) — no rollup job, so there is no new cron or
+background worker and nothing extra to keep alive on a free tier.

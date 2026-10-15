@@ -35,6 +35,7 @@ const NAV: Array<{
   countKeys?: CountKey[];
 }> = [
   { href: "/admin", emoji: "📊", label: "ড্যাশবোর্ড" },
+  { href: "/admin/traffic", emoji: "📈", label: "ট্রাফিক অ্যানালিটিক্স" },
   { href: "/admin/sources", emoji: "📡", label: "সোর্স" },
   { href: "/admin/categories", emoji: "🗂️", label: "বিভাগ" },
   {

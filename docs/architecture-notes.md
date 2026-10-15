@@ -362,3 +362,74 @@ Exceptions:
   block in `packages/dash/src/styles.css`. Horizontal overflow is clipped at
   `html`/`body`/`.page-chrome`/`.admin-console` (and `.mc-root` for the maintenance
   screen) so the grain overlay and ticker no longer make a stray scrollbar.
+
+## 14. First-party traffic analytics, media refactor, and manual image generation (v1.1.10)
+
+### 14.1 Cookie-less traffic telemetry
+
+No analytics infrastructure existed before v1.1.10 (only business counters such as
+pipeline runs and pending queues). The new layer is deliberately **first-party and
+cookie-less** — there is no third-party script and nothing stored on the reader's
+device beyond a random per-tab `sessionStorage` id.
+
+- **Schema.** Two tables created by `ensureTrafficTables` in `packages/db/src/client.ts`
+  (called from `ensureSchema`) and by `packages/db/migrations/011_traffic.sql` for
+  the server-side `db:migrate` path: `page_views` and `ad_events`. `ensureSchema`
+  only applies `001_init.sql` at runtime and then runs the idempotent `ensure*`
+  helpers, so new tables must exist in **both** places.
+- **Identity without PII.** `visitorFingerprint(ip, ua, date)` =
+  `sha256("ip|ua|yyyy-mm-dd").slice(0, 16)` — daily-rotating, so it cannot follow a
+  reader across days and no raw IP is ever persisted. `session_id` is a random
+  value minted by the browser per tab. `parseUserAgent` derives OS/browser/device.
+- **Geo.** Country/region/city come from the platform edge headers the Vercel Node
+  runtime injects (`x-vercel-ip-country`, `-country-region`, `-city`, with
+  `cf-ipcountry` as a fallback). Off-platform these are null and the visitor is
+  bucketed as "Unknown". `Intl.DisplayNames` and `flagOf` map the ISO-2 code to a
+  readable country name and flag emoji.
+- **Write path.** `apps/web/src/app/api/track/route.ts` accepts a beacon POST and
+  branches on `kind` (`page` vs `ad`), calling `recordPageView` / `recordAdEvent`.
+  Bots and internal paths (`/admin`, `/desk`, `/api`) are dropped before insert.
+  `apps/web/src/lib/track-client.ts` provides the client beacons (`trackPageView`,
+  `trackAd`, `slugFromPath`), wired through `TrafficTracker.tsx` in the site layout
+  and the ad-view/click hooks in `AdSlot.tsx`.
+- **Read path.** `trafficSnapshot(range)` in `packages/db/src/traffic.ts` runs SQL
+  aggregates (`GROUP BY`, `COUNT(DISTINCT …)`) to build the `TrafficSnapshot` for
+  the selected `24h | 7d | 30d` range: the five groups are (1) online-now visitors
+  by country/flag, (1b) unique visitors + page views, (2) most-read content with
+  per-post countries, (3) comment total/recent/most-popular with post links,
+  (4) page views / sessions / bounce + OS/browser/device mix, and (5) ad
+  views/clicks/CTR by slot and by post. Bounce = sessions with exactly one view.
+- **Surfaces.** `GET /api/admin/traffic?range=…` serves the snapshot (admin
+  `requireApiUser`). The **`TrafficView`** component in `packages/dash/src/traffic.tsx`
+  renders all five groups and is shared by the web **`/admin/traffic`** page
+  (`TrafficAnalytics.tsx`) and the desktop **ট্রাফিক** tab — the desktop reads it
+  through the runner's new `traffic <range>` command. `@hoichoi/dash` now depends on
+  `@hoichoi/shared-types` for the snapshot types.
+
+### 14.2 Media storage refactor
+
+The uploader that used to live in the scraper was lifted into **`@hoichoi/db`**
+(`packages/db/src/media-storage.ts`, `storage.ts`) so both the scraper and the web
+app can write media. `uploadBufferRemote` handles the adapter chain
+(`local` mirror / `r2`), and `writeGeneratedMedia` persists an in-memory buffer
+(used by image generation). The scraper keeps a thin shim so its existing call
+sites are unchanged; a new `./storage` export exposes the helpers.
+
+### 14.3 Manual image generation
+
+`@hoichoi/llm` gained an **optional** `generateImage(request)` on the provider
+interface, `composeImagePrompt` (the same safety-banned prompt used by the fallback
+hero path), `listImageProviders`, and `image-util.ts`. It is surfaced three ways:
+CLI `media generate <postId>` (scraper `media-backfill.ts`), the web route
+`POST /api/posts/[id]/generate-image` + `PostImageGenerator.tsx` in the post editor,
+and the desktop কনটেন্ট সারি panel (`deskQueueGenerateImage` / `deskImageProviders`).
+Only `purpose = image` providers are eligible and sensitive categories remain blocked.
+
+### 14.4 Footer socials + refresh feedback
+
+- `SiteAppConfig.footer_socials` (`FooterSocialLink[]`) is editable in admin →
+  settings → সাইট (`SocialLinksEditor`), parsed by `parseAppConfig`, and rendered by
+  `FooterSocials.tsx` with a live `LocalZone.tsx` timezone stamp.
+- The dashboard refresh is now truthful: `refresh()` returns `{ ok, error }`,
+  `DashActions.refreshing` drives an animated `REFRESH NOW → REFRESHING…` button
+  (`packages/dash/src/views.tsx`), and the desk shows a success/failure toast.

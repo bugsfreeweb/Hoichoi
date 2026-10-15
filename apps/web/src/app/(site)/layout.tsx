@@ -3,6 +3,7 @@ import { BreakingTicker } from "@/components/BreakingTicker";
 import { TopBar } from "@/components/TopBar";
 import { NoticeBanner } from "@/components/NoticeBanner";
 import { MaintenanceScreen } from "@/components/maintenance/MaintenanceScreen";
+import TrafficTracker from "@/components/TrafficTracker";
 import { currentUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { countReviewQueues, getSpecialNotice, parseAppConfig, recentPipelineRuns, statsSnapshot } from "@hoichoi/db";
@@ -70,6 +71,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   if (live && isMvMode(live)) {
     return (
       <MvChrome live={live} accent={settings.accent_color}>
+        <TrafficTracker />
         {children}
       </MvChrome>
     );
@@ -81,6 +83,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
           __html: `(function(){try{if(localStorage.getItem("hoichoi-theme-explicit")!=="1"){document.documentElement.setAttribute("data-theme","${themeDefault}")}}catch(e){}})();`,
         }}
       />
+      <TrafficTracker />
       <TopBar pipelineHours={settings.pipeline_hours} />
       <BreakingTicker />
       <NoticeBanner notice={specialNotice} />

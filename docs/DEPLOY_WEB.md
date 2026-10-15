@@ -308,3 +308,26 @@ pnpm --filter @hoichoi/web build
   Vercel build no longer fetches `fonts.googleapis.com` (that fetch failed
   intermittently and broke deploys). To refresh a font, re-pull its CSS from the
   Google Fonts API and re-download the `fonts.gstatic.com` woff2 files.
+
+## v1.1.10 - first-party traffic analytics (no new env vars)
+
+The web app now records anonymous traffic and serves an admin analytics console.
+Nothing here needs configuring on Vercel:
+
+- **Ingest.** The site layout renders `TrafficTracker`, which beacons page views to
+  **`POST /api/track`**; `AdSlot` beacons ad `view`/`click` events to the same route.
+  The route reads geography straight from Vercel's injected request headers
+  (`x-vercel-ip-country` / `-country-region` / `-city`, `cf-ipcountry` fallback) — so
+  country data is populated **only** when deployed on Vercel; elsewhere it degrades
+  to "Unknown" but never errors. No raw IP is stored (a daily-rotating SHA-256
+  fingerprint is used), so there is no cookie banner and no GDPR data-processor
+  to add.
+- **Tables.** `page_views` + `ad_events` are created by `ensureTrafficTables` during
+  `ensureSchema`, so a fresh deploy self-migrates. For the explicit migration path
+  run `pnpm --filter db migrate` (applies `migrations/011_traffic.sql`).
+- **Read.** `GET /api/admin/traffic?range=24h|7d|30d` (admin-only) returns a
+  `TrafficSnapshot`; the **`/admin/traffic`** page renders the five groups via the
+  shared `TrafficView`. The dashboard/sidebar name is **ট্রাফিক অ্যানালিটিক্স**.
+- **No environment variables** are required for any of this. (Optional: if you ever
+  front the site with Cloudflare instead of Vercel's edge, the `cf-ipcountry`
+  fallback keeps country reporting working.)

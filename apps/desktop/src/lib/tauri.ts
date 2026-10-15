@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import type { TrafficRange, TrafficSnapshot } from "@hoichoi/shared-types";
 
 /** True when running inside the Tauri webview (not a plain browser tab). */
 export function isTauri(): boolean {
@@ -555,6 +556,12 @@ export interface DeskRadarSnapshot {
 export async function deskRadarStats(env: Record<string, string>): Promise<DeskRadarSnapshot> {
   const res = await deskCall(["radar"], env);
   return res as unknown as DeskRadarSnapshot;
+}
+
+/** First-party traffic analytics snapshot (the five admin groups). */
+export async function deskTraffic(env: Record<string, string>, range: TrafficRange = "24h"): Promise<TrafficSnapshot> {
+  const res = await deskCall(["traffic", range], env);
+  return res as unknown as TrafficSnapshot;
 }
 
 export async function deskModeration(

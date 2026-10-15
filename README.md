@@ -10,30 +10,36 @@ Live site: <https://hoichoifeed.vercel.app> · Source: <https://github.com/bugsf
 
 ```
 Web (apps/web)        Next.js 15 public site (SSR feed, /sitemap, OG images, visitor
-                      announcement bell + pinned banner, DB-driven footer) + admin shell
-                      (/notices, /moderation, /comments, /posts, /providers, /reports,
-                      /logs, /settings, /appearance, …), /desk preview, live /api/stats.
-                      Home sections are gated by settings.app_config_json
+                      announcement bell + pinned banner, DB-driven footer with
+                      admin-editable social links) + admin shell (/notices, /moderation,
+                      /comments, /posts, /providers, /reports, /logs, /settings,
+                      /appearance, /traffic, …), /desk preview, live /api/stats. First-party
+                      cookie-less analytics (page_views + ad_events) power /admin/traffic
+                      with a /api/track beacon. Home sections are gated by settings.app_config_json
                       (show_hero / show_ads / … / maintenance_mode / ai_hero_images);
                       admin Settings is a tabbed console (সাইট / ভিজিবিলিটি / বিজ্ঞাপন /
                       রক্ষণাবেক্ষণ / অপারেশন) with a single save → PATCH /api/settings.
                       /appearance is the section-variant switcher (default-only scaffold).
 Scraper               Collection pipeline: ingest → dedup → classify → rewrite → moderate →
                       publish. Multi-platform: facebook (browser scrape) + news/magazine
-                      (RSS/Atom fetch). AI fallback hero images for media-less posts.
-Desktop (apps/desktop)  Tauri 2 desktop admin + local collector controller — Settings has
-                      11 pill tabs incl. inline সোর্স/বিভাগ editing, AI প্রোভাইডার, নোটিশ,
-                      a shared ওয়েব ভিজিবিলিটি ও থিম (app_config_json) panel with the
-                      home/similar/comments count knobs, footer branding + per-category
-                      footer visibility, এবং admin লগইন লগ panel. API ভল্ট কপি/ডাউনলোড
-                      clipboard-plugin + Downloads ফাইলের মাধ্যমে।
-DB/LLM/Types          packages/db (Turso/libSQL), packages/llm (multi-provider resolver),
+                      (RSS/Atom fetch). AI fallback hero images for media-less posts +
+                      on-demand manual image generation (`media generate`).
+Desktop (apps/desktop)  Tauri 2 desktop admin + local collector controller — 9-tab desk
+                       console incl. a ট্রাফিক analytics tab (shares the web TrafficView),
+                       Settings has 11 pill tabs incl. inline সোর্স/বিভাগ editing, AI প্রোভাইডার,
+                       নোটিশ, a shared ওয়েব ভিজিবিলিটি ও থিম (app_config_json) panel with the
+                       home/similar/comments count knobs, footer branding + per-category
+                       footer visibility, এবং admin লগইন লগ panel. API ভল্ট কপি/ডাউনলোড
+                       clipboard-plugin + Downloads ফাইলের মাধ্যমে।
+DB/LLM/Types          packages/db (Turso/libSQL, incl. the traffic telemetry module),
+                      packages/llm (multi-provider resolver + image generation),
                       shared-types.
-Dash UI               packages/dash — shared admin-dashboard kit + 5-tab view (React 19 +
-                      Tailwind v3, source-only) rendered by BOTH the web admin home and
-                      the desktop Monitor so the two stay pixel-identical. The dashboard
-                      header has a live ⟲ রিফ্রেশ + ▶ পাইপলাইন চালান (manual run with
-                      progress polling and a completion toast on web and desktop).
+Dash UI               packages/dash — shared admin-dashboard kit + 5-tab dashboard view +
+                      the shared TrafficView (React 19 + Tailwind v3, source-only) rendered
+                      by BOTH the web admin and the desktop Monitor so the two stay
+                      pixel-identical. The dashboard header has a live ⟲ রিফ্রেশ + ▶ পাইপলাইন
+                      চালান (manual run with progress polling and a completion toast on web
+                      and desktop).
 ```
 
 ## Quickstart
@@ -59,10 +65,11 @@ apps/
   web/        Next.js 15 public site + admin (the ONLY app deployed to Vercel)
   scraper/    Playwright + HTTP pipeline: ingest → dedup → classify → rewrite → publish
   desktop/    Tauri 2 native desktop controller (self-contained Windows installer)
-              mockup-parity 8-tab desk console (Monitor … Ads) + live sync bar
+              mockup-parity 9-tab desk console (Monitor · Traffic … Ads) + live sync bar
 packages/
-  db/         Turso/libSQL client, migrations, seeds, shared archive/media helpers
+  db/         Turso/libSQL client, migrations, seeds, shared archive/media + traffic helpers
   llm/        Multi-provider resolver (Gemini/Groq/OpenRouter/Ollama/…) with fail-over
+              and on-demand image generation (`generateImage` / `listImageProviders`)
   shared-types/  Post/RawPost/Source/Category types shared by all apps
   dash/       Shared dashboard: chart kit, `DashModel` contract, and the 5-tab
               DashboardView. Consumed by apps/web (admin home) and apps/desktop
@@ -99,6 +106,32 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   (missing-children / child-sexual-abuse / extramarital-crime) are **always**
   excluded, and the prompt itself bans text, logos, real people and children.
   `media ai-fill` repairs already-published media-less posts.
+- **On-demand manual image generation (v1.1.10).** Beyond the automatic fallback,
+  an operator can generate a hero for any post: `media generate <id>` on the CLI,
+  the **AI ছবি তৈরি** panel in the admin post editor
+  (`POST /api/posts/[id]/generate-image`), and the desktop কনটেন্ট সারি row action.
+  `@hoichoi/llm` exposes an optional `generateImage` on the provider interface plus
+  `composeImagePrompt` / `listImageProviders`; only `purpose = image` providers are
+  eligible. Generated buffers flow through `packages/db`'s shared uploader
+  (`writeGeneratedMedia`), so they land in the same storage (local mirror or R2)
+  as scraped media. Sensitive categories stay blocked here too.
+- **First-party traffic analytics (v1.1.10).** A cookie-less telemetry layer —
+  `page_views` + `ad_events` (migration `011_traffic.sql`) — captures anonymous
+  page views and ad view/click events. No raw IP is stored: visitors are counted
+  by a **daily-rotating `visitorFingerprint`** (`sha256(ip|UA|date).slice(0,16)`),
+  sessions by a per-tab `sessionStorage` id, geography from Vercel's
+  `x-vercel-ip-country/-region/-city` headers (null off-Vercel), and OS/browser by
+  User-Agent sniff. Bots and `/admin`,`/desk`,`/api` paths are skipped, and bounce
+  = sessions with exactly one page view. Aggregation is pure SQL. The beacon posts
+  to `/api/track` from `(site)/layout.tsx`; the five admin groups (live visitors by
+  country/flag, most-read content + countries, comments, page-view/OS/browser/device
+  mix, ad views/clicks/CTR) render from `trafficSnapshot` via the shared
+  `TrafficView` on **`/admin/traffic`** (web) and the desktop **ট্রাফিক** tab
+  (`traffic <range>` runner command). No new environment variables are required.
+- **Admin-editable footer socials (v1.1.10).** `SiteAppConfig.footer_socials`
+  (`FooterSocialLink[]`) is edited in admin → সেটিংস → সাইট, parsed by
+  `parseAppConfig`, and rendered by `FooterSocials.tsx` (inline SVG icon map) with a
+  live Bangladesh-local-time zone stamp.
 - **Maintenance mode.** `maintenance_mode` (app_config_json) shows a full
   maintenance screen to logged-out visitors (mockup-faithful paper/ink design,
   Bangla+English copy blocks, countdown, progress bar, live site stats and last
@@ -199,6 +232,8 @@ Run from anywhere with `npx tsx --env-file=.env apps/scraper/src/cli.ts <cmd>`.
 | `sources add --page-url <url> --page-name <n> --category <slug> --platform <p>` | Add a source; `news`/`magazine` use RSS/Atom |
 | `media status` / `media backfill [--recover]` / `media cleanup` | Remote-media storage, redownload missing media |
 | `media ai-fill [--limit N] [--dry-run]` | Generate AI hero images for media-less posts |
+| `media generate <postId>` | Generate one hero image on demand for a specific post |
+| `traffic [--range 24h\|7d\|30d]` | First-party analytics snapshot as JSON (web admin + desk) |
 | `settings set <key> <value>` / `settings show` | Read/update the shared settings row |
 | `sync push` / `sync pull` | Copy content tables between DBs (includes `llm_providers`) |
 | `export` / `import` | Encrypted vault backups |
@@ -233,7 +268,7 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 
 > After any change to `packages/db/migrations/` you **must** re-run `bundle:runner`
 > before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
-> (latest e.g. `010_llm_temperature.sql`).
+> (latest e.g. `011_traffic.sql`).
 
 ## Editorial & safety
 

@@ -179,3 +179,32 @@ The admin sees a "LLM providers offline" banner in the desktop and web admin UIs
 - CLI: `providers add … --purpose image` (the desktop provider manager and the
   web `/admin/providers` form expose the same select). `Group by purpose` in the
   admin so an image model never lands in the text fallback chain.
+
+---
+
+## Manual image generation (v1.1.10)
+
+The image chain is no longer only an automatic fallback for media-less posts — an
+operator can generate a hero for **any** post on demand.
+
+- **Interface.** `@hoichoi/llm` adds an **optional** `generateImage(request)` to the
+  provider interface (providers that cannot render images simply omit it),
+  `composeImagePrompt` (the same safety-banned prompt the fallback path uses),
+  `listImageProviders`, and `image-util.ts`.
+- **Eligibility.** Only rows with `purpose = image` are considered. As with the
+  fallback path, sensitive categories (missing-children / child-sexual-abuse /
+  extramarital-crime) are **always** excluded and the prompt bans text, logos, real
+  people and children.
+- **Surfaces.**
+  - CLI: `media generate <postId>` (scraper `media-backfill.ts`).
+  - Web: `POST /api/posts/[id]/generate-image` + the **AI ছবি তৈরি** panel
+    (`PostImageGenerator.tsx`) in the post editor.
+  - Desktop: the কনটেন্ট সারি row action (`deskQueueGenerateImage` /
+    `deskImageProviders`).
+- **Storage.** The returned buffer is persisted through `@hoichoi/db`'s shared
+  uploader (`writeGeneratedMedia`), so it lands in the same local mirror / R2 target
+  as scraped media and is served identically.
+- **Providers that render images:** Gemini image models
+  (`GEMINI_IMAGE_MODEL`, default `gemini-2.5-flash-image`) are the built-in option;
+  any OpenAI-compatible endpoint that exposes an images API can be added as a custom
+  image provider.

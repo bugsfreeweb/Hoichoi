@@ -33,6 +33,7 @@ import {
   statsSnapshot,
   recentPipelineRuns,
   radarSnapshot,
+  trafficSnapshot,
   getAllComments,
   setCommentStatus,
   listCategories,
@@ -384,6 +385,22 @@ program
     try {
       await ensureSchema(getClient());
       console.log(JSON.stringify({ ok: true, ...(await radarSnapshot()) }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("traffic")
+  .description("desk monitor — first-party traffic analytics snapshot (24h|7d|30d) as JSON")
+  .option("-r, --range <range>", "24h | 7d | 30d", "24h")
+  .action(async (opts: { range?: string }) => {
+    try {
+      const range = (opts.range ?? "24h") as "24h" | "7d" | "30d";
+      if (range !== "24h" && range !== "7d" && range !== "30d") throw new Error(`unknown range: ${range}`);
+      await ensureSchema(getClient());
+      console.log(JSON.stringify({ ...(await trafficSnapshot(range)) }, null, 2));
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -1797,6 +1814,14 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
     }
     case "radar": {
       console.log(JSON.stringify({ ok: true, ...(await radarSnapshot()) }, null, 2));
+      return;
+    }
+    case "traffic": {
+      const range = (args[1] ?? "24h") as "24h" | "7d" | "30d";
+      if (range !== "24h" && range !== "7d" && range !== "30d") {
+        throw new Error(`unknown range: ${range} (use 24h|7d|30d)`);
+      }
+      console.log(JSON.stringify({ ...(await trafficSnapshot(range)) }, null, 2));
       return;
     }
     case "media": {

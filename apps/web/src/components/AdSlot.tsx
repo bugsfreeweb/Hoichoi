@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { bnNum } from "@/lib/bn";
+import { trackAd } from "@/lib/track-client";
 
 /* Inline SVG icons (web app avoids lucide-react). */
 function MegaphoneIcon({ size = 9 }: { size?: number }) {
@@ -64,7 +65,8 @@ export function AdSlot({
     } catch {
       /* noop */
     }
-  }, []);
+    trackAd(variant, "view");
+  }, [variant]);
 
   /* Re-inject <script> tags inside admin-pasted HTML — innerHTML alone never
      executes scripts, so ad-network tags need this explicit pass. */
@@ -86,6 +88,7 @@ export function AdSlot({
     } catch {
       /* noop */
     }
+    trackAd(variant, "click");
     setClicked(true);
     setBump(n);
     setTimeout(() => setClicked(false), 2200);
