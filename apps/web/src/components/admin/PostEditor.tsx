@@ -62,6 +62,13 @@ interface MediaCandidate {
   contentType: string | null;
 }
 
+interface GalleryImage {
+  id: string;
+  path: string;
+  kind: string;
+  is_primary: number;
+}
+
 export function PostEditor({ post }: { post: Post }) {
   const router = useRouter();
   const [title, setTitle] = useState(post.title_bn);
@@ -77,6 +84,11 @@ export function PostEditor({ post }: { post: Post }) {
   const [mediaMsg, setMediaMsg] = useState<string | null>(null);
   const [mediaErr, setMediaErr] = useState<string | null>(null);
   const [mediaBusy, setMediaBusy] = useState<string | null>(null);
+  const [gallery, setGallery] = useState<GalleryImage[]>([]);
+  const [galleryUrl, setGalleryUrl] = useState("");
+  const [galleryMsg, setGalleryMsg] = useState<string | null>(null);
+  const [galleryErr, setGalleryErr] = useState<string | null>(null);
+  const [galleryBusy, setGalleryBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -84,8 +96,7 @@ export function PostEditor({ post }: { post: Post }) {
 
   // Candidate images, loaded on demand rather than on mount: this fires remote
   // HEAD requests, and most visits to the editor are about editing text.
-  const loadCandidates = async () => {
-    setMediaErr(null);
+  const loadCandidates = async () => {    setMediaErr(null);
     try {
       const res = await fetch(`/api/posts/${post.id}/media`, { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -140,6 +151,90 @@ export function PostEditor({ post }: { post: Post }) {
     }
   };
 
+  // Gallery (extra) images attached to this post. Loaded once on mount so the
+  // strip reflects what the collector mirrored plus anything added here.
+  const loadGallery = async () => {
+    try {
+      const res = await fetch(`/api/posts/${post.id}/images`, { cache: "no-store" });
+      if (!res.ok) return;
+      const j = (await res.json()) as { images?: GalleryImage[] };
+      setGallery(j.images ?? []);
+    } catch {
+      /* non-fatal — the strip just stays empty */
+    }
+  };
+
+  const addGalleryImage = async (url: string) => {
+    const u = url.trim();
+    if (!u) return;
+    setGalleryBusy(u);
+    setGalleryErr(null);
+    setGalleryMsg(null);
+    try {
+      const res = await fetch(`/api/posts/${post.id}/images`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url: u }),
+      });
+      const j = (await res.json().catch(() => null)) as { error?: string; image?: GalleryImage } | null;
+      if (!res.ok || !j?.image) throw new Error(j?.error ?? `HTTP ${res.status}`);
+      setGallery((g) => [...g, j.image!]);
+      setGalleryUrl("");
+      setGalleryMsg("✓ গ্যালারিতে যুক্ত হয়েছে");
+    } catch (e) {
+      setGalleryErr(e instanceof Error ? e.message : "গ্যালারিতে যুক্ত করা ব্যর্থ");
+    } finally {
+      setGalleryBusy(null);
+    }
+  };
+
+  const removeGalleryImage = async (id: string) => {
+    if (!window.confirm("এই ছবিটি গ্যালারি থেকে মুছবেন?")) return;
+    setGalleryBusy(id);
+    setGalleryErr(null);
+    setGalleryMsg(null);
+    try {
+      const res = await fetch(`/api/posts/${post.id}/images`, {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(j?.error ?? `HTTP ${res.status}`);
+      }
+      setGallery((g) => g.filter((x) => x.id !== id));
+    } catch (e) {
+      setGalleryErr(e instanceof Error ? e.message : "মুছতে ব্যর্থ");
+    } finally {
+      setGalleryBusy(null);
+    }
+  };
+
+  const makeGalleryPrimary = async (img: GalleryImage) => {
+    setGalleryBusy(img.id);
+    setGalleryErr(null);
+    setGalleryMsg(null);
+    try {
+      const res = await fetch(`/api/posts/${post.id}/images`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: img.id }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(j?.error ?? `HTTP ${res.status}`);
+      }
+      setMediaPath(img.path);
+      setGalleryMsg("✓ প্রধান ছবি বদলানো হয়েছে");
+      await loadGallery();
+    } catch (e) {
+      setGalleryErr(e instanceof Error ? e.message : "প্রধান ছবি বদলাতে ব্যর্থ");
+    } finally {
+      setGalleryBusy(null);
+    }
+  };
+
   // Dynamic categories come from the config table so admins can recategorize a
   // post into any custom section, not just the three built-in slugs.
   useEffect(() => {
@@ -167,6 +262,11 @@ export function PostEditor({ post }: { post: Post }) {
       }
     })();
   }, [post.category]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    void loadGallery();
+  }, [post.id]);
 
   const save = async () => {
     setBusy("save");
@@ -399,6 +499,14 @@ export function PostEditor({ post }: { post: Post }) {
                       >
                         {mediaBusy === c.url ? "যুক্ত হচ্ছে…" : c.ok ? "এটি নিন" : "মরা লিঙ্ক"}
                       </button>
+                      <button
+                        className="mt-1 w-full truncate border border-ink/20 px-2 py-0.5 text-[10px] font-bold text-ink-soft transition hover:bg-ink hover:text-paper disabled:opacity-50"
+                        onClick={() => void addGalleryImage(c.url)}
+                        disabled={galleryBusy !== null || !c.ok}
+                        title="গ্যালারিতে যোগ করুন"
+                      >
+                        {galleryBusy === c.url ? "…" : "+ গ্যালারি"}
+                      </button>
                     </figure>
                   ))}
                 </div>
@@ -407,6 +515,85 @@ export function PostEditor({ post }: { post: Post }) {
                 ছবিটি যুক্ত হওয়ার পর অ্যাডমিন নিশ্চিত করলে সেটিই প্রকাশিত ছবি হয়।
               </p>
             </>
+          )}
+        </div>
+
+        <div className="mt-4 border-t border-ink/15 pt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+              গ্যালারি (অতিরিক্ত ছবি)
+            </p>
+            <span className="font-mono-x text-[10.5px] text-ink-soft">· {gallery.length} টি</span>
+          </div>
+
+          {gallery.length === 0 ? (
+            <p className="mt-2 text-[12.5px] text-ink-soft">
+              এখনো কোনো অতিরিক্ত ছবি নেই। নিচে লিঙ্ক পেস্ট করে যোগ করুন — সংগ্রাহক একাধিক ছবি পেলে সেগুলো স্বয়ংক্রিয়ভাবে এখানে থাকে।
+            </p>
+          ) : (
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+              {gallery.map((g) => (
+                <figure key={g.id} className="min-w-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={previewSrc(g.path)}
+                    alt=""
+                    loading="lazy"
+                    className="h-24 w-full border border-ink/20 object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                  <div className="mt-1 flex gap-1">
+                    <button
+                      className="min-w-0 flex-1 truncate border border-ink/30 px-2 py-1 text-[10.5px] font-bold text-ink transition hover:bg-lime disabled:opacity-50"
+                      onClick={() => void makeGalleryPrimary(g)}
+                      disabled={galleryBusy !== null}
+                      title="প্রধান ছবি করুন"
+                    >
+                      {galleryBusy === g.id ? "…" : "প্রধান"}
+                    </button>
+                    <button
+                      className="shrink-0 border border-alizarin px-2 py-1 text-[10.5px] font-bold text-alizarin transition hover:bg-alizarin hover:text-paper disabled:opacity-50"
+                      onClick={() => void removeGalleryImage(g.id)}
+                      disabled={galleryBusy !== null}
+                      title="গ্যালারি থেকে মুছুন"
+                    >
+                      🗑
+                    </button>
+                  </div>
+                </figure>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-3 flex flex-wrap items-end gap-2">
+            <div className="min-w-[240px] flex-1">
+              <Field label="গ্যালারিতে নতুন ছবির লিঙ্ক">
+                <input
+                  className={field}
+                  value={galleryUrl}
+                  placeholder="https://example.com/photo2.jpg"
+                  onChange={(e) => setGalleryUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void addGalleryImage(galleryUrl);
+                  }}
+                />
+              </Field>
+            </div>
+            <button
+              className={btnGhost}
+              onClick={() => void addGalleryImage(galleryUrl)}
+              disabled={galleryBusy !== null || galleryUrl.trim() === ""}
+            >
+              ➕ গ্যালারিতে যোগ
+            </button>
+          </div>
+          {galleryMsg && <p className="mt-2 text-[12.5px] font-bold text-cat-teal">{galleryMsg}</p>}
+          {galleryErr && (
+            <p className="mt-2 border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">
+              ✕ {galleryErr}
+            </p>
           )}
         </div>
 

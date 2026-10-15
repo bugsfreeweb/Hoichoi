@@ -16,30 +16,38 @@ Web (apps/web)        Next.js 15 public site (SSR feed, /sitemap, OG images, vis
                       /appearance, /traffic, …), /desk preview, live /api/stats. First-party
                       cookie-less analytics (page_views + ad_events) power /admin/traffic
                       with a /api/track beacon. Home sections are gated by settings.app_config_json
-                      (show_hero / show_ads / … / maintenance_mode / ai_hero_images);
+                      (show_hero / show_ads / … / maintenance_mode / ai_hero_images /
+                      default_post_image / brand_animation);
                       admin Settings is a tabbed console (সাইট / ভিজিবিলিটি / বিজ্ঞাপন /
-                      রক্ষণাবেক্ষণ / অপারেশন) with a single save → PATCH /api/settings.
-                      /appearance is the section-variant switcher (default-only scaffold).
+                      রক্ষণাবেক্ষণ / অপারেশন / ডিজাইন) with a single save → PATCH /api/settings.
+                      The ডিজাইন tab folds in the section-variant switcher with a live
+                      preview (cookie overlay, no DB write) and a one-click reset to default.
+                      Admin shell has a grouped, collapsible sidebar with a persisted
+                      collapsed state + mobile drawer. /admin/traffic also renders the
+                      shared storage analytics (DB size + per-storage media breakdown).
 Scraper               Collection pipeline: ingest → dedup → classify → rewrite → moderate →
                       publish. Multi-platform: facebook (browser scrape) + news/magazine
                       (RSS/Atom fetch). AI fallback hero images for media-less posts +
                       on-demand manual image generation (`media generate`).
 Desktop (apps/desktop)  Tauri 2 desktop admin + local collector controller — 9-tab desk
-                       console incl. a ট্রাফিক analytics tab (shares the web TrafficView),
-                       Settings has 11 pill tabs incl. inline সোর্স/বিভাগ editing, AI প্রোভাইডার,
+                       console incl. a ট্রাফিক analytics tab (shares the web TrafficView)
+                       with a ট্রাফিক/স্টোরেজ sub-tab toggle (shares the web StorageView),
+                       Settings has pill tabs incl. inline সোর্স/বিভাগ editing, AI প্রোভাইডার,
                        নোটিশ, a shared ওয়েব ভিজিবিলিটি ও থিম (app_config_json) panel with the
-                       home/similar/comments count knobs, footer branding + per-category
-                       footer visibility, এবং admin লগইন লগ panel. API ভল্ট কপি/ডাউনলোড
-                       clipboard-plugin + Downloads ফাইলের মাধ্যমে।
-DB/LLM/Types          packages/db (Turso/libSQL, incl. the traffic telemetry module),
-                      packages/llm (multi-provider resolver + image generation),
-                      shared-types.
+                       home/similar/comments count knobs, default post image + brand-animation
+                       knobs, footer branding + per-category footer visibility, এবং admin
+                       লগইন লগ panel. The content-row editor mirrors the web gallery strip
+                       (add/remove/promote extra images). API ভল্ট কপি/ডাউনলোড clipboard-plugin
+                       + Downloads ফাইলের মাধ্যমে।
+DB/LLM/Types          packages/db (Turso/libSQL, incl. the traffic + storage-report modules
+                      and the post_images gallery layer), packages/llm (multi-provider
+                      resolver + image generation), shared-types.
 Dash UI               packages/dash — shared admin-dashboard kit + 5-tab dashboard view +
-                      the shared TrafficView (React 19 + Tailwind v3, source-only) rendered
-                      by BOTH the web admin and the desktop Monitor so the two stay
-                      pixel-identical. The dashboard header has a live ⟲ রিফ্রেশ + ▶ পাইপলাইন
-                      চালান (manual run with progress polling and a completion toast on web
-                      and desktop).
+                      the shared TrafficView and StorageView (React 19 + Tailwind v3,
+                      source-only) rendered by BOTH the web admin and the desktop Monitor
+                      so the two stay pixel-identical. The dashboard header has a live
+                      ⟲ রিফ্রেশ + ▶ পাইপলাইন চালান (manual run with progress polling and a
+                      completion toast on web and desktop).
 ```
 
 ## Quickstart
@@ -128,6 +136,36 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   mix, ad views/clicks/CTR) render from `trafficSnapshot` via the shared
   `TrafficView` on **`/admin/traffic`** (web) and the desktop **ট্রাফিক** tab
   (`traffic <range>` runner command). No new environment variables are required.
+- **Storage analytics (v1.1.10).** A shared `StorageView` (`@hoichoi/dash`, built
+  from `storageSnapshot` in `@hoichoi/db`) reports **DB size** (`PRAGMA page_count`
+  × `page_size`), the **on-disk media tree** (walked under `mediaRoot()` /
+  `HOICHOI_MEDIA_ROOT`, with a per-day byte series), the **remote blob registry**
+  grouped by adapter (`github` · `idrivee2` · `backblaze`), and the largest DB
+  tables. Remote-provider **byte sizes are estimates** (the `media_objects` table
+  stores one row per blob but no size, so bytes = local-average × blob count);
+  blob counts are exact. Rendered on the web at `/admin/traffic` (below the traffic
+  panels), on the desktop **ট্রাফিক → স্টোরেজ** sub-tab, and via `storage` on the
+  CLI. Snapshots are cached ~15s.
+- **Default post image + brand animation (v1.1.10).** `SiteAppConfig` gains
+  `default_post_image` (a URL path) and `brand_animation`
+  (`none|fade|typewriter|shimmer|slide`). `withDefaultImage(s)` stamps the default
+  image onto media-less posts at the data layer so every render path (cards, hero,
+  detail, variants) picks it up without a schema change; `settingImageUrl` resolves
+  the admin-configured URL the same way `mediaUrl` resolves stored paths. The brand
+  animation applies to the production home **Hero** wordmark (`হৈচৈ!`) — or the
+  configured logo when set — via `.brand-motion` CSS (with a
+  `prefers-reduced-motion` guard). Both are edited in admin → সেটিংস → সাইট (web)
+  and Settings → ভিজিবিলিটি (desktop) with a live preview.
+- **Multi-image posts + lightbox (v1.1.10).** A post keeps its single primary
+  `posts.media_path`, and now also has a **gallery** (`post_images`,
+  `012_post_images.sql`). The collector mirrors *every* image it can fetch from the
+  source post (capped at 8, first = primary) with `source = "collector"`; operators
+  add/remove/promote extras in the web post editor (`POST/PATCH/DELETE
+  /api/posts/[id]/images`) and the desktop content-row editor with `source = "admin"`.
+  `replaceCollectorImages` refreshes only the collector rows on re-collection, so
+  admin additions survive. The public post page keeps its exact hero layout and adds
+  a thumbnail strip beneath it; clicking any image opens a full-page **lightbox**
+  with arrow/keyboard navigation.
 - **Admin-editable footer socials (v1.1.10).** `SiteAppConfig.footer_socials`
   (`FooterSocialLink[]`) is edited in admin → সেটিংস → সাইট, parsed by
   `parseAppConfig`, and rendered by `FooterSocials.tsx` (inline SVG icon map) with a
@@ -174,14 +212,20 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   independent of the text chain. An optional per-provider **API key override**
   is stored on the row (takes precedence over vault/env), and a provider may
   hold several keys; the text chain only ever considers `purpose = 'text'`.
-- **Optional variant engine (scaffold).** The shipped design is the single
-  `default` variant for every section. A registry
+- **Optional variant engine.** The shipped design is the single `default` variant
+  for every section; mockup variants remain catalogued and disabled until ported,
+  so **the live design never changes** unless an operator opts in. A registry
   (`SECTION_REGISTRY` in `@hoichoi/shared-types`) maps each public-site section
   (per `multi-style-web-mockup` slug) to its selectable variants, and the
-  `sections` table + `settings.default_variant` persist the choice. Admin →
-  **ডিজাইন ভ্যারিয়েন্ট** (`/admin/appearance`) exposes the switcher, but only
-  `default` is available today; mockup variants are catalogued and disabled until
-  ported, so **the live design never changes**.
+  `sections` table + `settings.default_variant` persist the choice. The switcher
+  now lives in **অ্যাডমিন → সেটিংস → ডিজাইন** (`/admin/settings?tab=design`,
+  `/admin/appearance` redirects there) as a full-width tab with a **live preview**
+  — the preview sets a short-lived `preview` cookie that `loadLive(previewVariant?)`
+  overlays in memory, so trying a variant never writes to the DB. Saving persists
+  the per-section rows; **⟲ ডিফল্টে ফিরুন** resets both `settings.default_variant`
+  *and* every per-section row back to `default` (the earlier bug left section rows
+  non-default, so reverting appeared to do nothing). The admin shell itself is a
+  grouped, collapsible sidebar with a persisted collapsed state and a mobile drawer.
 - **Light theme everywhere.** `html[data-theme="light"]` is honored across the
   web public site, the `.hoichoi-dash` kit (web dashboard + desktop Monitor) and
   the desktop shell, and the admin notification bell + maintenance preview are
@@ -234,6 +278,8 @@ Run from anywhere with `npx tsx --env-file=.env apps/scraper/src/cli.ts <cmd>`.
 | `media ai-fill [--limit N] [--dry-run]` | Generate AI hero images for media-less posts |
 | `media generate <postId>` | Generate one hero image on demand for a specific post |
 | `traffic [--range 24h\|7d\|30d]` | First-party analytics snapshot as JSON (web admin + desk) |
+| `storage` | DB + media storage snapshot as JSON (web admin + desk) |
+| `queue images <list\|add\|remove\|primary> <postId> [url\|imageId]` | Manage a post's gallery images |
 | `settings set <key> <value>` / `settings show` | Read/update the shared settings row |
 | `sync push` / `sync pull` | Copy content tables between DBs (includes `llm_providers`) |
 | `export` / `import` | Encrypted vault backups |
@@ -268,7 +314,7 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 
 > After any change to `packages/db/migrations/` you **must** re-run `bundle:runner`
 > before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
-> (latest e.g. `011_traffic.sql`).
+> (latest e.g. `012_post_images.sql`).
 
 ## Editorial & safety
 

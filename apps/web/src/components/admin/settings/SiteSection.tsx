@@ -2,7 +2,7 @@
 
 import { Field, Section, TextArea, TextInput, NumberInput } from "./ui";
 import { useSettings } from "./state";
-import type { FooterSocialLink } from "@hoichoi/shared-types";
+import type { BrandAnimation, FooterSocialLink } from "@hoichoi/shared-types";
 
 const SOCIAL_ICONS = [
   "facebook",
@@ -95,7 +95,7 @@ function SocialLinksEditor() {
 }
 
 export function SiteSection() {
-  const { identity, setIdentity } = useSettings();
+  const { identity, setIdentity, cfg, setCfg } = useSettings();
   return (
     <div className="space-y-6">
       <Section kicker="Branding" title="সাইট পরিচয়" hint="হেডার, ফুটার আর মেটা-বিবরণে ব্যবহৃত টেক্সট — ডেস্কটপ অ্যাপও একই settings টেবিল থেকে পড়ে।">
@@ -127,6 +127,48 @@ export function SiteSection() {
         <Field label="ফুটার 'সম্পর্কে' অনুচ্ছেদ" hint="খালি রাখলে ওয়েব সাইটের নিজস্ব ডিফল্ট টেক্সট দেখাবে।">
           <TextArea rows={3} value={identity.footer_about_bn} onChange={(e) => setIdentity({ footer_about_bn: e.target.value })} placeholder="সাইট/এই ডেস্ক about-অনুচ্ছেদ…" />
         </Field>
+      </Section>
+
+      <Section
+        kicker="Brand motion & fallback art"
+        title="ব্র্যান্ড অ্যানিমেশন ও ডিফল্ট ছবি"
+        hint="মাস্টহেডের সাইট-নামে অ্যানিমেশন, এবং যে পোস্টে কোনো ছবি নেই সেসব পোস্টের জন্য একটি ডিফল্ট ছবি।"
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="নামের অ্যানিমেশন" hint="মাস্টহেডের সাইট-নামে প্রয়োগ হয় (লোগো থাকলে লোগোতেও)।">
+            <select
+              className={SELECT}
+              value={cfg.brand_animation}
+              onChange={(e) => setCfg((c) => ({ ...c, brand_animation: e.target.value as BrandAnimation }))}
+            >
+              <option value="none">নেই (স্থির)</option>
+              <option value="fade">ফেড-ইন</option>
+              <option value="typewriter">টাইপরাইটার</option>
+              <option value="shimmer">শিমার</option>
+              <option value="slide">স্লাইড-ইন</option>
+            </select>
+          </Field>
+          <Field label="ডিফল্ট পোস্ট ছবি (URL)" hint="রিমোট URL বা /uploads/… পাথ। খালি = চলতি প্লেসহোল্ডার টাইল।">
+            <TextInput
+              value={cfg.default_post_image}
+              onChange={(e) => setCfg((c) => ({ ...c, default_post_image: e.target.value }))}
+              placeholder="https://… অথবা /uploads/…"
+            />
+          </Field>
+        </div>
+        {cfg.default_post_image ? (
+          <div className="flex items-center gap-3 border border-ink/15 bg-ink/[0.03] p-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={cfg.default_post_image}
+              alt="ডিফল্ট পোস্ট ছবির প্রিভিউ"
+              className="h-16 w-28 border border-ink/20 object-cover"
+            />
+            <p className="text-[11.5px] text-ink-soft">
+              ছবিহীন পোস্টে এই ছবিটি ব্যবহার হবে। ফাইলটি বাইরে হোস্ট করা হলে সরাসরি লিংক দিন।
+            </p>
+          </div>
+        ) : null}
       </Section>
 
       <SocialLinksEditor />

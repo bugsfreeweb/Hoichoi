@@ -68,3 +68,20 @@ Both are indexed on `created_at` (and `slug` / `slot`) so the range aggregation 
 `trafficSnapshot` (`24h | 7d | 30d`) stays cheap. Aggregation is pure SQL
 (`COUNT(DISTINCT …)`, `GROUP BY`) — no rollup job, so there is no new cron or
 background worker and nothing extra to keep alive on a free tier.
+
+## Content table added in v1.1.10 (post gallery)
+
+The multi-image feature adds one table, created by `ensurePostImagesTable` in
+`packages/db/src/client.ts` (runtime `ensureSchema` path) and by
+`packages/db/migrations/012_post_images.sql` (server `db:migrate` path):
+
+| Table | Key columns | Notes |
+|---|---|---|
+| `post_images` | `id`, `post_id`, `path`, `kind`, `position`, `source`, `created_at` | Extra images attached to a post beyond its single `posts.media_path`. `source` is `collector` (mirrored from the source post by the pipeline) or `admin` (added by an operator). Ordered by `position`; `ON DELETE CASCADE` from `posts`. |
+
+Indexed on `(post_id, position)` so `listPostImages` is a straight ordered scan.
+`replaceCollectorImages` rewrites only the `collector` rows on re-collection, so an
+operator's `admin` additions are never clobbered. The collector mirrors every
+fetchable image (cap 8, first → primary), the editor and the public lightbox read
+straight from this table, and nothing is denormalised back onto `posts` except the
+chosen primary.

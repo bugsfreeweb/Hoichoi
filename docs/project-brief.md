@@ -169,3 +169,19 @@ Estimated LLM cost at up to 1,000 posts/day: **$0/mo**. At extreme volume, or fo
 - **On-demand image generation:** any post's hero can be generated from the post
   editor, the desk, or `media generate <id>` (subject to the same category safety
   rules as the automatic fallback).
+
+## Storage, gallery, and design controls (v1.1.10)
+
+- **Storage analytics** are built in: DB size + largest tables, the on-disk media
+  tree with a per-day byte series, and remote blob counts per adapter (web
+  `/admin/traffic`, desk ট্রাফিক → স্টোরেজ, CLI `storage`). Remote byte sizes are
+  estimates.
+- **Default post image + brand animation** are operator settings: a default image is
+  stamped onto media-less posts, and the home Hero wordmark/logo animates
+  (`fade | typewriter | shimmer | slide`).
+- **Multi-image posts:** a post can carry a gallery of extra images alongside its
+  primary one (collector-mirrored and admin-added); the public post page shows a
+  thumbnail strip and a full-page lightbox.
+- **Design variants** are selectable from Settings → ডিজাইন with a live preview and
+  a one-click reset to the shipped `default`; the live structure never changes until
+  an operator opts in.

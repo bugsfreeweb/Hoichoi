@@ -1,4 +1,4 @@
-import { getClient, mapCategory, mapSource, nowIso, parseAppConfig, withTx, recordSourceError, clearSourceErrors } from "@hoichoi/db";
+import { getClient, mapCategory, mapSource, nowIso, parseAppConfig, withTx, recordSourceError, clearSourceErrors, replaceCollectorImages } from "@hoichoi/db";
 import { newResolver } from "@hoichoi/llm";
 import type {
   CategorySlug,
@@ -413,6 +413,11 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       // media that quietly fails to mirror arrives at the text check with no
       // picture and no explanation, and is reported as if it never had one.
       const mediaProblems: string[] = [];
+      // Every image/video we manage to mirror from the source post so the detail
+      // page can show a gallery. The first entry becomes the primary image;
+      // capped so a pathological post can't fan out into hundreds of fetches.
+      const collected: Array<{ path: string; kind: "image" | "video" }> = [];
+      const MAX_GALLERY = 8;
       try {
         const candidates = sp.mediaUrls ?? [];
         for (const mUrl of candidates) {
@@ -427,16 +432,18 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
                 log,
               });
               if (result) {
+                media.kind = "video";
+                media.path = result.rel;
+                collected.push({ path: result.rel, kind: "video" });
                 await client.execute({
                   sql: "UPDATE raw_posts SET raw_meta = json_set(COALESCE(raw_meta,'{}'), '$.media_path', ?) WHERE id = ?",
                   args: [result.rel, rawId],
                 });
-                media.kind = "video";
-                media.path = result.rel;
                 break;
               }
               mediaProblems.push("video: no output");
             } else {
+              if (collected.length >= MAX_GALLERY) break;
               const rel = randomMediaName("img", "webp");
               const bufRes = await fetch(mUrl, mediaFetchInit());
               if (!bufRes.ok) {
@@ -453,38 +460,45 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
                 continue;
               }
               await processImage(buf, rel, { maxWidthPx: 1280 });
-              await client.execute({
-                sql: "UPDATE raw_posts SET raw_meta = json_set(COALESCE(raw_meta,'{}'), '$.media_path', ?) WHERE id = ?",
-                args: [rel, rawId],
-              });
-              media.kind = "image";
-              media.path = rel;
-              break;
+              collected.push({ path: rel, kind: "image" });
+              if (!media.path) {
+                media.kind = "image";
+                media.path = rel;
+                await client.execute({
+                  sql: "UPDATE raw_posts SET raw_meta = json_set(COALESCE(raw_meta,'{}'), '$.media_path', ?) WHERE id = ?",
+                  args: [rel, rawId],
+                });
+              }
             }
           } catch (err) {
             mediaProblems.push((err as Error).message);
           }
         }
-        if (candidates.length > 0 && !media.path) {
+        if (candidates.length > 0 && collected.length === 0) {
           log(
             `[media] ${source.page_name}: ${candidates.length} candidate(s) rejected - ` +
               (mediaProblems.join("; ") || "no reason recorded"),
           );
         }
-        // Push to remote storage when configured so the deployed web app can
-        // serve the file (serverless can't reach this machine's disk). When no
-        // adapter is configured the local copy stays in media_path, so mirror
-        // it into the web app's public folder as well - that folder is what the
-        // deployed site actually serves.
-        if (media.path && !/^https?:\/\//.test(media.path)) {
-          const pub = await uploadRemote(media.path);
+        // Push every collected image to remote storage when configured so the
+        // deployed web app can serve the whole gallery (serverless can't reach
+        // this machine's disk). With no adapter, mirror each into the web app's
+        // public folder, which is what the deployed site serves.
+        for (const item of collected) {
+          if (/^https?:\/\//.test(item.path)) continue;
+          const pub = await uploadRemote(item.path);
           if (pub) {
-            media.path = pub;
+            item.path = pub;
             log(`[media] uploaded → ${pub}`);
           } else {
-            const mirrored = mirrorMediaFile(media.path);
+            const mirrored = mirrorMediaFile(item.path);
             if (mirrored.length > 0) log(`[media] mirrored → ${mirrored[0]}`);
           }
+        }
+        // Keep the assignment order stable: the first collected item is primary.
+        if (collected.length > 0) {
+          media.kind = collected[0]!.kind;
+          media.path = collected[0]!.path;
         }
       } catch (err) {
         log(`[media] skip: ${(err as Error).message}`);
@@ -514,6 +528,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
               if (mirrored.length > 0) log(`[media] AI hero mirrored → ${mirrored[0]}`);
             }
             stats.aiHero++;
+            collected.push({ path: media.path, kind: "image" });
           }
         } catch (err) {
           log(`[media] AI hero failed: ${(err as Error).message}`);
@@ -574,6 +589,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         }
         const slug = makeSlug(`${source.page_name} photo ${sp.fbPostId}`);
         const now = nowIso();
+        const photoPostId = crypto.randomUUID();
         await client.execute({
           sql: `
             INSERT INTO posts (
@@ -584,7 +600,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
           args: [
-            crypto.randomUUID(), rawId, source.id, source.category,
+            photoPostId, rawId, source.id, source.category,
             `${source.page_name} — ছবি পোস্ট`, "", "",
             media.path, media.kind,
             sp.fbPostUrl, source.page_name, slug, "pending_review",
@@ -592,6 +608,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
             sp.authorName ?? null, null, now, now,
           ],
         });
+        await replaceCollectorImages(photoPostId, collected).catch(() => undefined);
         stats.emptyText++;
         stats.pendingReview++;
         log(`[photo] held for review (no caption) · ${slug} · ${media.path}`);
@@ -658,6 +675,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         if (confusedThisPost) {
           const slug = makeSlug(`${source.page_name} ${sp.fbPostId}`);
           const now = nowIso();
+          const confusedPostId = crypto.randomUUID();
           await client.execute({
             sql: `
               INSERT INTO posts (
@@ -668,7 +686,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `,
             args: [
-              crypto.randomUUID(), rawId, source.id, source.category,
+              confusedPostId, rawId, source.id, source.category,
               "ক্যাটাগরি নির্ধারণ করা হয়নি", sp.rawText, "",
               media.path, media.kind,
               sp.fbPostUrl, source.page_name, slug, "pending_review",
@@ -676,6 +694,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
               sp.authorName ?? null, null, now, now,
             ],
           });
+          await replaceCollectorImages(confusedPostId, collected).catch(() => undefined);
           stats.lowConfidence++;
           stats.pendingReview++;
           log(
@@ -732,6 +751,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         const status: PostStatus = lowConfidenceThisPost ? "pending_review" : decision.status;
         const slug = makeSlug(outcome.rewritten.title_bn);
         const now = nowIso();
+        const newPostId = crypto.randomUUID();
         await withTx(async (tx) => {
           const embeddingJson = outcome.embedding ? JSON.stringify(outcome.embedding) : null;
           await tx.execute({
@@ -744,7 +764,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `,
             args: [
-              crypto.randomUUID(), rawId, source.id, postCategory,
+              newPostId, rawId, source.id, postCategory,
               outcome.rewritten.title_bn, outcome.rewritten.body_bn, outcome.rewritten.summary_bn,
               media.path, media.kind,
               sp.fbPostUrl, source.page_name, slug, status,
@@ -760,6 +780,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
             }).catch(() => {});
           }
         });
+        await replaceCollectorImages(newPostId, collected).catch(() => undefined);
         if (status === "published") stats.published++;
         else stats.pendingReview++;
         stats.rewritten++;

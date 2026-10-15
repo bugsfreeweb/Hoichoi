@@ -1,5 +1,6 @@
-import { trafficSnapshot } from "@hoichoi/db";
+import { trafficSnapshot, storageSnapshot } from "@hoichoi/db";
 import { TrafficAnalytics } from "@/components/admin/TrafficAnalytics";
+import { StorageAnalytics } from "@/components/admin/StorageAnalytics";
 
 export const dynamic = "force-dynamic";
 
@@ -7,9 +8,13 @@ export const dynamic = "force-dynamic";
  * First-party traffic analytics — the five admin analytics groups: live
  * visitors, most-read content, comments, page-view/OS/browser mix, and ads.
  * Hydrated server-side for a fast first paint, then range-switchable client-side.
+ * Below it, the storage report (database + per-location media usage).
  */
 export default async function AdminTrafficPage() {
-  const initial = await trafficSnapshot("24h").catch(() => null);
+  const [initial, storage] = await Promise.all([
+    trafficSnapshot("24h").catch(() => null),
+    storageSnapshot().catch(() => null),
+  ]);
   return (
     <div>
       <header>
@@ -24,6 +29,22 @@ export default async function AdminTrafficPage() {
       </p>
       <div className="mt-6">
         <TrafficAnalytics initial={initial} />
+      </div>
+
+      <div className="mt-10 border-t border-ink/15 pt-8">
+        <header>
+          <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">
+            💾 STORAGE & DATABASE
+          </p>
+          <h2 className="mt-1 font-serif-bn text-[26px] font-black text-ink">স্টোরেজ ও ডেটাবেস</h2>
+        </header>
+        <p className="mt-2 max-w-2xl text-[12.5px] text-ink-soft">
+          ডেটাবেসের আকার, ডিস্কে মিডিয়ার পরিমাণ, এবং GitHub-সহ প্রতিটি রিমোট স্টোরেজে মিডিয়ার ব্যবহার —
+          যোগ্যতা অনুযায়ী লাইভ হালনাগাদ হয়।
+        </p>
+        <div className="mt-6">
+          <StorageAnalytics initial={storage} />
+        </div>
       </div>
     </div>
   );

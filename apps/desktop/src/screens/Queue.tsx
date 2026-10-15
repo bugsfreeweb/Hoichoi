@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, RefreshCw, Eye, ExternalLink, CircleCheck, Clock3, Ban, Pencil, Trash2, X, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { POST_STATUS_LABEL, bnTime, toBn } from "../lib/format";
 import { categoryLabel, categoryTint, bySortOrder, type CatMeta } from "../lib/category-style";
-import { deskCategories, deskQueueBulk, deskQueueGenerateImage, deskQueueMediaCandidates, deskQueueRemove, deskQueueSet, deskQueueUpdate, deskImageProviders, openAdmin, isTauri, type DeskCategory, type DeskMediaCandidate, type DeskProvider, type DeskQueueRow } from "../lib/tauri";
+import { deskCategories, deskQueueBulk, deskQueueGenerateImage, deskQueueMediaCandidates, deskQueueRemove, deskQueueSet, deskQueueUpdate, deskImageProviders, deskQueueImages, deskQueueImageAdd, deskQueueImageRemove, deskQueueImagePrimary, openAdmin, isTauri, type DeskCategory, type DeskMediaCandidate, type DeskGalleryImage, type DeskProvider, type DeskQueueRow } from "../lib/tauri";
 import { getRunEnv } from "../lib/vault";
 import { toast } from "../lib/toast";
 import { SITE_URL } from "../lib/site";
@@ -48,6 +48,11 @@ function EditModal({
   const [category, setCategory] = useState(row.category);
   const [media, setMedia] = useState(row.media_path ?? "");
   const [candidates, setCandidates] = useState<DeskMediaCandidate[] | null>(null);
+  const [gallery, setGallery] = useState<DeskGalleryImage[]>([]);
+  const [galleryUrl, setGalleryUrl] = useState("");
+  const [galleryBusy, setGalleryBusy] = useState<string | null>(null);
+  const [galleryMsg, setGalleryMsg] = useState<string | null>(null);
+  const [galleryErr, setGalleryErr] = useState<string | null>(null);
   const [cats, setCats] = useState<DeskCategory[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -111,6 +116,73 @@ function EditModal({
       live = false;
     };
   }, []);
+
+  // Extra (gallery) images mirrored by the collector plus anything added here.
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      try {
+        const env = await getRunEnv();
+        const list = await deskQueueImages(env, row.id);
+        if (live) setGallery(list);
+      } catch {
+        /* the strip is optional */
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [row.id]);
+
+  async function addGalleryImage(url: string) {
+    const u = url.trim();
+    if (!u) return;
+    setGalleryBusy(u);
+    setGalleryErr(null);
+    setGalleryMsg(null);
+    try {
+      const env = await getRunEnv();
+      const image = await deskQueueImageAdd(env, row.id, u);
+      setGallery((g) => [...g, image]);
+      setGalleryUrl("");
+      setGalleryMsg("✓ গ্যালারিতে যুক্ত হয়েছে");
+    } catch (e) {
+      setGalleryErr(e instanceof Error ? e.message : "গ্যালারিতে যুক্ত করা ব্যর্থ।");
+    } finally {
+      setGalleryBusy(null);
+    }
+  }
+
+  async function removeGalleryImage(imageId: string) {
+    setGalleryBusy(imageId);
+    setGalleryErr(null);
+    setGalleryMsg(null);
+    try {
+      const env = await getRunEnv();
+      await deskQueueImageRemove(env, row.id, imageId);
+      setGallery((g) => g.filter((x) => x.id !== imageId));
+    } catch (e) {
+      setGalleryErr(e instanceof Error ? e.message : "মুছতে ব্যর্থ।");
+    } finally {
+      setGalleryBusy(null);
+    }
+  }
+
+  async function makeGalleryPrimary(image: DeskGalleryImage) {
+    setGalleryBusy(image.id);
+    setGalleryErr(null);
+    setGalleryMsg(null);
+    try {
+      const env = await getRunEnv();
+      const path = await deskQueueImagePrimary(env, row.id, image.id);
+      setMedia(path || image.path);
+      setGalleryMsg("✓ প্রধান ছবি বদলানো হয়েছে");
+    } catch (e) {
+      setGalleryErr(e instanceof Error ? e.message : "প্রধান ছবি বদলাতে ব্যর্থ।");
+    } finally {
+      setGalleryBusy(null);
+    }
+  }
 
   async function generateImage() {
     setGenBusy(true);
@@ -261,6 +333,70 @@ function EditModal({
               ))}
             </div>
           )}
+
+          {/* Gallery (extra) images — collector-mirrored or added by hand. */}
+          <div className="mt-3 border-t border-white/10 pt-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">গ্যালারি (অতিরিক্ত ছবি)</p>
+              <span className="text-[9.5px] text-white/30">{gallery.length} টি</span>
+            </div>
+            {gallery.length > 0 && (
+              <div className="mt-2 grid grid-cols-4 gap-2">
+                {gallery.map((g) => (
+                  <div key={g.id} className="min-w-0">
+                    <img
+                      src={deskMediaSrc(g.path)}
+                      alt=""
+                      loading="lazy"
+                      className="h-16 w-full rounded-md border border-white/15 object-cover"
+                    />
+                    <div className="mt-1 flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => void makeGalleryPrimary(g)}
+                        disabled={galleryBusy !== null}
+                        className="min-w-0 flex-1 truncate rounded border border-white/15 px-1.5 py-0.5 text-[9.5px] font-bold text-white/80 transition-colors hover:bg-lime hover:text-night disabled:opacity-50"
+                      >
+                        {galleryBusy === g.id ? "…" : "প্রধান"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void removeGalleryImage(g.id)}
+                        disabled={galleryBusy !== null}
+                        className="shrink-0 rounded border border-rose-400/50 px-1.5 py-0.5 text-[9.5px] font-bold text-rose-300 transition-colors hover:bg-rose-400 hover:text-night disabled:opacity-50"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-2 flex gap-2">
+              <input
+                className={`${field} mt-0`}
+                value={galleryUrl}
+                placeholder="https://… গ্যালারিতে যোগ করুন"
+                onChange={(e) => setGalleryUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void addGalleryImage(galleryUrl);
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => void addGalleryImage(galleryUrl)}
+                disabled={galleryBusy !== null || galleryUrl.trim() === ""}
+                className="shrink-0 rounded-lg border border-white/15 px-3 py-2 text-[11.5px] font-bold text-white/80 transition-colors hover:bg-white/10 disabled:opacity-50"
+              >
+                ➕ যোগ
+              </button>
+            </div>
+            {galleryMsg && <p className="mt-1.5 text-[10.5px] font-bold text-lime">{galleryMsg}</p>}
+            {galleryErr && <p className="mt-1.5 text-[10.5px] font-bold text-rose-300">✕ {galleryErr}</p>}
+          </div>
 
           {/* Manual AI image generation — the pipeline twin of the web panel. */}
           <div className="mt-3 border-t border-white/10 pt-3">

@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ZONE_LABELS,
   SCOPE_LABELS,
   PRESETS,
   ACCENTS,
+  DEFAULT_VARIANT,
   type SectionState,
   type SectionZone,
 } from "@hoichoi/shared-types";
@@ -14,19 +15,81 @@ type Status = { kind: "ok" | "err"; text: string } | null;
 
 const ZONE_ORDER: SectionZone[] = ["header", "hero", "main", "major", "footer"];
 
+/** Renders the live public site inside a modal with the chosen look applied in
+ *  memory (cookie overlay), so an admin can inspect a design before committing. */
+function PreviewModal({
+  variant,
+  label,
+  onClose,
+  onApply,
+  busy,
+}: {
+  variant: string;
+  label: string;
+  onClose: () => void;
+  onApply: () => void;
+  busy: boolean;
+}) {
+  const [ready, setReady] = useState(false);
+  const src = useMemo(() => `/?_pv=${Date.now()}`, []);
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-ink/80 backdrop-blur-sm">
+      <div className="flex flex-wrap items-center gap-3 border-b border-white/12 bg-ink px-4 py-2.5 text-paper">
+        <span className="text-[13px] font-bold">প্রিভিউ — {label}</span>
+        <span className="font-mono-x text-[10px] tracking-[0.18em] text-white/50 uppercase">{variant}</span>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void onApply()}
+            className="border border-lime/60 bg-lime/15 px-3 py-1.5 text-[12px] font-bold text-lime transition hover:bg-lime/25 disabled:opacity-40"
+          >
+            এই নকশা প্রয়োগ করুন
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="border border-white/25 px-3 py-1.5 text-[12px] font-bold text-white/80 transition hover:border-white/50 hover:text-white"
+          >
+            বন্ধ করুন
+          </button>
+        </div>
+      </div>
+      <div className="relative min-h-0 flex-1 bg-white">
+        {!ready ? (
+          <div className="absolute inset-0 grid place-items-center bg-paper text-[13px] text-ink-soft">
+            লাইভ প্রিভিউ লোড হচ্ছে…
+          </div>
+        ) : null}
+        <iframe
+          key={src}
+          src={src}
+          title="সাইট প্রিভিউ"
+          onLoad={() => setReady(true)}
+          className="h-full w-full border-0"
+        />
+      </div>
+    </div>
+  );
+}
+
 /**
  * Admin switcher for the section variant engine. Every section offers the
  * shipped `"default"` design plus the ported mockup variants, and a whole-site
- * preset applies a coherent look across every section at once.
+ * preset applies a coherent look across every section at once. Each whole-site
+ * look can be previewed live before it is applied, and `"default"` always
+ * restores the shipped production design for the entire site.
  */
 export function VariantSwitcher({
   initialSections,
   initialSiteVariant,
   accentColor,
+  fullWidth = false,
 }: {
   initialSections: SectionState[];
   initialSiteVariant: string;
   accentColor: string;
+  fullWidth?: boolean;
 }) {
   const [sections, setSections] = useState<SectionState[]>(initialSections);
   const [siteVariant, setSiteVariant] = useState(initialSiteVariant);
@@ -34,6 +97,7 @@ export function VariantSwitcher({
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<Status>(null);
+  const [preview, setPreview] = useState<{ variant: string; label: string } | null>(null);
 
   const grouped = useMemo(() => {
     return ZONE_ORDER.map((zone) => ({
@@ -41,6 +105,14 @@ export function VariantSwitcher({
       items: sections.filter((s) => s.meta.zone === zone),
     })).filter((g) => g.items.length > 0);
   }, [sections]);
+
+  // The preview cookie is cleared whenever the modal closes or the component
+  // unmounts, so a forgotten preview can never linger on the public site.
+  useEffect(() => {
+    return () => {
+      void fetch("/api/admin/preview", { method: "DELETE" }).catch(() => {});
+    };
+  }, []);
 
   const patch = (key: string, fields: Partial<SectionState>) => {
     setSections((prev) => prev.map((s) => (s.key === key ? { ...s, ...fields } : s)));
@@ -79,8 +151,7 @@ export function VariantSwitcher({
     if (data?.siteVariant) setSiteVariant(data.siteVariant);
   }
 
-  async function saveSite(variant: string) {
-    setSiteVariant(variant);
+  async function applySiteVariant(variant: string) {
     setBusy(true);
     setStatus(null);
     try {
@@ -91,8 +162,17 @@ export function VariantSwitcher({
       });
       const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
       if (!res.ok || !data?.ok) throw new Error(data?.error ?? "সেভ করা যায়নি।");
-      setStatus({ kind: "ok", text: "ডিফল্ট ভ্যারিয়েন্ট সংরক্ষিত হয়েছে।" });
+      setSiteVariant(variant);
+      setDirty(new Set());
+      setStatus({
+        kind: "ok",
+        text:
+          variant === DEFAULT_VARIANT
+            ? "ডিফল্ট নকশা ফিরিয়ে আনা হয়েছে — পুরো সাইটে প্রযোজ্য।"
+            : "নকশা প্রয়োগ হয়েছে — পুরো সাইটে প্রযোজ্য।",
+      });
       await reloadSections();
+      setPreview(null);
     } catch (e) {
       setStatus({ kind: "err", text: e instanceof Error ? e.message : "সেভ করা যায়নি।" });
     } finally {
@@ -100,25 +180,28 @@ export function VariantSwitcher({
     }
   }
 
-  async function applyPreset(id: string) {
+  async function openPreview(variant: string, label: string) {
     setBusy(true);
     setStatus(null);
     try {
-      const res = await fetch("/api/admin/sections", {
-        method: "PUT",
+      const res = await fetch("/api/admin/preview", {
+        method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ preset: id }),
+        body: JSON.stringify({ variant }),
       });
       const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
-      if (!res.ok || !data?.ok) throw new Error(data?.error ?? "প্রিসেট প্রয়োগ করা যায়নি।");
-      setDirty(new Set());
-      setStatus({ kind: "ok", text: "প্রিসেট প্রয়োগ হয়েছে — পুরো সাইটে প্রযোজ্য।" });
-      await reloadSections();
+      if (!res.ok || !data?.ok) throw new Error(data?.error ?? "প্রিভিউ শুরু করা যায়নি।");
+      setPreview({ variant, label });
     } catch (e) {
-      setStatus({ kind: "err", text: e instanceof Error ? e.message : "প্রিসেট প্রয়োগ করা যায়নি।" });
+      setStatus({ kind: "err", text: e instanceof Error ? e.message : "প্রিভিউ শুরু করা যায়নি।" });
     } finally {
       setBusy(false);
     }
+  }
+
+  async function closePreview() {
+    setPreview(null);
+    await fetch("/api/admin/preview", { method: "DELETE" }).catch(() => {});
   }
 
   async function saveAccent(hex: string) {
@@ -142,48 +225,101 @@ export function VariantSwitcher({
   }
 
   const siteIsPreset = PRESETS.some((p) => p.id === siteVariant);
+  const activeLook = siteIsPreset ? siteVariant : DEFAULT_VARIANT;
 
   return (
-    <div className="space-y-6">
+    <div className={fullWidth ? "space-y-6" : "space-y-6 max-w-3xl"}>
+      {preview ? (
+        <PreviewModal
+          variant={preview.variant}
+          label={preview.label}
+          busy={busy}
+          onClose={() => void closePreview()}
+          onApply={() => void applySiteVariant(preview.variant)}
+        />
+      ) : null}
+
       <div className="border border-ink/20 bg-paper-deep p-5">
-        <h3 className="font-sans-bn text-[15px] font-bold text-ink">সাইট-ডিফল্ট নকশা</h3>
-        <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
-          একটি প্রিসেট বাছলে পুরো সাইটে সেটিই প্রযোজ্য হয়; নিচে আলাদা সেকশনের ভ্যারিয়েন্ট বদলে
-          সূক্ষ্ম নিয়ন্ত্রণও নিতে পারেন।
-        </p>
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <select
-            value={siteIsPreset ? siteVariant : "default"}
-            disabled={busy}
-            onChange={(e) => (e.target.value === "default" ? void saveSite("default") : void applyPreset(e.target.value))}
-            className="border border-ink/20 bg-paper px-3 py-2 text-[13px] text-ink"
-          >
-            <option value="default">ডিফল্ট (বর্তমান নকশা)</option>
-            {PRESETS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} · {p.nameEn}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="font-sans-bn text-[15px] font-bold text-ink">সাইট-ডিফল্ট নকশা</h3>
+          <span className="font-mono-x text-[10px] tracking-[0.18em] text-ink-soft uppercase">
+            বর্তমান: {activeLook}
+          </span>
         </div>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <p className="mt-1 max-w-3xl text-[12px] leading-relaxed text-ink-soft">
+          যেকোনো নকশা <span className="font-bold text-ink">প্রিভিউ</span> করে দেখুন — প্রয়োগ করার আগেই পুরো সাইটে কেমন
+          দেখাবে তা লাইভ দেখা যায়। <span className="font-bold text-ink">ডিফল্ট (বর্তমান নকশা)</span> সবসময় অন্য
+          যেকোনো নকশা থেকে ফিরে আসার নিরাপদ পথ, এবং সব সেকশন একসাথে আগের অবস্থায় রিসেট করে।
+        </p>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void openPreview(DEFAULT_VARIANT, "ডিফল্ট (বর্তমান নকশা)")}
+            className={`flex flex-col border p-3 text-left transition-colors ${
+              activeLook === DEFAULT_VARIANT
+                ? "border-ink bg-paper shadow-[inset_0_0_0_1px_var(--color-ink)]"
+                : "border-ink/20 bg-paper hover:border-ink/40"
+            }`}
+          >
+            <span className="flex items-center gap-2 text-[13px] font-bold text-ink">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-ink" />
+              ডিফল্ট (বর্তমান নকশা)
+              {activeLook === DEFAULT_VARIANT ? <span className="text-[10px] text-lime">● সক্রিয়</span> : null}
+            </span>
+            <span className="mt-0.5 block text-[11px] text-ink-soft">
+              শিপ করা প্রোডাকশন নকশা — সব ডেটা আসল, লাইট/ডার্ক দুটোতেই সঠিক।
+            </span>
+            <span className="mt-2 font-mono-x text-[10px] tracking-[0.16em] text-ink-soft uppercase">
+              প্রিভিউ দেখুন →
+            </span>
+          </button>
+
           {PRESETS.map((p) => (
             <button
               key={p.id}
               type="button"
               disabled={busy}
-              onClick={() => void applyPreset(p.id)}
-              className={`border p-3 text-left transition-colors ${
-                siteVariant === p.id ? "border-ink bg-ink text-paper" : "border-ink/20 bg-paper text-ink hover:border-ink/40"
+              onClick={() => void openPreview(p.id, `${p.name} · ${p.nameEn}`)}
+              className={`flex flex-col border p-3 text-left transition-colors ${
+                siteVariant === p.id
+                  ? "border-ink bg-paper shadow-[inset_0_0_0_1px_var(--color-ink)]"
+                  : "border-ink/20 bg-paper hover:border-ink/40"
               }`}
             >
-              <span className="flex items-center gap-2 text-[13px] font-bold">
+              <span className="flex items-center gap-2 text-[13px] font-bold text-ink">
                 <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: p.accent }} />
                 {p.name}
+                {siteVariant === p.id ? <span className="text-[10px] text-lime">● সক্রিয়</span> : null}
               </span>
-              <span className="mt-0.5 block text-[11px] opacity-70">{p.blurb}</span>
+              <span className="mt-0.5 block text-[11px] text-ink-soft">{p.blurb}</span>
+              <span className="mt-2 font-mono-x text-[10px] tracking-[0.16em] text-ink-soft uppercase">
+                প্রিভিউ দেখুন →
+              </span>
             </button>
           ))}
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void applySiteVariant(DEFAULT_VARIANT)}
+            className="border-2 border-ink px-4 py-2 text-[13px] font-bold text-ink transition hover:bg-ink hover:text-paper disabled:opacity-40"
+          >
+            ⟲ ডিফল্ট নকশায় ফিরুন
+          </button>
+          {activeLook !== DEFAULT_VARIANT ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void applySiteVariant(activeLook)}
+              className="border border-ink/30 px-4 py-2 text-[13px] font-bold text-ink-soft transition hover:border-ink hover:text-ink disabled:opacity-40"
+            >
+              বর্তমান নকশা পুনঃপ্রয়োগ
+            </button>
+          ) : null}
         </div>
       </div>
 

@@ -1121,6 +1121,8 @@ html[data-theme="light"] .admin-console .bg-panel\/50 { background-color: rgba(2
 html[data-theme="light"] .admin-console .bg-paper\/50 { background-color: rgba(243, 238, 225, 0.5); }
 html[data-theme="light"] .admin-console .border-ink\/10 { border-color: rgba(26, 20, 13, 0.1); }
 html[data-theme="light"] .admin-console .border-white\/30 { border-color: rgba(26, 20, 13, 0.3); }
+html[data-theme="light"] .admin-console .border-white\/25 { border-color: rgba(26, 20, 13, 0.25); }
+html[data-theme="light"] .admin-console .border-white\/50 { border-color: rgba(26, 20, 13, 0.5); }
 html[data-theme="light"] .admin-console .hover\:bg-white\/15:hover { background-color: rgba(26, 20, 13, 0.15); }
 html[data-theme="light"] .admin-console .hover\:border-white\/40:hover { border-color: rgba(26, 20, 13, 0.4); }
 html[data-theme="light"] .admin-console .text-paper { color: #f3eee1; }
@@ -1134,4 +1136,66 @@ html[data-theme="light"] .admin-console .text-paper { color: #f3eee1; }
 }
 .ad-strip:hover {
   background-color: color-mix(in srgb, var(--color-bandline) 10%, var(--color-band));
+}
+
+/* ---- brand motion ----
+   Optional entrance motion for the masthead site name / logo, chosen site-wide
+   from the admin (setting `brand_animation`). Each variant is a self-contained
+   keyframe animation on `.brand-motion` (or its sweep overlay), and all are
+   disabled when the visitor prefers reduced motion. */
+.brand-motion {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+}
+@keyframes brand-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes brand-slide-in {
+  from { opacity: 0; transform: translateX(-28px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes brand-reveal {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+@keyframes brand-caret {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+@keyframes brand-sweep {
+  from { transform: translateX(-120%) skewX(-18deg); }
+  to { transform: translateX(220%) skewX(-18deg); }
+}
+.brand-motion--fade { animation: brand-fade-in 900ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.brand-motion--slide { animation: brand-slide-in 900ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.brand-motion--typewriter {
+  animation: brand-reveal 1100ms steps(18, end) both;
+}
+.brand-motion--typewriter::after {
+  content: "";
+  position: absolute;
+  top: 0.05em;
+  bottom: 0.05em;
+  right: -0.08em;
+  width: 0.06em;
+  background: currentColor;
+  animation: brand-caret 900ms steps(1, end) infinite;
+}
+.brand-motion--shimmer { overflow: hidden; }
+.brand-motion--shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, color-mix(in srgb, #ffffff 65%, transparent), transparent);
+  mix-blend-mode: overlay;
+  animation: brand-sweep 2.6s ease-in-out 600ms infinite;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-motion,
+  .brand-motion--typewriter::after,
+  .brand-motion--shimmer::after { animation: none !important; }
 }

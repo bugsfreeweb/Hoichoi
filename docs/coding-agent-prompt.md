@@ -1379,3 +1379,18 @@ set; they are documented in depth in `architecture-notes.md`, `database-decision
     `dispatchCmd`); `refresh()` now returns `{ ok, error }` and drives an animated
     refresh button + result toast. **Re-run `bundle:runner` before `tauri build`**
     whenever `cli.ts` or `packages/db/migrations/` change.
+  - *Storage analytics:* `storageSnapshot()` (`packages/db/src/storage-report.ts`) →
+    shared `StorageView` (`packages/dash/src/storage.tsx`, `fmtBytes`) on web
+    `/admin/traffic` + desk ট্রাফিক/স্টোরেজ sub-tab + CLI `storage`. Remote byte sizes
+    are estimates (only blob counts are exact).
+  - *Default post image + brand animation:* `SiteAppConfig.default_post_image` /
+    `brand_animation`; `withDefaultImage(s)` stamps the default onto media-less posts;
+    `.brand-motion` animates the home Hero wordmark/logo.
+  - *Multi-image posts:* `post_images` (`migrations/012_post_images.sql`,
+    `ensurePostImagesTable`, `packages/db/src/post-images.ts`); the collector mirrors
+    every source image (cap 8), admins manage extras, the public page adds a thumbnail
+    strip + lightbox. New `POST/PATCH/DELETE /api/posts/[id]/images`, editor gallery
+    panels, and the runner `queue images` command.
+  - *Variant switcher moved* into Settings → ডিজাইন (`/admin/settings?tab=design`) with
+    a cookie-based live preview (`PUT /api/admin/preview`, `loadLive(previewVariant?)`)
+    and a true reset-to-default; the admin sidebar is grouped/collapsible.

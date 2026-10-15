@@ -348,15 +348,18 @@ Exceptions:
   reports the newest `pipeline_runs` row, so the web dashboard polls for the
   terminal row and toasts on completion. The desktop runner emits `pipeline://done`
   carrying the exit code for the same toast.
-- **Section variant engine (scaffold).** `SECTION_REGISTRY` (in `@hoichoi/shared-types`)
-  maps each public-site section to selectable variants; today every section's only
-  available variant is `default` (the shipped design). Persistence is the new
+- **Section variant engine.** `SECTION_REGISTRY` (in `@hoichoi/shared-types`)
+  maps each public-site section to selectable variants. Persistence is the
   `sections` table (`key`, `variant`, `enabled`, `sort_order`, `config_json`) plus
   `settings.default_variant`, both created by `ensureSectionsTable` /
-  `ensureDefaultVariantColumn` in `client.ts`. `/admin/appearance` exposes the
-  switcher; unknown variants are rejected by the data layer, and mockup-only
-  variants are catalogued but disabled until ported — so the live output is
-  unchanged.
+  `ensureDefaultVariantColumn` in `client.ts`. The switcher now lives in Settings →
+  **ডিজাইন** (`/admin/settings?tab=design`; `/admin/appearance` redirects) as a
+  full-width tab with a **live preview**: `PUT /api/admin/preview` writes a
+  short-lived `preview` cookie and `loadLive(previewVariant?)` overlays the preset
+  in memory without touching the DB. Saving persists each section row; **⟲ ডিফল্টে
+  ফিরুন** resets `default_variant` *and* every per-section row (the old reset left
+  section rows non-default, so `isMvMode` stayed true). Unknown variants are
+  rejected by the data layer; mockup-only variants are catalogued but disabled.
 - **Theme + overflow.** `html[data-theme="light"]` now also themes the shared
   `.hoichoi-dash` kit (web dashboard + desktop Monitor) via an appended override
   block in `packages/dash/src/styles.css`. Horizontal overflow is clipped at
@@ -433,3 +436,52 @@ Only `purpose = image` providers are eligible and sensitive categories remain bl
 - The dashboard refresh is now truthful: `refresh()` returns `{ ok, error }`,
   `DashActions.refreshing` drives an animated `REFRESH NOW → REFRESHING…` button
   (`packages/dash/src/views.tsx`), and the desk shows a success/failure toast.
+
+## 15. Storage analytics, default image + brand animation, and the post gallery (v1.1.10)
+
+### 15.1 Storage snapshot
+
+`storageSnapshot()` in `packages/db/src/storage-report.ts` builds the
+`StorageSnapshot` (types in `@hoichoi/shared-types`):
+
+- **DB size** from `PRAGMA page_count` × `PRAGMA page_size`, plus the largest
+  tables via `sqlite_master` + `COUNT(*)`.
+- **On-disk media tree** by walking `mediaRoot()` (or `HOICHOI_MEDIA_ROOT`; on
+  Windows `mediaRootCandidates()` also probes `%APPDATA%\com.hoichoi.desk\media`),
+  summing bytes and bucketing a per-day series.
+- **Remote blobs** grouped by adapter (`github` | `idrivee2` | `backblaze`) from
+  the `media_objects` table. That table stores one row per blob but **no byte
+  size**, so remote bytes are an **estimate** (local-average file size × blob
+  count); blob counts are exact. The UI surfaces this caveat in the panel detail.
+
+The snapshot is cached ~15s. `StorageView` (`packages/dash/src/storage.tsx`,
+with `fmtBytes` in `hooks.ts`) renders it and is shared by the web
+`/admin/traffic` page (`StorageAnalytics.tsx`, `GET /api/admin/storage`) and the
+desktop ট্রাফিক → স্টোরেজ sub-tab (`deskStorage` → runner `storage`).
+
+### 15.2 Default post image + brand animation
+
+`SiteAppConfig` gained `default_post_image` (URL path) and `brand_animation`
+(`none|fade|typewriter|shimmer|slide`), both validated by `parseAppConfig`. On the
+web, `withDefaultImage` / `withDefaultImages` (`apps/web/src/lib/media.ts`) stamp
+the configured image onto media-less posts at the data layer so every render path
+(cards, hero, detail, section variants) shows it, and `settingImageUrl` resolves
+the configured URL like `mediaUrl` resolves stored paths. The brand animation is
+`.brand-motion` CSS (keyframes + `prefers-reduced-motion` guard) applied to the
+production home **Hero** wordmark/logo. Both are edited in Settings with a live
+preview (web: সাইট; desktop: ভিজিবিলিটি).
+
+### 15.3 Post gallery (multi-image)
+
+`posts` keeps its single primary `media_path`; a new **`post_images`** table
+(`packages/db/src/post-images.ts`, `ensurePostImagesTable`, `012_post_images.sql`)
+holds extras ordered by `position`. `source` distinguishes `collector` rows the
+pipeline mirrors from the source post (all fetchable images, capped at 8, first =
+primary) from `admin` rows operators add. `replaceCollectorImages` deletes and
+rebuilds **only** the collector rows on re-collection so admin additions survive.
+Surfaces: the collector in `apps/scraper/src/pipeline.ts` (all three insert sites),
+the web editor (`PostEditor.tsx`) + `POST/PATCH/DELETE /api/posts/[id]/images`,
+the desktop content-row editor (`Queue.tsx`), the runner `queue images` command
+(`dispatchCmd` + the commander handler), and the public post page
+(`PostGallery.tsx`) which keeps the exact hero layout and adds a thumbnail strip
+plus a keyboard-navigable full-page lightbox.

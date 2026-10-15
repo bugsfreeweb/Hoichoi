@@ -6,6 +6,7 @@ import Counter from "@/components/home/counter";
 import { useLiveData } from "./live-data";
 import { timeBn } from "@/lib/bn";
 import { BRAND } from "@/lib/brand";
+import type { BrandAnimation } from "@hoichoi/shared-types";
 
 const PHRASES = [
   "শহর ফিডে যা বলে, আমরা তা যাচাই করে লিখি।",
@@ -23,6 +24,9 @@ export default function Hero({
   featuredTitle,
   featuredCategory,
   showLiveGraph = true,
+  siteName,
+  logoUrl,
+  brandAnimation = "none",
 }: {
   lastRunIso: string | null;
   collected: number;
@@ -32,6 +36,9 @@ export default function Hero({
   featuredTitle: string | null;
   featuredCategory: string | null;
   showLiveGraph?: boolean;
+  siteName?: string;
+  logoUrl?: string | null;
+  brandAnimation?: BrandAnimation;
 }) {
   const [idx, setIdx] = useState(0);
   useEffect(() => {
@@ -41,6 +48,8 @@ export default function Hero({
 
   const live = useLiveData();
   const summary = live?.data?.totals;
+  const name = siteName?.trim() || BRAND.bn;
+  const animCls = brandAnimation && brandAnimation !== "none" ? ` brand-motion brand-motion--${brandAnimation}` : "";
 
   return (
     <section className="bg-night-grid relative overflow-hidden">
@@ -72,9 +81,19 @@ export default function Hero({
             ))}
           </div>
 
-          <h1 className="headline-grad mt-6 font-serif-bn text-[76px] leading-[0.92] font-black tracking-tight md:text-[120px]">
-            হৈচৈ<span className="text-alizarin">!</span>
-          </h1>
+          {logoUrl ? (
+            <span className={`mt-6 inline-flex items-center${animCls}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logoUrl} alt={name} className="max-h-24 w-auto object-contain md:max-h-32" />
+            </span>
+          ) : (
+            <h1 className="headline-grad mt-6 font-serif-bn text-[76px] leading-[0.92] font-black tracking-tight md:text-[120px]">
+              <span className={`inline-flex items-baseline${animCls}`}>
+                {name}
+                <span className="text-alizarin">!</span>
+              </span>
+            </h1>
+          )}
 
           <div className="kin-mask mt-5 h-16 md:h-18">
             <p

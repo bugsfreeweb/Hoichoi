@@ -45,7 +45,24 @@ export async function PUT(request: Request) {
 
   try {
     if (typeof body.siteVariant === "string") {
-      const ok = await setSiteVariant(body.siteVariant);
+      const target = body.siteVariant;
+      // Choosing a whole-site look also has to rewrite every section's variant.
+      // Without this, restoring `"default"` only flipped the site-variant row and
+      // left the previously-applied mockup variants on each section, so
+      // `isMvMode` stayed true and the site could never return to the shipped
+      // design. A preset id re-applies its section map the same way.
+      const preset = PRESETS.find((p) => p.id === target);
+      if (preset) {
+        for (const [key, variant] of Object.entries(preset.values)) {
+          await setSectionState(key, { variant });
+        }
+      } else if (target === DEFAULT_VARIANT) {
+        const current = await listSections();
+        for (const s of current) {
+          await setSectionState(s.key, { variant: s.meta.defaultVariant });
+        }
+      }
+      const ok = await setSiteVariant(target);
       if (!ok) return NextResponse.json({ ok: false, error: "অজানা ভ্যারিয়েন্ট।" }, { status: 400 });
       return NextResponse.json({ ok: true });
     }

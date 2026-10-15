@@ -500,7 +500,19 @@ libsodium is no longer a dependency since the AES-256-GCM vault replaced Strongh
   তৈরি** action (`deskQueueGenerateImage` / `deskImageProviders`) that renders a hero
   for a single post through the same image-provider chain as the web editor and CLI
   (`media generate <id>`), subject to the category safety rules.
-- **Runner rebuild note.** Because `apps/scraper/src/cli.ts` gained the `traffic`
-  command and `packages/db` gained the traffic module, `bundle:runner` **must** be
-  re-run before `tauri build`; the embedded migrations snapshot now includes
-  `011_traffic.sql`.
+- **Storage sub-tab.** The ট্রাফিক tab now has a **ট্রাফিক / স্টোরেজ** segmented
+  toggle; the স্টোরেজ side renders the shared `StorageView` from
+  `deskStorage(env)` → `deskCall(["storage"])` (DB size, media tree + per-day bytes,
+  remote blobs per adapter, largest tables).
+- **Post gallery management.** The content-row editor mirrors the web gallery strip:
+  it lists a post's `post_images` (`deskQueueImages`), adds a URL
+  (`deskQueueImageAdd`), removes one (`deskQueueImageRemove`) and promotes one to the
+  primary image (`deskQueueImagePrimary`) — all via the runner's new
+  `queue images <list|add|remove|primary> <postId> …` command.
+- **Settings additions.** The ভিজিবিলিটি panel now also edits `default_post_image`
+  and `brand_animation`, matching the web সাইট panel.
+- **Runner rebuild note.** Because `apps/scraper/src/cli.ts` gained the `traffic`,
+  `storage` and `queue images` commands and `packages/db` gained the storage-report
+  and post-images modules, `bundle:runner` **must** be re-run before `tauri build`;
+  the embedded migrations snapshot now includes `011_traffic.sql` and
+  `012_post_images.sql`.

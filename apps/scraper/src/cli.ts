@@ -34,6 +34,7 @@ import {
   recentPipelineRuns,
   radarSnapshot,
   trafficSnapshot,
+  storageSnapshot,
   getAllComments,
   setCommentStatus,
   listCategories,
@@ -60,6 +61,10 @@ import {
   CONTENT_TABLES,
   type ExportBundle,
   listPostMediaCandidates,
+  listPostImages,
+  addPostImage,
+  removePostImage,
+  setPrimaryPostImage,
   type PostUpdateFields,
 } from "@hoichoi/db";
 import { PROCESSOR_ENV_DEFAULTS, normalizePlatform, type CategorySlug, type MediaStorageConfig, type NoticeTone, type ProviderKey, type SiteSettings } from "@hoichoi/shared-types";
@@ -401,6 +406,19 @@ program
       if (range !== "24h" && range !== "7d" && range !== "30d") throw new Error(`unknown range: ${range}`);
       await ensureSchema(getClient());
       console.log(JSON.stringify({ ...(await trafficSnapshot(range)) }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("storage")
+  .description("desk monitor — database size, media usage and per-location storage report as JSON")
+  .action(async () => {
+    try {
+      await ensureSchema(getClient());
+      console.log(JSON.stringify({ ...(await storageSnapshot()) }, null, 2));
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -1060,7 +1078,7 @@ function parseBulkIds(raw: string | undefined): string[] {
 program
   .command("queue <action> [id] [status]")
   .description(
-    "desk content queue: list [--status s] / set <id> <approved|rejected|published> / bulk <target> --ids a,b,c / update <id> --title/--body/--summary/--category/--media / media <id>",
+    "desk content queue: list [--status s] / set <id> <approved|rejected|published> / bulk <target> --ids a,b,c / update <id> --title/--body/--summary/--category/--media / media <id> / images --op <list|add|remove|primary> --post <id> [--url u] [--image id]",
   )
   .option("--status <s>", "filter by post status")
   .option("--ids <csv>", "comma-separated post ids (bulk)")
@@ -1074,7 +1092,11 @@ program
   .option("--summary <s>", 'new summary; "__CLEAR__" removes it (update)')
   .option("--category <c>", "new category slug (update)")
   .option("--media <m>", 'image URL or /uploads/… path; "__CLEAR__" removes it (update)')
-  .action(async (action: string, id: string | undefined, status: string | undefined, opts: { status?: string; ids?: string; title?: string; body?: string; summary?: string; category?: string; media?: string }) => {
+  .option("--op <op>", "images op: list|add|remove|primary")
+  .option("--post <id>", "post id (images)")
+  .option("--url <u>", "image URL (images add)")
+  .option("--image <id>", "gallery image id (images remove/primary)")
+  .action(async (action: string, id: string | undefined, status: string | undefined, opts: { status?: string; ids?: string; title?: string; body?: string; summary?: string; category?: string; media?: string; op?: string; post?: string; url?: string; image?: string }) => {
     try {
       await ensureSchema(getClient());
       if (action === "list") {
@@ -1124,6 +1146,30 @@ program
           }),
         );
         console.log(JSON.stringify({ ok: true, current: info.current, candidates: probed }, null, 2));
+      } else if (action === "images") {
+        // Gallery (multi-image) management, mirroring the daemon `queue images`
+        // path and the web route /api/posts/[id]/images.
+        const postId = opts.post;
+        if (!postId) throw new Error("--post <id> required (queue images --op list --post <id>)");
+        if (!(await getPostById(postId))) throw new Error(`post not found: ${postId}`);
+        if (opts.op === "list") {
+          console.log(JSON.stringify({ ok: true, images: await listPostImages(postId) }, null, 2));
+        } else if (opts.op === "add") {
+          if (!opts.url) throw new Error("--url required (queue images --op add --post <id> --url <u>)");
+          const image = await addPostImage(postId, opts.url, { kind: "image", source: "admin" });
+          console.log(JSON.stringify({ ok: true, image }, null, 2));
+        } else if (opts.op === "remove") {
+          if (!opts.image) throw new Error("--image required (queue images --op remove --post <id> --image <id>)");
+          await removePostImage(opts.image);
+          console.log(JSON.stringify({ ok: true, removed: opts.image }, null, 2));
+        } else if (opts.op === "primary") {
+          if (!opts.image) throw new Error("--image required (queue images --op primary --post <id> --image <id>)");
+          const path = await setPrimaryPostImage(postId, opts.image);
+          if (!path) throw new Error(`image not found: ${opts.image}`);
+          console.log(JSON.stringify({ ok: true, media_path: path }, null, 2));
+        } else {
+          throw new Error(`unknown images op: ${String(opts.op)}`);
+        }
       } else if (action === "bulk") {
         const target = parseBulkAction(id);
         const ids = parseBulkIds(opts.ids);
@@ -1824,6 +1870,10 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
       console.log(JSON.stringify({ ...(await trafficSnapshot(range)) }, null, 2));
       return;
     }
+    case "storage": {
+      console.log(JSON.stringify({ ...(await storageSnapshot()) }, null, 2));
+      return;
+    }
     case "media": {
       const sub = args[1];
       if (sub === "storage") {
@@ -1956,6 +2006,34 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
         console.log(
           JSON.stringify({ ok: res.missing.length === 0, action: target, ...res, ids }, null, 2),
         );
+      } else if (action === "images") {
+        // Gallery (multi-image) management for one post. Mirrors the web route
+        // /api/posts/[id]/images so the desk can curate extra images too.
+        const op = args[2];
+        const postId = args[3];
+        if (!postId) throw new Error("post id required (queue images <list|add|remove|primary> <postId> …)");
+        if (!(await getPostById(postId))) throw new Error(`post not found: ${postId}`);
+        if (op === "list") {
+          console.log(JSON.stringify({ ok: true, images: await listPostImages(postId) }, null, 2));
+        } else if (op === "add") {
+          const url = args[4];
+          if (!url) throw new Error("url required (queue images add <postId> <url>)");
+          const image = await addPostImage(postId, url, { kind: "image", source: "admin" });
+          console.log(JSON.stringify({ ok: true, image }, null, 2));
+        } else if (op === "remove") {
+          const imageId = args[4];
+          if (!imageId) throw new Error("image id required (queue images remove <postId> <imageId>)");
+          await removePostImage(imageId);
+          console.log(JSON.stringify({ ok: true, removed: imageId }, null, 2));
+        } else if (op === "primary") {
+          const imageId = args[4];
+          if (!imageId) throw new Error("image id required (queue images primary <postId> <imageId>)");
+          const path = await setPrimaryPostImage(postId, imageId);
+          if (!path) throw new Error(`image not found: ${imageId}`);
+          console.log(JSON.stringify({ ok: true, media_path: path }, null, 2));
+        } else {
+          throw new Error(`unknown images op: ${String(op)}`);
+        }
       } else {
         throw new Error(`unknown action: ${action}`);
       }

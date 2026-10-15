@@ -403,10 +403,12 @@ Implemented in `apps/web` + `apps/desktop` (mockup = read-only new spec):
   (`bg-paper`, `border-ink/20`, `text-ink`, `text-ink-soft`, `hover:bg-ink/5`) so it
   reads on both themes; `apps/web/scripts/theme-audit.test.ts` guards admin
   coverage + contrast.
-- **Variant engine surface (scaffold):** admin → ডিজাইন ভ্যারিয়েন্ট
-  (`/admin/appearance`) lists each public section's variants. Only the shipped
-  `default` variant is available; mockup variants render as disabled "শীঘ্রই"
-  options, so the current design/structure/layout is the DEFAULT and unchanged.
+- **Variant engine surface:** admin → সেটিংস → **ডিজাইন**
+  (`/admin/settings?tab=design`; `/admin/appearance` redirects) lists each public
+  section's variants full-width, with a **live preview** (cookie overlay, no DB
+  write) and **⟲ ডিফল্টে ফিরুন**. Only the shipped `default` variant is available;
+  mockup variants render as disabled "শীঘ্রই" options, so the current
+  design/structure/layout is the DEFAULT and unchanged.
 
 ## 12. Footer socials + the traffic console (v1.1.10)
 
@@ -428,4 +430,26 @@ Implemented in `apps/web` + `apps/desktop` (mockup = read-only new spec):
   `Intl.DisplayNames` country name; the ad group shows views/clicks/CTR with a
   `Badge tone="brand"`.
 - **Admin nav.** `AdminShell` gains a **📈 ট্রাফিক অ্যানালিটিক্স** row directly under
-  the dashboard, matching the desk tab order.
+  the dashboard, matching the desk tab order. The sidebar is grouped and
+  collapsible (persisted collapsed state) with a mobile drawer.
+
+## 13. Storage panel, gallery, and the settings additions (v1.1.10)
+
+- **Storage panel (web + desk).** The shared `StorageView`
+  (`packages/dash/src/storage.tsx`) reuses the same kit primitives as `TrafficView`
+  — `Card`, `KpiCard`, `DonutChart`, `RankBars`, `BarChart`, `Badge` and the
+  `COLORS` palette — with a `fmtBytes` helper (`hooks.ts`) for human byte labels.
+  It renders KPI tiles (DB size, media bytes, blob count, doc count), a storage
+  split donut, per-adapter rank bars, a per-day byte bar chart and a largest-tables
+  table. The web nests it under the traffic panels on `/admin/traffic`; the desk
+  exposes it via a **ট্রাফিক / স্টোরেজ** segmented toggle so the tab count is
+  unchanged.
+- **Post gallery + lightbox (public site).** `PostGallery.tsx` keeps the article
+  hero's exact `frame-press` frame, `16/8.4` aspect and caption, makes the image
+  clickable, and adds an "আরও ছবি" thumbnail grid beneath it. Any image opens a
+  full-page lightbox (`bg-black/92`, `z-[100]`) with `‹ ›` arrows, an `n / total`
+  counter and Esc/←/→ keys; the primary image is hidden from the strip when its path
+  matches a gallery row so it never doubles.
+- **Brand animation.** `.brand-motion` keyframes in `globals.css` implement the
+  `fade | typewriter | shimmer | slide` styles for the home Hero wordmark/logo, with
+  a `prefers-reduced-motion` guard.

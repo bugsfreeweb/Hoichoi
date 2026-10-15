@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { TrafficRange, TrafficSnapshot } from "@hoichoi/shared-types";
+import type { StorageSnapshot, TrafficRange, TrafficSnapshot } from "@hoichoi/shared-types";
 
 /** True when running inside the Tauri webview (not a plain browser tab). */
 export function isTauri(): boolean {
@@ -422,6 +422,51 @@ export async function deskQueueMediaCandidates(
   };
 }
 
+export interface DeskGalleryImage {
+  id: string;
+  path: string;
+  kind: string;
+  is_primary: number;
+}
+
+/** Extra (gallery) images attached to a post, in display order. */
+export async function deskQueueImages(
+  env: Record<string, string>,
+  id: string,
+): Promise<DeskGalleryImage[]> {
+  const res = await deskCall(["queue", "images", "list", id], env);
+  return (res.images as DeskGalleryImage[] | undefined) ?? [];
+}
+
+/** Attach an extra image to a post. */
+export async function deskQueueImageAdd(
+  env: Record<string, string>,
+  id: string,
+  url: string,
+): Promise<DeskGalleryImage> {
+  const res = await deskCall(["queue", "images", "add", id, url], env);
+  return res.image as unknown as DeskGalleryImage;
+}
+
+/** Remove a gallery image by id. */
+export async function deskQueueImageRemove(
+  env: Record<string, string>,
+  id: string,
+  imageId: string,
+): Promise<void> {
+  await deskCall(["queue", "images", "remove", id, imageId], env);
+}
+
+/** Promote a gallery image to the post's primary image. */
+export async function deskQueueImagePrimary(
+  env: Record<string, string>,
+  id: string,
+  imageId: string,
+): Promise<string> {
+  const res = await deskCall(["queue", "images", "primary", id, imageId], env);
+  return typeof res.media_path === "string" ? res.media_path : "";
+}
+
 export interface DeskImageGenInput {
   prompt?: string;
   providerId?: string;
@@ -562,6 +607,11 @@ export async function deskRadarStats(env: Record<string, string>): Promise<DeskR
 export async function deskTraffic(env: Record<string, string>, range: TrafficRange = "24h"): Promise<TrafficSnapshot> {
   const res = await deskCall(["traffic", range], env);
   return res as unknown as TrafficSnapshot;
+}
+
+export async function deskStorage(env: Record<string, string>): Promise<StorageSnapshot> {
+  const res = await deskCall(["storage"], env);
+  return res as unknown as StorageSnapshot;
 }
 
 export async function deskModeration(

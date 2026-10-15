@@ -1,34 +1,10 @@
-import { listSections, getSiteVariant, getSettings } from "@hoichoi/db";
-import { VariantSwitcher } from "@/components/admin/VariantSwitcher";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function AdminAppearancePage() {
-  const [sections, siteVariant, settings] = await Promise.all([
-    listSections(),
-    getSiteVariant(),
-    getSettings(),
-  ]);
-
-  return (
-    <div>
-      <header>
-        <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">
-          🎨 SECTION VARIANT ENGINE
-        </p>
-        <h1 className="mt-1 font-serif-bn text-[34px] font-black text-ink">ডিজাইন ভ্যারিয়েন্ট</h1>
-      </header>
-      <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-ink-soft">
-        প্রতিটি সেকশনের জন্য পাঁচটি নকশা এবং পুরো সাইটের জন্য প্রিসেট নকশা। একটি ভ্যারিয়েন্ট বাছাই
-        করলেই পাবলিক সাইট নতুন নকশায় চালু হয়; কিছু না বদলালে আগের নকশাই থাকবে।
-      </p>
-      <div className="mt-6 max-w-3xl">
-        <VariantSwitcher
-          initialSections={sections}
-          initialSiteVariant={siteVariant}
-          accentColor={settings.accent_color}
-        />
-      </div>
-    </div>
-  );
+/**
+ * The section-variant / design engine now lives inside the Settings console
+ * (ডিজাইন tab). This route is kept as a stable entry point so old bookmarks and
+ * the desktop admin surface still land in the right place.
+ */
+export default function AdminAppearancePage() {
+  redirect("/admin/settings?tab=design");
 }

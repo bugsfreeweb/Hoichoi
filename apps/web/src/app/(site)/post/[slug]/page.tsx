@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPublicPostBySlug, relatedPosts, getPostComments, getPostCommentCount, parseAppConfig } from "@hoichoi/db";
+import { getPublicPostBySlug, relatedPosts, getPostComments, getPostCommentCount, parseAppConfig, listPostImages } from "@hoichoi/db";
 import { getCategories, findCategory } from "@/lib/categories-server";
 import { readMinutesBn, shortId } from "@/lib/bn";
 import { bnDate, bnTime } from "@/lib/format";
 import { categoryLabel, categoryTint, readableOn } from "@/lib/category-style";
-import { mediaUrl } from "@/lib/media";
+import { mediaUrl, withDefaultImage, withDefaultImages } from "@/lib/media";
 import { siteUrl } from "@/lib/site";
 import { CaseStatusBadge } from "@/components/CaseStatusBadge";
 import { ContentWarningGate } from "@/components/ContentWarningGate";
 import { ReportForm } from "@/components/ReportForm";
 import { PostCard } from "@/components/PostCard";
+import { PostGallery } from "@/components/PostGallery";
 import { CommentsSection } from "@/components/CommentsSection";
 import { AdSlot } from "@/components/AdSlot";
 import { FbPost } from "@/components/FbPost";
@@ -24,8 +25,10 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const post = await getPublicPostBySlug(slug);
-  if (!post) return { title: "পোস্টটি খুঁজে পাওয়া যায়নি" };
+  const [postRaw, settings] = await Promise.all([getPublicPostBySlug(slug), getSettings().catch(() => null)]);
+  if (!postRaw) return { title: "পোস্টটি খুঁজে পাওয়া যায়নি" };
+  const cfg = parseAppConfig(settings?.app_config_json);
+  const post = withDefaultImage(postRaw, cfg.default_post_image);
   // The same story is syndicated from Facebook and reachable under a few
   // slugs; a canonical URL plus og:url tells crawlers and social scrapers
   // which one is authoritative instead of treating each as duplicate content.
@@ -105,27 +108,38 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
 
   const settings = await getSettings();
   const cfg = parseAppConfig(settings.app_config_json);
+  // Image-less posts fall back to the admin-configured default image, both in
+  // the article hero and in the related-posts cards below.
+  const postMedia = withDefaultImage(post, cfg.default_post_image);
   // Admin-tunable counts: "একই বিভাগে আরও" grid size and approved comments
   // shown before the "আরও দেখুন" button loads the rest client-side.
   const relatedCount = Math.min(8, Math.max(1, cfg.detail_similar_count));
   const commentLimit = Math.max(1, cfg.comments_show_count);
 
-  const [cats, related, initialComments, commentCount] = await Promise.all([
+  const [cats, relatedRaw, initialComments, commentCount, galleryRaw] = await Promise.all([
     getCategories(),
     relatedPosts(post, relatedCount),
     getPostComments(post.id, commentLimit),
     getPostCommentCount(post.id),
+    listPostImages(post.id),
   ]);
+  const related = withDefaultImages(relatedRaw, cfg.default_post_image);
   const cat = await findCategory(post.category);
   const isCsa = post.category === "child-sexual-abuse";
   const showHelplines = post.category === "missing-children";
   const isMissingActive = post.category === "missing-children" && post.case_status === "active";
-  const src = mediaUrl(post);
+  const src = mediaUrl(postMedia);
+  // Extra gallery images (resolved to loadable URLs), excluding any whose path
+  // equals the primary so the hero is never duplicated in the strip.
+  const galleryImages = galleryRaw
+    .map((img) => mediaUrl({ media_path: img.path, media_kind: img.kind }))
+    .filter((u): u is string => !!u && u !== src);
   const minutes = readMinutesBn(post.body_bn);
 
   const content = (
     <PostContent
-      post={post}
+      post={postMedia}
+      galleryImages={galleryImages}
       cats={cats}
       src={src}
       minutes={minutes}
@@ -156,6 +170,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
 
 function PostContent({
   post,
+  galleryImages,
   cats,
   src,
   minutes,
@@ -168,6 +183,7 @@ function PostContent({
   cat,
 }: {
   post: Awaited<ReturnType<typeof getPublicPostBySlug>> & {};
+  galleryImages: string[];
   cats: Awaited<ReturnType<typeof getCategories>>;
   src: string | null;
   minutes: string;
@@ -248,34 +264,16 @@ function PostContent({
         </div>
       </header>
 
-      {/* hero image */}
-      <figure className="mx-auto mt-10 max-w-5xl">
-        <div className="frame-press overflow-hidden">
-          {src ? (
-            post!.media_kind === "video" ? (
-              // eslint-disable-next-line jsx-a11y/media-has-caption
-              <video src={src} controls muted playsInline className="photo-grade aspect-[16/8.4] w-full object-cover" />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={src} alt={post!.title_bn} className="photo-grade aspect-[16/8.4] w-full object-cover" />
-            )
-          ) : (
-            <div className="aspect-[16/8.4] w-full bg-paper-deep">
-              <div className="flex h-full items-center justify-center px-6">
-                <p className="text-center font-serif-bn text-[15px] font-bold leading-relaxed text-ink/40">
-                  {post!.summary_bn?.slice(0, 80) ?? post!.title_bn.slice(0, 60)}…
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-        <figcaption className="mt-3 flex items-center justify-between text-[10.5px] text-ink-soft/85">
-          <span>ছবি: {post!.original_author_name ?? "প্রতীকী"} · প্রতীকী</span>
-          <span className="font-mono-x tracking-wide">
-            SHOT_{hash.toUpperCase()}.PNG · PLAYWRIGHT CAPTURE · 1440×900
-          </span>
-        </figcaption>
-      </figure>
+      {/* hero image + gallery */}
+      <PostGallery
+        primarySrc={src}
+        primaryKind={post!.media_kind}
+        title={post!.title_bn}
+        author={post!.original_author_name}
+        hash={hash}
+        fallbackText={`${post!.summary_bn?.slice(0, 80) ?? post!.title_bn.slice(0, 60)}…`}
+        images={galleryImages}
+      />
 
       {/* body + sidebar */}
       <div className="mx-auto mt-12 grid max-w-6xl gap-12 lg:grid-cols-12">

@@ -144,6 +144,8 @@ interface SiteAppConfig {
   home_post_count: number;
   detail_similar_count: number;
   comments_show_count: number;
+  default_post_image: string;
+  brand_animation: string;
 }
 
 const VIS_DEFAULTS: SiteAppConfig = {
@@ -160,7 +162,17 @@ const VIS_DEFAULTS: SiteAppConfig = {
   home_post_count: 12,
   detail_similar_count: 3,
   comments_show_count: 10,
+  default_post_image: "",
+  brand_animation: "none",
 };
+
+const BRAND_ANIMATIONS = [
+  { value: "none", label: "নেই (স্থির)" },
+  { value: "fade", label: "ফেড-ইন" },
+  { value: "typewriter", label: "টাইপরাইটার" },
+  { value: "shimmer", label: "শিমার" },
+  { value: "slide", label: "স্লাইড-ইন" },
+];
 
 const PREF_DEFAULTS = {
   cron: "0 */2 * * *",
@@ -1311,6 +1323,33 @@ export default function Settings({
                     className="field mt-1 w-32"
                     value={vis.comments_show_count}
                     onChange={(e) => setVis({ ...vis, comments_show_count: Math.min(50, Math.max(1, Number(e.target.value) || 10)) })}
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                    ব্র্যান্ড অ্যানিমেশন
+                  </span>
+                  <select
+                    className="field mt-1 w-44"
+                    value={vis.brand_animation}
+                    onChange={(e) => setVis({ ...vis, brand_animation: e.target.value })}
+                  >
+                    {BRAND_ANIMATIONS.map((b) => (
+                      <option key={b.value} value={b.value}>
+                        {b.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block min-w-[16rem] flex-1">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                    ডিফল্ট পোস্ট ছবি (URL)
+                  </span>
+                  <input
+                    className="field mt-1 w-full"
+                    placeholder="https://… অথবা /uploads/…"
+                    value={vis.default_post_image}
+                    onChange={(e) => setVis({ ...vis, default_post_image: e.target.value })}
                   />
                 </label>
                 <div className="flex flex-wrap gap-2">

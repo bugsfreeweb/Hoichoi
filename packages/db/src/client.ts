@@ -499,6 +499,26 @@ CREATE INDEX IF NOT EXISTS idx_media_objects_url ON media_objects (url);
 }
 
 /**
+ * Post gallery images — extra images attached to a post beyond its primary
+ * `media_path`. Populated by the collector (all mirrorable source images) and by
+ * operators in the web/desktop editors. See `post-images.ts`.
+ */
+export async function ensurePostImagesTable(client: Client): Promise<void> {
+  await client.executeMultiple(`
+CREATE TABLE IF NOT EXISTS post_images (
+  id TEXT PRIMARY KEY,
+  post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  path TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'image',
+  position INTEGER NOT NULL DEFAULT 0,
+  source TEXT NOT NULL DEFAULT 'admin',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_post_images_post ON post_images (post_id, position);
+  `);
+}
+
+/**
  * First-party, cookie-less traffic telemetry: one row per page view plus ad
  * slot view/click rows. No raw IP is ever stored — the route hashes IP+UA+day
  * into `visitor_id` before insert, and `session_id` is a per-tab random id.
@@ -595,6 +615,7 @@ export async function ensureSchema(client: Client, externalUrl?: string): Promis
   await ensureSourceErrorsTable(client);
   await ensureMediaStorageColumn(client);
   await ensureMediaObjectsTable(client);
+  await ensurePostImagesTable(client);
   await ensureTrafficTables(client);
   await ensureSectionsTable(client);
   await ensureDefaultVariantColumn(client);

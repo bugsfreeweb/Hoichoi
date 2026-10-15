@@ -89,3 +89,17 @@ export const fmt = (n: number, digits = 0) =>
 
 export const fmtCompact = (n: number) =>
   n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(Math.round(n));
+
+/** Human byte size (B / KB / MB / GB / TB) with a sensible precision. */
+export const fmtBytes = (n: number): string => {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let v = Math.max(0, n);
+  let u = 0;
+  while (v >= 1024 && u < units.length - 1) {
+    v /= 1024;
+    u++;
+  }
+  const digits = u === 0 ? 0 : v >= 100 ? 0 : v >= 10 ? 1 : 2;
+  return `${v.toFixed(digits)} ${units[u]}`;
+};
+

@@ -192,6 +192,24 @@ export interface Post {
   updated_at: string;
 }
 
+/**
+ * An additional image attached to a post. The primary image stays in
+ * `posts.media_path`; this table holds the extra gallery images captured from
+ * the same source post (`source: "collector"`) or attached by an operator
+ * (`source: "admin"`). Ordering is by `position`, then `created_at`.
+ */
+export interface PostImage {
+  id: string;
+  post_id: string;
+  /** Remote URL or local `/uploads/…` / `/media/…` path (same shape as media_path). */
+  path: string;
+  kind: MediaKind;
+  /** 0-based gallery order; the lowest position is shown first. */
+  position: number;
+  source: "collector" | "admin";
+  created_at: string;
+}
+
 /** The public 7-day window — exactly what posts_current_window exposes. */
 export interface CurrentWindowPost extends Post {
   /** time left until archive, in millis */
@@ -1110,7 +1128,17 @@ export interface SiteAppConfig {  /** Masthead "newsroom in numbers" hero sectio
   maintenance: MaintenanceSiteConfig;
   /** Admin-managed footer social/contact links (empty = none shown). */
   footer_socials: FooterSocialLink[];
+  /**
+   * Image shown for posts that have no media of their own (web or remote URL /
+   * `/media/...` path). Empty = keep the current initials/placeholder tile.
+   */
+  default_post_image: string;
+  /** Motion applied to the site name / logo in the masthead. */
+  brand_animation: BrandAnimation;
 }
+
+/** Masthead / brand-name motion. `none` keeps the static wordmark. */
+export type BrandAnimation = "none" | "fade" | "typewriter" | "shimmer" | "slide";
 
 /** App-config defaults (shared by the DB, the web admin and the desktop). */
 export const DEFAULT_APP_CONFIG: SiteAppConfig = {
@@ -1129,6 +1157,8 @@ export const DEFAULT_APP_CONFIG: SiteAppConfig = {
   comments_show_count: 10,
   maintenance: defaultMaintenanceConfig(),
   footer_socials: [],
+  default_post_image: "",
+  brand_animation: "none",
 };
 
 /** Tone of an announcement. `alert` is the most urgent (used by the special
@@ -1327,6 +1357,62 @@ export interface TrafficSnapshot {
       clicks: number;
     }[];
   };
+}
+
+/** One storage location (the local disk, or a remote media adapter). */
+export interface StorageLocation {
+  id: string;
+  label: string;
+  kind: "local" | "github" | "s3";
+  /** For s3 adapters: the underlying provider tag (idrivee2 / backblaze). */
+  provider?: string;
+  enabled: boolean;
+  configured: boolean;
+  /** Bytes this location is holding (local = measured; remote = mirrored copy). */
+  bytes: number;
+  files: number;
+  /** Human note about how the number was derived. */
+  detail: string;
+}
+
+/** A row-count line in the storage report. */
+export interface StorageTableSize {
+  name: string;
+  rows: number;
+}
+
+/** Daily media growth bucket. */
+export interface StorageDayPoint {
+  day: string;
+  bytes: number;
+  files: number;
+}
+
+/**
+ * Storage report for the admin + desktop analytics: database size, on-disk
+ * media usage grouped by day, and the media per storage location (local plus
+ * every configured remote adapter).
+ */
+export interface StorageSnapshot {
+  ok: true;
+  generatedAt: string;
+  /** SQLite database size in bytes + page geometry. */
+  db: {
+    bytes: number;
+    pages: number;
+    pageSize: number;
+  };
+  /** Local filesystem media store totals. */
+  media: {
+    bytes: number;
+    files: number;
+    root: string;
+    byDay: StorageDayPoint[];
+  };
+  /** Every storage location, local first then the configured remote adapters. */
+  locations: StorageLocation[];
+  /** Row counts for the main tables (drives the "database" breakdown chart). */
+  tables: StorageTableSize[];
 }
 
 export type CommentStatus = "pending" | "approved" | "blocked";

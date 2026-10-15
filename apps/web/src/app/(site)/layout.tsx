@@ -10,6 +10,7 @@ import { countReviewQueues, getSpecialNotice, parseAppConfig, recentPipelineRuns
 import { loadLive } from "@/lib/mv/live";
 import { isMvMode } from "@/lib/mv/variant";
 import MvChrome from "@/components/mv/MvChrome";
+import { cookies } from "next/headers";
 import type { Metadata } from "next";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -67,7 +68,11 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   }
   // Mockup design engine: when the admin picks any non-default variant, the
   // whole site renders the scoped [data-mv] chrome around the page content.
-  const live = await loadLive().catch(() => null);
+  // An admin signed in with the short-lived preview cookie sees the chosen look
+  // rendered live without it being persisted to settings.
+  const previewCookie = (await cookies()).get("hoichoi-preview-variant")?.value;
+  const previewVariant = previewCookie && (await currentUser()) ? previewCookie : undefined;
+  const live = await loadLive(previewVariant).catch(() => null);
   if (live && isMvMode(live)) {
     return (
       <MvChrome live={live} accent={settings.accent_color}>

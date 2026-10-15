@@ -18,7 +18,7 @@ import MvHome from "@/components/mv/MvHome";
 import { timeBn, readMinutesBn, shortId, bnNum } from "@/lib/bn";
 import { agoBn } from "@/lib/format";
 import { categoryLabel, categoryTint, readableOn } from "@/lib/category-style";
-import { mediaUrl } from "@/lib/media";
+import { mediaUrl, withDefaultImages } from "@/lib/media";
 
 export const revalidate = 300;
 
@@ -44,12 +44,15 @@ export default async function HomePage({
   const cfg = parseAppConfig(settings.app_config_json);
   const PAGE_SIZE = pageSize(cfg.home_post_count);
   const offset = (page - 1) * PAGE_SIZE;
-  const [posts, total, catStats, catRows] = await Promise.all([
+  const [postsRaw, total, catStats, catRows] = await Promise.all([
     windowPosts({ limit: PAGE_SIZE, offset }),
     countWindowPosts(),
     categoriesWithCounts(),
     listCategories(),
   ]);
+  // Fill any image-less post with the admin-configured default image so the
+  // featured card, hero and grid all render a picture instead of a text tile.
+  const posts = withDefaultImages(postsRaw, cfg.default_post_image);
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const featured = page === 1 ? (posts[0] ?? null) : null;
   const rest = page === 1 ? posts.filter((p) => p.id !== featured?.id) : posts;
@@ -69,6 +72,9 @@ export default async function HomePage({
         featuredTitle={featured?.title_bn ?? null}
         featuredCategory={featured ? categoryLabel(featured.category, catRows) : null}
         showLiveGraph={cfg.show_live_graph}
+        siteName={settings.site_name}
+        logoUrl={settings.logo_url}
+        brandAnimation={cfg.brand_animation}
       />
       )}
 

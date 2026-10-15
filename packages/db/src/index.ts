@@ -11,7 +11,9 @@ export * from "./transfer";
 export * from "./admin-auth";
 export * from "./source-errors";
 export * from "./media-objects";
+export * from "./post-images";
 export * from "./traffic";
+export * from "./storage-report";
 
 import {
   DEFAULT_APP_CONFIG,
@@ -155,6 +157,11 @@ export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
               icon: String(x.icon ?? "link").slice(0, 24),
             }))
             .filter((x) => x.url.length > 0);
+        }
+      } else if (k === "brand_animation") {
+        const allowed = ["none", "fade", "typewriter", "shimmer", "slide"];
+        if (typeof v === "string" && allowed.includes(v)) {
+          merged.brand_animation = v as SiteAppConfig["brand_animation"];
         }
       } else if (typeof v === "boolean") {
         (merged as unknown as Record<string, boolean>)[k] = v;

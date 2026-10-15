@@ -290,11 +290,14 @@ pnpm --filter @hoichoi/web build
   and the UI points to the desktop runner. A started run is polled through
   `GET /api/admin/runs?limit=1` until a new terminal `completed`/`failed` row
   appears, then a toast fires. Range changes push `/admin?range=…` (server-rendered).
-- **Section variant switcher:** `/admin/appearance` renders `VariantSwitcher`
-  (backed by `GET`/`PUT /api/admin/sections`). It is a **default-only scaffold** —
-  the current design is the `default` variant for every section and mockup variants
-  are disabled until ported, so the deployed site is unchanged. `PUT` is
-  admin-role only.
+- **Section variant switcher:** the switcher now lives in Settings → **ডিজাইন**
+  (`/admin/settings?tab=design`; `/admin/appearance` redirects there), rendered
+  full-width with a **live preview**. Previewing writes a short-lived cookie via
+  `PUT /api/admin/preview` and overlays the preset in memory (no DB write); saving
+  persists the per-section rows (`GET`/`PUT /api/admin/sections`) and **⟲ ডিফল্টে
+  ফিরুন** resets both `settings.default_variant` and every section row. The live
+  design is the `default` variant until an operator opts into a ported variant.
+  `PUT` is admin-role only.
 - **Provider purpose:** `/admin/providers` tags each provider `text` or `image`
   (and supports a multi-key `api_key` override), storing `llm_providers.purpose`
   so the rewrite chain and AI hero-image `ImageResolver` resolve independently.
@@ -331,3 +334,22 @@ Nothing here needs configuring on Vercel:
 - **No environment variables** are required for any of this. (Optional: if you ever
   front the site with Cloudflare instead of Vercel's edge, the `cf-ipcountry`
   fallback keeps country reporting working.)
+
+## v1.1.10 - storage analytics, default image, gallery, and settings updates
+
+- **Storage analytics.** `/admin/traffic` now also renders the shared
+  `StorageView` (below the traffic panels) from `GET /api/admin/storage`
+  (`storageSnapshot`): DB size + largest tables, the on-disk media tree with a
+  daily byte series, and remote blob counts per adapter. Remote byte sizes are
+  estimates; the panel says so.
+- **Default post image + brand animation.** Settings → সাইট exposes
+  `default_post_image` (stamped onto media-less posts at the data layer by
+  `withDefaultImage(s)`) and `brand_animation` (`none|fade|typewriter|shimmer|slide`,
+  applied to the home Hero wordmark/logo). Both persist in `app_config_json`.
+- **Multi-image posts.** New `post_images` table (`ensurePostImagesTable` during
+  `ensureSchema`; `migrations/012_post_images.sql` for `pnpm --filter db migrate`).
+  The pipeline mirrors every source image (cap 8), operators manage extras in the
+  post editor (`POST/PATCH/DELETE /api/posts/[id]/images`), and the public post
+  page shows a thumbnail strip + full-page lightbox under its unchanged hero.
+- **Admin shell.** The admin sidebar is now grouped and collapsible (persisted
+  state) with a mobile drawer.
