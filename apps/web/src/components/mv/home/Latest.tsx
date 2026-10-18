@@ -305,7 +305,7 @@ function Rail({ posts, density }: { posts: PostRecord[]; density: "compact" | "c
             <Badge tone="hot">
               <LiveDot tone="hot" /> AUTO-FEATURED
             </Badge>
-            <p className="font-display-bn text-lg text-mist-100">প্রতি ২ ঘণ্টায় নতুন সংগ্রহ</p>
+            <p className="font-display-bn text-lg text-mist-100">প্রতি ৮ ঘণ্টায় নতুন সংগ্রহ</p>
             <Btn href="/admin" variant="outline" className="mt-2">
               ডেস্ক দেখুন
             </Btn>

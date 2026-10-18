@@ -42,7 +42,7 @@ Build a system that:
 3. Rewrites the post in **Bangla** as a clean news-style article via a multi-AI-provider system (with free-tier defaults). Strict rules: no fabrication, no child PII, no slur reproduction, automatic safety flagging.
 4. Detects duplicates across text (semantic embedding) and images (perceptual hash) before publishing.
 5. Publishes to a public Bangla website hosted on Vercel, displaying the **re-processed media** (not the FB UI screenshot).
-6. Runs the full pipeline automatically every 2 hours via GitHub Actions cron.
+6. Runs the full pipeline automatically every 8 hours via GitHub Actions cron.
 7. Provides a **Tauri desktop admin** (credential vault via OS keychain, source mgmt, manual pipeline trigger, moderation queue, AI provider mgmt) AND a **Next.js web admin** (same features for browser-based use).
 8. Public site includes a **"Submit a Facebook Page"** form and full legal pages (About, Privacy, Terms, DMCA, Contact) with proper SEO.
 
@@ -65,7 +65,7 @@ All credentials and account keys are stored encrypted (Tauri Stronghold on deskt
 | Embeddings for dedup | **`text-embedding-3-small`** (OpenAI) OR **Google `text-embedding-004`** (free) | 1536 / 768 dims, both fine for pgvector |
 | Image dedup | **`image-hash` (pHash)** in Node, stored in Postgres | Perceptual hash, robust to crop/resize |
 | Video dedup | Extract keyframe (ffmpeg at t=2s) → pHash | Reuses image hash pipeline |
-| Cron | **GitHub Actions** on `0 */2 * * *` | Free 2000 min/mo for private repos |
+| Cron | **GitHub Actions** on `0 */8 * * *` | Free 2000 min/mo for private repos |
 | Hosting | **Vercel (Hobby)**, `*.vercel.app` for v1 | Free for Next.js, ISR, edge |
 | CI | **GitHub Actions** (lint, type-check, test, build) | Same as cron infra |
 | Monorepo tool | **pnpm workspaces + Turborepo** | Share types between desktop, scraper, web |
@@ -186,7 +186,7 @@ bangla-feed-pipeline/
 │       └── package.json
 ├── .github/
 │   └── workflows/
-│       ├── pipeline-cron.yml     # Every 2h
+│       ├── pipeline-cron.yml     # Every 8h
 │       ├── keep-alive.yml        # Daily Supabase keep-alive
 │       └── ci.yml
 ├── supabase/
@@ -738,7 +738,7 @@ The text below are ASCII wireframes of the three most important pages: the publi
 │ │ নিখোঁজের ছয় ঘণ্টায় ফিরে পেল বাবা-মা:  │   │◐ │ ০১:১৬:৩৪                │ │
 │ │ সিসি ক্যামেরা আর প্রতিবেশীর সতর্কতায়  │   └──┘  NEXT SYNC              │ │
 │ │ উদ্ধার শিশু                              │         ১২:১৬ PM (ঢাকা)        │ │
-│ │                                          │         cron: 0 */2 * * *      │ │
+│ │                                          │         cron: 0 */8 * * *      │ │
 │ │ মিরপুরে স্কুলফেরত পথে নিখোঁজ হওয়া...  │ ─────────────────────────────  │ │
 │ │                                          │ COLLECTED TODAY       ৩৯   │ │
 │ │ [পুরোটা পড়ুন →]  #a1f3c...  ৪ মিনিট পড়া │ DUPLICATES BLOCKED     ৯   │ │
@@ -1104,7 +1104,7 @@ The three categories drive very different behavior. The matrix below is the sing
 name: Pipeline Cron
 on:
   schedule:
-    - cron: '0 */2 * * *'   # every 2 hours
+    - cron: '0 */8 * * *'   # every 8 hours
   workflow_dispatch:        # manual trigger
 jobs:
   run:

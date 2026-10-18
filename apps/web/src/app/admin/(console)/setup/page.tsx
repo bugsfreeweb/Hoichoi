@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { requirePageUser } from "@/lib/auth";
-import { recentPipelineRuns } from "@hoichoi/db";
+import { pipelineEverSucceeded, recentPipelineRuns } from "@hoichoi/db";
 import { evaluateSecrets } from "@hoichoi/shared-types";
 import { evaluateReadiness } from "@/lib/setup-readiness";
+import { reapStaleRuns } from "@/lib/reap-runs";
 import { SetupGuide, type SecretView } from "@/components/admin/SetupGuide";
 
 export const dynamic = "force-dynamic";
@@ -34,12 +35,19 @@ export default async function AdminSetupPage() {
 
   const runs: Array<{ status: string; error: string | null; started_at: string }> = [];
   let dbUnavailable = false;
+  // A completed run anywhere in history proves the secrets are in place. The
+  // recent window alone is not enough: during an outage every run in it can be a
+  // failure or a stale `running` row, which used to make a fully configured
+  // install report "setup incomplete".
+  let hasCompletedEver = false;
   if (canSeeOps) {
     try {
+      await reapStaleRuns();
       const rows = await recentPipelineRuns(20);
       runs.push(
         ...rows.map((r) => ({ status: r.status, error: r.error, started_at: r.started_at })),
       );
+      hasCompletedEver = await pipelineEverSucceeded();
     } catch {
       // A database hiccup must not blank the guide. Flag it so the checklist
       // renders each secret as unknown rather than falsely "missing" — an
@@ -48,7 +56,7 @@ export default async function AdminSetupPage() {
     }
   }
 
-  const { present, lastRun, preflightBlocked } = evaluateReadiness(runs);
+  const { present, lastRun, preflightBlocked } = evaluateReadiness(runs, { hasCompletedEver });
   const readiness = evaluateSecrets(present, []);
 
   const secrets: SecretView[] = readiness.map((r) => ({

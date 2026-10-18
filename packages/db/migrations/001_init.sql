@@ -187,7 +187,7 @@ CREATE TABLE IF NOT EXISTS redaction_blocklist (
 -- 12) Site settings (single row, id = 1)
 CREATE TABLE IF NOT EXISTS settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
-  pipeline_hours INTEGER NOT NULL DEFAULT 2,
+  pipeline_hours INTEGER NOT NULL DEFAULT 8,
   site_name TEXT NOT NULL DEFAULT 'হৈচৈ',
   contact_email TEXT,
   police_helpline TEXT NOT NULL DEFAULT '999',

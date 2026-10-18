@@ -127,7 +127,7 @@ export async function seedDefaults(
       (id, pipeline_hours, site_name, contact_email, police_helpline, child_helpline,
        archive_visible_days, archive_retention_days,
        slogan_bn, tagline, accent_color, updated_at)
-      VALUES (1, 2, 'হৈচৈ', 'contact@hoichoi.local', '999', '109', 7, 30,
+      VALUES (1, 8, 'হৈচৈ', 'contact@hoichoi.local', '999', '109', 7, 30,
        'ভাইরাল বাংলা, সপ্তাহখানেক', 'ফেসবুকের হৈচৈ — এখন বাংলায়, সাত দিন পর গায়েব', '#d64541', ?)`,
     args: [now],
   });

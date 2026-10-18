@@ -22,7 +22,7 @@ Companion to `coding-agent-prompt.md`. Read this for the *why* before pasting th
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  Every 2 hours (or manual trigger)                                   │
+│  Every 8 hours (or manual trigger)                                   │
 │                                                                      │
 │   ┌──────────────────┐    ┌──────────────────┐    ┌──────────────┐  │
 │   │  GitHub Actions  │───▶│  Scraper (Node)  │───▶│  Turso DB    │  │

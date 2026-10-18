@@ -41,7 +41,7 @@ function ChainStrip() {
           <span key={i} className="mono-label flex items-center gap-3 whitespace-nowrap px-4 text-mist-400">
             {HOME_META.pipelineChain}
             <span className="h-1 w-1 rounded-full" style={{ background: "var(--accent)" }} />
-            প্রতি ২ ঘণ্টায় অটোমেটেড রান
+            প্রতি ৮ ঘণ্টায় অটোমেটেড রান
             <span className="h-1 w-1 rounded-full" style={{ background: "var(--accent)" }} />
           </span>
         ))}
@@ -186,7 +186,7 @@ function CinemaHero({ totals }: { totals: HeroProps["totals"] }) {
         </h1>
         <p className="mt-6 max-w-2xl text-[16px] leading-relaxed text-mist-300 md:text-[17px]">
           ফিড থেকে সংগ্রহ, হ্যাশ-ডুপ্লিকেট গেট, ফ্যাক্ট-গেট পুনর্লিখন আর মানুষের রিভিউ — ছয় ধাপ পেরিয়ে খবর পৌঁছায়
-          আপনার স্ক্রিনে। প্রতি ২ ঘণ্টায় স্বয়ংক্রিয় রান।
+          আপনার স্ক্রিনে। প্রতি ৮ ঘণ্টায় স্বয়ংক্রিয় রান।
         </p>
 
         <div className="mt-9 flex flex-wrap items-center gap-3">
@@ -266,7 +266,7 @@ function BentoHero({ totals, density }: { totals: HeroProps["totals"]; density: 
             <span className="mono-label mb-2" style={{ color: "var(--accent)" }}>
               AUTOMATION PIPELINE
             </span>
-            <p className="font-display-bn text-xl leading-snug text-mist-100">প্রতি ২ ঘণ্টায় ছয় ধাপ, শূন্য ছোঁয়া।</p>
+            <p className="font-display-bn text-xl leading-snug text-mist-100">প্রতি ৮ ঘণ্টায় ছয় ধাপ, শূন্য ছোঁয়া।</p>
             <Link href="#pipeline" className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-mist-200 hover:text-white">
               পুরো ব্লুপ্রিন্ট <ArrowDown className="h-3.5 w-3.5" />
             </Link>

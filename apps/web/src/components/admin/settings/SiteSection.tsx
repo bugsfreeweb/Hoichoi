@@ -189,7 +189,7 @@ export function SiteSection() {
 
       <Section kicker="Pipeline & archive" title="পাইপলাইন ও আর্কাইভ">
         <div className="grid gap-4 md:grid-cols-3">
-          <Field label="Pipeline (ঘণ্টা)" hint="পুনর্লিখনের মধ্যে বিরতি — GitHub Actions cron প্রতি ২ ঘণ্টায় চলে।">
+          <Field label="Pipeline (ঘণ্টা)" hint="পুনর্লিখনের মধ্যে বিরতি — GitHub Actions cron প্রতি ৮ ঘণ্টায় চলে।">
             <NumberInput min={1} value={identity.pipeline_hours} onChange={(e) => setIdentity({ pipeline_hours: Number(e.target.value) })} />
           </Field>
           <Field label="Visible (দিন)" hint="পাবলিক আর্কাইভ কত দিন দেখাবে।">

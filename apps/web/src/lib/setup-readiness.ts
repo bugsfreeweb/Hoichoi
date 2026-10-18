@@ -72,18 +72,36 @@ export interface ReadinessVerdict {
   noSuccessYet: boolean;
 }
 
+export interface ReadinessEvidence {
+  /**
+   * A run completed successfully at some point, even if none sits in the recent
+   * window. During an outage the whole window can be failures (and stale
+   * `running` rows left by killed workers), which used to read as "nothing is
+   * configured" on an install that had already completed dozens of runs. A
+   * single historical success is the strongest available proof, so the page
+   * asks for it explicitly.
+   */
+  hasCompletedEver?: boolean;
+}
+
 /**
  * Work out which credentials are present.
  *
  * Rules, in order of trust:
  *  1. A preflight failure names its missing secrets, so anything *not* named is
  *     present. This is the most precise signal available.
- *  2. A completed run proves every required secret was in place at that moment.
- *  3. Failing both, assume nothing is configured — erring toward "not ready"
- *     is the safe direction, since it only ever tells the truth about work
- *     that is still outstanding.
+ *  2. A completed run proves every required secret was in place at that moment —
+ *     including one from earlier than the fetched window (`hasCompletedEver`).
+ *  3. A run that is *currently* `running` proves preflight passed, because a run
+ *     cannot reach `running` when a gate secret is missing.
+ *  4. Failing all of the above, assume nothing is configured — erring toward
+ *     "not ready" is the safe direction, since it only ever tells the truth
+ *     about work that is still outstanding.
  */
-export function evaluateReadiness(runs: ReadinessRun[]): ReadinessVerdict {
+export function evaluateReadiness(
+  runs: ReadinessRun[],
+  evidence: ReadinessEvidence = {},
+): ReadinessVerdict {
   const lastRun = runs[0] ?? null;
   const all = [...new Set([...CORE, ...ADVISORY, ...LLM_SECRET_NAMES])];
 
@@ -98,11 +116,15 @@ export function evaluateReadiness(runs: ReadinessRun[]): ReadinessVerdict {
       advisory: ADVISORY.filter((n) => reported.includes(n)),
       lastRun,
       preflightBlocked: true,
-      noSuccessYet: !runs.some(isSuccessfulRun),
+      noSuccessYet: !(evidence.hasCompletedEver ?? runs.some(isSuccessfulRun)),
     };
   }
 
-  if (runs.some(isSuccessfulRun)) {
+  const proven =
+    (evidence.hasCompletedEver ?? runs.some(isSuccessfulRun)) ||
+    runs.some((r) => r.status === "running");
+
+  if (proven) {
     return {
       present: all,
       missing: [],

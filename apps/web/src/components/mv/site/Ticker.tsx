@@ -134,7 +134,7 @@ function BulletinBar() {
           </span>
         </div>
         <div className="hidden sm:flex items-center gap-3">
-          <span className="mono-label text-mist-400">প্রতি ২ ঘণ্টায় স্বয়ংক্রিয় সিঙ্ক</span>
+          <span className="mono-label text-mist-400">প্রতি ৮ ঘণ্টায় স্বয়ংক্রিয় সিঙ্ক</span>
           <LiveClock className="mono-label text-mist-300" />
         </div>
       </div>

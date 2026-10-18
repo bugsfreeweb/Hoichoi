@@ -814,10 +814,15 @@ export function Sparkline({
 }) {
   const uid = useId().replace(/:/g, "");
   const p = useProgress(1400, values.length);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const pts = values.map((v, i) => [
-    (i / Math.max(1, values.length - 1)) * width,
+  // A sparkline is decoration, and callers legitimately have no data yet (the
+  // storage tab on a deploy with no local media, for instance). An empty series
+  // used to reach `pts[pts.length - 1]!` and throw, blanking the whole tab with
+  // "Application error". Fall back to a flat baseline so the card still renders.
+  const series = values.length > 0 ? values : [0, 0];
+  const min = Math.min(...series);
+  const max = Math.max(...series);
+  const pts = series.map((v, i) => [
+    (i / Math.max(1, series.length - 1)) * width,
     height - 3 - ((v - min) / Math.max(1, max - min)) * (height - 8),
   ]) as [number, number][];
   const d = smoothPath(pts);

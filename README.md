@@ -85,7 +85,7 @@ packages/
               (Monitor); every panel maps to a real DB row — no fabricated telemetry.
 docs/         All documentation (deploy, desktop build, design system, editorial policy)
 mockup/       Static design reference (do not deploy; not part of the build)
-.github/workflows/   ci · pipeline-cron (every 2h) · rolling-archive · keep-alive · deploy-web
+.github/workflows/   ci · pipeline-cron (every 8h) · rolling-archive · keep-alive · deploy-web
 ```
 
 ## How a post travels through the pipeline

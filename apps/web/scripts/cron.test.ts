@@ -3,9 +3,9 @@ import { nextCronSlots, parseCron, PIPELINE_CRON } from "../src/lib/cron";
 
 /**
  * The dashboard's schedule card used to say the next run was "last run + 2h".
- * The real schedule is the pipeline's even-hour cron in UTC (see PIPELINE_CRON),
- * so those labels were wrong by up to ~an hour and drifted whenever a run started
- * late or failed. These pin the real cron arithmetic.
+ * The real schedule is the pipeline's 8-hourly cron in UTC (see PIPELINE_CRON),
+ * so those labels were wrong and drifted whenever a run started late or failed.
+ * These pin the real cron arithmetic.
  */
 
 let passed = 0;
@@ -20,22 +20,22 @@ async function check(name: string, fn: () => void | Promise<void>): Promise<void
   }
 }
 
-await check("parses the pipeline's real cron into even hours at :17", () => {
+await check("parses the pipeline's real cron into 8-hourly slots at :17", () => {
   const spec = parseCron(PIPELINE_CRON);
   assert.ok(spec);
   assert.equal(spec.minute, 17);
-  assert.deepEqual(spec.hours, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22]);
+  assert.deepEqual(spec.hours, [0, 8, 16]);
 });
 
 await check("the next slots match the workflow, not the last run's start", () => {
-  // The real pipeline run started at 00:53 UTC. "Last run + 2h" would have said
-  // 02:53; the scheduler says 02:17.
+  // The real pipeline run started at 00:53 UTC. "Last run + 8h" would have said
+  // 08:53; the scheduler says 08:17.
   const from = new Date("2026-10-05T00:53:12Z");
   const slots = nextCronSlots(PIPELINE_CRON, from, 3).map((d) => d.toISOString());
   assert.deepEqual(slots, [
-    "2026-10-05T02:17:00.000Z",
-    "2026-10-05T04:17:00.000Z",
-    "2026-10-05T06:17:00.000Z",
+    "2026-10-05T08:17:00.000Z",
+    "2026-10-05T16:17:00.000Z",
+    "2026-10-06T00:17:00.000Z",
   ]);
 });
 
@@ -47,9 +47,9 @@ await check("a run that started before the minute still reports the coming one",
 });
 
 await check("exactly on the fire minute does not re-report the same instant", () => {
-  const from = new Date("2026-10-05T02:17:00Z");
+  const from = new Date("2026-10-05T00:17:00Z");
   const slots = nextCronSlots(PIPELINE_CRON, from, 1).map((d) => d.toISOString());
-  assert.deepEqual(slots, ["2026-10-05T04:17:00.000Z"]);
+  assert.deepEqual(slots, ["2026-10-05T08:17:00.000Z"]);
 });
 
 await check("every slot is strictly in the future", () => {
@@ -64,8 +64,8 @@ await check("crosses a day and month boundary without skipping a slot", () => {
   const slots = nextCronSlots(PIPELINE_CRON, from, 3).map((d) => d.toISOString());
   assert.deepEqual(slots, [
     "2026-10-06T00:17:00.000Z",
-    "2026-10-06T02:17:00.000Z",
-    "2026-10-06T04:17:00.000Z",
+    "2026-10-06T08:17:00.000Z",
+    "2026-10-06T16:17:00.000Z",
   ]);
 });
 
@@ -76,7 +76,7 @@ await check("crosses a day and month boundary without skipping a slot", () => {
 await check("an unsupported expression yields no slots instead of a guess", () => {
   assert.equal(parseCron("0 9 * * 1-5"), null);
   assert.equal(parseCron("*/5 * * * *"), null);
-  assert.equal(parseCron("70 */2 * * *"), null);
+  assert.equal(parseCron("70 */8 * * *"), null);
   assert.equal(parseCron("17 25 * * *"), null);
   assert.equal(parseCron("nonsense"), null);
   assert.deepEqual(nextCronSlots("0 9 * * 1-5", new Date("2026-10-05T00:00:00Z"), 3), []);

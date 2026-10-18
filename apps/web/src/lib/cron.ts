@@ -1,11 +1,12 @@
 /**
  * Minimal cron arithmetic for the pipeline schedule.
  *
- * The dashboard used to label its next-run times by adding 2h to the last run's
- * start, which is wrong in two ways: a run that started at 00:53 (as the real
- * one did) implies 02:53 next, while the workflow actually fires at minute 17 of
- * every even hour; and if the last run failed early the derived times drift with
- * the failure. Both make the console promise times the scheduler will not honour.
+ * The dashboard used to label its next-run times by adding the cadence to the
+ * last run's start, which is wrong in two ways: a run that started at 00:53 (as
+ * the real one did) implies a next time 8h later while the workflow actually
+ * fires at minute 17 of hours 0/8/16; and if the last run failed early the
+ * derived times drift with the failure. Both make the console promise times the
+ * scheduler will not honour.
  *
  * Only the subset the pipeline workflow uses is supported - a fixed minute with a
  * stepped hour, every day. Anything else returns no slots rather than guessing,
@@ -39,7 +40,7 @@ export function parseCron(expr: string): CronSpec | null {
   if (stepMatch) {
     const step = Number(stepMatch[1]);
     if (step < 1 || step > 24) return null;
-    // A stepped hour starts at 0, so a step of 2 fires on even hours.
+    // A stepped hour starts at 0, so a step of 8 fires at 00, 08 and 16.
     for (let h = 0; h < 24; h += step) hours.push(h);
   } else if (hour === "*") {
     // Every hour. Needed for the unit test of an hourly cadence, and harmless:
@@ -67,7 +68,7 @@ export function nextCronSlots(expr: string, from: Date, count = 3): Date[] {
 
   const out: Date[] = [];
   // Step in whole hours rather than minutes: a schedule fires at most once an
-  // hour, and scanning 3 slots over a 2-hour cadence needs at most a couple of
+  // hour, and scanning 3 slots over an 8-hour cadence needs at most a couple of
   // days of look-ahead.
   const cursor = new Date(
     Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate(), from.getUTCHours(), spec.minute, 0, 0),
@@ -84,4 +85,4 @@ export function nextCronSlots(expr: string, from: Date, count = 3): Date[] {
 }
 
 /** Cron expressions are UTC; the console reports times in Dhaka time. */
-export const PIPELINE_CRON = "17 */2 * * *";
+export const PIPELINE_CRON = "17 */8 * * *";

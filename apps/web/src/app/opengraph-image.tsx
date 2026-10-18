@@ -31,7 +31,7 @@ export default async function OpengraphImage() {
           <span style={{ background: "#d2202c", color: "#f3eee1", padding: "8px 20px", fontSize: 18, borderRadius: 999 }}>
             ISSN-AUTO-24
           </span>
-          <span style={{ color: "#4a4a4a", fontSize: 18 }}>SYNCED · ২ ঘণ্টায় একবার</span>
+          <span style={{ color: "#4a4a4a", fontSize: 18 }}>SYNCED · ৮ ঘণ্টায় একবার</span>
         </div>
       </div>
     ),

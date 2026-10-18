@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
-import { recentPipelineRuns } from "@hoichoi/db";
+import { pipelineEverSucceeded, recentPipelineRuns } from "@hoichoi/db";
 import { LLM_SECRET_NAMES } from "@hoichoi/shared-types";
 import { evaluateReadiness } from "@/lib/setup-readiness";
+import { reapStaleRuns } from "@/lib/reap-runs";
 
 /**
  * Setup readiness for the hosted web app.
@@ -29,16 +30,21 @@ export async function GET() {
 
   let runs: Awaited<ReturnType<typeof recentPipelineRuns>> = [];
   let runsError: string | null = null;
+  let hasCompletedEver = false;
   try {
+    await reapStaleRuns();
     runs = await recentPipelineRuns(20);
+    hasCompletedEver = await pipelineEverSucceeded();
   } catch (err) {
     runsError = (err as Error).message;
   }
 
   // A run only proves the secrets are right if it got past the preflight step.
   // Preflight failures name the exact missing secrets, so the checklist can
-  // point at the one thing still outstanding.
-  const verdict = evaluateReadiness(runs);
+  // point at the one thing still outstanding. `hasCompletedEver` covers the case
+  // where every run in the recent window failed during an outage even though the
+  // install has completed runs before.
+  const verdict = evaluateReadiness(runs, { hasCompletedEver });
 
   return NextResponse.json({
     ok: true,

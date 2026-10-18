@@ -175,7 +175,7 @@ const BRAND_ANIMATIONS = [
 ];
 
 const PREF_DEFAULTS = {
-  cron: "0 */2 * * *",
+  cron: "0 */8 * * *",
   model: "gemini-2.0-flash",
   temp: 0.3,
   gate: 90,
@@ -289,7 +289,7 @@ export default function Settings({
   const saveCron = async () => {
     const m = prefs.cron.match(/^(?:0|\*)\s+\*\/(\d{1,2})\s+\*\s+\*\s+\*$/);
     if (!m) {
-      fail("cron ফরম্যাট হবে: 0 */N * * * — যেখানে N ঘণ্টার ব্যবধান (যেমন */2)");
+      fail("cron ফরম্যাট হবে: 0 */N * * * — যেখানে N ঘণ্টার ব্যবধান (যেমন */8)");
       return;
     }
     try {

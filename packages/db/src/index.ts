@@ -178,7 +178,7 @@ export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
 /** Fallback branding used when no settings row exists / columns are absent. */
 export const DEFAULT_SETTINGS: SiteSettings = {
   id: 1,
-  pipeline_hours: 2,
+  pipeline_hours: 8,
   llm_temperature: 0.3,
   fact_gate: 90,
   site_name: "হৈচৈ",
@@ -1281,6 +1281,23 @@ export async function recentPipelineRuns(limit = 10): Promise<RecentPipelineRun[
       error: (row.error as string | null) ?? null,
     };
   });
+}
+
+/**
+ * Whether the pipeline has ever finished a run successfully.
+ *
+ * `recentPipelineRuns(n)` only sees a window, and during an outage that whole
+ * window can be failures plus stale `running` rows left by killed workers. The
+ * setup guide used to read only that window and declare "nothing configured" on
+ * a fully configured install. It asks this one cheap, indexed question
+ * separately so a single historical success keeps the checklist honest.
+ */
+export async function pipelineEverSucceeded(): Promise<boolean> {
+  const client = getClient();
+  const res = await client.execute(
+    "SELECT 1 AS ok FROM pipeline_runs WHERE status = 'completed' LIMIT 1",
+  );
+  return res.rows.length > 0;
 }
 
 /**

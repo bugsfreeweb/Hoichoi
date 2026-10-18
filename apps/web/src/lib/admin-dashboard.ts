@@ -13,6 +13,7 @@ import {
   trafficSnapshot,
 } from "@hoichoi/db";
 import type { AnalyticsRange, StorageSnapshot, TrafficSnapshot } from "@hoichoi/shared-types";
+import { reapStaleRuns } from "@/lib/reap-runs";
 import type {
   DashCategory,
   DashContentRow,
@@ -85,6 +86,11 @@ export async function buildAdminDashboard(
   traffic: TrafficSnapshot | null;
   storage: StorageSnapshot | null;
 }> {
+  // Clear runs a killed worker left stuck on `running` before reading history,
+  // so the "recent runs" list shows what actually happened instead of a run
+  // that never ends. Throttled inside; safe to call on every dashboard load.
+  await reapStaleRuns();
+
   const [analytics, radar, stats, runs, runDays, queues, cats, sourceRows, queue, traffic, storage] =
     await Promise.all([
       analyticsSnapshot(range as AnalyticsRange),

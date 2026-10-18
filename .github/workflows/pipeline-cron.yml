@@ -3,7 +3,10 @@ name: Pipeline cron
 on:
   schedule:
     # Every 2 hours, offset to avoid the top-of-hour rush.
-    - cron: "17 */2 * * *"
+    # Every 8 hours (00:17, 08:17, 16:17 UTC), off the top of the hour to avoid
+    # the scheduler's peak. Eight-hourly keeps the account well inside GitHub
+    # Actions' free minutes for a private repo.
+    - cron: "17 */8 * * *"
   workflow_dispatch:
   repository_dispatch:
     types: [run-pipeline]
@@ -106,7 +109,7 @@ jobs:
         # The pipeline is idempotent (canonical-URL → pHash → embedding dedup),
         # so a whole-run retry is a safe last resort when a transient database
         # error survives the in-process retries — a Turso "disk I/O error" that
-        # outlasts the backoff window used to fail the entire 2-hourly run.
+        # outlasts the backoff window used to fail the entire 8-hourly run.
         run: |
           for attempt in 1 2 3; do
             echo "── scrape attempt ${attempt}/3 ──"

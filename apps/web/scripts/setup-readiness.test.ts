@@ -112,5 +112,44 @@ await check("a non-preflight failure does not invent missing secrets", () => {
   assert.deepEqual(v.present, []);
 });
 
+/**
+ * The regression that made a fully configured install read as unconfigured: the
+ * last 20 runs were all failures (and stale `running` rows left by killed
+ * workers) during an outage, while 59 earlier runs had completed.
+ */
+await check("a historical success keeps setup ready even when the window is all failures", () => {
+  const window = Array.from({ length: 20 }, (_, i) => ({
+    status: "failed",
+    error: "all providers exhausted",
+    started_at: `2026-10-1${i % 10}T00:00:00Z`,
+  }));
+  const without = evaluateReadiness(window);
+  assert.deepEqual(without.present, [], "without the historical hint the window alone proves nothing");
+
+  const v = evaluateReadiness(window, { hasCompletedEver: true });
+  assert.equal(v.noSuccessYet, false);
+  assert.equal(v.preflightBlocked, false);
+  assert.ok(v.present.includes("TURSO_DATABASE_URL"));
+  assert.ok(v.present.includes("FB_SESSION_COOKIE"));
+});
+
+await check("a run that is still running proves preflight passed", () => {
+  const v = evaluateReadiness([
+    { status: "running", error: null, started_at: "2026-10-15T23:24:46Z" },
+    { status: "failed", error: "all providers exhausted", started_at: "2026-10-15T04:32:51Z" },
+  ]);
+  assert.equal(v.noSuccessYet, false);
+  assert.ok(v.present.includes("TURSO_DATABASE_URL"));
+});
+
+await check("a current preflight failure still overrides an older success", () => {
+  const v = evaluateReadiness(
+    [{ status: "failed", error: PREFLIGHT_ERROR, started_at: "2026-10-16T00:00:00Z" }],
+    { hasCompletedEver: true },
+  );
+  assert.equal(v.preflightBlocked, true);
+  assert.ok(v.missing.includes("TURSO_DATABASE_URL"));
+});
+
 console.log(`\n[web] ${passed} checks passed`);
 process.exit(process.exitCode ?? 0);

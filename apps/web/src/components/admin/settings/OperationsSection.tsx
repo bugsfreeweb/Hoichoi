@@ -23,7 +23,7 @@ export function OperationsSection({
       <Section
         kicker="Pipeline control"
         title="পাইপলাইন"
-        hint="GitHub Actions cron প্রতি ২ ঘণ্টায় চলে। নিচের বাটনটি সরাসরি GitHub-এ একটি রান ট্রিগার করে — সার্ভারে GH_TRIGGER_TOKEN ও GH_REPO সেট থাকতে হয়।"
+        hint="GitHub Actions cron প্রতি ৮ ঘণ্টায় চলে। নিচের বাটনটি সরাসরি GitHub-এ একটি রান ট্রিগার করে — সার্ভারে GH_TRIGGER_TOKEN ও GH_REPO সেট থাকতে হয়।"
       >
         <ManualRun initialRuns={initialRuns} />
         <p className="border-t border-ink/15 pt-4 text-[12px] text-ink-soft">

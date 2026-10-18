@@ -8,7 +8,7 @@
 
 > **"ভাইরাল বাংলা, সপ্তাহখানেক"** — Viral Bangla, for a week.
 
-Hoichoi is a **public-interest news aggregator** for Bangla local content. It watches **public Facebook Pages** in three narrow categories, describes them in clean Bangla, shows them for **7 days**, then makes every trace disappear. Posts are rewritten by a **multi-AI-provider** system with automatic fallback (free by default), deduplicated by **semantic embeddings + perceptual hashes**, hosted on **Vercel**, and driven by a **GitHub Actions cron** that runs every 2 hours.
+Hoichoi is a **public-interest news aggregator** for Bangla local content. It watches **public Facebook Pages** in three narrow categories, describes them in clean Bangla, shows them for **7 days**, then makes every trace disappear. Posts are rewritten by a **multi-AI-provider** system with automatic fallback (free by default), deduplicated by **semantic embeddings + perceptual hashes**, hosted on **Vercel**, and driven by a **GitHub Actions cron** that runs every 8 hours.
 
 > ⚠️ **Not a gossip site.** Posts are rewritten for clarity, attributed to the original source, and moderated before publication where required. This platform is a rolling snapshot — it holds **no permanent copy** of any post.
 
@@ -47,7 +47,7 @@ Exceptions: active `missing-children` cases stay public until resolved; `legal_h
 │   └── llm/          Multi-provider LLM abstraction (8 providers + resolver + prompts)
 ├── docs/             index + DEPLOY_WEB, DESKTOP, design system, editorial policy, etc.
 ├── vercel.json       scopes Vercel to apps/web (web/desktop are separate deploys)
-└── .github/workflows/ pipeline-cron (every 2h), rolling-archive (daily), keep-alive, ci, deploy-web
+└── .github/workflows/ pipeline-cron (every 8h), rolling-archive (daily), keep-alive, ci, deploy-web
 ```
 
 > **Web ⇄ Desktop separation.** The web app (`apps/web`) depends only on the
@@ -73,7 +73,7 @@ pnpm dev                    # web on :3000, scraper CLI ready
 
 ## Database choice
 
-The schema and queries are exclusively relational SQL, semantic dedup needs native **vector search**, and writes are bursty (every 2h from a cron). Between **Turso** and Firebase, **Turso (libSQL)** was chosen:
+The schema and queries are exclusively relational SQL, semantic dedup needs native **vector search**, and writes are bursty (every 8h from a cron). Between **Turso** and Firebase, **Turso (libSQL)** was chosen:
 
 - Relational schema (views, joins, FKs, cascades) ports 1:1 from the original Postgres design.
 - Native `vec0` virtual tables give cosine-similarity embedding dedup inside the DB.
