@@ -329,15 +329,18 @@ Nothing here needs configuring on Vercel:
   `ensureSchema`, so a fresh deploy self-migrates. For the explicit migration path
   run `pnpm --filter db migrate` (applies `migrations/011_traffic.sql`).
 - **Read.** `GET /api/admin/traffic?range=24h|7d|30d` (admin-only) returns a
-  `TrafficSnapshot`; the **`/admin/traffic`** page renders the five groups via the
-  shared `TrafficView`. The dashboard/sidebar name is **ট্রাফিক অ্যানালিটিক্স**.
+  `TrafficSnapshot`; it is rendered on the **admin dashboard** (`/admin`) inside the
+  extra tab **ট্রাফিক ও স্টোরেজ** (dashboard tab id `traffic`), via the shared
+  `TrafficView`. There is no standalone `/admin/traffic` route any more — the old
+  page was folded into the dashboard so all five dashboard tabs plus traffic/storage
+  live in one place.
 - **No environment variables** are required for any of this. (Optional: if you ever
   front the site with Cloudflare instead of Vercel's edge, the `cf-ipcountry`
   fallback keeps country reporting working.)
 
 ## v1.1.10 - storage analytics, default image, gallery, and settings updates
 
-- **Storage analytics.** `/admin/traffic` now also renders the shared
+- **Storage analytics.** The dashboard's **ট্রাফিক ও স্টোরেজ** tab renders the shared
   `StorageView` (below the traffic panels) from `GET /api/admin/storage`
   (`storageSnapshot`): DB size + largest tables, the on-disk media tree with a
   daily byte series, and remote blob counts per adapter. Remote byte sizes are

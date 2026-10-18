@@ -420,7 +420,8 @@ Implemented in `apps/web` + `apps/desktop` (mockup = read-only new spec):
   globe for unknown keys, so an operator can add a link without a code change. A
   `LocalZone.tsx` client component stamps the reader's live Bangladesh-time zone
   next to the `BUGSFREE STUDIO · LOCALHOST/… · EDGE CACHE ON` build stamp.
-- **Traffic console (web + desk).** `/admin/traffic` (web) and the desk **ট্রাফিক**
+- **Traffic console (web + desk).** The web admin dashboard's ট্রাফিক ও স্টোরেজ tab and
+  the desk **ট্রাফিক**
   tab render the shared `TrafficView` (`packages/dash/src/traffic.tsx`) — the same
   five analytics groups on both surfaces, so the console design matches the
   dashboard exactly. It reuses the kit primitives (`KpiCard`, `DonutChart`,
@@ -429,9 +430,11 @@ Implemented in `apps/web` + `apps/desktop` (mockup = read-only new spec):
   already used by the 5-tab dashboard. Country rows pair a flag emoji with the
   `Intl.DisplayNames` country name; the ad group shows views/clicks/CTR with a
   `Badge tone="brand"`.
-- **Admin nav.** `AdminShell` gains a **📈 ট্রাফিক অ্যানালিটিক্স** row directly under
-  the dashboard, matching the desk tab order. The sidebar is grouped and
-  collapsible (persisted collapsed state) with a mobile drawer.
+- **Admin nav.** Traffic + storage do **not** have their own sidebar row: they are the
+  dashboard's last tab, **ট্রাফিক ও স্টোরেজ** (📈), added to the shared
+  `DashboardView` through `extraTabs`. This keeps the sidebar focused while the desk
+  app keeps its separate ট্রাফিক tab. The sidebar is grouped and collapsible
+  (persisted collapsed state) with a mobile drawer.
 
 ## 13. Storage panel, gallery, and the settings additions (v1.1.10)
 
@@ -441,9 +444,9 @@ Implemented in `apps/web` + `apps/desktop` (mockup = read-only new spec):
   `COLORS` palette — with a `fmtBytes` helper (`hooks.ts`) for human byte labels.
   It renders KPI tiles (DB size, media bytes, blob count, doc count), a storage
   split donut, per-adapter rank bars, a per-day byte bar chart and a largest-tables
-  table. The web nests it under the traffic panels on `/admin/traffic`; the desk
-  exposes it via a **ট্রাফিক / স্টোরেজ** segmented toggle so the tab count is
-  unchanged.
+  table. The web nests it under the traffic panels inside the dashboard's ট্রাফিক ও
+  স্টোরেজ tab (`/admin` → that tab); the desk exposes it via a **ট্রাফিক / স্টোরেজ**
+  segmented toggle so the tab count is unchanged.
 - **Post gallery + lightbox (public site).** `PostGallery.tsx` keeps the article
   hero's exact `frame-press` frame, `16/8.4` aspect and caption, makes the image
   clickable, and adds an "আরও ছবি" thumbnail grid beneath it. Any image opens a

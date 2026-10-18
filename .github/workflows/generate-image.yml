@@ -1,0 +1,135 @@
+name: Generate image
+
+# On-demand AI hero for ONE post, driven from the web admin's post editor.
+#
+# The admin UI can't persist a generated image by itself: on Vercel `public/` is
+# frozen at build time, so bytes written at request time are never served. This
+# workflow runs the same `media generate` CLI the pipeline uses, which mirrors
+# the result into apps/web/public/uploads and attaches it to the post — and the
+# mirrored file is committed at the end, which is what actually makes it show up
+# on the deployed site (and in the admin preview) after the redeploy.
+on:
+  repository_dispatch:
+    types: [generate-image]
+  workflow_dispatch:
+    inputs:
+      post_id:
+        description: Post id to attach the generated image to
+        required: true
+      prompt:
+        description: What to draw (defaults to the post title + summary)
+        required: false
+        default: ""
+
+# Shares the scrape's concurrency group on purpose: both jobs push media commits
+# to the same branch from different runners, so they must not interleave.
+concurrency:
+  group: pipeline-cron
+  cancel-in-progress: false
+
+env:
+  TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+  TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+  GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+  OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+  OLLAMA_BASE_URL: ${{ secrets.OLLAMA_BASE_URL }}
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+  VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+  HOICHOI_DB_RETRIES: "5"
+  HOICHOI_DB_RETRY_MS: "1500"
+
+jobs:
+  generate:
+    name: Generate AI image → mirror → commit → deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.18.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Preflight — required secrets
+        # Fail fast on the two that make the command impossible, and warn about
+        # the image credential set so a silent "no provider" run isn't a mystery.
+        run: |
+          missing=()
+          [ -z "$TURSO_DATABASE_URL" ] && missing+=("TURSO_DATABASE_URL")
+          [ -z "$TURSO_AUTH_TOKEN" ] && missing+=("TURSO_AUTH_TOKEN")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required repository secrets: ${missing[*]}"
+            echo "Add them under GitHub → ${GITHUB_REPOSITORY} → Settings → Secrets and variables → Actions."
+            echo "Step-by-step Bangla guide: https://github.com/${GITHUB_REPOSITORY}/blob/main/docs/SECRETS.md"
+            exit 1
+          fi
+          img=()
+          for v in GOOGLE_API_KEY OPENAI_API_KEY MISTRAL_API_KEY OPENROUTER_API_KEY GROQ_API_KEY; do
+            [ -n "${!v}" ] && img+=("$v")
+          done
+          if [ ${#img[@]} -eq 0 ]; then
+            echo "::warning::No image-capable key is set (GOOGLE_API_KEY / OPENAI_API_KEY / MISTRAL_API_KEY / OPENROUTER_API_KEY / GROQ_API_KEY). Generation will fail in the next step. See docs/SECRETS.md."
+          fi
+      - name: Generate image for the post
+        env:
+          POST_ID: ${{ github.event.client_payload.post_id || inputs.post_id }}
+          IMG_PROMPT: ${{ github.event.client_payload.prompt || inputs.prompt }}
+          IMG_PROVIDER: ${{ github.event.client_payload.provider || '' }}
+          IMG_RATIO: ${{ github.event.client_payload.ratio || '' }}
+          IMG_SIZE: ${{ github.event.client_payload.size || '' }}
+          IMG_STYLE: ${{ github.event.client_payload.style || '' }}
+          IMG_QUALITY: ${{ github.event.client_payload.quality || '' }}
+          IMG_NEGATIVE: ${{ github.event.client_payload.negative || '' }}
+        # Every option travels through an env var so a multi-line Bangla prompt
+        # never has to survive shell quoting inside `run:`.
+        run: |
+          if [ -z "$POST_ID" ]; then
+            echo "::error::post_id is required (client_payload.post_id)"
+            exit 1
+          fi
+          args=( --id "$POST_ID" )
+          [ -n "$IMG_PROMPT" ] && args+=( --prompt "$IMG_PROMPT" )
+          [ -n "$IMG_PROVIDER" ] && args+=( --provider "$IMG_PROVIDER" )
+          [ -n "$IMG_RATIO" ] && args+=( --ratio "$IMG_RATIO" )
+          [ -n "$IMG_SIZE" ] && args+=( --size "$IMG_SIZE" )
+          [ -n "$IMG_STYLE" ] && args+=( --style "$IMG_STYLE" )
+          [ -n "$IMG_QUALITY" ] && args+=( --quality "$IMG_QUALITY" )
+          [ -n "$IMG_NEGATIVE" ] && args+=( --negative "$IMG_NEGATIVE" )
+          set +e
+          pnpm --filter @hoichoi/scraper exec tsx src/cli.ts media generate "${args[@]}"
+          code=$?
+          set -e
+          if [ "${code}" -ne 0 ]; then
+            echo "::error::image generation failed (exit ${code}) — see the log above for the provider/key error"
+            exit "${code}"
+          fi
+      - name: Pull latest (guard against a racing push)
+        # generate-image shares the scrape's concurrency group, but a push can
+        # still land from outside both workflows between checkout and here.
+        run: git pull --rebase origin "${{ github.ref_name }}"
+      - name: Commit mirrored media
+        # Same reason as pipeline-cron: the deployed site can only serve bytes
+        # that exist in git, because Vercel builds from the repository.
+        run: |
+          git config user.name "hoichoi-bot"
+          git config user.email "hoichoi-bot@users.noreply.github.com"
+          git add -A apps/web/public/uploads
+          if git diff --cached --quiet; then
+            echo "No new media to commit (uploaded to the configured remote storage adapter instead)."
+          else
+            count=$(git diff --cached --name-only | wc -l)
+            git commit -m "chore(media): mirror ${count} generated image(s) for the deployed site"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
+      - name: Ping deploy hook (if configured)
+        # Without this the file lands in git but the running deployment keeps
+        # serving the old build, so the editor preview 404s until the next deploy.
+        if: env.VERCEL_DEPLOY_HOOK_URL != ''
+        run: curl -fsS -X POST "$VERCEL_DEPLOY_HOOK_URL" || true

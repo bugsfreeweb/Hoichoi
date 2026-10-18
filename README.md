@@ -13,9 +13,9 @@ Web (apps/web)        Next.js 15 public site (SSR feed, /sitemap, OG images, vis
                       announcement bell + pinned banner, DB-driven footer with
                       admin-editable social links) + admin shell (/notices, /moderation,
                       /comments, /posts, /providers, /reports, /logs, /settings,
-                      /appearance, /traffic, …), /desk preview, live /api/stats. First-party
-                      cookie-less analytics (page_views + ad_events) power /admin/traffic
-                      with a /api/track beacon. Home sections are gated by settings.app_config_json
+                      /appearance, /setup, …), /desk preview, live /api/stats. First-party
+                      cookie-less analytics (page_views + ad_events) power the dashboard's
+                      ট্রাফিক ও স্টোরেজ tab with a /api/track beacon. Home sections are gated by settings.app_config_json
                       (show_hero / show_ads / … / maintenance_mode / ai_hero_images /
                       default_post_image / brand_animation);
                       admin Settings is a tabbed console (সাইট / ভিজিবিলিটি / বিজ্ঞাপন /
@@ -23,8 +23,9 @@ Web (apps/web)        Next.js 15 public site (SSR feed, /sitemap, OG images, vis
                       The ডিজাইন tab folds in the section-variant switcher with a live
                       preview (cookie overlay, no DB write) and a one-click reset to default.
                       Admin shell has a grouped, collapsible sidebar with a persisted
-                      collapsed state + mobile drawer. /admin/traffic also renders the
-                      shared storage analytics (DB size + per-storage media breakdown).
+                      collapsed state + mobile drawer. The dashboard's ট্রাফিক ও স্টোরেজ
+                      tab also renders the shared storage analytics (DB size + per-storage
+                      media breakdown).
 Scraper               Collection pipeline: ingest → dedup → classify → rewrite → moderate →
                       publish. Multi-platform: facebook (browser scrape) + news/magazine
                       (RSS/Atom fetch). AI fallback hero images for media-less posts +
@@ -134,8 +135,9 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   to `/api/track` from `(site)/layout.tsx`; the five admin groups (live visitors by
   country/flag, most-read content + countries, comments, page-view/OS/browser/device
   mix, ad views/clicks/CTR) render from `trafficSnapshot` via the shared
-  `TrafficView` on **`/admin/traffic`** (web) and the desktop **ট্রাফিক** tab
-  (`traffic <range>` runner command). No new environment variables are required.
+  `TrafficView` on the web admin dashboard's ট্রাফিক ও স্টোরেজ tab and the desktop
+  **ট্রাফিক** tab (`traffic <range>` runner command). No new environment variables
+  are required.
 - **Storage analytics (v1.1.10).** A shared `StorageView` (`@hoichoi/dash`, built
   from `storageSnapshot` in `@hoichoi/db`) reports **DB size** (`PRAGMA page_count`
   × `page_size`), the **on-disk media tree** (walked under `mediaRoot()` /
@@ -143,9 +145,9 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   grouped by adapter (`github` · `idrivee2` · `backblaze`), and the largest DB
   tables. Remote-provider **byte sizes are estimates** (the `media_objects` table
   stores one row per blob but no size, so bytes = local-average × blob count);
-  blob counts are exact. Rendered on the web at `/admin/traffic` (below the traffic
-  panels), on the desktop **ট্রাফিক → স্টোরেজ** sub-tab, and via `storage` on the
-  CLI. Snapshots are cached ~15s.
+  blob counts are exact. Rendered on the web in the dashboard's ট্রাফিক ও স্টোরেজ tab
+  (below the traffic panels), on the desktop **ট্রাফিক → স্টোরেজ** sub-tab, and via
+  `storage` on the CLI. Snapshots are cached ~15s.
 - **Default post image + brand animation (v1.1.10).** `SiteAppConfig` gains
   `default_post_image` (a URL path) and `brand_animation`
   (`none|fade|typewriter|shimmer|slide`). `withDefaultImage(s)` stamps the default

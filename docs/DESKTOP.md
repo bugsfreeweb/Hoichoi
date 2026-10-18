@@ -485,8 +485,8 @@ libsodium is no longer a dependency since the AES-256-GCM vault replaced Strongh
 ## v1.1.10 — Traffic tab, refresh feedback, manual image generation
 
 - **New ট্রাফিক tab (9th tab, `apps/desktop/src/screens/Traffic.tsx`).** Renders the
-  same first-party analytics as the web **/admin/traffic** page via the shared
-  `TrafficView` from `@hoichoi/dash`. Data comes from the runner's new
+  same first-party analytics as the web admin dashboard's ট্রাফিক ও স্টোরেজ tab via
+  the shared `TrafficView` from `@hoichoi/dash`. Data comes from the runner's new
   **`traffic <range>`** command (`24h|7d|30d`) through
   `deskTraffic(env, range)` → `deskCall(["traffic", range])`. The tab sits directly
   after মনিটর; keyboard shortcuts are now **1–9**, and the run-command names live in

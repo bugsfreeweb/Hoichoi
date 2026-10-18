@@ -404,10 +404,11 @@ device beyond a random per-tab `sessionStorage` id.
   views/clicks/CTR by slot and by post. Bounce = sessions with exactly one view.
 - **Surfaces.** `GET /api/admin/traffic?range=…` serves the snapshot (admin
   `requireApiUser`). The **`TrafficView`** component in `packages/dash/src/traffic.tsx`
-  renders all five groups and is shared by the web **`/admin/traffic`** page
-  (`TrafficAnalytics.tsx`) and the desktop **ট্রাফিক** tab — the desktop reads it
-  through the runner's new `traffic <range>` command. `@hoichoi/dash` now depends on
-  `@hoichoi/shared-types` for the snapshot types.
+  renders all five groups and is shared by the web admin dashboard's **ট্রাফিক ও
+  স্টোরেজ** extra tab (`TrafficAnalytics.tsx`, mounted via `extraTabs` — the old
+  standalone `/admin/traffic` page is gone) and the desktop **ট্রাফিক** tab — the
+  desktop reads it through the runner's `traffic <range>` command. `@hoichoi/dash`
+  now depends on `@hoichoi/shared-types` for the snapshot types.
 
 ### 14.2 Media storage refactor
 
@@ -427,6 +428,19 @@ CLI `media generate <postId>` (scraper `media-backfill.ts`), the web route
 `POST /api/posts/[id]/generate-image` + `PostImageGenerator.tsx` in the post editor,
 and the desktop কনটেন্ট সারি panel (`deskQueueGenerateImage` / `deskImageProviders`).
 Only `purpose = image` providers are eligible and sensitive categories remain blocked.
+
+On the **hosted** web the route does not generate in-process: Vercel freezes
+`public/` at build time, so a file written during a request is never served and the
+post rendered with no picture. When `GH_TRIGGER_TOKEN` + `GH_REPO` are set the route
+instead dispatches `.github/workflows/generate-image.yml` (`repository_dispatch`
+`generate-image`), which runs the same `media generate` CLI in Actions — mirroring
+the image into `apps/web/public/uploads`, attaching it to the post, **committing** the
+mirrored file, and pinging the Vercel deploy hook. The response is `{ queued: true }`
+and the editor polls the route's `media_path` until the image is attached *and* the
+new deployment serves it. Without a runner (local/dev) it generates in-process and
+pushes to the adapter chain, falling back to the local `public/uploads` mirror; if
+neither can persist the bytes it returns 501 (pointing at `/admin/setup`) rather than
+writing a dead path onto the post.
 
 ### 14.4 Footer socials + refresh feedback
 
@@ -455,8 +469,8 @@ Only `purpose = image` providers are eligible and sensitive categories remain bl
   count); blob counts are exact. The UI surfaces this caveat in the panel detail.
 
 The snapshot is cached ~15s. `StorageView` (`packages/dash/src/storage.tsx`,
-with `fmtBytes` in `hooks.ts`) renders it and is shared by the web
-`/admin/traffic` page (`StorageAnalytics.tsx`, `GET /api/admin/storage`) and the
+with `fmtBytes` in `hooks.ts`) renders it and is shared by the web admin dashboard's
+**ট্রাফিক ও স্টোরেজ** tab (`StorageAnalytics.tsx`, `GET /api/admin/storage`) and the
 desktop ট্রাফিক → স্টোরেজ sub-tab (`deskStorage` → runner `storage`).
 
 ### 15.2 Default post image + brand animation

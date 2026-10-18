@@ -201,9 +201,14 @@ operator can generate a hero for **any** post on demand.
     (`PostImageGenerator.tsx`) in the post editor.
   - Desktop: the কনটেন্ট সারি row action (`deskQueueGenerateImage` /
     `deskImageProviders`).
-- **Storage.** The returned buffer is persisted through `@hoichoi/db`'s shared
-  uploader (`writeGeneratedMedia`), so it lands in the same local mirror / R2 target
-  as scraped media and is served identically.
+- **Storage.** On the desktop/CLI the returned buffer is persisted through
+  `@hoichoi/db`'s shared uploader (`writeGeneratedMedia` → adapter chain, else the
+  local `public/uploads` mirror), so it lands in the same place as scraped media and
+  is served identically. On the **hosted web** the route instead dispatches
+  `.github/workflows/generate-image.yml` when `GH_TRIGGER_TOKEN` + `GH_REPO` are set:
+  the runner mirrors + **commits** the image (the only thing a serverless deploy can
+  serve), and the editor polls until it appears. Without a runner the route generates
+  in-process and returns 501 if the bytes cannot be persisted.
 - **Providers that render images:** Gemini image models
   (`GEMINI_IMAGE_MODEL`, default `gemini-2.5-flash-image`) are the built-in option;
   any OpenAI-compatible endpoint that exposes an images API can be added as a custom

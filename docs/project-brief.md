@@ -161,9 +161,10 @@ Estimated LLM cost at up to 1,000 posts/day: **$0/mo**. At extreme volume, or fo
 - **Cookie-less traffic analytics** are built in — no third-party analytics service.
   Anonymous page views (`page_views`) and ad view/click events (`ad_events`) are
   recorded by a beacon, with no raw IP stored (a daily-rotating hash counts unique
-  visitors). The admin console shows five groups at **/admin/traffic** (and the desk
-  **ট্রাফিক** tab): live visitors by country/flag, most-read content, comments,
-  page-view/OS/browser/device mix, and ad views/clicks/CTR.
+  visitors). The admin dashboard shows these five groups in its **ট্রাফিক ও স্টোরেজ**
+  tab (`/admin`, and the desk **ট্রাফিক** tab): live visitors by country/flag,
+  most-read content, comments, page-view/OS/browser/device mix, and ad
+  views/clicks/CTR.
 - **Footer social links** are admin-editable (settings → সাইট) — no code change to
   add a Facebook/YouTube/Telegram/etc. link.
 - **On-demand image generation:** any post's hero can be generated from the post
@@ -174,8 +175,8 @@ Estimated LLM cost at up to 1,000 posts/day: **$0/mo**. At extreme volume, or fo
 
 - **Storage analytics** are built in: DB size + largest tables, the on-disk media
   tree with a per-day byte series, and remote blob counts per adapter (web
-  `/admin/traffic`, desk ট্রাফিক → স্টোরেজ, CLI `storage`). Remote byte sizes are
-  estimates.
+  dashboard → ট্রাফিক ও স্টোরেজ, desk ট্রাফিক → স্টোরেজ, CLI `storage`). Remote byte
+  sizes are estimates.
 - **Default post image + brand animation** are operator settings: a default image is
   stamped onto media-less posts, and the home Hero wordmark/logo animates
   (`fade | typewriter | shimmer | slide`).

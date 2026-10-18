@@ -170,6 +170,10 @@ push করলেই Vercel নিজে বিল্ড করে। এগু�
 ### 7. `GH_TRIGGER_TOKEN` + `GH_REPO` (ওয়েব অ্যাপের জন্য)
 
 **কাজ:** ওয়েবসাইটের "Run pipeline" বাটন চাপলে GitHub-কে সরাসরি স্ক্র্যাপ চালু করতে বলে।
+পোস্ট-এডিটরের **"ছবি তৈরি করুন"** বাটনও এগুলোই ব্যবহার করে — ছবিটি GitHub Actions-এ
+(`generate-image.yml`) তৈরি হয়ে `apps/web/public/uploads`-এ কমিট হয়, কারণ Vercel
+সার্ভারলেসে রিকোয়েস্টের সময় লেখা ফাইল সার্ভ হয় না। (বিস্তারিত:
+`docs/PIPELINE-TROUBLESHOOTING.md` §4।)
 
 **এগুলো GitHub Actions secret নয়** — Vercel-এর environment variable।
 
@@ -211,6 +215,8 @@ push করলেই Vercel নিজে বিল্ড করে। এগু�
 | সব পোস্ট রিভিউয় আটকে | কোনো LLM key নেই |
 | নতুন পোস্ট সাইটে দেখায় না | `VERCEL_DEPLOY_HOOK_URL` নেই; Vercel-এর পরবর্তী বিল্ডের জন্য অপেক্ষা করুন |
 | ওয়েব বাটন কাজ করে না | Vercel-এ `GH_TRIGGER_TOKEN`/`GH_REPO` নেই, অথবা সেভ করার পর রিডিপ্লয় হয়নি |
+| পোস্ট-এডিটরে ছবি তৈরি হয় না / ৫০১ | Vercel-এ `GH_TRIGGER_TOKEN`/`GH_REPO` নেই (§7) — দেখুন `PIPELINE-TROUBLESHOOTING.md` §4 |
+| "/admin/setup"-এ সব সিক্রেট অনুপস্থিত | ডেটাবেসে পৌঁছানো যাচ্ছে না (Turso) — `PIPELINE-TROUBLESHOOTING.md` §2 |
 | "not configured" ডিপ্লয় নোটিস | Vercel ডিপ্লয় ক্রেডেনশিয়াল দেওয়া হয়নি — ঐচ্ছিক, উপেক্ষা করুন |
 
 আরও বিস্তারিত: [`DEPLOY_WEB.md`](./DEPLOY_WEB.md)

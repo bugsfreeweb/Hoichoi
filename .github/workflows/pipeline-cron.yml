@@ -37,6 +37,10 @@ env:
   ARCHIVE_RETENTION_DAYS: ${{ vars.ARCHIVE_RETENTION_DAYS }}
   SCRAPE_REQUEST_DELAY_MS: ${{ vars.SCRAPE_REQUEST_DELAY_MS }}
   VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+  # Transient Turso/libSQL failures (SQLITE_IOERR, brief network blips) are
+  # retried inside the DB layer before a statement is allowed to fail the run.
+  HOICHOI_DB_RETRIES: "5"
+  HOICHOI_DB_RETRY_MS: "1500"
 
 jobs:
   scrape:
@@ -99,7 +103,30 @@ jobs:
       - name: Verify browser is available
         run: pnpm --filter @hoichoi/scraper exec playwright --version
       - name: Run scraping pipeline
-        run: pnpm run scrape
+        # The pipeline is idempotent (canonical-URL → pHash → embedding dedup),
+        # so a whole-run retry is a safe last resort when a transient database
+        # error survives the in-process retries — a Turso "disk I/O error" that
+        # outlasts the backoff window used to fail the entire 2-hourly run.
+        run: |
+          for attempt in 1 2 3; do
+            echo "── scrape attempt ${attempt}/3 ──"
+            set +e
+            pnpm run scrape
+            code=$?
+            set -e
+            if [ "${code}" -eq 0 ]; then
+              echo "scrape succeeded on attempt ${attempt}"
+              exit 0
+            fi
+            echo "scrape attempt ${attempt} failed (exit ${code})"
+            if [ "${attempt}" -lt 3 ]; then
+              sleep_sec=$((attempt * 90))
+              echo "retrying in ${sleep_sec}s…"
+              sleep "${sleep_sec}"
+            fi
+          done
+          echo "::error::scrape failed after 3 attempts — see the log above for the cause"
+          exit 1
       - name: Commit mirrored media
         # The deployed site is serverless: it can only serve bytes that exist in
         # git, because Vercel builds from the repository. When no remote storage
