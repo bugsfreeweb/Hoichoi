@@ -1284,6 +1284,34 @@ export async function recentPipelineRuns(limit = 10): Promise<RecentPipelineRun[
 }
 
 /**
+ * Fail pipeline runs that are still marked `running` long after they started.
+ *
+ * A run only writes its final `finished_at`/`status` at the very end, so any
+ * crash that kills the worker first — the runner being reclaimed, or (as with a
+ * Turso `disk I/O error`) the database refusing the final UPDATE — leaves the
+ * row saying `running` forever. That stale row then becomes the "latest run" the
+ * dashboard and the setup guide read, so the automation looks stuck rather than
+ * finished-with-an-error.
+ *
+ * The age gate is deliberately generous (default 3 hours) so a genuinely long
+ * run on another machine is never trampled: only an abandoned row is reaped.
+ */
+export async function reapStalePipelineRuns(
+  maxAgeMinutes = 180,
+  reason = "run did not finish (worker terminated or database unavailable)",
+): Promise<number> {
+  const client = getClient();
+  const cutoff = new Date(Date.now() - Math.max(1, maxAgeMinutes) * 60_000).toISOString();
+  const res = await client.execute({
+    sql: `UPDATE pipeline_runs
+             SET status = 'failed', finished_at = ?, error = COALESCE(error, ?)
+           WHERE status = 'running' AND finished_at IS NULL AND started_at < ?`,
+    args: [nowIso(), reason, cutoff],
+  });
+  return res.rowsAffected ?? 0;
+}
+
+/**
  * Counts for the review queues, in one round trip.
  *
  * The dashboard badges, the notification bell and the sidebar all want the same

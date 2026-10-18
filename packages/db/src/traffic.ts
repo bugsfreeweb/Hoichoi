@@ -181,6 +181,59 @@ export async function recordAdEvent(input: AdEventInput): Promise<void> {
   });
 }
 
+/**
+ * Time-bucketed activity for the public mockup charts: page views + approved
+ * comments per hour over the last 24h, and page views per weekday × hour over
+ * the last `days` days. Everything is grouped in SQL; empty buckets are filled
+ * with zeros so the chart axes stay stable.
+ */
+export interface ActivityBuckets {
+  hourly: Array<{ hour: number; views: number; comments: number }>;
+  heatmap: Array<{ dow: number; hour: number; value: number }>;
+}
+
+export async function activityBuckets(days = 30): Promise<ActivityBuckets> {
+  const client = getClient();
+  const hourFrom = new Date(Date.now() - 24 * 3_600_000).toISOString();
+  const dayFrom = new Date(Date.now() - days * 86_400_000).toISOString();
+  const [hourlyRes, commentRes, heatRes] = await Promise.all([
+    client.execute({
+      sql: "SELECT CAST(strftime('%H', created_at) AS INTEGER) AS h, count(*) AS n FROM page_views WHERE created_at >= ? GROUP BY h",
+      args: [hourFrom],
+    }),
+    client.execute({
+      sql: "SELECT CAST(strftime('%H', created_at) AS INTEGER) AS h, count(*) AS n FROM comments WHERE status = 'approved' AND created_at >= ? GROUP BY h",
+      args: [hourFrom],
+    }),
+    client.execute({
+      sql: "SELECT CAST(strftime('%w', created_at) AS INTEGER) AS d, CAST(strftime('%H', created_at) AS INTEGER) AS h, count(*) AS n FROM page_views WHERE created_at >= ? GROUP BY d, h",
+      args: [dayFrom],
+    }),
+  ]);
+
+  const commentsByHour = new Map<number, number>();
+  for (const r of commentRes.rows as Row[]) commentsByHour.set(n(r.h), n(r.n));
+
+  const hourly = Array.from({ length: 24 }, (_, h) => ({
+    hour: h,
+    views: 0,
+    comments: commentsByHour.get(h) ?? 0,
+  }));
+  for (const r of hourlyRes.rows as Row[]) {
+    const h = n(r.h);
+    const bucket = hourly[h];
+    if (bucket) bucket.views = n(r.n);
+  }
+
+  const heatmap = (heatRes.rows as Row[]).map((r) => ({
+    dow: n(r.d),
+    hour: n(r.h),
+    value: n(r.n),
+  }));
+
+  return { hourly, heatmap };
+}
+
 /** Rows helper: `result.rows` are loosely-typed; coerce safely. */
 type Row = Record<string, unknown>;
 const n = (v: unknown): number => {

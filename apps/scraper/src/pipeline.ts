@@ -1,4 +1,4 @@
-import { getClient, mapCategory, mapSource, nowIso, parseAppConfig, withTx, recordSourceError, clearSourceErrors, replaceCollectorImages } from "@hoichoi/db";
+import { getClient, mapCategory, mapSource, nowIso, parseAppConfig, withTx, recordSourceError, clearSourceErrors, replaceCollectorImages, reapStalePipelineRuns } from "@hoichoi/db";
 import { newResolver } from "@hoichoi/llm";
 import type {
   CategorySlug,
@@ -236,7 +236,13 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
     errors: [],
   };
 
-  // Run log
+  // Run log. Before opening a new run, close out any earlier run this database
+  // still believes is in flight: a worker killed mid-run (or a Turso hiccup that
+  // swallowed the final UPDATE) leaves `status = 'running'` forever, and that
+  // zombie becomes the "latest run" the dashboard and setup guide read. Reaping
+  // is best-effort and only touches rows older than the safety window, so a live
+  // run elsewhere is never affected.
+  await reapStalePipelineRuns().catch(() => undefined);
   await client.execute({
     sql: "INSERT INTO pipeline_runs (id, started_at, status) VALUES (?, ?, 'running')",
     args: [runId, started],
@@ -417,7 +423,14 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       // page can show a gallery. The first entry becomes the primary image;
       // capped so a pathological post can't fan out into hundreds of fetches.
       const collected: Array<{ path: string; kind: "image" | "video" }> = [];
-      const MAX_GALLERY = 8;
+      // Gallery cap. Env-tunable so an operator can dial media pressure down
+      // (fewer downloads, mirrors and `post_images` rows per run) without a code
+      // change — HOICHOI_GALLERY_MAX=0 disables all but the primary image.
+      const MAX_GALLERY = (() => {
+        const raw = Number(process.env.HOICHOI_GALLERY_MAX);
+        if (!Number.isFinite(raw)) return 8;
+        return Math.min(24, Math.max(0, Math.trunc(raw)));
+      })();
       try {
         const candidates = sp.mediaUrls ?? [];
         for (const mUrl of candidates) {

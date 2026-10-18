@@ -65,9 +65,114 @@ export function getClient(): Client {
   const config: Config = { url };
   const token = process.env.TURSO_AUTH_TOKEN;
   if (url.startsWith("libsql://") && token) config.authToken = token;
-  cached = createClient(config);
+  cached = withDbRetry(createClient(config));
   cachedUrl = url;
   return cached;
+}
+
+/**
+ * Errors libSQL/Turso throws that are worth another attempt.
+ *
+ * The hosted database (Turso) occasionally answers a statement with a
+ * server-side hiccup — most commonly `SQLITE_IOERR: disk I/O error` when the
+ * node is under pressure or the database is at a soft limit — and the HTTP
+ * driver surfaces network blips (`fetch failed`, resets, 5xx) the same way.
+ * None of these mean the statement was applied; SQLite statements are atomic,
+ * so a failed write left the row untouched and re-running it is safe.
+ *
+ * The one honest caveat: if a write *did* commit but the response was lost, a
+ * retry can repeat it. The pipeline's dedup (canonical URL → pHash → embedding)
+ * is the backstop, so an occasional repeat is rejected on the next pass rather
+ * than published twice.
+ */
+const TRANSIENT_DB_ERROR_RE =
+  /SQLITE_IOERR|SQLITE_BUSY|SQLITE_LOCKED|SQLITE_PROTOCOL|SQLITE_INTERRUPT|SQLITE_BUSY_SNAPSHOT|disk i\/o error|database is locked|database table is locked|database is busy|fetch failed|ECONNRESET|ECONNREFUSED|ECONNABORTED|ETIMEDOUT|EPIPE|UND_ERR|socket hang up|network error|timed out|too many requests|\b(?:429|500|502|503|504)\b/i;
+
+/** True when an error from the DB layer is worth retrying. */
+export function isTransientDbError(err: unknown): boolean {
+  const e = err as
+    | { code?: unknown; message?: unknown; cause?: { message?: unknown; code?: unknown } }
+    | null
+    | undefined;
+  if (!e) return false;
+  const parts = [
+    typeof e.code === "string" ? e.code : "",
+    typeof e.code === "number" ? String(e.code) : "",
+    typeof e.message === "string" ? e.message : "",
+    e.cause && typeof e.cause.message === "string" ? e.cause.message : "",
+    e.cause && typeof e.cause.code === "string" ? e.cause.code : "",
+  ];
+  return TRANSIENT_DB_ERROR_RE.test(parts.join(" "));
+}
+
+/** Clamp an env-provided integer (falling back when absent or nonsense). */
+function intEnv(name: string, fallback: number, min: number, max: number): number {
+  const raw = Number(process.env[name]);
+  if (!Number.isFinite(raw)) return fallback;
+  return Math.min(max, Math.max(min, Math.trunc(raw)));
+}
+
+export interface DbRetryOptions {
+  /** Maximum attempts (1 disables retrying). Defaults to `HOICHOI_DB_RETRIES` or 4. */
+  attempts?: number;
+  /** First backoff step in ms. Defaults to `HOICHOI_DB_RETRY_MS` or 600. */
+  baseDelayMs?: number;
+  /** Sink for retry notices (defaults to `console.warn`). */
+  log?: (message: string) => void;
+}
+
+/**
+ * Run a database call, retrying transient failures with exponential backoff
+ * (plus a little jitter so parallel serverless invocations do not synchronise).
+ * Non-transient errors are rethrown immediately.
+ */
+export async function retryDbCall<T>(
+  fn: () => Promise<T>,
+  opts: DbRetryOptions = {},
+): Promise<T> {
+  const attempts = Math.max(1, opts.attempts ?? intEnv("HOICHOI_DB_RETRIES", 4, 1, 10));
+  const baseDelayMs = Math.max(0, opts.baseDelayMs ?? intEnv("HOICHOI_DB_RETRY_MS", 600, 0, 30_000));
+  const log = opts.log ?? ((m: string) => console.warn(m));
+
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt >= attempts || !isTransientDbError(err)) throw err;
+      const step = Math.min(baseDelayMs * 2 ** (attempt - 1), 30_000);
+      const delay = step + Math.floor(Math.random() * 250);
+      log(
+        `[db] transient error (attempt ${attempt}/${attempts}): ` +
+          `${(err as Error).message} — retrying in ${delay}ms`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw lastErr;
+}
+
+/**
+ * Wrap a libSQL client so every statement-issuing method gets the retry
+ * treatment above. Any other method is bound to the raw client so class-private
+ * state stays reachable; `transaction()` deliberately returns an unwrapped
+ * `Transaction` — its statements are already covered when issued through the
+ * wrapping client (`withTx` does exactly that).
+ */
+export function withDbRetry(client: Client): Client {
+  const retried = new Set<string>(["execute", "executeMultiple", "batch"]);
+  return new Proxy(client, {
+    get(target, prop, receiver) {
+      const value = Reflect.get(target, prop, receiver) as unknown;
+      if (typeof value !== "function") return value;
+      const fn = value as (...args: unknown[]) => unknown;
+      if (typeof prop === "string" && retried.has(prop)) {
+        return (...args: unknown[]) => retryDbCall(() => Promise.resolve(fn.apply(target, args)));
+      }
+      return fn.bind(target);
+    },
+  }) as Client;
 }
 
 /**
