@@ -22,7 +22,7 @@ env:
 jobs:
   deploy:
     name: Vercel production deploy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check Vercel credentials
         id: creds

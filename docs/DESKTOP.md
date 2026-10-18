@@ -482,6 +482,22 @@ libsodium is no longer a dependency since the AES-256-GCM vault replaced Strongh
 
 ---
 
+## v1.1.11 — 8-hour pipeline cadence
+
+- **Pipeline cadence is now 8 hours (was 2).** The GitHub Actions workflow
+  (`pipeline-cron.yml`), `PIPELINE_CRON`, the DB default/seed/migration and this
+  app's default cron preference all step 8 hours (`17 */8 * * *` for the
+  workflow, `0 */8 * * *` here) instead of 2, keeping the private repo well
+  inside GitHub Actions' free minutes. Installers still read the cadence from
+  `settings.pipeline_hours`; the live settings row was set to 8.
+- **Web fixes shipped alongside.** The storage-tab sparkline no longer throws on
+  an empty series (which blanked the tab with "Application error"), the admin
+  studio's same-origin live preview is no longer blocked by `X-Frame-Options`,
+  and the setup guide no longer reports a configured install as incomplete when
+  the recent run window is all failures.
+
+---
+
 ## v1.1.10 — Traffic tab, refresh feedback, manual image generation
 
 - **New ট্রাফিক tab (9th tab, `apps/desktop/src/screens/Traffic.tsx`).** Renders the
