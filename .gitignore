@@ -30,9 +30,9 @@ releases/
 *.db-journal
 *.sqlite
 *.sqlite3
-storage/
-media-local/
-static-uploads/
+/storage/
+/media-local/
+/static-uploads/
 # Local runtime state (dev db + downloaded media)
 data/
 

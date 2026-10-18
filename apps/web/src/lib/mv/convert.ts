@@ -1,6 +1,7 @@
 import { shortId } from "@/lib/bn";
 import type { PostRecord } from "@/lib/mv/posts";
 import { resolvePostImage } from "@/lib/mv/images";
+import { mediaUrl } from "@/lib/media";
 
 /** A public-site article row — everything needed to render mockup post designs
  *  for real production articles (seed posts keep their own richer records). */
@@ -27,8 +28,15 @@ function paragraphs(text: string): string[] {
   return out.length > 0 ? out : [text.trim()];
 }
 
-export function toMvPost(post: ProdPostLike): PostRecord {
+export function toMvPost(post: ProdPostLike, fallback = ""): PostRecord {
   const body = paragraphs(post.body_bn);
+  // `media_path` is stored relative (e.g. `2026-09-15/img_….webp`); it must be
+  // resolved to a `/uploads/…` public URL the exact way the default design does
+  // (`mediaUrl`), otherwise the mockup themes request it relative to the current
+  // route and every cover 404s.
+  const own = post.media_path
+    ? mediaUrl({ media_path: post.media_path, media_kind: "image" }) ?? ""
+    : "";
   return {
     slug: post.slug,
     hash: shortId(post.id),
@@ -42,7 +50,7 @@ export function toMvPost(post: ProdPostLike): PostRecord {
     sourceUrl: post.source_url ?? "",
     author: post.original_author_name ?? "হৈচৈ ফ্যাক্ট-গেট",
     location: "ঢাকা",
-    image: resolvePostImage(post.slug, post.category, post.media_path ?? ""),
+    image: resolvePostImage(post.slug, post.category, own, fallback),
     tags: [],
     body: body.map((text) => ({ type: "para", text })),
     keyPoints: [],

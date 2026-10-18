@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-label="প্রতীকী ছবি">
+  <defs>
+    <linearGradient id="wash" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff5c38" stop-opacity="0.55" />
+      <stop offset="0.5" stop-color="#f5a524" stop-opacity="0.3" />
+      <stop offset="1" stop-color="#ff5c38" stop-opacity="0" />
+    </linearGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#ffffff" stroke-opacity="0.05" stroke-width="1" />
+    </pattern>
+  </defs>
+  <rect width="1600" height="900" fill="#05060a" />
+  <rect width="1600" height="900" fill="url(#grid)" />
+  <rect width="1600" height="900" fill="url(#wash)" opacity="0.5" />
+  <rect x="56" y="56" width="1488" height="788" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="2" />
+  <text x="800" y="470" text-anchor="middle" font-family="'Noto Sans Bengali','SolaimanLipi',sans-serif" font-size="150" font-weight="800" fill="#ffffff" fill-opacity="0.88">হৈচৈ</text>
+  <text x="800" y="540" text-anchor="middle" font-family="ui-monospace, monospace" font-size="26" letter-spacing="8" fill="#ffffff" fill-opacity="0.5">HOICHOI NEWSROOM</text>
+  <text x="56" y="852" font-family="sans-serif" font-size="24" fill="#ffffff" fill-opacity="0.35">প্রতীকী ছবি</text>
+</svg>

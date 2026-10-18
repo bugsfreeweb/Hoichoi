@@ -7,6 +7,7 @@ import { ArrowDown, CircleDot, Cpu, Database, Radio, ShieldCheck, Sparkles, Term
 import { Badge, Btn, LiveDot, SectionShell } from "@/components/mv/ui/primitives";
 import { CountUp, LiveClock, Magnetic, Marquee, Scramble, SparklineWrap, TypeWriter } from "./hero-bits";
 import { HOME_META } from "@/lib/mv/content";
+import { PLACEHOLDER_IMAGE } from "@/lib/mv/images";
 import { useMvData } from "@/components/mv/ui/mv-data";
 import type { SyncPoint } from "@/lib/mv/data";
 import { bn, bnCompact } from "@/lib/mv/format";
@@ -160,7 +161,7 @@ function CinemaHero({ totals }: { totals: HeroProps["totals"] }) {
   return (
     <section className="relative min-h-[92vh] overflow-hidden">
       <img
-        src="/images/hero-city.jpg"
+        src={PLACEHOLDER_IMAGE}
         alt="শহরের রাতের দৃশ্য"
         className="ken-burns absolute inset-0 h-full w-full object-cover opacity-45"
       />
@@ -260,7 +261,7 @@ function BentoHero({ totals, density }: { totals: HeroProps["totals"]; density: 
         </div>
 
         <div className="surface relative col-span-1 overflow-hidden rounded-2xl p-5 lg:row-span-2">
-          <img src="/images/newsroom.jpg" alt="নিউজরুম" className="ken-burns absolute inset-0 h-full w-full object-cover opacity-35" />
+          <img src={PLACEHOLDER_IMAGE} alt="নিউজরুম" className="ken-burns absolute inset-0 h-full w-full object-cover opacity-35" />
           <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/50 to-transparent" />
           <div className="relative flex h-full min-h-[220px] flex-col justify-end">
             <span className="mono-label mb-2" style={{ color: "var(--accent)" }}>

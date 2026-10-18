@@ -1,9 +1,7 @@
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import clsx from "clsx";
-import { getPublicPostBySlug } from "@hoichoi/db";
-import { getPost, getRelated, type PostRecord } from "@/lib/mv/posts";
-import { toMvPost } from "@/lib/mv/convert";
+import { getPost, getRelated } from "@/lib/mv/posts";
 import { orderFor, enabledFor, variantFor, CHROME_KEYS, type MvLive } from "@/lib/mv/variant";
 import { DEFAULT_BRAND } from "@/lib/mv/settings";
 import SectionTemplate from "@/components/mv/ui/SectionTemplate";
@@ -27,11 +25,7 @@ import {
 
 /** The mockup article-page composition, driven by the persisted variant engine. */
 export default async function MvPost({ slug, live }: { slug: string; live: MvLive }) {
-  const [seed, production] = await Promise.all([
-    getPost(slug),
-    getPublicPostBySlug(slug).catch(() => null),
-  ]);
-  const post: PostRecord | null = seed ?? (production ? toMvPost(production) : null);
+  const post = await getPost(slug);
   if (!post) notFound();
   const related = await getRelated(post.slug, post.categorySlug, 3);
   const density = DEFAULT_BRAND.density;

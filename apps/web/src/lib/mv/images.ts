@@ -1,41 +1,38 @@
 /**
- * Editorial imagery for every report.
- * Images are chosen per story, with a category-level fallback so any
- * newly added report always renders with a sensible visual.
+ * Editorial cover imagery for the design-variant (mockup) pages.
+ *
+ * The mockup themes render the *same* real artwork the default design shows, so
+ * a report's own scraped media always wins, and the operator's configured
+ * default post image is used when a report has no media of its own. Only when
+ * neither exists do we fall back to the bundled placeholder.
+ *
+ * This module used to point at per-story/category JPEGs (`/images/posts/…`,
+ * `/images/newsroom.jpg`) that were never shipped in `apps/web/public`, so every
+ * media-less report rendered a dead `<img>` — which is why the non-default
+ * designs looked "image-less" while the default design (which resolves media
+ * through `mediaUrl`) stayed intact.
  */
 
-/** Explicit per-report artwork. */
-export const POST_IMAGES: Record<string, string> = {
-  "mrbeast-4-35e7b1": "/images/posts/construction-win.jpg",
-  "missing-child-rangpur-8d2c41": "/images/posts/missing-child.jpg",
-  "affair-crime-dhaka-b71f09": "/images/posts/police-night.jpg",
-  "child-protection-sylhet-c40a17": "/images/posts/child-safety.jpg",
-  "chittagong-road-accident-e91b33": "/images/posts/highway-night.jpg",
-  "fraud-bogura-job-scam-5a77d2": "/images/posts/fraud-documents.jpg",
-  "family-violence-khulna-2f6c88": "/images/posts/police-night.jpg",
-  "dhaka-fire-mitford-9c31ee": "/images/posts/fire-rescue.jpg",
-  "cox-bazar-boat-rescue-1d94af": "/images/posts/sea-trawler.jpg",
-  "rajshahi-river-erosion-7b2d50": "/images/posts/sea-trawler.jpg",
-};
+/** Committed fallback artwork (see `apps/web/public/images/post-placeholder.svg`). */
+export const PLACEHOLDER_IMAGE = "/images/post-placeholder.svg";
 
-/** Fallback artwork by subject area. */
-export const CATEGORY_IMAGES: Record<string, string> = {
-  "viral-verify": "/images/posts/construction-win.jpg",
-  "missing-child": "/images/posts/missing-child.jpg",
-  "affair-crime": "/images/posts/police-night.jpg",
-  "family-violence": "/images/posts/police-night.jpg",
-  "child-abuse": "/images/posts/child-safety.jpg",
-  "road-accident": "/images/posts/highway-night.jpg",
-  fraud: "/images/posts/fraud-documents.jpg",
-  disaster: "/images/posts/fire-rescue.jpg",
-  environment: "/images/posts/sea-trawler.jpg",
-};
-
-export const DEFAULT_POST_IMAGE = "/images/newsroom.jpg";
-
-export function resolvePostImage(slug: string, categorySlug = "", explicit = ""): string {
-  if (explicit && explicit.trim()) return explicit;
-  return POST_IMAGES[slug] ?? CATEGORY_IMAGES[categorySlug] ?? DEFAULT_POST_IMAGE;
+/**
+ * Pick the cover image for a report.
+ *
+ * @param explicit  The report's own media, already resolved to a public URL.
+ * @param fallback  The admin-configured default post image (may be empty).
+ */
+export function resolvePostImage(
+  _slug: string,
+  _categorySlug = "",
+  explicit = "",
+  fallback = "",
+): string {
+  const own = explicit.trim();
+  if (own) return own;
+  const configured = fallback.trim();
+  if (configured) return configured;
+  return PLACEHOLDER_IMAGE;
 }
 
 /** Short Bangla caption shown under cover images. */

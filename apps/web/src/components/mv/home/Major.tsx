@@ -18,6 +18,7 @@ import { Badge, Btn, Heatmap, LiveDot, SectionHead, SectionShell } from "@/compo
 import { CountUp, Reveal, Stagger, StaggerItem } from "@/components/mv/ui/motion";
 import { CategoryBarChart, ChartCard, DonutChart } from "@/components/mv/charts";
 import { useMvData } from "@/components/mv/ui/mv-data";
+import { PLACEHOLDER_IMAGE } from "@/lib/mv/images";
 import { bn } from "@/lib/mv/format";
 import { subscribe } from "@/lib/mv/subscribe";
 
@@ -501,7 +502,7 @@ function CtaBand({ density }: { density: "compact" | "comfortable" | "spacious" 
         <div className="relative overflow-hidden rounded-3xl border border-white/10">
           <div className="absolute inset-0" style={{ background: "linear-gradient(115deg, var(--accent), #f5a524 45%, #7c2d12 100%)" }} />
           <div aria-hidden className="grid-bg absolute inset-0 opacity-25" />
-          <img src="/images/newsroom.jpg" alt="" className="ken-burns absolute inset-0 h-full w-full object-cover opacity-25 mix-blend-luminosity" />
+          <img src={PLACEHOLDER_IMAGE} alt="" className="ken-burns absolute inset-0 h-full w-full object-cover opacity-25 mix-blend-luminosity" />
           <div className="relative flex flex-col items-start gap-8 p-8 md:flex-row md:items-center md:justify-between md:p-14">
             <div className="max-w-xl">
               <span className="mono-label text-ink-950/70">DAILY DIGEST · 07:00 BST</span>

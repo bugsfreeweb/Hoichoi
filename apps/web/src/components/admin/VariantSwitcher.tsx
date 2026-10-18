@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ZONE_LABELS,
   SCOPE_LABELS,
@@ -46,6 +47,7 @@ export function VariantSwitcher({
   const [studio, setStudio] = useState(false);
   const [nonce, setNonce] = useState(0);
   const [frameReady, setFrameReady] = useState(false);
+  const router = useRouter();
 
   const grouped = useMemo(() => {
     return ZONE_ORDER.map((zone) => ({
@@ -137,6 +139,12 @@ export function VariantSwitcher({
     await reloadSections();
     setDirty(new Set());
     setSiteDirty(false);
+  }
+
+  /** Leave the studio and return to the admin dashboard. */
+  async function backToAdmin() {
+    await closeStudio();
+    router.push("/admin");
   }
 
   /** Persists the current draft (site preset first, then per-section edits). */
@@ -438,6 +446,14 @@ export function VariantSwitcher({
                 {status.text}
               </span>
             ) : null}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void backToAdmin()}
+              className="border border-white/25 px-3 py-1.5 text-[12px] font-bold text-white/80 transition hover:border-white/50 hover:text-white disabled:opacity-40"
+            >
+              ← অ্যাডমিনে ফিরুন
+            </button>
             <button
               type="button"
               disabled={busy}
