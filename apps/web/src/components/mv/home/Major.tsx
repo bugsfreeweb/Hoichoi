@@ -17,7 +17,7 @@ import {
 import { Badge, Btn, Heatmap, LiveDot, SectionHead, SectionShell } from "@/components/mv/ui/primitives";
 import { CountUp, Reveal, Stagger, StaggerItem } from "@/components/mv/ui/motion";
 import { CategoryBarChart, ChartCard, DonutChart } from "@/components/mv/charts";
-import { CATEGORY_MIX, READ_HEATMAP, RUN_LOG, SERVICES } from "@/lib/mv/data";
+import { useMvData } from "@/components/mv/ui/mv-data";
 import { bn } from "@/lib/mv/format";
 import { subscribe } from "@/lib/mv/subscribe";
 
@@ -37,6 +37,7 @@ export function Categories({
 }
 
 function DonutPanel({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { categoryMix: CATEGORY_MIX } = useMvData();
   return (
     <SectionShell id="categories" density={density}>
       <SectionHead
@@ -81,6 +82,7 @@ function DonutPanel({ density }: { density: "compact" | "comfortable" | "spaciou
 }
 
 function ChipCloud({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { categoryMix: CATEGORY_MIX } = useMvData();
   const chips = CATEGORY_MIX.flatMap((c) => [
     { ...c, kind: "verify", label: `${c.name} · যাচাইকৃত`, size: c.value },
     { ...c, kind: "queue", label: `${c.name} · কিউ`, size: Math.round(c.value * 0.6) },
@@ -128,6 +130,7 @@ function ChipCloud({ density }: { density: "compact" | "comfortable" | "spacious
 }
 
 function RankBars({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { categoryMix: CATEGORY_MIX } = useMvData();
   const max = Math.max(...CATEGORY_MIX.map((c) => c.value));
   return (
     <SectionShell id="categories" density={density}>
@@ -175,6 +178,7 @@ function RankBars({ density }: { density: "compact" | "comfortable" | "spacious"
 }
 
 function CategoryTiles({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { categoryMix: CATEGORY_MIX } = useMvData();
   return (
     <SectionShell id="categories" density={density}>
       <SectionHead kicker="▚ BENTO CATEGORIES" title={<>বিষয়ভিত্তিক <span className="text-gradient">টাইলস</span></>} desc="প্রতিটি বিভাগের মোট রেকর্ড ও সক্রিয় অগ্রাধিকার।" />
@@ -192,6 +196,7 @@ function CategoryTiles({ density }: { density: "compact" | "comfortable" | "spac
 }
 
 function CategoryMap({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { categoryMix: CATEGORY_MIX } = useMvData();
   return (
     <SectionShell id="categories" density={density}>
       <SectionHead kicker="▚ TOPIC MATRIX" title={<>ক্যাটাগরি <span className="text-gradient">পরিসংখ্যান সারণি</span></>} />
@@ -232,6 +237,7 @@ const STATUS_ICON = {
 } as const;
 
 function MonitorGrid({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { services: SERVICES, readHeatmap: READ_HEATMAP } = useMvData();
   return (
     <SectionShell id="system-health" density={density}>
       <SectionHead
@@ -320,6 +326,7 @@ function MonitorGrid({ density }: { density: "compact" | "comfortable" | "spacio
 }
 
 function RunLogTable({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { runLog: RUN_LOG } = useMvData();
   return (
     <SectionShell id="system-health" density={density}>
       <SectionHead
@@ -366,6 +373,7 @@ function RunLogTable({ density }: { density: "compact" | "comfortable" | "spacio
 }
 
 function ServiceCards({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { services: SERVICES } = useMvData();
   return (
     <SectionShell id="system-health" density={density}>
       <SectionHead kicker="SERVICES TELEMETRY" title={<>সার্ভিস <span className="text-gradient">কার্ড সারি</span></>} />
@@ -385,6 +393,7 @@ function ServiceCards({ density }: { density: "compact" | "comfortable" | "spaci
 }
 
 function HeatmapOnly({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { readHeatmap: READ_HEATMAP } = useMvData();
   return (
     <SectionShell id="system-health" density={density}>
       <SectionHead kicker="READERSHIP ACTIVITY" title={<>সাপ্তাহিক <span className="text-gradient">সচলতা মানচিত্র</span></>} />
@@ -396,6 +405,7 @@ function HeatmapOnly({ density }: { density: "compact" | "comfortable" | "spacio
 }
 
 function UptimeGauges({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { services: SERVICES } = useMvData();
   return (
     <SectionShell id="system-health" density={density}>
       <SectionHead kicker="SYSTEM RELIABILITY" title={<>আপটাইম <span className="text-gradient">সূচক ও স্বাস্থ্য</span></>} />
@@ -573,6 +583,7 @@ function TerminalForm({ density }: { density: "compact" | "comfortable" | "spaci
 }
 
 function SplitGlow({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { categoryMix: CATEGORY_MIX } = useMvData();
   const [open, setOpen] = useState(false);
   return (
     <SectionShell id="newsletter" density={density}>

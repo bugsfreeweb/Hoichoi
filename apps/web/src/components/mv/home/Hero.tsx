@@ -7,7 +7,8 @@ import { ArrowDown, CircleDot, Cpu, Database, Radio, ShieldCheck, Sparkles, Term
 import { Badge, Btn, LiveDot, SectionShell } from "@/components/mv/ui/primitives";
 import { CountUp, LiveClock, Magnetic, Marquee, Scramble, SparklineWrap, TypeWriter } from "./hero-bits";
 import { HOME_META } from "@/lib/mv/content";
-import { SYNC_SERIES, PIPELINE_GAUGES, PIPELINE_STEPS } from "@/lib/mv/data";
+import { useMvData } from "@/components/mv/ui/mv-data";
+import type { SyncPoint } from "@/lib/mv/data";
 import { bn, bnCompact } from "@/lib/mv/format";
 
 export interface HeroProps {
@@ -24,8 +25,13 @@ export default function Hero({ variant, density, totals }: HeroProps) {
   return <SplitHero totals={totals} density={density} />;
 }
 
-const spark = SYNC_SERIES.slice(-14).map((s) => s.collected);
-const sparkPub = SYNC_SERIES.slice(-14).map((s) => s.published);
+function getSparks(series: SyncPoint[]) {
+  const last = series.slice(-14);
+  return {
+    spark: last.map((s) => s.collected),
+    sparkPub: last.map((s) => s.published),
+  };
+}
 
 function ChainStrip() {
   return (
@@ -46,6 +52,8 @@ function ChainStrip() {
 
 /* ───────────────── variant 1 · split live ───────────────── */
 function SplitHero({ totals, density }: { totals: HeroProps["totals"]; density: HeroProps["density"] }) {
+  const { syncSeries: SYNC_SERIES } = useMvData();
+  const { spark, sparkPub } = getSparks(SYNC_SERIES);
   return (
     <SectionShell density={density} className="pt-10 md:pt-16">
       <div className="grid items-center gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:gap-16">
@@ -224,6 +232,8 @@ function CinemaHero({ totals }: { totals: HeroProps["totals"] }) {
 
 /* ───────────────── variant 3 · editorial bento ───────────────── */
 function BentoHero({ totals, density }: { totals: HeroProps["totals"]; density: HeroProps["density"] }) {
+  const { syncSeries: SYNC_SERIES, pipelineGauges: PIPELINE_GAUGES, pipelineSteps: PIPELINE_STEPS } = useMvData();
+  const { spark, sparkPub } = getSparks(SYNC_SERIES);
   return (
     <SectionShell density={density} className="pt-8">
       <div className="grid auto-rows-[minmax(0,auto)] gap-4 lg:grid-cols-4">

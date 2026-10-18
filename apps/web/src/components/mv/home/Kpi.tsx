@@ -4,7 +4,8 @@ import { ArrowDownRight, ArrowUpRight, FileCheck2, Layers, MessageSquareQuote, S
 import { Badge, LiveDot, SectionShell, Sparkline } from "@/components/mv/ui/primitives";
 import { CountUp, Reveal } from "@/components/mv/ui/motion";
 import { RadialGauges } from "@/components/mv/charts";
-import { SYNC_SERIES } from "@/lib/mv/data";
+import { useMvData } from "@/components/mv/ui/mv-data";
+import type { SyncPoint } from "@/lib/mv/data";
 import { bn } from "@/lib/mv/format";
 
 export interface Totals {
@@ -73,12 +74,13 @@ export default function Kpi({
   return <CounterCards totals={totals} density={density} />;
 }
 
-function spark(key: keyof Totals, n = 14) {
-  return SYNC_SERIES.slice(-n).map((s) => s[key]);
+function spark(series: SyncPoint[], key: keyof Totals, n = 14) {
+  return series.slice(-n).map((s) => s[key]);
 }
 
 /* ── variant 1 · counter cards ───────────────────────────── */
 function CounterCards({ totals, density }: { totals: Totals; density: "compact" | "comfortable" | "spacious" }) {
+  const { syncSeries } = useMvData();
   return (
     <SectionShell density={density} className={density === "spacious" ? "" : "!py-10 md:!py-14"}>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -100,7 +102,7 @@ function CounterCards({ totals, density }: { totals: Totals; density: "compact" 
               <p className="mt-2.5 text-[14.5px] font-semibold text-mist-200">{c.label}</p>
               <p className="mt-1 text-[12.5px] text-mist-400">{c.note}</p>
               <div className="mt-4 h-10 opacity-80 transition-opacity duration-500 group-hover:opacity-100">
-                <Sparkline data={spark(c.key)} color={c.color} className="h-10 w-full" height={40} width={220} />
+                <Sparkline data={spark(syncSeries, c.key)} color={c.color} className="h-10 w-full" height={40} width={220} />
               </div>
               <span className="mono-label absolute bottom-4 right-5 text-mist-400/40">{c.en}</span>
             </div>
@@ -156,6 +158,7 @@ function GlassMetrics({ totals, density }: { totals: Totals; density: "compact" 
 
 /* ── variant 3 · ledger row ───────────────────────────── */
 function LedgerRow({ totals, density }: { totals: Totals; density: "compact" | "comfortable" | "spacious" }) {
+  const { syncSeries } = useMvData();
   return (
     <SectionShell density={density} className="!py-10 md:!py-14">
       <div className="overflow-hidden rounded-2xl border border-white/8">
@@ -177,7 +180,7 @@ function LedgerRow({ totals, density }: { totals: Totals; density: "compact" | "
               </div>
               <p className="hidden text-[12.5px] text-mist-400 md:block">{c.note}</p>
               <div className="hidden h-8 w-28 md:block">
-                <Sparkline data={spark(c.key, 10)} color={c.color} className="h-8 w-28" height={32} width={112} fill={false} />
+                <Sparkline data={spark(syncSeries, c.key, 10)} color={c.color} className="h-8 w-28" height={32} width={112} fill={false} />
               </div>
               <div className="flex items-center gap-4">
                 <span className="font-latin text-2xl font-bold tabular-nums" style={{ color: c.color }}>

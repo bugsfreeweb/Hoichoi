@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface ImageProvider {
   id: string;
@@ -21,6 +21,13 @@ interface Options {
   styles: string[];
   qualities: string[];
 }
+
+type Via = "runner" | "local";
+
+/** How often the panel re-checks for a queued image. */
+const POLL_MS = 6000;
+/** Give up after this long and tell the operator where to look. */
+const POLL_MAX_MS = 8 * 60 * 1000;
 
 const field =
   "mt-1 w-full border border-ink/30 bg-paper px-3 py-2 text-[13px] focus:outline-none";
@@ -55,13 +62,27 @@ export function PostImageGenerator({
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [via, setVia] = useState<Via | null>(null);
+  const [queued, setQueued] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+
+  /** `media_path` as of the last successful check — the poll watches for a change. */
+  const baseRef = useRef<string | null>(null);
+  const attachedRef = useRef(onAttached);
+  attachedRef.current = onAttached;
 
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch(`/api/posts/${postId}/generate-image`, { cache: "no-store" });
-        const j = (await res.json()) as Partial<Options> & { error?: string };
+        const j = (await res.json()) as Partial<Options> & {
+          error?: string;
+          via?: string;
+          media_path?: string | null;
+        };
         if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
+        setVia(j.via === "runner" ? "runner" : "local");
+        baseRef.current = j.media_path ?? null;
         setOpts({
           providers: j.providers ?? [],
           suggestedPrompt: j.suggestedPrompt ?? "",
@@ -104,11 +125,28 @@ export function PostImageGenerator({
         }),
       });
       const j = (await res.json().catch(() => null)) as
-        | { media_path?: string; provider?: string; model?: string; error?: string }
+        | {
+            media_path?: string;
+            provider?: string;
+            model?: string;
+            error?: string;
+            queued?: boolean;
+            message?: string;
+          }
         | null;
       if (!res.ok) throw new Error(j?.error ?? `HTTP ${res.status}`);
+
+      // Handed to the GitHub Actions runner: the image does not exist yet, so
+      // there is nothing to preview — start watching for it instead.
+      if (j?.queued) {
+        setQueued(true);
+        setMsg(j.message ?? "ছবি তৈরি হচ্ছে…");
+        return;
+      }
+
       if (j?.media_path) {
         setPreview(previewSrc(j.media_path));
+        baseRef.current = j.media_path;
         onAttached(j.media_path);
       }
       setMsg(`✓ ছবি তৈরি হয়েছে (${j?.provider ?? "?"} · ${j?.model ?? "?"}) ও পোস্টে যুক্ত হয়েছে`);
@@ -119,6 +157,59 @@ export function PostImageGenerator({
     }
   };
 
+  // Poll the API until a queued image has been attached *and* Vercel has
+  // rebuilt with it in `public/uploads`. Checking `media_path` alone is not
+  // enough: the post can reference the file before the new build serves it, so
+  // the preview would still 404 for a minute or two.
+  useEffect(() => {
+    if (!queued) return;
+    const started = Date.now();
+
+    const imageLoads = async (url: string): Promise<boolean> => {
+      try {
+        const res = await fetch(url, { method: "HEAD", cache: "no-store" });
+        return res.ok;
+      } catch {
+        return false;
+      }
+    };
+
+    const tick = async () => {
+      try {
+        const res = await fetch(`/api/posts/${postId}/generate-image`, { cache: "no-store" });
+        if (!res.ok) return;
+        const j = (await res.json()) as { media_path?: string | null };
+        const cur = j.media_path ?? null;
+        if (cur && cur !== baseRef.current) {
+          const src = previewSrc(cur);
+          if (await imageLoads(src)) {
+            baseRef.current = cur;
+            setPreview(src);
+            setQueued(false);
+            setStatus(null);
+            setMsg("✓ ছবি তৈরি হয়েছে ও পোস্টে যুক্ত হয়েছে");
+            attachedRef.current(cur);
+            return;
+          }
+          setStatus("ছবি পোস্টে যুক্ত হয়েছে — ডিপ্লয় শেষ হওয়ার অপেক্ষায়…");
+        }
+        if (Date.now() - started > POLL_MAX_MS) {
+          setQueued(false);
+          setStatus(null);
+          setErr(
+            "সময় শেষ — ছবিটি এখনো দেখা যাচ্ছে না। GitHub-এর generate-image রান চেক করুন (Actions ট্যাব), তারপর পেজটি রিফ্রেশ করুন।",
+          );
+        }
+      } catch {
+        /* a transient poll failure must not stop the loop */
+      }
+    };
+
+    const timer = setInterval(() => void tick(), POLL_MS);
+    void tick();
+    return () => clearInterval(timer);
+  }, [queued, postId]);
+
   const available = (opts?.providers ?? []).filter((p) => p.supportsImage);
   const usable = available.some((p) => p.hasKey);
 
@@ -128,11 +219,13 @@ export function PostImageGenerator({
         <h4 className="font-sans-bn text-[14px] font-bold text-ink">✨ এআই দিয়ে ছবি তৈরি করুন</h4>
         {opts && (
           <span className="font-mono-x text-[10px] text-ink-soft">
-            {available.length === 0
-              ? "কোনো ইমেজ প্রোভাইডার নেই (purpose = image)"
-              : usable
-                ? `${available.length} প্রোভাইডার সক্রিয়`
-                : "কী সেট করা নেই — একটি প্রোভাইডার কী যোগ করুন"}
+            {via === "runner"
+              ? "GitHub Actions রানারে তৈরি হবে (মিডিয়া সার্ভারে সংরক্ষিত হয়)"
+              : available.length === 0
+                ? "কোনো ইমেজ প্রোভাইডার নেই (purpose = image)"
+                : usable
+                  ? `${available.length} প্রোভাইডার সক্রিয়`
+                  : "কী সেট করা নেই — একটি প্রোভাইডার কী যোগ করুন"}
           </span>
         )}
       </div>
@@ -145,6 +238,7 @@ export function PostImageGenerator({
       {msg && (
         <p className="mt-3 border border-cat-teal bg-cat-teal/10 px-3 py-2 text-[12.5px] font-bold text-ink">{msg}</p>
       )}
+      {status && <p className="mt-3 text-[12.5px] text-ink-soft">{status}</p>}
 
       <div className="mt-3">
         <label className="block">
@@ -233,11 +327,23 @@ export function PostImageGenerator({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button className={btnLime} onClick={() => void generate()} disabled={busy || !prompt.trim()}>
-          {busy ? "ছবি তৈরি হচ্ছে…" : "🪄 ছবি তৈরি + যুক্ত করুন"}
+        <button
+          className={btnLime}
+          onClick={() => void generate()}
+          disabled={busy || queued || !prompt.trim()}
+        >
+          {busy
+            ? "ছবি তৈরি হচ্ছে…"
+            : queued
+              ? "⏳ রানারে তৈরি হচ্ছে…"
+              : via === "runner"
+                ? "🪄 ছবি তৈরি করুন (সার্ভারে)"
+                : "🪄 ছবি তৈরি + যুক্ত করুন"}
         </button>
         <span className="text-[11px] text-ink-soft">
-          তৈরি হলে ছবিটি সাথে সাথে এই পোস্টে যুক্ত হয়ে যায়; চাইলে পরে বদলাতে পারবেন।
+          {via === "runner"
+            ? "ছবিটি GitHub Actions-এ তৈরি হয়ে মিডিয়া ফোল্ডারে সংরক্ষিত হবে — ডিপ্লয় শেষ হলে এখানেই দেখাবে।"
+            : "তৈরি হলে ছবিটি সাথে সাথে এই পোস্টে যুক্ত হয়ে যায়; চাইলে পরে বদলাতে পারবেন।"}
         </span>
       </div>
 

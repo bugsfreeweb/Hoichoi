@@ -33,6 +33,7 @@ export default async function AdminSetupPage() {
   };
 
   const runs: Array<{ status: string; error: string | null; started_at: string }> = [];
+  let dbUnavailable = false;
   if (canSeeOps) {
     try {
       const rows = await recentPipelineRuns(20);
@@ -40,7 +41,10 @@ export default async function AdminSetupPage() {
         ...rows.map((r) => ({ status: r.status, error: r.error, started_at: r.started_at })),
       );
     } catch {
-      // A database hiccup must not blank the guide; the static help still works.
+      // A database hiccup must not blank the guide. Flag it so the checklist
+      // renders each secret as unknown rather than falsely "missing" — an
+      // outage used to look identical to an unconfigured install.
+      dbUnavailable = true;
     }
   }
 
@@ -76,6 +80,7 @@ export default async function AdminSetupPage() {
           manualRun={manualRun}
           lastRun={lastRun}
           preflightBlocked={preflightBlocked}
+          dbUnavailable={dbUnavailable}
         />
       </div>
 

@@ -1037,6 +1037,7 @@ html[data-theme="light"] .admin-console .text-alizarin { color: #d2202c; }
 html[data-theme="light"] .admin-console .bg-ink { background-color: #1a140d; }
 html[data-theme="light"] .admin-console .bg-ink\/25 { background-color: rgba(26, 20, 13, 0.28); }
 html[data-theme="light"] .admin-console .bg-ink\/80 { background-color: rgba(26, 20, 13, 0.82); }
+html[data-theme="light"] .admin-console .bg-ink\/95 { background-color: rgba(26, 20, 13, 0.95); }
 html[data-theme="light"] .admin-console .bg-paper { background-color: #f3eee1; }
 html[data-theme="light"] .admin-console .bg-paper-deep { background-color: #e9e2cf; }
 html[data-theme="light"] .admin-console .border-ink { border-color: rgba(26, 20, 13, 0.16); }

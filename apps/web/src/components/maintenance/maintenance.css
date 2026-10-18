@@ -12,10 +12,13 @@
   background: var(--mc-bg);
   color: var(--mc-text);
   position: relative;
-  /* The grain overlay uses inset:-60% and the ticker uses width:max-content;
-     neither should ever push the page (or the admin preview box) sideways.
-     `clip` contains them without becoming a scrollport. */
-  overflow-x: clip;
+  /* The grain overlay uses inset:-60% and the dust uses translateY(-110vh),
+     so both spill far past the box vertically; the ticker uses
+     width:max-content and spills horizontally. `overflow-x: clip` alone left
+     the vertical overflow visible, so the document grew a stray scrollbar and
+     a tall blank band appeared after the footer. Clipping both axes contains
+     every decorative layer without becoming a scrollport. */
+  overflow: clip;
 }
 
 /* centered editorial column */

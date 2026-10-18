@@ -56,6 +56,8 @@ export async function GET() {
     present: verdict.present,
     missing: verdict.missing,
     noSuccessYet: verdict.noSuccessYet,
+    /** The run-history read failed: per-secret presence is unknown, not absent. */
+    dbUnavailable: Boolean(runsError),
     runs,
     runsError,
   });

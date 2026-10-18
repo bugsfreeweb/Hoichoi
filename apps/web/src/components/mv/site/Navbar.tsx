@@ -10,7 +10,7 @@ import ThemeToggle from "@/components/mv/ui/ThemeToggle";
 import BrandLogo, { type LogoEngine } from "@/components/mv/ui/BrandLogo";
 import SearchButton from "@/components/mv/site/SearchButton";
 import { Magnetic } from "@/components/mv/ui/motion";
-import { CATEGORY_MIX } from "@/lib/mv/data";
+import { useMvData } from "@/components/mv/ui/mv-data";
 import { bn } from "@/lib/mv/format";
 
 const NAV = [
@@ -236,6 +236,7 @@ function GlassDock({ engine = "signal" }: { engine?: LogoEngine }) {
 
 /* ── variant 3: split mega ───────────────────────────── */
 function SplitMega({ engine = "cube" }: { engine?: LogoEngine }) {
+  const { categoryMix: CATEGORY_MIX } = useMvData();
   const scrolled = useScrolled();
   const [open, setOpen] = useState(false);
   const [mega, setMega] = useState(false);

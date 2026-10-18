@@ -9,8 +9,10 @@ import {
   recentPipelineRuns,
   runHistoryByDay,
   statsSnapshot,
+  storageSnapshot,
+  trafficSnapshot,
 } from "@hoichoi/db";
-import type { AnalyticsRange } from "@hoichoi/shared-types";
+import type { AnalyticsRange, StorageSnapshot, TrafficSnapshot } from "@hoichoi/shared-types";
 import type {
   DashCategory,
   DashContentRow,
@@ -77,18 +79,26 @@ function pctDelta(values: number[]): number {
 
 export async function buildAdminDashboard(
   range: DashRange = "all",
-): Promise<{ model: DashModel; contentTotal: number }> {
-  const [analytics, radar, stats, runs, runDays, queues, cats, sourceRows, queue] = await Promise.all([
-    analyticsSnapshot(range as AnalyticsRange),
-    radarSnapshot(),
-    statsSnapshot(),
-    recentPipelineRuns(12),
-    runHistoryByDay(TREND_DAYS),
-    countReviewQueues(),
-    listCategories(),
-    dashboardSources(),
-    listContentQueue({ tab: "all", page: 1, pageSize: CONTENT_ROWS }),
-  ]);
+): Promise<{
+  model: DashModel;
+  contentTotal: number;
+  traffic: TrafficSnapshot | null;
+  storage: StorageSnapshot | null;
+}> {
+  const [analytics, radar, stats, runs, runDays, queues, cats, sourceRows, queue, traffic, storage] =
+    await Promise.all([
+      analyticsSnapshot(range as AnalyticsRange),
+      radarSnapshot(),
+      statsSnapshot(),
+      recentPipelineRuns(12),
+      runHistoryByDay(TREND_DAYS),
+      countReviewQueues(),
+      listCategories(),
+      dashboardSources(),
+      listContentQueue({ tab: "all", page: 1, pageSize: CONTENT_ROWS }),
+      trafficSnapshot("24h").catch(() => null),
+      storageSnapshot().catch(() => null),
+    ]);
 
   const catMeta = new Map(cats.map((c) => [c.slug, c]));
   const normalizeDot = (dot: string | null | undefined) =>
@@ -251,5 +261,5 @@ export async function buildAdminDashboard(
     health,
   };
 
-  return { model, contentTotal: queue.total };
+  return { model, contentTotal: queue.total, traffic, storage };
 }

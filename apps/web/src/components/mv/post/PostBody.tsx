@@ -21,7 +21,7 @@ import PostImage from "@/components/mv/ui/PostImage";
 import { CountUp, Reveal, Stagger, StaggerItem } from "@/components/mv/ui/motion";
 import { EngagementAreaChart, EngagementPie, RetentionBar, SentimentRadar, ChartCard } from "@/components/mv/charts";
 import type { PostRecord } from "@/lib/mv/posts";
-import { HOURLY_VIEWS, ENGAGEMENT_MIX, SENTIMENT_RADAR, READ_HEATMAP, TRAFFIC_SOURCES, RETENTION } from "@/lib/mv/data";
+import { useMvData } from "@/components/mv/ui/mv-data";
 import { bn, bnCompact } from "@/lib/mv/format";
 
 type Block = { type?: string; text?: string; cite?: string; items?: string[] };
@@ -293,6 +293,7 @@ export function PostAnalytics({
 
 /* ── variant 1 · engagement dashboard ───────────────────────────── */
 function EngagementDashboard({ post, density }: { post: PostRecord; density: "compact" | "comfortable" | "spacious" }) {
+  const { hourlyViews: HOURLY_VIEWS, engagementMix: ENGAGEMENT_MIX, retention: RETENTION } = useMvData();
   return (
     <SectionShell id="post-analytics" density={density}>
       <SectionHead
@@ -317,7 +318,7 @@ function EngagementDashboard({ post, density }: { post: PostRecord; density: "co
           </ChartCard>
         </Reveal>
         <Reveal delay={0.14}>
-          <ChartCard title="রিড রিটেনশন" sub="কত শতাংশ পাঠক কতক্ষণ থাকে" height={240}>
+          <ChartCard title="সময়ভিত্তিক পাঠ" sub="দিনের কোন ভাগে কতটা পড়া হয়" height={240}>
             <RetentionBar data={RETENTION} height={240} />
           </ChartCard>
         </Reveal>
@@ -346,6 +347,7 @@ function EngagementDashboard({ post, density }: { post: PostRecord; density: "co
 
 /* ── variant 2 · sparkline row ───────────────────────────── */
 function SparkRow({ post, density }: { post: PostRecord; density: "compact" | "comfortable" | "spacious" }) {
+  const { hourlyViews: HOURLY_VIEWS, engagementMix: ENGAGEMENT_MIX } = useMvData();
   const tiles = [
     { k: "ভিউ", v: post.views, data: HOURLY_VIEWS.map((h) => h.views), color: "#ff5c38" },
     { k: "শেয়ার", v: post.shares, data: HOURLY_VIEWS.map((h) => h.shares * 12), color: "#56c8ff" },
@@ -380,22 +382,23 @@ function SparkRow({ post, density }: { post: PostRecord; density: "compact" | "c
 
 /* ── variant 3 · sentiment radar ───────────────────────────── */
 function SentimentPanel({ post, density }: { post: PostRecord; density: "compact" | "comfortable" | "spacious" }) {
+  const { sentimentRadar: SENTIMENT_RADAR, trafficSources: TRAFFIC_SOURCES, readHeatmap: READ_HEATMAP } = useMvData();
   return (
     <SectionShell id="post-analytics" density={density}>
       <SectionHead
         kicker="▚ TONE & READER PATTERN"
-        title={<>লেখার টোন আর <span className="text-gradient">পাঠকের ছন্দ</span></>}
-        desc="LLM টোন বিশ্লেষণ, সপ্তাহভিত্তিক পড়ার হিটম্যাপ আর ট্রাফিকের উৎস।"
+        title={<>ডিভাইস বণ্টন আর <span className="text-gradient">পাঠকের ছন্দ</span></>}
+        desc="সেশনভিত্তিক ডিভাইস বিশ্লেষণ, সপ্তাহভিত্তিক পড়ার হিটম্যাপ আর পাঠকের দেশ।"
       />
       <div className="grid gap-4 lg:grid-cols-3">
         <Reveal>
-          <ChartCard title="সেন্টিমেন্ট রেডার" sub="পাঁচ মাত্রায় টোন স্কোর" height={270}>
+          <ChartCard title="ডিভাইস রেডার" sub="ডিভাইস অনুযায়ী সেশনের ভাগ" height={270}>
             <SentimentRadar data={SENTIMENT_RADAR} height={270} />
           </ChartCard>
         </Reveal>
         <Reveal delay={0.08} className="lg:col-span-2">
           <div className="surface h-full rounded-2xl p-6">
-            <p className="mono-label mb-4 text-mist-400">TRAFFIC SOURCES</p>
+            <p className="mono-label mb-4 text-mist-400">TOP COUNTRIES</p>
             <div className="space-y-3.5">
               {TRAFFIC_SOURCES.map((t, i) => (
                 <div key={t.name}>
@@ -427,6 +430,7 @@ function SentimentPanel({ post, density }: { post: PostRecord; density: "compact
 }
 
 function StoryTrend({ post, density }: { post: PostRecord; density: "compact" | "comfortable" | "spacious" }) {
+  const { hourlyViews: HOURLY_VIEWS } = useMvData();
   return (
     <SectionShell id="post-analytics" density={density}>
       <SectionHead kicker="২৪ ঘণ্টার পাঠ-প্রবণতা" title={<>পাঠক কখন <span className="text-gradient">খবরটি পড়েছেন</span></>} desc="প্রকাশের পর প্রথম দিনের ভিউ, ভাগ ও মন্তব্যের ওঠানামা।" />

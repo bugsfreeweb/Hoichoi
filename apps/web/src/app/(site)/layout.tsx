@@ -7,10 +7,13 @@ import TrafficTracker from "@/components/TrafficTracker";
 import { currentUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { countReviewQueues, getSpecialNotice, parseAppConfig, recentPipelineRuns, statsSnapshot } from "@hoichoi/db";
-import { loadLive } from "@/lib/mv/live";
+import { getLive } from "@/lib/mv/live";
 import { isMvMode } from "@/lib/mv/variant";
+import { buildMvData } from "@/lib/mv/live-data";
+import { DEFAULT_MV_DATA } from "@/lib/mv/data";
 import MvChrome from "@/components/mv/MvChrome";
-import { cookies } from "next/headers";
+import { MvDataProvider } from "@/components/mv/ui/mv-data";
+import ScrollToTop from "@/components/ScrollToTop";
 import type { Metadata } from "next";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -68,17 +71,21 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   }
   // Mockup design engine: when the admin picks any non-default variant, the
   // whole site renders the scoped [data-mv] chrome around the page content.
-  // An admin signed in with the short-lived preview cookie sees the chosen look
-  // rendered live without it being persisted to settings.
-  const previewCookie = (await cookies()).get("hoichoi-preview-variant")?.value;
-  const previewVariant = previewCookie && (await currentUser()) ? previewCookie : undefined;
-  const live = await loadLive(previewVariant).catch(() => null);
+  // A signed-in admin with the short-lived preview cookie sees their in-memory
+  // design draft — every section's variant *and* show/hide state — rendered
+  // live without it being persisted to settings.
+  const live = await getLive().catch(() => null);
   if (live && isMvMode(live)) {
+    // Real DB bundle so the alternate design variants render production
+    // content; falls back to the deterministic sample if the DB is unreachable.
+    const mvData = await buildMvData().catch(() => DEFAULT_MV_DATA);
     return (
-      <MvChrome live={live} accent={settings.accent_color}>
-        <TrafficTracker />
-        {children}
-      </MvChrome>
+      <MvDataProvider value={mvData}>
+        <MvChrome live={live} accent={settings.accent_color}>
+          <TrafficTracker />
+          {children}
+        </MvChrome>
+      </MvDataProvider>
     );
   }
   return (
@@ -94,6 +101,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <NoticeBanner notice={specialNotice} />
       {children}
       {cfg.show_footer && <Footer />}
+      <ScrollToTop />
     </div>
   );
 }

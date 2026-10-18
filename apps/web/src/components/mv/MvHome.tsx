@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { statsSnapshot } from "@hoichoi/db";
 import { DEFAULT_BRAND } from "@/lib/mv/settings";
 import { listPosts } from "@/lib/mv/posts";
 import { orderFor, enabledFor, variantFor, CHROME_KEYS, type MvLive } from "@/lib/mv/variant";
@@ -15,13 +16,16 @@ import { Academy, Briefing, LiveWire } from "@/components/mv/home/Extras";
 
 /** The mockup home page composition, driven by the persisted variant engine. */
 export default async function MvHome({ live }: { live: MvLive }) {
-  const posts = await listPosts(12);
+  const [posts, stats] = await Promise.all([
+    listPosts(12),
+    statsSnapshot().catch(() => null),
+  ]);
   const featured = posts.find((p) => p.featured) ?? posts[0] ?? null;
   const rest = posts.filter((p) => p.slug !== featured?.slug);
   const totals: Totals = {
-    collected: 12480,
-    published: 940,
-    dupes: 214,
+    collected: stats?.collectedToday ?? posts.length,
+    published: stats?.published ?? posts.length,
+    dupes: stats?.duplicatesBlocked ?? 0,
     comments: posts.reduce((sum, p) => sum + p.comments, 0),
   };
   const density = DEFAULT_BRAND.density;

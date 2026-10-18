@@ -37,25 +37,27 @@ const BADGE: Record<
   optional: { label: "ঐচ্ছিক", cls: "border-white/15 bg-white/5 text-white/50" },
 };
 
-function SecretCard({ s }: { s: SecretView }) {
+function SecretCard({ s, unknown = false }: { s: SecretView; unknown?: boolean }) {
   const badge = BADGE[s.requirement];
+  const dotCls = unknown
+    ? "bg-white/8 text-white/45"
+    : s.present
+      ? "bg-lime/20 text-lime"
+      : s.requirement === "required"
+        ? "bg-alizarin/20 text-alizarin"
+        : "bg-white/8 text-white/40";
+  const dotGlyph = unknown ? "?" : s.present ? "✓" : s.requirement === "required" ? "!" : "–";
   return (
     <details
       className={`group rounded-xl border bg-panel/50 ${
-        s.satisfied ? "border-white/10" : "border-alizarin/40"
+        unknown || s.satisfied ? "border-white/10" : "border-alizarin/40"
       }`}
     >
       <summary className="flex cursor-pointer list-none items-center gap-3 p-4">
         <span
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black ${
-            s.present
-              ? "bg-lime/20 text-lime"
-              : s.requirement === "required"
-                ? "bg-alizarin/20 text-alizarin"
-                : "bg-white/8 text-white/40"
-          }`}
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black ${dotCls}`}
         >
-          {s.present ? "✓" : s.requirement === "required" ? "!" : "–"}
+          {dotGlyph}
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
@@ -67,7 +69,7 @@ function SecretCard({ s }: { s: SecretView }) {
             >
               {badge.label}
             </span>
-            {s.present && (
+            {s.present && !unknown && (
               <span className="rounded-full border border-lime/30 bg-lime/10 px-2 py-0.5 font-mono-x text-[9px] text-lime">
                 সেট হয়েছে
               </span>
@@ -130,9 +132,11 @@ function SecretCard({ s }: { s: SecretView }) {
         </p>
 
         <p className="text-[11.5px] text-white/40">
-          {s.present && s.updatedAt
-            ? `সর্বশেষ হালনাগাদ: ${new Date(s.updatedAt).toLocaleString("bn-BD")}`
-            : "এখনো GitHub-এ সেট করা হয়নি।"}
+          {unknown
+            ? "এখন যাচাই করা গেল না — ডেটাবেসে পৌঁছানো যাচ্ছে না।"
+            : s.present && s.updatedAt
+              ? `সর্বশেষ হালনাগাদ: ${new Date(s.updatedAt).toLocaleString("bn-BD")}`
+              : "এখনো GitHub-এ সেট করা হয়নি।"}
         </p>
       </div>
     </details>
@@ -144,6 +148,7 @@ export function SetupGuide({
   manualRun,
   lastRun,
   preflightBlocked,
+  dbUnavailable = false,
 }: {
   secrets: SecretView[];
   manualRun: {
@@ -155,27 +160,44 @@ export function SetupGuide({
   };
   lastRun: { status: string; error: string | null; started_at: string | null } | null;
   preflightBlocked: boolean;
+  /** The run-history read failed, so per-secret presence is unknown, not absent. */
+  dbUnavailable?: boolean;
 }) {
-  const missingRequired = secrets.filter((s) => s.requirement === "required" && !s.satisfied);
-  const allReady = missingRequired.length === 0;
+  const missingRequired = dbUnavailable
+    ? []
+    : secrets.filter((s) => s.requirement === "required" && !s.satisfied);
+  const allReady = !dbUnavailable && missingRequired.length === 0;
+  const presentCount = dbUnavailable ? 0 : secrets.filter((s) => s.present).length;
 
   return (
     <div className="space-y-8">
       {/* ============ STATUS BANNER ============ */}
       <section
         className={`rounded-2xl border p-6 ${
-          allReady
-            ? "border-lime/40 bg-lime/[0.07]"
-            : "border-alizarin/40 bg-alizarin/[0.07]"
+          dbUnavailable
+            ? "border-amber/40 bg-amber/[0.07]"
+            : allReady
+              ? "border-lime/40 bg-lime/[0.07]"
+              : "border-alizarin/40 bg-alizarin/[0.07]"
         }`}
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <h2 className="font-serif-bn text-[26px] leading-tight font-black text-white">
-              {allReady ? "সেটআপ সম্পূর্ণ" : "সেটআপ অসম্পূর্ণ"}
+              {dbUnavailable
+                ? "স্ট্যাটাস যাচাই করা যাচ্ছে না"
+                : allReady
+                  ? "সেটআপ সম্পূর্ণ"
+                  : "সেটআপ অসম্পূর্ণ"}
             </h2>
             <p className="mt-1.5 text-[13.5px] leading-relaxed text-white/70">
-              {allReady ? (
+              {dbUnavailable ? (
+                <>
+                  <strong className="text-amber">ডেটাবেসে এখন পৌঁছানো যাচ্ছে না।</strong>{" "}
+                  তাই কোন সিক্রেট সেট আছে তা পড়ে দেখা গেল না — নিচের চেকলিস্ট এখন শুধু
+                  রেফারেন্স, “অনুপস্থিত” নয়। ডেটাবেস ঠিক হলে পেজটি রিফ্রেশ করে আবার দেখুন।
+                </>
+              ) : allReady ? (
                 <>
                   সব আবশ্যক সিক্রেট GitHub-এ সেট আছে। নিচের ধাপগুলো শুধু ঐচ্ছিক উন্নতির জন্য।
                 </>
@@ -191,8 +213,8 @@ export function SetupGuide({
           </div>
           <div className="shrink-0 text-right">
             <p className="font-mono-x text-[34px] leading-none font-black text-white">
-              {secrets.filter((s) => s.present).length}
-              <span className="text-white/30">/{secrets.length}</span>
+              {dbUnavailable ? "—" : presentCount}
+              {!dbUnavailable && <span className="text-white/30">/{secrets.length}</span>}
             </p>
             <p className="font-mono-x text-[9.5px] tracking-[0.18em] text-white/40 uppercase">
               secrets ready
@@ -286,7 +308,7 @@ export function SetupGuide({
           ধাপ ১ · প্রতিটি সিক্রেট বিস্তারিত
         </h3>
         {secrets.map((s) => (
-          <SecretCard key={s.name} s={s} />
+          <SecretCard key={s.name} s={s} unknown={dbUnavailable} />
         ))}
       </section>
 

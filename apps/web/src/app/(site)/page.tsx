@@ -12,7 +12,7 @@ import { AdSlot } from "@/components/AdSlot";
 import { Reveal } from "@/components/Reveal";
 import { HomeLiveProvider } from "@/components/home/live-data";
 import { getSettings } from "@/lib/settings";
-import { loadLive } from "@/lib/mv/live";
+import { getLive } from "@/lib/mv/live";
 import { isMvMode } from "@/lib/mv/variant";
 import MvHome from "@/components/mv/MvHome";
 import { timeBn, readMinutesBn, shortId, bnNum } from "@/lib/bn";
@@ -36,7 +36,7 @@ export default async function HomePage({
 }) {
   const sp = await searchParams;
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
-  const live = await loadLive().catch(() => null);
+  const live = await getLive().catch(() => null);
   if (live && isMvMode(live)) {
     return <MvHome live={live} />;
   }

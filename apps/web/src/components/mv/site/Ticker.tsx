@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { Activity, AlertTriangle, Radio, ShieldCheck } from "lucide-react";
 import { Badge, LiveDot } from "@/components/mv/ui/primitives";
 import { Marquee, LiveClock } from "@/components/mv/ui/motion";
-import { TICKER_ITEMS, PIPELINE_GAUGES } from "@/lib/mv/data";
+import { useMvData } from "@/components/mv/ui/mv-data";
 import { bn } from "@/lib/mv/format";
 
 const toneColor: Record<string, string> = {
@@ -25,6 +25,7 @@ export default function Ticker({ variant }: { variant: string }) {
 
 /* ── variant 1: breaking marquee ───────────────────────────── */
 function BreakingMarquee() {
+  const { tickerItems: TICKER_ITEMS } = useMvData();
   return (
     <div className="relative z-50 border-b border-white/8 bg-ink-950/90 backdrop-blur">
       <div className="flex items-stretch">
@@ -56,6 +57,7 @@ function BreakingMarquee() {
 
 /* ── variant 2: pulse strip ───────────────────────────── */
 function PulseStrip() {
+  const { pipelineGauges: PIPELINE_GAUGES } = useMvData();
   return (
     <div className="relative z-50 border-b border-white/8 bg-ink-900/70 backdrop-blur">
       <div className="mx-auto flex max-w-[1600px] items-center gap-3 overflow-x-auto px-5 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -80,6 +82,7 @@ function PulseStrip() {
 
 /* ── variant 3: datafeed minimal ───────────────────────────── */
 function DatafeedStrip() {
+  const { tickerItems: TICKER_ITEMS } = useMvData();
   return (
     <div className="relative z-50 overflow-hidden border-b border-white/8 bg-ink-950">
       <div className="mask-fade-r">
@@ -118,6 +121,7 @@ function DatafeedStrip() {
 
 /* ── variant 4: news bulletin ───────────────────────────── */
 function BulletinBar() {
+  const { tickerItems: TICKER_ITEMS } = useMvData();
   return (
     <div className="relative z-50 border-b border-white/8 bg-ink-950 py-2 px-5">
       <div className="mx-auto max-w-[1600px] flex items-center justify-between gap-4">

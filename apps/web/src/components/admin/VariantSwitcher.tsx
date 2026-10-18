@@ -15,70 +15,15 @@ type Status = { kind: "ok" | "err"; text: string } | null;
 
 const ZONE_ORDER: SectionZone[] = ["header", "hero", "main", "major", "footer"];
 
-/** Renders the live public site inside a modal with the chosen look applied in
- *  memory (cookie overlay), so an admin can inspect a design before committing. */
-function PreviewModal({
-  variant,
-  label,
-  onClose,
-  onApply,
-  busy,
-}: {
-  variant: string;
-  label: string;
-  onClose: () => void;
-  onApply: () => void;
-  busy: boolean;
-}) {
-  const [ready, setReady] = useState(false);
-  const src = useMemo(() => `/?_pv=${Date.now()}`, []);
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-ink/80 backdrop-blur-sm">
-      <div className="flex flex-wrap items-center gap-3 border-b border-white/12 bg-ink px-4 py-2.5 text-paper">
-        <span className="text-[13px] font-bold">প্রিভিউ — {label}</span>
-        <span className="font-mono-x text-[10px] tracking-[0.18em] text-white/50 uppercase">{variant}</span>
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void onApply()}
-            className="border border-lime/60 bg-lime/15 px-3 py-1.5 text-[12px] font-bold text-lime transition hover:bg-lime/25 disabled:opacity-40"
-          >
-            এই নকশা প্রয়োগ করুন
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="border border-white/25 px-3 py-1.5 text-[12px] font-bold text-white/80 transition hover:border-white/50 hover:text-white"
-          >
-            বন্ধ করুন
-          </button>
-        </div>
-      </div>
-      <div className="relative min-h-0 flex-1 bg-white">
-        {!ready ? (
-          <div className="absolute inset-0 grid place-items-center bg-paper text-[13px] text-ink-soft">
-            লাইভ প্রিভিউ লোড হচ্ছে…
-          </div>
-        ) : null}
-        <iframe
-          key={src}
-          src={src}
-          title="সাইট প্রিভিউ"
-          onLoad={() => setReady(true)}
-          className="h-full w-full border-0"
-        />
-      </div>
-    </div>
-  );
-}
-
 /**
- * Admin switcher for the section variant engine. Every section offers the
- * shipped `"default"` design plus the ported mockup variants, and a whole-site
- * preset applies a coherent look across every section at once. Each whole-site
- * look can be previewed live before it is applied, and `"default"` always
- * restores the shipped production design for the entire site.
+ * Admin studio for the section variant engine.
+ *
+ * Every changeable design control lives here — the whole-site preset, the
+ * accent colour, and each section's variant **and** show/hide toggle. Opening
+ * the studio renders the real public site inside an iframe with the current
+ * draft applied in memory (short-lived cookie, never persisted), so an admin
+ * can see exactly how the whole page will look — including which sections are
+ * hidden — and keep tweaking in real time before applying anything.
  */
 export function VariantSwitcher({
   initialSections,
@@ -95,9 +40,12 @@ export function VariantSwitcher({
   const [siteVariant, setSiteVariant] = useState(initialSiteVariant);
   const [accent, setAccent] = useState(accentColor);
   const [dirty, setDirty] = useState<Set<string>>(new Set());
+  const [siteDirty, setSiteDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<Status>(null);
-  const [preview, setPreview] = useState<{ variant: string; label: string } | null>(null);
+  const [studio, setStudio] = useState(false);
+  const [nonce, setNonce] = useState(0);
+  const [frameReady, setFrameReady] = useState(false);
 
   const grouped = useMemo(() => {
     return ZONE_ORDER.map((zone) => ({
@@ -106,7 +54,7 @@ export function VariantSwitcher({
     })).filter((g) => g.items.length > 0);
   }, [sections]);
 
-  // The preview cookie is cleared whenever the modal closes or the component
+  // The preview cookie is cleared whenever the studio closes or the component
   // unmounts, so a forgotten preview can never linger on the public site.
   useEffect(() => {
     return () => {
@@ -114,15 +62,97 @@ export function VariantSwitcher({
     };
   }, []);
 
+  // While the studio is open, push the whole draft (debounced) and reload the
+  // preview iframe, so preset, accent, per-section variant and show/hide changes
+  // are all reflected in real time.
+  useEffect(() => {
+    if (!studio) return;
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetch("/api/admin/preview", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              siteVariant,
+              sections: sections.map((s) => ({ key: s.key, variant: s.variant, enabled: s.enabled })),
+            }),
+          });
+          const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+          if (!res.ok || !data?.ok) throw new Error(data?.error ?? "প্রিভিউ লোড করা যায়নি।");
+          setNonce((n) => n + 1);
+        } catch (e) {
+          setStatus({ kind: "err", text: e instanceof Error ? e.message : "প্রিভিউ লোড করা যায়নি।" });
+        }
+      })();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [studio, siteVariant, sections]);
+
+  useEffect(() => {
+    setFrameReady(false);
+  }, [nonce]);
+
   const patch = (key: string, fields: Partial<SectionState>) => {
     setSections((prev) => prev.map((s) => (s.key === key ? { ...s, ...fields } : s)));
     setDirty((prev) => new Set(prev).add(key));
   };
 
-  async function save() {
+  const changeCount = dirty.size + (siteDirty ? 1 : 0);
+
+  async function reloadSections() {
+    const res = await fetch("/api/admin/sections", { cache: "no-store" });
+    const data = (await res.json().catch(() => null)) as
+      | { ok?: boolean; sections?: SectionState[]; siteVariant?: string }
+      | null;
+    if (data?.ok && data.sections) setSections(data.sections);
+    if (data?.siteVariant) setSiteVariant(data.siteVariant);
+  }
+
+  /** Updates the local draft to a whole-site preset without persisting it. */
+  function selectSitePreset(id: string) {
+    setSiteVariant(id);
+    setSiteDirty(true);
+    if (id === DEFAULT_VARIANT) {
+      setSections((prev) => prev.map((s) => ({ ...s, variant: s.meta.defaultVariant })));
+      return;
+    }
+    const preset = PRESETS.find((p) => p.id === id);
+    if (preset) {
+      setSections((prev) => prev.map((s) => ({ ...s, variant: preset.values[s.key] ?? s.variant })));
+    }
+  }
+
+  function openStudio(id?: string) {
+    if (id) selectSitePreset(id);
+    setStatus(null);
+    setFrameReady(false);
+    setStudio(true);
+  }
+
+  async function closeStudio() {
+    setStudio(false);
+    await fetch("/api/admin/preview", { method: "DELETE" }).catch(() => {});
+    // Revert any un-applied local edits back to the saved design.
+    await reloadSections();
+    setDirty(new Set());
+    setSiteDirty(false);
+  }
+
+  /** Persists the current draft (site preset first, then per-section edits). */
+  async function persistDraft(): Promise<boolean> {
     setBusy(true);
     setStatus(null);
     try {
+      if (siteDirty) {
+        const res = await fetch("/api/admin/sections", {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ siteVariant }),
+        });
+        const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+        if (!res.ok || !data?.ok) throw new Error(data?.error ?? "সেভ করা যায়নি।");
+      }
       const targets = sections.filter((s) => dirty.has(s.key));
       for (const s of targets) {
         const res = await fetch("/api/admin/sections", {
@@ -134,23 +164,23 @@ export function VariantSwitcher({
         if (!res.ok || !data?.ok) throw new Error(data?.error ?? "সেভ করা যায়নি।");
       }
       setDirty(new Set());
-      setStatus({ kind: "ok", text: "সেকশন সেটিংস সংরক্ষিত হয়েছে।" });
+      setSiteDirty(false);
+      setStatus({ kind: "ok", text: "নকশা সংরক্ষিত হয়েছে — পুরো সাইটে প্রযোজ্য।" });
+      await reloadSections();
+      return true;
     } catch (e) {
       setStatus({ kind: "err", text: e instanceof Error ? e.message : "সেভ করা যায়নি।" });
+      return false;
     } finally {
       setBusy(false);
     }
   }
 
-  async function reloadSections() {
-    const res = await fetch("/api/admin/sections", { cache: "no-store" });
-    const data = (await res.json().catch(() => null)) as
-      | { ok?: boolean; sections?: SectionState[]; siteVariant?: string }
-      | null;
-    if (data?.ok && data.sections) setSections(data.sections);
-    if (data?.siteVariant) setSiteVariant(data.siteVariant);
+  async function applyStudio() {
+    if (await persistDraft()) await closeStudio();
   }
 
+  /** Persists one whole-site look immediately (used by the reset shortcut). */
   async function applySiteVariant(variant: string) {
     setBusy(true);
     setStatus(null);
@@ -164,6 +194,7 @@ export function VariantSwitcher({
       if (!res.ok || !data?.ok) throw new Error(data?.error ?? "সেভ করা যায়নি।");
       setSiteVariant(variant);
       setDirty(new Set());
+      setSiteDirty(false);
       setStatus({
         kind: "ok",
         text:
@@ -172,36 +203,11 @@ export function VariantSwitcher({
             : "নকশা প্রয়োগ হয়েছে — পুরো সাইটে প্রযোজ্য।",
       });
       await reloadSections();
-      setPreview(null);
     } catch (e) {
       setStatus({ kind: "err", text: e instanceof Error ? e.message : "সেভ করা যায়নি।" });
     } finally {
       setBusy(false);
     }
-  }
-
-  async function openPreview(variant: string, label: string) {
-    setBusy(true);
-    setStatus(null);
-    try {
-      const res = await fetch("/api/admin/preview", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ variant }),
-      });
-      const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
-      if (!res.ok || !data?.ok) throw new Error(data?.error ?? "প্রিভিউ শুরু করা যায়নি।");
-      setPreview({ variant, label });
-    } catch (e) {
-      setStatus({ kind: "err", text: e instanceof Error ? e.message : "প্রিভিউ শুরু করা যায়নি।" });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function closePreview() {
-    setPreview(null);
-    await fetch("/api/admin/preview", { method: "DELETE" }).catch(() => {});
   }
 
   async function saveAccent(hex: string) {
@@ -217,6 +223,8 @@ export function VariantSwitcher({
       const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
       if (!res.ok || !data?.ok) throw new Error(data?.error ?? "রং সংরক্ষণ করা যায়নি।");
       setStatus({ kind: "ok", text: "অ্যাকসেন্ট রং সংরক্ষিত হয়েছে।" });
+      // The accent is read server-side, so reload the preview to show it.
+      if (studio) setNonce((n) => n + 1);
     } catch (e) {
       setStatus({ kind: "err", text: e instanceof Error ? e.message : "রং সংরক্ষণ করা যায়নি।" });
     } finally {
@@ -227,18 +235,8 @@ export function VariantSwitcher({
   const siteIsPreset = PRESETS.some((p) => p.id === siteVariant);
   const activeLook = siteIsPreset ? siteVariant : DEFAULT_VARIANT;
 
-  return (
-    <div className={fullWidth ? "space-y-6" : "space-y-6 max-w-3xl"}>
-      {preview ? (
-        <PreviewModal
-          variant={preview.variant}
-          label={preview.label}
-          busy={busy}
-          onClose={() => void closePreview()}
-          onApply={() => void applySiteVariant(preview.variant)}
-        />
-      ) : null}
-
+  const controls = (
+    <>
       <div className="border border-ink/20 bg-paper-deep p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h3 className="font-sans-bn text-[15px] font-bold text-ink">সাইট-ডিফল্ট নকশা</h3>
@@ -247,16 +245,27 @@ export function VariantSwitcher({
           </span>
         </div>
         <p className="mt-1 max-w-3xl text-[12px] leading-relaxed text-ink-soft">
-          যেকোনো নকশা <span className="font-bold text-ink">প্রিভিউ</span> করে দেখুন — প্রয়োগ করার আগেই পুরো সাইটে কেমন
-          দেখাবে তা লাইভ দেখা যায়। <span className="font-bold text-ink">ডিফল্ট (বর্তমান নকশা)</span> সবসময় অন্য
-          যেকোনো নকশা থেকে ফিরে আসার নিরাপদ পথ, এবং সব সেকশন একসাথে আগের অবস্থায় রিসেট করে।
+          যেকোনো নকশা <span className="font-bold text-ink">লাইভ স্টুডিওতে</span> খুলে পুরো সাইটে কেমন দেখাবে তা
+          সাথে সাথে দেখুন — সেকশনের ভ্যারিয়েন্ট বদলান কিংবা কোনো সেকশন দেখান/লুকান; সব পরিবর্তন রিয়েল-টাইমে
+          প্রতিফলিত হবে। <span className="font-bold text-ink">ডিফল্ট (বর্তমান নকশা)</span> সবসময় অন্য যেকোনো
+          নকশা থেকে ফিরে আসার নিরাপদ পথ।
         </p>
+
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => openStudio()}
+          className="mt-4 flex items-center gap-2 border-2 border-ink bg-ink px-4 py-2.5 text-[13px] font-bold text-paper transition hover:bg-alizarin disabled:opacity-40"
+        >
+          ▶ লাইভ ডিজাইন স্টুডিও খুলুন
+          {changeCount > 0 ? <span className="text-[11px] text-paper">· {changeCount} অসংরক্ষিত</span> : null}
+        </button>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <button
             type="button"
             disabled={busy}
-            onClick={() => void openPreview(DEFAULT_VARIANT, "ডিফল্ট (বর্তমান নকশা)")}
+            onClick={() => openStudio(DEFAULT_VARIANT)}
             className={`flex flex-col border p-3 text-left transition-colors ${
               activeLook === DEFAULT_VARIANT
                 ? "border-ink bg-paper shadow-[inset_0_0_0_1px_var(--color-ink)]"
@@ -272,7 +281,7 @@ export function VariantSwitcher({
               শিপ করা প্রোডাকশন নকশা — সব ডেটা আসল, লাইট/ডার্ক দুটোতেই সঠিক।
             </span>
             <span className="mt-2 font-mono-x text-[10px] tracking-[0.16em] text-ink-soft uppercase">
-              প্রিভিউ দেখুন →
+              স্টুডিওতে দেখুন →
             </span>
           </button>
 
@@ -281,7 +290,7 @@ export function VariantSwitcher({
               key={p.id}
               type="button"
               disabled={busy}
-              onClick={() => void openPreview(p.id, `${p.name} · ${p.nameEn}`)}
+              onClick={() => openStudio(p.id)}
               className={`flex flex-col border p-3 text-left transition-colors ${
                 siteVariant === p.id
                   ? "border-ink bg-paper shadow-[inset_0_0_0_1px_var(--color-ink)]"
@@ -295,7 +304,7 @@ export function VariantSwitcher({
               </span>
               <span className="mt-0.5 block text-[11px] text-ink-soft">{p.blurb}</span>
               <span className="mt-2 font-mono-x text-[10px] tracking-[0.16em] text-ink-soft uppercase">
-                প্রিভিউ দেখুন →
+                স্টুডিওতে দেখুন →
               </span>
             </button>
           ))}
@@ -310,23 +319,13 @@ export function VariantSwitcher({
           >
             ⟲ ডিফল্ট নকশায় ফিরুন
           </button>
-          {activeLook !== DEFAULT_VARIANT ? (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void applySiteVariant(activeLook)}
-              className="border border-ink/30 px-4 py-2 text-[13px] font-bold text-ink-soft transition hover:border-ink hover:text-ink disabled:opacity-40"
-            >
-              বর্তমান নকশা পুনঃপ্রয়োগ
-            </button>
-          ) : null}
         </div>
       </div>
 
       <div className="border border-ink/20 bg-paper-deep p-5">
         <h3 className="font-sans-bn text-[15px] font-bold text-ink">অ্যাকসেন্ট রং</h3>
         <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
-          লোগো, বোতাম ও হাইলাইটে ব্যবহৃত রং — নতুন নকশার সব সেকশনে প্রযোজ্য।
+          লোগো, বোতাম ও হাইলাইটে ব্যবহৃত রং — নতুন নকশার সব সেকশনে প্রযোজ্য ও সাথে সাথে সংরক্ষিত হয়।
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {ACCENTS.map((a) => (
@@ -398,7 +397,7 @@ export function VariantSwitcher({
                     onChange={(e) => patch(s.key, { enabled: e.target.checked })}
                     className="size-4 accent-[color:var(--color-alizarin)]"
                   />
-                  সক্রিয়
+                  দেখান
                 </label>
               </li>
             ))}
@@ -409,11 +408,11 @@ export function VariantSwitcher({
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
-          disabled={busy || dirty.size === 0}
-          onClick={() => void save()}
+          disabled={busy || changeCount === 0}
+          onClick={() => void persistDraft()}
           className="border border-ink bg-ink px-4 py-2 text-[13px] font-bold text-paper disabled:opacity-40"
         >
-          {busy ? "সংরক্ষণ হচ্ছে…" : `সংরক্ষণ (${dirty.size})`}
+          {busy ? "সংরক্ষণ হচ্ছে…" : `সংরক্ষণ (${changeCount})`}
         </button>
         {status ? (
           <span className={status.kind === "ok" ? "text-[12px] text-ink-soft" : "text-[12px] text-alizarin"}>
@@ -421,6 +420,73 @@ export function VariantSwitcher({
           </span>
         ) : null}
       </div>
-    </div>
+    </>
   );
+
+  if (studio) {
+    return (
+      <div className="fixed inset-0 z-[80] flex flex-col bg-ink/95 backdrop-blur">
+        <div className="flex flex-wrap items-center gap-3 border-b border-white/12 bg-ink px-4 py-2.5 text-paper">
+          <span className="text-[13px] font-bold">লাইভ ডিজাইন স্টুডিও</span>
+          <span className="font-mono-x text-[10px] tracking-[0.18em] text-white/50 uppercase">
+            {siteVariant}
+            {changeCount > 0 ? ` · ${changeCount} পরিবর্তন` : ""}
+          </span>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {status ? (
+              <span className={status.kind === "ok" ? "text-[11.5px] text-white/60" : "text-[11.5px] text-alizarin"}>
+                {status.text}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setNonce((n) => n + 1)}
+              className="border border-white/25 px-3 py-1.5 text-[12px] font-bold text-white/80 transition hover:border-white/50 hover:text-white disabled:opacity-40"
+            >
+              ↻ রিফ্রেশ
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void applyStudio()}
+              className="border border-lime/60 bg-lime/15 px-3 py-1.5 text-[12px] font-bold text-lime transition hover:bg-lime/25 disabled:opacity-40"
+            >
+              এই নকশা প্রয়োগ করুন
+            </button>
+            <button
+              type="button"
+              onClick={() => void closeStudio()}
+              className="border border-white/25 px-3 py-1.5 text-[12px] font-bold text-white/80 transition hover:border-white/50 hover:text-white"
+            >
+              বন্ধ করুন
+            </button>
+          </div>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
+          <aside className="h-1/2 w-full shrink-0 overflow-y-auto border-b border-white/12 bg-paper p-4 sm:h-auto sm:max-w-[440px] sm:border-b-0 sm:border-r sm:p-5">
+            <div className="space-y-6">{controls}</div>
+          </aside>
+          <div className="relative min-h-0 flex-1 bg-white">
+            {nonce > 0 ? (
+              <iframe
+                key={nonce}
+                src={`/?_pv=${nonce}`}
+                title="লাইভ ডিজাইন প্রিভিউ"
+                onLoad={() => setFrameReady(true)}
+                className="h-full w-full border-0"
+              />
+            ) : null}
+            {nonce === 0 || !frameReady ? (
+              <div className="absolute inset-0 grid place-items-center bg-paper text-[13px] text-ink-soft">
+                লাইভ প্রিভিউ লোড হচ্ছে…
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <div className={fullWidth ? "space-y-6" : "space-y-6 max-w-3xl"}>{controls}</div>;
 }

@@ -46,7 +46,6 @@ const NAV_GROUPS: Array<{ title: string; en: string; items: NavItem[] }> = [
     en: "Overview",
     items: [
       { href: "/admin", emoji: "📊", label: "ড্যাশবোর্ড" },
-      { href: "/admin/traffic", emoji: "📈", label: "ট্রাফিক অ্যানালিটিক্স" },
     ],
   },
   {

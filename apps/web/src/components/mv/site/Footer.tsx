@@ -19,7 +19,7 @@ import {
 import { LiveDot } from "@/components/mv/ui/primitives";
 import { Marquee, LiveClock } from "@/components/mv/ui/motion";
 import BrandLogo, { type LogoEngine } from "@/components/mv/ui/BrandLogo";
-import { RUN_LOG, SERVICES } from "@/lib/mv/data";
+import { useMvData } from "@/components/mv/ui/mv-data";
 import { HOME_META } from "@/lib/mv/content";
 import { bn } from "@/lib/mv/format";
 import { playClick } from "@/lib/mv/sound";
@@ -151,6 +151,7 @@ function SocialRow() {
 }
 
 function StatusRow() {
+  const { services: SERVICES } = useMvData();
   return (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-2.5">
       {SERVICES.slice(0, 4).map((s) => (
@@ -341,6 +342,7 @@ function LinkGrid({ engine = "hologram" }: { engine?: LogoEngine }) {
 
 /* ───────────── variant 4 · terminal log ───────────── */
 function TerminalLog({ engine = "boot" }: { engine?: LogoEngine }) {
+  const { runLog: RUN_LOG } = useMvData();
   return (
     <footer className="footer-root relative mt-16 overflow-hidden">
       <div aria-hidden className="grid-bg pointer-events-none absolute inset-0 opacity-25" />

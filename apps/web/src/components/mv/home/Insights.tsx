@@ -17,16 +17,7 @@ import {
   SyncAreaChart,
   TopicTreemap,
 } from "@/components/mv/charts";
-import {
-  CATEGORY_MIX,
-  FACT_RADAR,
-  FUNNEL_STAGES,
-  PIPELINE_GAUGES,
-  RETENTION,
-  SERVICES,
-  SYNC_SERIES,
-  TREEMAP_TOPICS,
-} from "@/lib/mv/data";
+import { useMvData } from "@/components/mv/ui/mv-data";
 import { bn } from "@/lib/mv/format";
 
 import ObsidianGraph from "@/components/mv/charts/ObsidianGraph";
@@ -52,19 +43,21 @@ const RANGES = [
 ];
 
 /** Average newly-collected records per day across the last 14 days. */
-const AVG_DAILY = Math.max(
-  1,
-  Math.round(
-    ((SYNC_SERIES[SYNC_SERIES.length - 1]?.collected ?? 0) -
-      (SYNC_SERIES[SYNC_SERIES.length - 15]?.collected ?? 0)) /
-      14,
-  ),
-);
+function avgDaily(series: { collected: number }[]) {
+  return Math.max(
+    1,
+    Math.round(
+      ((series[series.length - 1]?.collected ?? 0) - (series[series.length - 15]?.collected ?? 0)) / 14,
+    ),
+  );
+}
 
 /* ── variant 1 · mixed dashboard ───────────────────────────── */
 function DashboardVariant({ density }: { density: "compact" | "comfortable" | "spacious" }) {
-  const [range, setRange] = useState(14);
+  const { syncSeries: SYNC_SERIES, categoryMix: CATEGORY_MIX, factRadar: FACT_RADAR, pipelineGauges: PIPELINE_GAUGES } = useMvData();
+  const [range, setRange] = useState(30);
   const data = SYNC_SERIES.slice(-range);
+  const AVG_DAILY = avgDaily(SYNC_SERIES);
   return (
     <SectionShell id="live-insights" density={density}>
       <SectionHead
@@ -153,6 +146,7 @@ function DashboardVariant({ density }: { density: "compact" | "comfortable" | "s
 
 /* ── variant 2 · stacked area only ───────────────────────────── */
 function AreaVariant({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { syncSeries: SYNC_SERIES } = useMvData();
   const [range, setRange] = useState(30);
   const [mode, setMode] = useState<"stacked" | "smooth" | "stepped">("smooth");
   const data = SYNC_SERIES.slice(-range);
@@ -231,6 +225,7 @@ function AreaVariant({ density }: { density: "compact" | "comfortable" | "spacio
 
 /* ── variant 3 · radial gauges ───────────────────────────── */
 function GaugesVariant({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { pipelineGauges: PIPELINE_GAUGES, services: SERVICES, retention: RETENTION } = useMvData();
   return (
     <SectionShell id="live-insights" density={density}>
       <SectionHead
@@ -280,6 +275,7 @@ function GaugesVariant({ density }: { density: "compact" | "comfortable" | "spac
 
 /* ── variant 4 · treemap + funnel ───────────────────────────── */
 function TreemapVariant({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { treemapTopics: TREEMAP_TOPICS, funnelStages: FUNNEL_STAGES } = useMvData();
   return (
     <SectionShell id="live-insights" density={density}>
       <SectionHead

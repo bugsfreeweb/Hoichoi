@@ -120,18 +120,39 @@ export class GoogleGeminiProvider implements LLMProvider {
     const prompt = composeImagePrompt(req);
     const generationConfig: Record<string, unknown> = { responseModalities: ["TEXT", "IMAGE"] };
     if (req.aspectRatio) generationConfig.imageConfig = { aspectRatio: req.aspectRatio };
-    const res = await fetch(
-      `${this.fetchBase()}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(this.key ?? "")}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        signal,
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig,
-        }),
-      },
-    );
+    const url = `${this.fetchBase()}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(this.key ?? "")}`;
+    const body = JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig,
+    });
+
+    let res = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      signal,
+      body,
+    });
+    // Some models (e.g. gemini-3.x flash) render images but gate the aspect
+    // ratio feature, answering 400 "Aspect ratio is not enabled for this model".
+    // The picture is still generatable, so drop `imageConfig` and retry once
+    // with the natural ratio rather than failing the whole generation.
+    if (!res.ok && generationConfig.imageConfig) {
+      const text = await res.text();
+      if (res.status === 400 && /aspect ratio/i.test(text)) {
+        delete generationConfig.imageConfig;
+        res = await fetch(url, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          signal,
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig,
+          }),
+        });
+      } else {
+        classifyStatus(res.status, text);
+      }
+    }
     if (!res.ok) classifyStatus(res.status, await res.text());
     const data = (await res.json()) as GeminiResponse;
     const inline = data.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData;

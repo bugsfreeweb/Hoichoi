@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { DashboardView, type DashModel, type DashRange } from "@hoichoi/dash";
+import { DashboardView, type DashModel, type DashRange, type ExtraTab } from "@hoichoi/dash";
+import { TrafficAnalytics } from "@/components/admin/TrafficAnalytics";
+import { StorageAnalytics } from "@/components/admin/StorageAnalytics";
+import type { StorageSnapshot, TrafficSnapshot } from "@hoichoi/shared-types";
 
 type Toast = { id: number; kind: "ok" | "err" | "info"; title: string; body: string };
 
@@ -16,7 +19,15 @@ const RUN_TIMEOUT_MS = 120_000;
  * of the snapshot so refresh/poll results paint immediately, without waiting on
  * a full route navigation.
  */
-export function AdminDashboard({ model }: { model: DashModel }) {
+export function AdminDashboard({
+  model,
+  traffic,
+  storage,
+}: {
+  model: DashModel;
+  traffic: TrafficSnapshot | null;
+  storage: StorageSnapshot | null;
+}) {
   const router = useRouter();
   const [live, setLive] = useState<DashModel>(model);
   const [running, setRunning] = useState(false);
@@ -145,10 +156,28 @@ export function AdminDashboard({ model }: { model: DashModel }) {
     }
   }, [running, latestRunId, pollRun, pushToast]);
 
+  const extraTabs: ExtraTab[] = [
+    {
+      id: "traffic",
+      bn: "ট্রাফিক ও স্টোরেজ",
+      en: "TRAFFIC & STORAGE",
+      icon: "M3 3v18h18M7 15l4-4 3 3 5-6",
+      content: (
+        <div className="space-y-10">
+          <TrafficAnalytics initial={traffic} />
+          <div className="border-t border-white/10 pt-8">
+            <StorageAnalytics initial={storage} />
+          </div>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <>
       <DashboardView
         model={live}
+        extraTabs={extraTabs}
         actions={{
           onNavigate: (target) => router.push(target),
           onRefresh: () => void refresh(),

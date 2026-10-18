@@ -5,10 +5,8 @@ import clsx from "clsx";
 import { ArrowRight, CircleDot } from "lucide-react";
 import { Badge, Btn, Funnel, LiveDot, SectionHead, SectionShell } from "@/components/mv/ui/primitives";
 import { Reveal, Spotlight, Stagger, StaggerItem } from "@/components/mv/ui/motion";
-import { FUNNEL_STAGES, PIPELINE_STEPS } from "@/lib/mv/data";
+import { useMvData } from "@/components/mv/ui/mv-data";
 import { bn } from "@/lib/mv/format";
-
-import { RUN_LOG } from "@/lib/mv/data";
 
 export default function Pipeline({
   variant,
@@ -26,6 +24,7 @@ export default function Pipeline({
 
 /* ── variant 1 · flow line with travelling dot ───────────────────────────── */
 function FlowLine({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { pipelineSteps: PIPELINE_STEPS } = useMvData();
   return (
     <SectionShell id="pipeline" density={density}>
       <SectionHead
@@ -102,6 +101,7 @@ function FlowLine({ density }: { density: "compact" | "comfortable" | "spacious"
 
 /* ── variant 2 · blueprint steps ───────────────────────────── */
 function BlueprintSteps({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { pipelineSteps: PIPELINE_STEPS } = useMvData();
   return (
     <SectionShell id="pipeline" density={density}>
       <SectionHead
@@ -145,12 +145,15 @@ function BlueprintSteps({ density }: { density: "compact" | "comfortable" | "spa
 
 /* ── variant 3 · conversion funnel ───────────────────────────── */
 function FunnelVariant({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { funnelStages: FUNNEL_STAGES } = useMvData();
+  const total = FUNNEL_STAGES[0]?.count ?? 0;
+  const yieldPct = FUNNEL_STAGES[FUNNEL_STAGES.length - 1]?.pct ?? 0;
   return (
     <SectionShell id="pipeline" density={density}>
       <SectionHead
         kicker="CONVERSION FUNNEL · LAST 30 DAYS"
         title={<>সংগ্রহ থেকে প্রকাশ — <span className="text-gradient">কতটুকু টিকে থাকে</span></>}
-        desc="৪১২টি সংগৃহীত রেকর্ডের মধ্যে কতগুলো হ্যাশ-গেট পেরোয়, কতগুলো রিরাইট হয়, আর কতগুলো শেষ পর্যন্ত প্রকাশিত হয়।"
+        desc={`${bn(total)}টি সংগৃহীত রেকর্ডের মধ্যে কতগুলো হ্যাশ-গেট পেরোয়, কতগুলো রিরাইট হয়, আর কতগুলো শেষ পর্যন্ত প্রকাশিত হয়।`}
       />
       <div className={clsx("grid gap-6 lg:grid-cols-[1.25fr_0.75fr]")}>
         <Reveal>
@@ -163,7 +166,7 @@ function FunnelVariant({ density }: { density: "compact" | "comfortable" | "spac
             <div>
               <p className="mono-label text-mist-400">OVERALL YIELD</p>
               <p className="font-latin mt-3 text-[4.5rem] font-bold leading-none text-mist-100">
-                {bn(21)}
+                {bn(yieldPct)}
                 <span className="text-3xl" style={{ color: "var(--accent)" }}>%</span>
               </p>
               <p className="mt-3 text-[13.5px] leading-relaxed text-mist-400">
@@ -191,6 +194,7 @@ function FunnelVariant({ density }: { density: "compact" | "comfortable" | "spac
 
 /* ── variant 4 · vertical editorial steps ───────────────────────────── */
 function VerticalSteps({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { pipelineSteps: PIPELINE_STEPS } = useMvData();
   return (
     <SectionShell id="pipeline" density={density}>
       <SectionHead
@@ -222,6 +226,7 @@ function VerticalSteps({ density }: { density: "compact" | "comfortable" | "spac
 
 /* ── variant 5 · cyber terminal pipeline ───────────────────────────── */
 function TerminalPipeline({ density }: { density: "compact" | "comfortable" | "spacious" }) {
+  const { runLog: RUN_LOG } = useMvData();
   return (
     <SectionShell id="pipeline" density={density}>
       <SectionHead

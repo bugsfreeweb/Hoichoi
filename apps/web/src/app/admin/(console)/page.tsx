@@ -13,7 +13,7 @@ export default async function AdminDashboardPage({
   const range: DashRange =
     rangeParam === "24h" || rangeParam === "7d" ? rangeParam : "all";
 
-  const { model } = await buildAdminDashboard(range);
+  const { model, traffic, storage } = await buildAdminDashboard(range);
 
-  return <AdminDashboard model={model} />;
+  return <AdminDashboard model={model} traffic={traffic} storage={storage} />;
 }

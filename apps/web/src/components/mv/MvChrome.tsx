@@ -3,6 +3,7 @@ import Ticker from "@/components/mv/site/Ticker";
 import Navbar from "@/components/mv/site/Navbar";
 import Footer from "@/components/mv/site/Footer";
 import { MotionFlag, ScrollProgress } from "@/components/mv/ui/motion";
+import ScrollToTop from "@/components/ScrollToTop";
 import { enabledFor, variantFor, type MvLive } from "@/lib/mv/variant";
 import { DEFAULT_BRAND } from "@/lib/mv/settings";
 
@@ -38,6 +39,7 @@ export default function MvChrome({
       {enabledFor(live, "navbar") ? <Navbar variant={variantFor(live, "navbar")} /> : null}
       {children}
       {enabledFor(live, "footer") ? <Footer variant={variantFor(live, "footer")} /> : null}
+      <ScrollToTop />
     </div>
   );
 }
