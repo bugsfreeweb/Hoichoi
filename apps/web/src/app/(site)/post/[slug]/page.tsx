@@ -378,7 +378,7 @@ function PostContent({
               <span className="font-bold">লেখক:</span> <span className="font-serif-bn">{post!.original_author_name ?? "—"} </span>
               <span className="text-ink-soft">(মূল ফেসবুক পোস্টের লেখক)</span>
               <span className="mx-2">·</span>
-              <span className="font-bold">সূত্র:</span> <span className="font-serif-bn">{post!.source_name}</span> (ফেসবুক পেজ) · {minutes} মিনিট পড়া
+              <span className="font-bold">সূত্র:</span> <span className="font-serif-bn">{post!.source_name}</span> · {minutes} মিনিট পড়া
             </p>
             <Link
               className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-bold text-alizarin hover:text-alizarin-deep"

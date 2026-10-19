@@ -14,7 +14,7 @@ jobs:
     # workspace defines a lint task, so `pnpm lint` reported success while
     # checking nothing. The name claimed a gate that did not exist.
     name: Typecheck · test · build
-    # Pin to 24.04: `ubuntu-latest` rolls over to Ubuntu 26.04 from 2026-10-19
+    # Pin to 24.04: `ubuntu-24.04` rolls over to Ubuntu 26.04 from 2026-10-19
     # (github.com/actions/runner-images/issues/14748), which shifts system libs and
     # apt package availability out from under the toolchain mid-project.
     runs-on: ubuntu-24.04
