@@ -80,6 +80,11 @@ export interface RewriteOutcome {
  *  4. compute embedding via the embedding provider
  *  5. validate Bengali script
  */
+function llmRequestSignal(timeoutMs = 45_000): AbortSignal {
+  const ms = Number(process.env.HOICHOI_LLM_TIMEOUT_MS ?? timeoutMs);
+  return AbortSignal.timeout(Number.isFinite(ms) && ms > 0 ? ms : timeoutMs);
+}
+
 export async function rewritePost(input: {
   rawText: string;
   sourceName: string;
@@ -109,7 +114,8 @@ export async function rewritePost(input: {
     temperature: input.temperature,
   };
 
-  const { out, provider } = await resolver.rewrite(ctx);
+  const rewriteSignal = llmRequestSignal();
+  const { out, provider } = await resolver.rewrite(ctx, rewriteSignal);
   const flags: string[] = [];
   const redaction =
     input.categoryConfig.redaction_strict === "none"
@@ -132,6 +138,7 @@ export async function rewritePost(input: {
   try {
     const { vector } = await resolver.embedText(
       `${out.title_bn} ${out.summary_bn} ${out.body_bn}`,
+      llmRequestSignal(),
     );
     embedding = vector;
     log(`[llm] embedding ok (${vector.length} dims, ${provider})`);

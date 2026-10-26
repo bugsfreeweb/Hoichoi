@@ -9,6 +9,42 @@ let cached: Client | null = null;
 let cachedUrl: string | null = null;
 
 /**
+ * Local projects often keep credentials in the repo-root `.env`, but plain Node
+ * scripts do not auto-load it. This bootstrap keeps the desktop scraper and web
+ * runner on the same config as the shell, without overriding any value already
+ * declared in the runtime environment.
+ */
+export function loadLocalDotEnv(): void {
+  const seen = new Set<string>();
+  const candidates = [
+    path.join(findRepoRoot(), ".env"),
+    path.join(process.cwd(), ".env"),
+    path.resolve(".env"),
+  ];
+  for (const file of candidates) {
+    if (seen.has(file)) continue;
+    seen.add(file);
+    if (!fs.existsSync(file)) continue;
+    const text = fs.readFileSync(file, "utf8");
+    for (const rawLine of text.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith("#")) continue;
+      const eq = line.indexOf("=");
+      if (eq <= 0) continue;
+      const key = line.slice(0, eq).trim();
+      let value = line.slice(eq + 1).trim();
+      if (!key || process.env[key] !== undefined) continue;
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      process.env[key] = value.replace(/\\n/g, "\n");
+    }
+  }
+}
+
+loadLocalDotEnv();
+
+/**
  * Repo root finder: walk up from cwd until pnpm-workspace.yaml is found,
  * so local `file:` databases land at `<repo>/data/hoichoi.db` regardless of
  * where a script runs (apps/web, packages/db, apps/scraper).
