@@ -639,6 +639,18 @@ export async function deskModerationSet(
 export interface DeskMediaStorage {
   config: MediaStorageConfig;
   registry: number;
+  /** Per-repository / per-target upload analytics from the media registry. */
+  stats: MediaObjectStat[];
+}
+
+export interface MediaObjectStat {
+  adapter: string;
+  files: number;
+  bytes: number;
+  todayFiles: number;
+  todayBytes: number;
+  lastUploadAt: string | null;
+  byDay: { day: string; bytes: number; files: number }[];
 }
 
 export interface MediaStorageAdapterConfig {
@@ -650,12 +662,20 @@ export interface MediaStorageAdapterConfig {
   bucket?: string;
   region?: string;
   prefix?: string;
+  /** GitHub-only: the media repo as `owner/name` (enables multiple media repos). */
+  repo?: string;
+  /** GitHub-only: branch to push to (default `main`). */
   branch?: string;
+  /** GitHub-only: repo path prefix (default `media/`). */
   mediaPath?: string;
+  /** GitHub-only: CDN base URL override for this repo. */
+  cdnBase?: string;
 }
 
 export interface MediaStorageConfig {
   adapters: MediaStorageAdapterConfig[];
+  /** How files are distributed across adapters (default `failover`). */
+  mode?: "failover" | "shard" | "mirror";
   purge_local_after_upload: boolean;
   retention_months: number;
   cleanup_enabled: boolean;

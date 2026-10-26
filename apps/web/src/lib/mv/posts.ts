@@ -1,5 +1,4 @@
 import { getPublicPostBySlug, relatedPosts, windowPosts, parseAppConfig } from "@hoichoi/db";
-import { SEED_POSTS, type SeedPost } from "@/lib/mv/content";
 import { resolvePostImage } from "@/lib/mv/images";
 import { toMvPost } from "@/lib/mv/convert";
 import { settingImageUrl } from "@/lib/media";
@@ -53,69 +52,45 @@ function withImage<T extends { slug: string; categorySlug: string; image?: strin
   return { ...row, image: resolvePostImage(row.slug, row.categorySlug, row.image ?? "", fallback) };
 }
 
-function fromSeed(p: SeedPost, fallback = ""): PostRecord {
-  return withImage(
-    {
-      ...p,
-      image: "",
-      body: p.body as unknown as Array<Record<string, unknown>>,
-      timeline: p.timeline as unknown as Array<Record<string, unknown>>,
-      facts: p.facts as unknown as Array<Record<string, unknown>>,
-      metrics: p.metrics as unknown as Record<string, unknown>,
-      publishedAt: new Date(p.publishedAt),
-    },
-    fallback,
-  ) as PostRecord;
-}
-
 /**
  * Mockup-theme articles.
  *
- * These drive the design-variant home/post pages, so they must render the
- * real published feed rather than bundled sample records: an operator who
- * switches the site to a mockup theme expects to see the same stories the
- * default design shows. The bundled `SEED_POSTS` remain only as a bootstrap
- * fallback so a brand-new install with an empty database still paints a
- * complete page instead of a blank one.
+ * These drive the design-variant home/post pages, so they render the real
+ * published feed — an operator who switches the site to a mockup theme must see
+ * the same stories the default design shows. When the archive window is empty
+ * (a brand-new install before the first run) the list is empty; nothing is
+ * fabricated to fill the page.
  */
 export async function listPosts(limit = 12): Promise<PostRecord[]> {
   const fallback = await defaultCoverImage();
   try {
     const rows = await windowPosts({ limit });
-    if (rows.length > 0) return rows.map((r) => toMvPost(r, fallback));
+    return rows.map((r) => withImage(toMvPost(r, fallback), fallback));
   } catch {
-    // fall through to the bootstrap sample
+    return [];
   }
-  return SEED_POSTS.slice(0, limit).map((p) => fromSeed(p, fallback));
 }
 
 export async function getPost(slug: string): Promise<PostRecord | null> {
   const fallback = await defaultCoverImage();
   try {
     const row = await getPublicPostBySlug(slug);
-    if (row) return toMvPost(row, fallback);
+    return row ? withImage(toMvPost(row, fallback), fallback) : null;
   } catch {
-    // fall through to the bootstrap sample
+    return null;
   }
-  const seed = SEED_POSTS.find((p) => p.slug === slug);
-  return seed ? fromSeed(seed, fallback) : null;
 }
 
 export async function getRelated(slug: string, categorySlug: string, limit = 3): Promise<PostRecord[]> {
   const fallback = await defaultCoverImage();
   try {
     const post = await getPublicPostBySlug(slug);
-    if (post) {
-      const rows = await relatedPosts(post, limit);
-      if (rows.length > 0) return rows.map((r) => toMvPost(r, fallback));
-    }
+    if (!post) return [];
+    const rows = await relatedPosts(post, limit);
+    return rows.map((r) => withImage(toMvPost(r, fallback), fallback));
   } catch {
-    // fall through to the bootstrap pool
+    return [];
   }
-  const pool = SEED_POSTS.filter((p) => p.slug !== slug);
-  const same = pool.filter((p) => p.categorySlug === categorySlug);
-  const rest = pool.filter((p) => p.categorySlug !== categorySlug);
-  return [...same, ...rest].slice(0, limit).map((p) => fromSeed(p, fallback));
 }
 
 export function postUrl(slug: string): string {

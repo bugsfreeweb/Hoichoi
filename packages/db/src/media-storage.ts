@@ -6,7 +6,9 @@
  * Split out of `index.ts` so the shared uploader (`./storage`) can read the
  * policy without importing the whole data layer (which would create a cycle).
  */
-import type { MediaStorageConfig } from "@hoichoi/shared-types";
+import type { MediaStorageConfig, MediaStorageMode } from "@hoichoi/shared-types";
+
+const MEDIA_STORAGE_MODES: readonly MediaStorageMode[] = ["failover", "shard", "mirror"];
 import { getClient, nowIso } from "./client";
 
 /** Fallback remote-media storage policy (settings.media_storage_json). */
@@ -26,6 +28,9 @@ export function parseMediaStorage(raw: string | null | undefined): MediaStorageC
     if (typeof parsed.purge_local_after_upload === "boolean") merged.purge_local_after_upload = parsed.purge_local_after_upload;
     if (typeof parsed.retention_months === "number" && Number.isFinite(parsed.retention_months)) merged.retention_months = parsed.retention_months;
     if (typeof parsed.cleanup_enabled === "boolean") merged.cleanup_enabled = parsed.cleanup_enabled;
+    if (parsed.mode && (MEDIA_STORAGE_MODES as readonly string[]).includes(parsed.mode)) {
+      merged.mode = parsed.mode;
+    }
   } catch {
     /* corrupt blob → defaults */
   }

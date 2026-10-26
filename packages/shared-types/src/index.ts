@@ -873,12 +873,23 @@ export const ACCENTS: AccentPreset[] = [
 /** Provider kinds supported by the media uploader. */
 export type MediaStorageKind = "github" | "s3";
 
-/** One entry in the uploader's fallback chain. */
+/**
+ * How files are distributed across the enabled adapters:
+ *   failover — every file goes to the first healthy adapter; later ones are
+ *              only tried when an earlier one errors (the classic backup chain).
+ *   shard    — files are spread across ALL enabled adapters (round-robin by a
+ *              stable hash of the relative path) so total capacity is the sum
+ *              of every repo. The remaining adapters stay as failover targets.
+ *   mirror   — every file is written to EVERY enabled adapter (full copies).
+ */
+export type MediaStorageMode = "failover" | "shard" | "mirror";
+
+/** One entry in the uploader's adapter chain. */
 export interface MediaStorageAdapterConfig {
   kind: MediaStorageKind;
   /** `false` = excluded from the upload/cleanup chain. */
   enabled: boolean;
-  /** Human label shown in settings (e.g. "GitHub", "IDrive e2", "Backblaze B2"). */
+  /** Human label shown in settings (e.g. "GitHub · media-1", "IDrive e2"). */
   label: string;
   /** S3-compatible providers. */
   provider?: "idrivee2" | "backblaze";
@@ -890,16 +901,30 @@ export interface MediaStorageAdapterConfig {
   region?: string;
   /** Object key prefix inside the bucket (default `media/`). */
   prefix?: string;
+  /**
+   * GitHub-only: the media repository as `owner/name`. Left blank it falls back
+   * to the legacy `GITHUB_REPO` env var, so existing single-repo installs keep
+   * working. This is what makes multiple public media-only repos possible.
+   */
+  repo?: string;
   /** GitHub-only: branch to push to (default `main`). */
   branch?: string;
   /** GitHub-only: repo path prefix (default `media/`). */
   mediaPath?: string;
+  /**
+   * GitHub-only: CDN base URL override for this repo (default
+   * `https://cdn.jsdelivr.net/gh/<repo>@<branch>`). Set a raw host when jsDelivr
+   * is not desired.
+   */
+  cdnBase?: string;
 }
 
 /** Full remote-media storage policy (stored in settings.media_storage_json). */
 export interface MediaStorageConfig {
   /** Adapters in priority order — index 0 is the primary upload target. */
   adapters: MediaStorageAdapterConfig[];
+  /** How files are distributed across adapters (default `failover`). */
+  mode?: MediaStorageMode;
   /** Delete local copies after a successful remote upload. */
   purge_local_after_upload: boolean;
   /** Delete remote objects older than this many months during cleanup. */
@@ -1209,6 +1234,9 @@ export interface StatsSnapshot {
   duplicatesBlocked: number;
   dedupRate: number;
   lastRunStatus: "success" | "failed" | "never";
+  /** Posts published in the current (UTC) calendar day. */
+  publishedToday: number;
+  /** Posts published anywhere inside the visible archive window. */
   published: number;
   pendingReview: number;
   avgRunDurationSec: number;
@@ -1359,18 +1387,30 @@ export interface TrafficSnapshot {
   };
 }
 
-/** One storage location (the local disk, or a remote media adapter). */
+/** One storage location (the local disk, or a remote media adapter/repo). */
 export interface StorageLocation {
   id: string;
   label: string;
   kind: "local" | "github" | "s3";
   /** For s3 adapters: the underlying provider tag (idrivee2 / backblaze). */
   provider?: string;
+  /** For github adapters: the `owner/name` media repo holding the blobs. */
+  repo?: string | null;
+  /** Public CDN base the blobs are served from (github adapters). */
+  cdnBase?: string | null;
   enabled: boolean;
   configured: boolean;
-  /** Bytes this location is holding (local = measured; remote = mirrored copy). */
+  /** Bytes this location is holding (local = measured; remote = measured from media_objects). */
   bytes: number;
   files: number;
+  /** ISO timestamp of the most recent upload into this location, if any. */
+  lastUploadAt?: string | null;
+  /** Blobs uploaded in the current (UTC) day. */
+  uploadedToday?: number;
+  /** Bytes uploaded in the current (UTC) day. */
+  bytesToday?: number;
+  /** Per-day upload growth for this location (most recent first). */
+  byDay?: StorageDayPoint[];
   /** Human note about how the number was derived. */
   detail: string;
 }

@@ -17,7 +17,7 @@
     "demo": "tsx scripts/demo.ts",
     "clean": "tsx scripts/clean.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx src/__tests__/source-merge.test.ts && tsx src/__tests__/bulk-moderate.test.ts && tsx src/__tests__/source-categories.test.ts && tsx src/__tests__/page-rows.test.ts && tsx src/__tests__/run-history.test.ts && tsx src/__tests__/media-path.test.ts"
+    "test": "tsx src/__tests__/db-url-mode.test.ts && tsx src/__tests__/source-merge.test.ts && tsx src/__tests__/bulk-moderate.test.ts && tsx src/__tests__/source-categories.test.ts && tsx src/__tests__/page-rows.test.ts && tsx src/__tests__/run-history.test.ts && tsx src/__tests__/media-path.test.ts"
   },
   "dependencies": {
     "@hoichoi/shared-types": "workspace:*",

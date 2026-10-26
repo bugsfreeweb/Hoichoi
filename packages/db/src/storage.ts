@@ -42,7 +42,14 @@ import {
 type AdapterId = "github" | "idrivee2" | "backblaze";
 
 interface ResolvedAdapter {
+  /** Engine family — drives which client (GitHub contents API / S3) is used. */
   id: AdapterId;
+  /**
+   * Stable per-target tag written to `media_objects.adapter` and used for
+   * per-repository analytics. `github:<owner/name>` or `s3:<provider>[:<bucket>]`.
+   * A bare `github` / `idrivee2` / `backblaze` is the legacy form.
+   */
+  tag: string;
   label: string;
   enabled: boolean;
   /* github */
@@ -313,6 +320,18 @@ function defaultRegion(provider: "idrivee2" | "backblaze", endpoint?: string): s
   return "us-east-1";
 }
 
+/** Stable tag for a GitHub media target (per-repo when a repo is known). */
+export function githubTag(repo: string | null | undefined): string {
+  const r = (repo ?? "").trim();
+  return r ? `github:${r}` : "github";
+}
+
+/** Stable tag for an S3 media target (per-provider, plus bucket when known). */
+export function s3Tag(provider: string, bucket?: string | null): string {
+  const b = (bucket ?? "").trim();
+  return b ? `s3:${provider}:${b}` : `s3:${provider}`;
+}
+
 /** Build the ordered adapter chain (settings config + vault/env creds). */
 export async function buildAdapters(): Promise<ResolvedAdapter[]> {
   const cfg = await getMediaStorageConfig();
@@ -322,16 +341,20 @@ export async function buildAdapters(): Promise<ResolvedAdapter[]> {
     if (!a.enabled) continue;
     if (a.kind === "github") {
       const token = process.env.GITHUB_TOKEN ?? process.env.GITHUB_PAT ?? "";
-      const repo = process.env.GITHUB_REPO ?? "";
+      // Per-adapter repo wins; blank falls back to the legacy single-repo env so
+      // existing installs keep working without re-configuring anything.
+      const repo = (a.repo ?? "").trim() || (process.env.GITHUB_REPO ?? "");
+      const baseUrl = (a.cdnBase ?? "").trim() || (process.env.GITHUB_CDN_URL ?? null);
       adapters.push({
         id: "github",
+        tag: githubTag(repo),
         label: a.label || "GitHub",
         enabled: Boolean(token && repo),
         token,
         repo,
         branch: a.branch ?? "main",
         mediaPath: a.mediaPath ?? "media/",
-        baseUrl: null,
+        baseUrl,
         region: "us-east-1",
         prefix: a.mediaPath ?? "media/",
       });
@@ -340,10 +363,11 @@ export async function buildAdapters(): Promise<ResolvedAdapter[]> {
       const env = info.env;
       const accessKey = process.env[env.accessKey] ?? "";
       const secretKey = process.env[env.secretKey] ?? "";
-      const bucket = process.env[env.bucket] ?? "";
+      const bucket = process.env[env.bucket] || (a.bucket ?? "");
       const endpoint = process.env[env.endpoint] ?? (a.provider === "backblaze" ? "" : "https://www.idrivee2.com");
       adapters.push({
         id: a.provider,
+        tag: s3Tag(a.provider, bucket),
         label: a.label || info.label,
         enabled: Boolean(accessKey && secretKey && bucket && endpoint),
         endpoint,
@@ -363,6 +387,7 @@ export async function buildAdapters(): Promise<ResolvedAdapter[]> {
   if (adapters.length === 0 && process.env.STORAGE_ADAPTER === "github" && legacyGithub.token && legacyGithub.repo) {
     adapters.push({
       id: "github",
+      tag: githubTag(legacyGithub.repo),
       label: "GitHub",
       enabled: true,
       ...legacyGithub,
@@ -373,6 +398,15 @@ export async function buildAdapters(): Promise<ResolvedAdapter[]> {
   }
 
   return adapters;
+}
+
+/** True when a registry row belongs to a resolved adapter (incl. legacy tags). */
+export function rowMatchesAdapter(rowAdapter: string, a: ResolvedAdapter): boolean {
+  if (rowAdapter === a.tag) return true;
+  // Legacy rows carry a bare engine/provider tag.
+  if (rowAdapter === "github" && a.id === "github") return true;
+  if (rowAdapter === a.id) return true;
+  return false;
 }
 
 export function remoteStorageEnabled(): boolean {
@@ -397,6 +431,37 @@ function adapterKey(a: ResolvedAdapter, rel: string): string {
   return a.id === "github" ? `${a.mediaPath}${rel}` : `${a.prefix}${rel}`;
 }
 
+/**
+ * Deterministic bucket for sharding: hashes the relative path so the same file
+ * always lands in the same repo, spreading the tree evenly across N targets.
+ */
+function shardIndex(rel: string, n: number): number {
+  if (n <= 1) return 0;
+  const h = createHash("sha1").update(rel).digest();
+  return (((h[0] ?? 0) << 8) | (h[1] ?? 0)) % n;
+}
+
+/**
+ * Order the enabled adapters for one upload given the configured mode.
+ *   failover → try in config order, first success wins.
+ *   shard    → chosen repo first (by path hash), then the rest as failover.
+ *   mirror   → every repo is a target (`mirror: true` writes to all).
+ */
+function orderForUpload(
+  adapters: ResolvedAdapter[],
+  mode: string | undefined,
+  rel: string,
+): { targets: ResolvedAdapter[]; mirror: boolean } {
+  if (adapters.length <= 1) return { targets: adapters, mirror: false };
+  if (mode === "mirror") return { targets: adapters, mirror: true };
+  if (mode === "shard") {
+    const i = shardIndex(rel, adapters.length);
+    const primary = adapters[i]!;
+    return { targets: [primary, ...adapters.filter((_, j) => j !== i)], mirror: false };
+  }
+  return { targets: adapters, mirror: false };
+}
+
 async function deleteOnAdapter(a: ResolvedAdapter, key: string): Promise<void> {
   if (a.id === "github") {
     await ghDelete(ghConfig(a), key);
@@ -411,59 +476,67 @@ export async function hasEnabledAdapter(): Promise<boolean> {
 }
 
 /**
- * Upload a local media file through the enabled adapter chain (primary first,
- * fallback on failure). Returns the public URL, or null when no upload worked.
+ * Upload a local media file through the enabled adapter chain, honouring the
+ * configured distribution mode. Returns the public URL of the primary target,
+ * or null when no upload worked.
  */
 export async function uploadRemote(rel: string, postId?: string | null): Promise<string | null> {
+  const cfg = await getMediaStorageConfig();
   const adapters = (await buildAdapters()).filter((a) => a.enabled);
   if (adapters.length === 0) return null;
 
   const body = await readFile(localMediaPath(rel));
-  let lastErr: unknown = null;
-  for (const a of adapters) {
+  const { targets, mirror } = orderForUpload(adapters, cfg.mode, rel);
+  let firstUrl: string | null = null;
+  let anyOk = false;
+  for (const a of targets) {
     try {
       const key = adapterKey(a, rel);
       const url =
         a.id === "github" ? await ghUpload(ghConfig(a), key, body) : await s3Upload(a, key, body);
-      await recordMediaObject({ adapter: a.id, key, url, post_id: postId ?? null });
-      const cfg = await getMediaStorageConfig();
-      if (cfg.purge_local_after_upload) {
-        await unlink(localMediaPath(rel)).catch(() => undefined);
-      }
-      return url;
-    } catch (err) {
-      lastErr = err;
+      await recordMediaObject({ adapter: a.tag, key, url, post_id: postId ?? null, bytes: body.length });
+      anyOk = true;
+      if (firstUrl == null) firstUrl = url;
+      if (!mirror) break; // failover/shard: first success wins
+    } catch {
+      /* try the next adapter */
     }
   }
-  void lastErr;
-  return null;
+  if (anyOk && cfg.purge_local_after_upload) {
+    await unlink(localMediaPath(rel)).catch(() => undefined);
+  }
+  return firstUrl;
 }
 
 /**
  * Upload an in-memory buffer through the enabled adapter chain, without needing
  * a local file first. Used by the manual image generator, which holds generated
- * bytes and has no reason to round-trip through disk. Returns the public URL or
- * null when no adapter is configured/could not be reached.
+ * bytes and has no reason to round-trip through disk. Returns the public URL of
+ * the primary target, or null when no adapter is configured/could not be reached.
  */
 export async function uploadBufferRemote(
   rel: string,
   body: Buffer,
   postId?: string | null,
 ): Promise<string | null> {
+  const cfg = await getMediaStorageConfig();
   const adapters = (await buildAdapters()).filter((a) => a.enabled);
   if (adapters.length === 0) return null;
-  for (const a of adapters) {
+  const { targets, mirror } = orderForUpload(adapters, cfg.mode, rel);
+  let firstUrl: string | null = null;
+  for (const a of targets) {
     try {
       const key = adapterKey(a, rel);
       const url =
         a.id === "github" ? await ghUpload(ghConfig(a), key, body) : await s3Upload(a, key, body);
-      await recordMediaObject({ adapter: a.id, key, url, post_id: postId ?? null });
-      return url;
+      await recordMediaObject({ adapter: a.tag, key, url, post_id: postId ?? null, bytes: body.length });
+      if (firstUrl == null) firstUrl = url;
+      if (!mirror) break;
     } catch {
       /* try next adapter */
     }
   }
-  return null;
+  return firstUrl;
 }
 
 /**
@@ -486,7 +559,7 @@ export { mediaRoot };
 /** Delete a remote object (used by cleanup / media panel). */
 export async function deleteMediaObjectRowAndBlob(row: MediaObjectRow): Promise<void> {
   const adapters = await buildAdapters();
-  const target = adapters.find((a) => (a.id === "github" ? row.adapter === "github" : a.id === row.adapter));
+  const target = adapters.find((a) => rowMatchesAdapter(row.adapter, a));
   if (target) {
     await deleteOnAdapter(target, row.key).catch(() => undefined);
   }
@@ -513,7 +586,7 @@ export async function cleanupMedia(opts: { dryRun?: boolean; months?: number } =
   let removed = 0;
   let skipped = 0;
   for (const row of rows) {
-    const target = adapters.find((a) => row.adapter === (a.id === "github" ? "github" : a.id));
+    const target = adapters.find((a) => rowMatchesAdapter(row.adapter, a));
     if (!target) {
       skipped += 1;
       continue;

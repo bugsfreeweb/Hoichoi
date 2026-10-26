@@ -1,11 +1,12 @@
 /**
- * Storage report — database size, on-disk media usage and per-location media
- * totals for the admin + desktop analytics dashboards.
+ * Storage report — database size, on-disk media usage and per-location (per
+ * media repository) totals for the admin + desktop analytics dashboards.
  *
  * Everything here is measured, never invented: the database size comes from the
  * SQLite page geometry, the local media totals come from an actual directory
- * walk, and each remote adapter is reported either as "not configured" or as a
- * full mirror of the local media set (which is what the uploader maintains).
+ * walk, and each remote target is reported from the `media_objects` registry
+ * (exact file count and — for rows written since the size column landed — exact
+ * bytes). No value is estimated.
  *
  * The walk is memoised for a short window because a naive scan of a large media
  * tree is expensive and the dashboards poll.
@@ -18,10 +19,14 @@ import type {
   StorageLocation,
   StorageSnapshot,
   StorageTableSize,
+  MediaStorageAdapterConfig,
 } from "@hoichoi/shared-types";
 import { getClient, nowIso, resolveDatabaseUrl } from "./client";
 import { mediaRoot, mediaRootCandidates } from "./media";
 import { getMediaStorageConfig } from "./media-storage";
+import { githubTag, s3Tag } from "./storage";
+import { mediaObjectStats, type MediaObjectStat } from "./media-objects";
+
 const TABLE_NAMES = [
   "sources",
   "source_categories",
@@ -146,31 +151,58 @@ async function tableSizes(): Promise<StorageTableSize[]> {
   return out;
 }
 
-/** Uploaded-blob counts per remote adapter, from the media_objects registry. */
-async function mediaObjectCounts(): Promise<Map<string, number>> {
-  const client = getClient();
-  const out = new Map<string, number>();
-  try {
-    const res = await client.execute("SELECT adapter, count(*) AS n FROM media_objects GROUP BY adapter");
-    for (const r of res.rows) {
-      const row = r as Record<string, unknown>;
-      out.set(String(row.adapter), Number(row.n ?? 0));
-    }
-  } catch {
-    /* table missing on very old DBs → no remote counts */
+/** The registry tag a configured adapter writes to (mirrors storage.ts). */
+function adapterTagFor(a: MediaStorageAdapterConfig): string {
+  if (a.kind === "github") {
+    const repo = (a.repo ?? "").trim() || (process.env.GITHUB_REPO ?? "");
+    return githubTag(repo);
   }
-  return out;
+  const bucket = (a.bucket ?? "").trim() || (process.env[a.provider === "backblaze" ? "B2_BUCKET" : "IDRIVEE2_BUCKET"] ?? "");
+  return s3Tag(a.provider ?? a.kind, bucket);
 }
+
+/** Fold one registry stat into another (used for legacy bare tags). */
+function mergeStat(into: MediaObjectStat, from: MediaObjectStat): MediaObjectStat {
+  into.files += from.files;
+  into.bytes += from.bytes;
+  into.todayFiles += from.todayFiles;
+  into.todayBytes += from.todayBytes;
+  if (from.lastUploadAt && (!into.lastUploadAt || from.lastUploadAt > into.lastUploadAt)) {
+    into.lastUploadAt = from.lastUploadAt;
+  }
+  const days = new Map(into.byDay.map((d) => [d.day, d]));
+  for (const d of from.byDay) {
+    const cur = days.get(d.day);
+    if (cur) {
+      cur.files += d.files;
+      cur.bytes += d.bytes;
+    } else {
+      days.set(d.day, { ...d });
+    }
+  }
+  into.byDay = [...days.values()].sort((a, b) => (a.day < b.day ? 1 : -1)).slice(0, 30);
+  return into;
+}
+
+const EMPTY_STAT = (adapter: string): MediaObjectStat => ({
+  adapter,
+  files: 0,
+  bytes: 0,
+  todayFiles: 0,
+  todayBytes: 0,
+  lastUploadAt: null,
+  byDay: [],
+});
 
 /** Real, measured storage snapshot. Cached briefly to keep polling cheap. */
 export async function storageSnapshot(): Promise<StorageSnapshot> {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.value;
 
-  const [db, tables, mediaCfg, objectCounts] = await Promise.all([
+  const [db, tables, mediaCfg, stats] = await Promise.all([
     dbSize(),
     tableSizes(),
     getMediaStorageConfig().catch(() => null),
-    mediaObjectCounts(),
+    mediaObjectStats().catch(() => [] as MediaObjectStat[]),
   ]);
 
   const root = mediaRootCandidates()[0] ?? mediaRoot();
@@ -179,10 +211,6 @@ export async function storageSnapshot(): Promise<StorageSnapshot> {
     .map(([day, v]) => ({ day, bytes: v.bytes, files: v.files }))
     .sort((a, b) => (a.day < b.day ? 1 : -1))
     .slice(0, 30);
-
-  // Average local file size lets us turn the exact remote blob count into a
-  // fair byte estimate, since media_objects records the key but not the size.
-  const avgBytes = scan.files > 0 ? Math.round(scan.bytes / scan.files) : 0;
 
   const locations: StorageLocation[] = [
     {
@@ -197,42 +225,69 @@ export async function storageSnapshot(): Promise<StorageSnapshot> {
     },
   ];
 
-  const seen = new Set<string>();
-  const adapterTag = (kind: string, provider?: string): string =>
-    kind === "github" ? "github" : (provider ?? kind);
-  for (const [i, a] of (mediaCfg?.adapters ?? []).entries()) {
-    const tag = adapterTag(a.kind, a.provider);
-    seen.add(tag);
-    const files = objectCounts.get(tag) ?? 0;
+  const statByTag = new Map(stats.map((s) => [s.adapter, s]));
+  const adapters = mediaCfg?.adapters ?? [];
+  const ghCount = adapters.filter((a) => a.kind === "github").length;
+  const consumed = new Set<string>();
+
+  for (const [i, a] of adapters.entries()) {
+    const tag = adapterTagFor(a);
+    consumed.add(tag);
+    let stat = statByTag.get(tag);
+    // Fold legacy bare-`github` rows into the sole GitHub repo so the numbers
+    // stay right for installs that uploaded before per-repo tagging existed.
+    if (a.kind === "github" && ghCount === 1) {
+      const legacy = statByTag.get("github");
+      if (legacy && legacy.adapter !== tag) {
+        stat = stat ? mergeStat({ ...stat, byDay: [...stat.byDay] }, legacy) : { ...legacy };
+        consumed.add("github");
+      }
+    }
+    const s = stat ?? EMPTY_STAT(tag);
     locations.push({
       id: tag || `adapter-${i}`,
       label: a.label || (a.kind === "github" ? "GitHub" : (a.provider ?? "S3")),
       kind: a.kind,
       provider: a.provider,
+      repo: a.kind === "github" ? (a.repo ?? "").trim() || (process.env.GITHUB_REPO ?? null) : null,
+      cdnBase:
+        a.kind === "github"
+          ? (a.cdnBase ?? "").trim() || (process.env.GITHUB_CDN_URL ?? null)
+          : null,
       enabled: Boolean(a.enabled),
       configured: Boolean(a.bucket || a.endpoint || a.kind === "github"),
-      bytes: avgBytes > 0 ? avgBytes * files : 0,
-      files,
+      bytes: s.bytes,
+      files: s.files,
+      lastUploadAt: s.lastUploadAt,
+      uploadedToday: s.todayFiles,
+      bytesToday: s.todayBytes,
+      byDay: s.byDay,
       detail: a.enabled
-        ? `রিমোট ব্লব: ${files.toLocaleString()} (মাপা) · আকার আনুমানিক`
-        : "নিষ্ক্রিয় — ব্যাকআপ চেইনে নেই",
+        ? `${s.files.toLocaleString()} ব্লব · ${(s.bytes / 1024 / 1024).toFixed(1)} MB (মাপা)`
+        : "নিষ্ক্রিয় — ডিস্ট্রিবিউশনে নেই",
     });
   }
 
-  // Adapters that received uploads historically but are no longer in the policy
+  // Targets that received uploads historically but are no longer in the policy
   // still hold data off-box, so surface them rather than silently dropping them.
-  for (const [tag, files] of objectCounts.entries()) {
-    if (seen.has(tag)) continue;
+  for (const s of stats) {
+    if (consumed.has(s.adapter)) continue;
+    const isGh = s.adapter === "github" || s.adapter.startsWith("github:");
     locations.push({
-      id: tag,
-      label: tag,
-      kind: tag === "github" ? "github" : "s3",
-      provider: tag === "github" ? undefined : tag,
+      id: s.adapter,
+      label: s.adapter,
+      kind: isGh ? "github" : "s3",
+      provider: isGh ? undefined : s.adapter.replace(/^s3:/, "").split(":")[0],
+      repo: isGh && s.adapter.includes(":") ? s.adapter.slice("github:".length) : null,
       enabled: false,
       configured: false,
-      bytes: avgBytes > 0 ? avgBytes * files : 0,
-      files,
-      detail: `সাবেক অ্যাডাপ্টার — এখন কনফিগে নেই, তবে ${files.toLocaleString()} ব্লব আছে`,
+      bytes: s.bytes,
+      files: s.files,
+      lastUploadAt: s.lastUploadAt,
+      uploadedToday: s.todayFiles,
+      bytesToday: s.todayBytes,
+      byDay: s.byDay,
+      detail: `সাবেক টার্গেট — এখন কনফিগে নেই, তবে ${s.files.toLocaleString()} ব্লব আছে`,
     });
   }
 

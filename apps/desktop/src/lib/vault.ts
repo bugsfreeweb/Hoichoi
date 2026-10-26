@@ -98,6 +98,12 @@ function invalidateSnapshot(): void {
  * non-env keys). The mapping fixes the old gap where `turso_url`/`turso_token`
  * were stored but never read as `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN`.
  */
+function isRemoteDbUrl(value?: string | null): boolean {
+  const raw = value?.trim();
+  if (!raw) return false;
+  return /^libsql:\/\//i.test(raw) || /^https?:\/\//i.test(raw);
+}
+
 export async function getEnvFromVault(): Promise<Record<string, string>> {
   const snap = await getSnapshot();
   const out: Record<string, string> = {};
@@ -162,7 +168,7 @@ export async function isCloudSync(): Promise<boolean> {
  */
 export async function getCloudEnv(): Promise<Record<string, string>> {
   const env = await getEnvFromVault();
-  if (!env.TURSO_DATABASE_URL?.startsWith("libsql://")) {
+  if (!isRemoteDbUrl(env.TURSO_DATABASE_URL)) {
     throw new Error(
       "ক্লাউড ডেটাবেস কনফিগার্ড নেই — API Vault-এ Turso URL যোগ করুন, তারপর আবার চেষ্টা করুন।",
     );

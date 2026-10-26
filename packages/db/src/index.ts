@@ -47,7 +47,7 @@ import type {
 } from "@hoichoi/shared-types";
 import type { InValue } from "@libsql/client";
 import { randomUUID } from "node:crypto";
-import { getClient, nowIso } from "./client";
+import { getClient, isRemoteDatabaseUrl, nowIso } from "./client";
 import { mapCategory, mapNotice, mapPost, parseJson, pickCategoryDot } from "./rows";
 import { DEFAULT_MEDIA_STORAGE } from "./media-storage";
 
@@ -834,7 +834,7 @@ export async function mostRead(limit = 5): Promise<Post[]> {
 export async function statsSnapshot(): Promise<StatsSnapshot> {
   const client = getClient();
   const today = nowIso().slice(0, 10);
-  const [collected, dupes, published, pending, byCat, lastRun, avgDur] =
+  const [collected, dupes, published, publishedTodayRes, pending, byCat, lastRun, avgDur] =
     await Promise.all([
       client.execute({
         sql: "SELECT count(*) AS n FROM raw_posts WHERE scraped_at LIKE ?",
@@ -844,6 +844,10 @@ export async function statsSnapshot(): Promise<StatsSnapshot> {
         "SELECT count(*) AS n FROM raw_posts WHERE phash IS NOT NULL AND phash IN (SELECT phash FROM raw_posts GROUP BY phash HAVING count(*) > 1)",
       ),
       client.execute("SELECT count(*) AS n FROM posts_current_window"),
+      client.execute({
+        sql: "SELECT count(*) AS n FROM posts WHERE status = ? AND published_at LIKE ?",
+        args: ["published", `${today}%`],
+      }),
       client.execute({
         sql: "SELECT count(*) AS n FROM posts WHERE status = ?",
         args: ["pending_review"],
@@ -882,6 +886,7 @@ export async function statsSnapshot(): Promise<StatsSnapshot> {
     duplicatesBlocked: dupeCount,
     dedupRate: total + dupeCount > 0 ? Math.round((dupeCount / (total + dupeCount)) * 100) : 0,
     lastRunStatus,
+    publishedToday: Number(publishedTodayRes.rows[0]?.n ?? 0),
     published: total,
     pendingReview: Number(pending.rows[0]?.n ?? 0),
     avgRunDurationSec: Math.round(Number(avgDur.rows[0]?.avg_sec ?? 0)),
@@ -1214,8 +1219,9 @@ export async function analyticsSnapshot(
     }));
 
   const url = (process.env.TURSO_DATABASE_URL ?? process.env.DATABASE_URL ?? "").trim();
-  const driver = /^https?:/.test(url) ? "TURSO" : url.startsWith("file:") ? "LOCAL" : "TURSO";
-  const mode: "local" | "cloud" = /^https?:/.test(url) ? "cloud" : "local";
+  const remote = isRemoteDatabaseUrl(url);
+  const driver = remote ? "TURSO" : url.startsWith("file:") ? "LOCAL" : "TURSO";
+  const mode: "local" | "cloud" = remote ? "cloud" : "local";
 
   return {
     ok: true,

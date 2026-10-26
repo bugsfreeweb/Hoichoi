@@ -19,9 +19,15 @@ import { syncDb } from "./tauri";
  * Both are guarded: nothing happens unless a Turso URL + token are actually
  * stored in the vault, so a bare dev/local install is never auto-uploaded.
  */
+function isRemoteDbUrl(value?: string | null): boolean {
+  const raw = value?.trim();
+  if (!raw) return false;
+  return /^libsql:\/\//i.test(raw) || /^https?:\/\//i.test(raw);
+}
+
 async function cloudEnv(): Promise<Record<string, string> | null> {
   const env = await getEnvFromVault();
-  if (!env.TURSO_DATABASE_URL?.startsWith("libsql://") || !env.TURSO_AUTH_TOKEN) {
+  if (!isRemoteDbUrl(env.TURSO_DATABASE_URL) || !env.TURSO_AUTH_TOKEN) {
     return null;
   }
   return env;

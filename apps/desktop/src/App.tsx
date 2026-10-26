@@ -58,6 +58,16 @@ export type View =
 const ONBOARD_KEY = "hoichoi.desk.onboarded.v1";
 const AUTORUN_KEY = "hoichoi.desk.autoru";
 const AUTO_BACKUP_KEY = "hoichoi.desk.autobk";
+// Timestamp of the in-flight run, persisted so a restart mid-run can tell the
+// difference between "still working" and "orphaned by a crash".
+const RUN_STARTED_KEY = "hoichoi.desk.runStartedAt";
+
+// Watchdog thresholds. A healthy run streams log lines throughout; a run that
+// has gone silent for this long, or has run for this long outright, is treated
+// as hung so the desk can go back to IDLE and auto-run can continue.
+const RUN_IDLE_MS = 10 * 60_000;
+const RUN_MAX_MS = 120 * 60_000;
+
 const VIEW_ORDER: View[] = [
   "dashboard",
   "traffic",
@@ -198,6 +208,12 @@ export default function App() {
   runningRef.current = running;
   const hoursRef = useRef(hours);
   hoursRef.current = hours;
+  // The pipeline://done event is the only place that clears `running`. If the
+  // child is killed (task manager, crash, OS) or the app restarts mid-run, that
+  // event never fires and the desk stays "LIVE" forever, which also permanently
+  // blocks the auto-run scheduler. These two refs back the watchdog below.
+  const runStartedAtRef = useRef<number | null>(null);
+  const runIdleSinceRef = useRef<number | null>(null);
   const autoRunRef = useRef(autoRun);
   autoRunRef.current = autoRun;
   const nextRunAtRef = useRef(nextRunAt);
@@ -338,10 +354,20 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     const unlog = listen<string>("pipeline://log", (e) => {
+      // Any log line proves the child is alive, so push the watchdog's idle
+      // deadline forward.
+      runIdleSinceRef.current = Date.now();
       setLogs((prev) => [...prev.slice(-399), e.payload]);
     });
     const undone = listen<number>("pipeline://done", async (e) => {
       const code = Number(e.payload);
+      runStartedAtRef.current = null;
+      runIdleSinceRef.current = null;
+      try {
+        localStorage.removeItem(RUN_STARTED_KEY);
+      } catch {
+        /* ignore */
+      }
       setRunning(false);
       setLogs((prev) => [...prev, `── exit code ${code} ──`]);
       await refresh();
@@ -383,13 +409,87 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Startup recovery: a run recorded in localStorage with no pipeline://done
+  // after a restart is orphaned. Kill any surviving child and log the recovery
+  // instead of holding the desk on a stuck LIVE forever.
+  useEffect(() => {
+    let startedAt: number | null = null;
+    try {
+      const raw = localStorage.getItem(RUN_STARTED_KEY);
+      startedAt = raw ? Number(raw) : null;
+    } catch {
+      startedAt = null;
+    }
+    if (startedAt == null || !Number.isFinite(startedAt)) return;
+    setLogs((prev) => [
+      ...prev,
+      `[desk] previous run (started ${new Date(startedAt).toLocaleTimeString()}) did not report completion — cleaning up`,
+    ]);
+    void stopPipeline().catch(() => undefined);
+    runStartedAtRef.current = null;
+    runIdleSinceRef.current = null;
+    try {
+      localStorage.removeItem(RUN_STARTED_KEY);
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Watchdog: while a run is active, trip if the child goes silent or overruns.
+  // Without this the desktop stays "LIVE" forever and blocks auto-run whenever
+  // the runner child hangs or is killed without emitting pipeline://done.
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (!runningRef.current) return;
+      const started = runStartedAtRef.current;
+      if (started == null) return;
+      const idleSince = runIdleSinceRef.current ?? started;
+      const now = Date.now();
+      const idleFor = now - idleSince;
+      const totalFor = now - started;
+      if (idleFor < RUN_IDLE_MS && totalFor < RUN_MAX_MS) return;
+      const why = totalFor >= RUN_MAX_MS ? "সময়সীমা (২ ঘণ্টা) ছাড়িয়ে গেছে" : "১০ মিনিট ধরে কোনো লগ আসেনি";
+      setLogs((prev) => [...prev, `[desk] watchdog: ${why} — কালেক্টর বন্ধ করা হচ্ছে`]);
+      runStartedAtRef.current = null;
+      runIdleSinceRef.current = null;
+      try {
+        localStorage.removeItem(RUN_STARTED_KEY);
+      } catch {
+        /* ignore */
+      }
+      setRunning(false);
+      if (hoursRef.current > 0) setNextRunAt(Date.now() + hoursRef.current * 3_600_000);
+      void stopPipeline().catch(() => undefined);
+      void refresh();
+      toast.err("কালেক্টর সাড়া দেয়নি", `${why} — রান থামানো হয়েছে, লগ দেখুন।`);
+    }, 15_000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const runNow = async () => {
     if (running) return;
+    const now = Date.now();
+    runStartedAtRef.current = now;
+    runIdleSinceRef.current = now;
+    try {
+      localStorage.setItem(RUN_STARTED_KEY, String(now));
+    } catch {
+      /* ignore */
+    }
     setRunning(true);
     setLogs((prev) => [...prev, `[desk] pipeline starting @ ${bnClock(true)}`]);
     try {
       await startPipeline(await getRunEnv());
     } catch (err) {
+      runStartedAtRef.current = null;
+      runIdleSinceRef.current = null;
+      try {
+        localStorage.removeItem(RUN_STARTED_KEY);
+      } catch {
+        /* ignore */
+      }
       setLogs((prev) => [...prev, `[desk] failed to start: ${String(err)}`]);
       setRunning(false);
     }

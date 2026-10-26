@@ -10,7 +10,7 @@ import {
   trafficSnapshot,
 } from "@hoichoi/db";
 import {
-  DEFAULT_MV_DATA,
+  EMPTY_MV_DATA,
   type CategoryMixRow,
   type FactRadarAxis,
   type FunnelStageRow,
@@ -29,9 +29,10 @@ import {
  * Every value is computed from live DB rows (nothing is invented) so the
  * alternate design variants render the same production content as the default
  * theme. Each source is fetched defensively: a failure (or an empty table)
- * degrades that one dataset to the deterministic sample so a chart never
- * crashes the page. Called once per request from the `(site)` layout — only
- * when a non-default variant is active.
+ * degrades that one dataset to an empty state ({@link EMPTY_MV_DATA}) so the
+ * page shows an honest "no data" view instead of fabricated samples. Called
+ * once per request from the `(site)` layout — only when a non-default variant
+ * is active.
  */
 
 const PALETTE = ["#ff5c38", "#f5a524", "#56c8ff", "#a78bfa", "#4ade80", "#fb7185", "#38bdf8", "#f472b6"];
@@ -99,7 +100,7 @@ export async function buildMvData(): Promise<MvData> {
         { stage: "প্রকাশিত", key: "DEPLOY", count: published, pct: pct(published, collected), note: "ISR প্রোডাকশন" },
         { stage: "ডুপ্লিকেট ব্লক", key: "HASH", count: duplicate, pct: pct(duplicate, collected), note: "SimHash গেট" },
       ]
-    : DEFAULT_MV_DATA.funnelStages;
+    : EMPTY_MV_DATA.funnelStages;
 
   /* ── per-category radar (collected vs published) ─────────────────────── */
   const radarAxes = radarCats.slice(0, 6);
@@ -112,7 +113,7 @@ export async function buildMvData(): Promise<MvData> {
         B: Math.round(((radar.stages.collected[c.slug] ?? 0) / maxCollected) * 100),
         fullMark: 100,
       }))
-    : DEFAULT_MV_DATA.factRadar;
+    : EMPTY_MV_DATA.factRadar;
 
   /* ── gauges ──────────────────────────────────────────────────────────── */
   const totalRuns = days.reduce((s, d) => s + d.runs, 0);
@@ -135,9 +136,9 @@ export async function buildMvData(): Promise<MvData> {
         shares: 0,
         comments: h.comments,
       }))
-    : DEFAULT_MV_DATA.hourlyViews;
+    : EMPTY_MV_DATA.hourlyViews;
 
-  let readHeatmap: HeatCell[][] = DEFAULT_MV_DATA.readHeatmap;
+  let readHeatmap: HeatCell[][] = EMPTY_MV_DATA.readHeatmap;
   if (buckets && buckets.heatmap.length > 0) {
     const grid = new Map<string, number>();
     for (const c of buckets.heatmap) grid.set(`${c.dow}:${c.hour}`, c.value);
@@ -162,7 +163,7 @@ export async function buildMvData(): Promise<MvData> {
           { bucket: "দুপুর ১২–৬", value: pct(sumRange(12, 18), totalViews) },
           { bucket: "সন্ধ্যা ৬–১২", value: pct(sumRange(18, 24), totalViews) },
         ]
-      : DEFAULT_MV_DATA.retention;
+      : EMPTY_MV_DATA.retention;
 
   /* ── engagement mix (real views / comments / ad events) ──────────────── */
   const engagementMix = traffic
@@ -172,14 +173,14 @@ export async function buildMvData(): Promise<MvData> {
         { name: "অ্যাড ভিউ", value: traffic.ads.views, color: "#56c8ff" },
         { name: "অ্যাড ক্লিক", value: traffic.ads.clicks, color: "#a78bfa" },
       ]
-    : DEFAULT_MV_DATA.engagementMix;
+    : EMPTY_MV_DATA.engagementMix;
 
   /* ── device mix radar (real sessions) ────────────────────────────────── */
   const devices = traffic?.traffic.devices ?? [];
   const deviceTotal = devices.reduce((s, d) => s + d.count, 0);
   const sentimentRadar = nonEmpty(
     devices.slice(0, 6).map((d) => ({ axis: d.key, value: pct(d.count, deviceTotal) })),
-    DEFAULT_MV_DATA.sentimentRadar,
+    EMPTY_MV_DATA.sentimentRadar,
   );
 
   /* ── top countries (real visitors) ───────────────────────────────────── */
@@ -190,7 +191,7 @@ export async function buildMvData(): Promise<MvData> {
       name: `${c.flag} ${c.country}`.trim() || c.countryCode || "—",
       value: pct(c.count, countryTotal),
     })),
-    DEFAULT_MV_DATA.trafficSources,
+    EMPTY_MV_DATA.trafficSources,
   );
 
   /* ── service telemetry (real infra signals) ──────────────────────────── */
@@ -225,7 +226,7 @@ export async function buildMvData(): Promise<MvData> {
           note: `${analytics.runSummary.count} রান সম্পন্ন`,
         },
       ]
-    : DEFAULT_MV_DATA.services;
+    : EMPTY_MV_DATA.services;
 
   /* ── recent run log ──────────────────────────────────────────────────── */
   const runLog: RunLogRow[] = runs.map((r) => {
@@ -249,7 +250,7 @@ export async function buildMvData(): Promise<MvData> {
       tone: i === 0 ? "hot" : "ok",
       text: p.title_bn,
     })),
-    DEFAULT_MV_DATA.tickerItems,
+    EMPTY_MV_DATA.tickerItems,
   );
 
   /* ── treemap topics (per-category published vs queued) ───────────────── */
@@ -263,9 +264,9 @@ export async function buildMvData(): Promise<MvData> {
   const treemapHasData = treemapTopics.some((t) => t.size > 0);
 
   return {
-    syncSeries: nonEmpty(syncSeries, DEFAULT_MV_DATA.syncSeries),
-    syncSeries7: nonEmpty(syncSeries7, DEFAULT_MV_DATA.syncSeries7),
-    categoryMix: nonEmpty(categoryMix, DEFAULT_MV_DATA.categoryMix),
+    syncSeries: nonEmpty(syncSeries, EMPTY_MV_DATA.syncSeries),
+    syncSeries7: nonEmpty(syncSeries7, EMPTY_MV_DATA.syncSeries7),
+    categoryMix: nonEmpty(categoryMix, EMPTY_MV_DATA.categoryMix),
     funnelStages,
     factRadar,
     pipelineGauges,
@@ -274,10 +275,10 @@ export async function buildMvData(): Promise<MvData> {
     sentimentRadar,
     readHeatmap,
     services,
-    runLog: nonEmpty(runLog, DEFAULT_MV_DATA.runLog),
-    pipelineSteps: DEFAULT_MV_DATA.pipelineSteps,
+    runLog: nonEmpty(runLog, EMPTY_MV_DATA.runLog),
+    pipelineSteps: EMPTY_MV_DATA.pipelineSteps,
     tickerItems,
-    treemapTopics: treemapHasData ? treemapTopics : DEFAULT_MV_DATA.treemapTopics,
+    treemapTopics: treemapHasData ? treemapTopics : EMPTY_MV_DATA.treemapTopics,
     retention,
     trafficSources,
   };

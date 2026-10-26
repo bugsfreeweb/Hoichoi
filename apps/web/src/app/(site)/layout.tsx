@@ -10,7 +10,7 @@ import { countReviewQueues, getSpecialNotice, parseAppConfig, recentPipelineRuns
 import { getLive } from "@/lib/mv/live";
 import { isMvMode } from "@/lib/mv/variant";
 import { buildMvData } from "@/lib/mv/live-data";
-import { DEFAULT_MV_DATA } from "@/lib/mv/data";
+import { EMPTY_MV_DATA } from "@/lib/mv/data";
 import MvChrome from "@/components/mv/MvChrome";
 import { MvDataProvider } from "@/components/mv/ui/mv-data";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -77,8 +77,8 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const live = await getLive().catch(() => null);
   if (live && isMvMode(live)) {
     // Real DB bundle so the alternate design variants render production
-    // content; falls back to the deterministic sample if the DB is unreachable.
-    const mvData = await buildMvData().catch(() => DEFAULT_MV_DATA);
+    // content; falls back to an empty state if the DB is unreachable.
+    const mvData = await buildMvData().catch(() => EMPTY_MV_DATA);
     return (
       <MvDataProvider value={mvData}>
         <MvChrome live={live} accent={settings.accent_color}>

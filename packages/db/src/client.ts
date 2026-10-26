@@ -53,6 +53,13 @@ export function databaseUrl(): string {
   return resolveDatabaseUrl();
 }
 
+/** True for a cloud-backed database URL (Turso/libsql or any HTTP remote DB). */
+export function isRemoteDatabaseUrl(url?: string | null): boolean {
+  const raw = url?.trim();
+  if (!raw) return false;
+  return /^libsql:\/\//i.test(raw) || /^https?:\/\//i.test(raw) || /^wss?:\/\//i.test(raw);
+}
+
 export function getClient(): Client {
   const url = resolveDatabaseUrl();
   if (cached && cachedUrl === url) return cached;
@@ -587,6 +594,9 @@ export async function ensureMediaStorageColumn(client: Client): Promise<void> {
 /**
  * Remote media object registry — one row per uploaded blob so the monthly
  * retention job can delete old objects even after their `posts` row is gone.
+ * `bytes` is the exact uploaded size (older rows may be NULL) and `adapter`
+ * carries a per-repo tag (e.g. `github:owner/name`) so the admin can show
+ * per-repository analytics.
  */
 export async function ensureMediaObjectsTable(client: Client): Promise<void> {
   await client.executeMultiple(`
@@ -596,11 +606,18 @@ CREATE TABLE IF NOT EXISTS media_objects (
   key TEXT NOT NULL,
   url TEXT NOT NULL,
   post_id TEXT,
+  bytes INTEGER,
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_media_objects_adapter ON media_objects (adapter, created_at);
 CREATE INDEX IF NOT EXISTS idx_media_objects_url ON media_objects (url);
   `);
+  // Backfill the size column on databases created before per-repo analytics.
+  const info = await client.execute("PRAGMA table_info(media_objects)");
+  const existing = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));
+  if (!existing.has("bytes")) {
+    await client.execute("ALTER TABLE media_objects ADD COLUMN bytes INTEGER");
+  }
 }
 
 /**

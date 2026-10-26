@@ -100,13 +100,18 @@ export function StorageView({ data, loading = false, error = null }: { data: Sto
             {locations.map((l, i) => (
               <div key={l.id} className="border-t border-white/5 pt-3 first:border-0 first:pt-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="flex min-w-0 items-center gap-2 text-[12.5px] font-semibold text-white/85">
+                  <span className="flex min-w-0 flex-wrap items-center gap-2 text-[12.5px] font-semibold text-white/85">
                     <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
                     <span className="truncate">{l.label}</span>
                     <span className="mono text-[9px] tracking-[0.14em] text-white/30 uppercase">{KIND_LABEL[l.kind] ?? l.kind}</span>
+                    {l.repo && (
+                      <span className="mono rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/70">
+                        {l.repo}
+                      </span>
+                    )}
                     {l.enabled ? null : <Badge tone="warn">নিষ্ক্রিয়</Badge>}
                   </span>
-                  <span className="mono shrink-0 text-[12px] text-white/60">{fmtBytes(l.bytes)} · {fmt(l.files)}</span>
+                  <span className="mono shrink-0 text-[12px] text-white/60">{fmtBytes(l.bytes)} · {fmt(l.files)} ফাইল</span>
                 </div>
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
                   <span
@@ -114,7 +119,18 @@ export function StorageView({ data, loading = false, error = null }: { data: Sto
                     style={{ width: `${Math.round((l.bytes / maxLoc) * 100)}%`, background: COLORS[i % COLORS.length] }}
                   />
                 </div>
-                <p className="bn mt-1 text-[10.5px] text-white/35">{l.detail}</p>
+                <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[10.5px]">
+                  <p className="bn text-white/35">{l.detail}</p>
+                  {typeof l.uploadedToday === "number" && l.uploadedToday > 0 ? (
+                    <span className="mono text-emerald-400 font-medium">
+                      +{l.uploadedToday} আজ ({fmtBytes(l.bytesToday ?? 0)})
+                    </span>
+                  ) : l.lastUploadAt ? (
+                    <span className="mono text-white/30 text-[9.5px]">
+                      শেষ আপলোড: {new Date(l.lastUploadAt).toLocaleString()}
+                    </span>
+                  ) : null}
+                </div>
               </div>
             ))}
           </div>

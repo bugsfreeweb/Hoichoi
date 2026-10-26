@@ -14,15 +14,17 @@ import { AdsSection } from "./AdsSection";
 import { VisibilitySection } from "./VisibilitySection";
 import { MaintenanceEditor } from "./MaintenanceEditor";
 import { OperationsSection } from "./OperationsSection";
+import { MediaStorageSection } from "./MediaStorageSection";
 import { VariantSwitcher } from "@/components/admin/VariantSwitcher";
 
-type Tab = "site" | "visibility" | "ads" | "design" | "maintenance" | "operations";
+type Tab = "site" | "visibility" | "ads" | "design" | "media" | "maintenance" | "operations";
 
 const TABS: Array<{ key: Tab; emoji: string; bn: string; en: string }> = [
   { key: "site", emoji: "📰", bn: "সাইট", en: "Site" },
   { key: "visibility", emoji: "👁️", bn: "ভিজিবিলিটি", en: "Visibility" },
   { key: "ads", emoji: "📣", bn: "বিজ্ঞাপন", en: "Ads" },
   { key: "design", emoji: "🎨", bn: "ডিজাইন", en: "Design" },
+  { key: "media", emoji: "🖼️", bn: "মিডিয়া স্টোরেজ", en: "Media Storage" },
   { key: "maintenance", emoji: "🛠️", bn: "রক্ষণাবেক্ষণ", en: "Maintenance" },
   { key: "operations", emoji: "⚙️", bn: "অপারেশন", en: "Operations" },
 ];
@@ -213,11 +215,24 @@ export function SettingsConsole({
               />
             </div>
           )}
+          {tab === "media" && (
+            <MediaStorageSection
+              initialJson={initial.media_storage_json}
+              onSave={async (json) => {
+                const res = await fetch("/api/settings", {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ media_storage_json: json }),
+                });
+                if (!res.ok) throw new Error("সংরক্ষণ ব্যর্থ হয়েছে");
+              }}
+            />
+          )}
           {tab === "maintenance" && <MaintenanceEditor />}
           {tab === "operations" && <OperationsSection initialRuns={initialRuns} inbox={inbox} />}
         </div>
 
-        {tab !== "design" && (
+        {tab !== "design" && tab !== "media" && (
           <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-ink/15 pt-4">
             <button
               onClick={() => void save()}
