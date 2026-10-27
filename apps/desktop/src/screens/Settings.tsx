@@ -148,6 +148,15 @@ interface SiteAppConfig {
   comments_show_count: number;
   default_post_image: string;
   brand_animation: string;
+  hero_effects: {
+    drift: boolean;
+    floaty: boolean;
+    beam: boolean;
+    headline_grad: boolean;
+    kin_mask: boolean;
+    tauri_win: boolean;
+    ping: boolean;
+  };
 }
 
 const VIS_DEFAULTS: SiteAppConfig = {
@@ -166,6 +175,15 @@ const VIS_DEFAULTS: SiteAppConfig = {
   comments_show_count: 10,
   default_post_image: "",
   brand_animation: "none",
+  hero_effects: {
+    drift: true,
+    floaty: true,
+    beam: true,
+    headline_grad: true,
+    kin_mask: true,
+    tauri_win: true,
+    ping: true,
+  },
 };
 
 const BRAND_ANIMATIONS = [
@@ -427,7 +445,7 @@ export default function Settings({
       if (raw) {
         try {
           const parsed = JSON.parse(raw as string) as Partial<SiteAppConfig>;
-          setVis({ ...VIS_DEFAULTS, ...parsed });
+          setVis({ ...VIS_DEFAULTS, ...parsed, hero_effects: { ...VIS_DEFAULTS.hero_effects, ...(parsed.hero_effects ?? {}) } });
         } catch {
           setVis(VIS_DEFAULTS);
         }
@@ -1346,6 +1364,38 @@ export default function Settings({
                     ))}
                   </select>
                 </label>
+                <div className="block min-w-[16rem] flex-1 space-y-2">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                    হিরো ডেকোরেটিভ ইফেক্ট
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(
+                      [
+                        ["drift", "ড্রিফট ব্লব"],
+                        ["floaty", "ফ্লোটিং কার্ড"],
+                        ["beam", "বিম লাইট"],
+                        ["headline_grad", "গ্রেডিয়েন্ট হেডলাইন"],
+                        ["kin_mask", "কাইনেটিক মাস্ক"],
+                        ["tauri_win", "উইন্ডো ক্রোম"],
+                        ["ping", "লাইভ পিং"],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <label key={key} className="flex items-center gap-2 text-[11.5px] text-ink-soft">
+                        <input
+                          type="checkbox"
+                          checked={vis.hero_effects[key]}
+                          onChange={(e) =>
+                            setVis({
+                              ...vis,
+                              hero_effects: { ...vis.hero_effects, [key]: e.target.checked },
+                            })
+                          }
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
                 <label className="block min-w-[16rem] flex-1">
                   <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
                     ডিফল্ট পোস্ট ছবি (URL)
