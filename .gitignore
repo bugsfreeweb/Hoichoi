@@ -65,3 +65,9 @@ apps/desktop/src-tauri/resources/runner/package*.json
 
 # Mockup artifacts
 gitleaks.toml
+# Docs and mockup folders (excluded from pushes)
+docs/
+mockup/
+multi-style-web-mockup/
+maintenance-page-mockup/
+admin-dashboard-mockup/
