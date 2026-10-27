@@ -75,6 +75,7 @@ export default async function HomePage({
         siteName={settings.site_name}
         logoUrl={settings.logo_url}
         brandAnimation={cfg.brand_animation}
+        heroEffects={cfg.hero_effects}
       />
       )}
 

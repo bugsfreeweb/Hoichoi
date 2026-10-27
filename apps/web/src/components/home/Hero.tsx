@@ -27,7 +27,17 @@ export default function Hero({
   siteName,
   logoUrl,
   brandAnimation = "none",
+  heroEffects = { drift: true, floaty: true, beam: true, headline_grad: true, kin_mask: true, tauri_win: true, ping: true },
 }: {
+  heroEffects?: {
+    drift: boolean;
+    floaty: boolean;
+    beam: boolean;
+    headline_grad: boolean;
+    kin_mask: boolean;
+    tauri_win: boolean;
+    ping: boolean;
+  };
   lastRunIso: string | null;
   collected: number;
   published: number;
@@ -53,6 +63,7 @@ export default function Hero({
 
   return (
     <section className="bg-night-grid relative overflow-hidden">
+      {heroEffects.drift && (
       <div className="pointer-events-none absolute inset-0">
         <div className="drift absolute -bottom-40 -left-40 h-[520px] w-[520px] rounded-full bg-alizarin/20 blur-[110px]" />
         <div
@@ -60,13 +71,14 @@ export default function Hero({
           style={{ animationDelay: "-6s" } as CSSProperties}
         />
       </div>
+      )}
 
       <div className="relative mx-auto grid max-w-[1400px] items-center gap-10 px-4 py-16 md:px-8 lg:grid-cols-12 lg:py-20">
         <div className="lg:col-span-7">
           <div className="flex flex-wrap items-center gap-2">
             <span className="flex items-center gap-2 rounded-full border border-lime/40 bg-lime/10 px-3 py-1 font-mono-x text-[10px] tracking-[0.2em] text-lime uppercase">
               <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute h-full w-full animate-ping rounded-full bg-lime opacity-70" />
+                {heroEffects.ping && <span className="absolute h-full w-full animate-ping rounded-full bg-lime opacity-70" />}
                 <span className="relative h-1.5 w-1.5 rounded-full bg-lime" />
               </span>
               {live?.error ? "সংযোগ বিচ্ছিন্ন" : live?.paused ? "আপডেট বিরতিতে" : live?.data ? "লাইভ ডেটা সংযুক্ত" : "ডেটা যাচাই চলছে"}
@@ -87,7 +99,7 @@ export default function Hero({
               <img src={logoUrl} alt={name} className="max-h-24 w-auto object-contain md:max-h-32" />
             </span>
           ) : (
-            <h1 className="headline-grad mt-6 font-serif-bn text-[76px] leading-[0.92] font-black tracking-tight md:text-[120px]">
+            <h1 className={`${heroEffects.headline_grad ? "headline-grad " : ""}mt-6 font-serif-bn text-[76px] leading-[0.92] font-black tracking-tight md:text-[120px]`}>
               <span className={`inline-flex items-baseline${animCls}`}>
                 {name}
                 <span className="text-alizarin">!</span>
@@ -95,7 +107,7 @@ export default function Hero({
             </h1>
           )}
 
-          <div className="kin-mask mt-5 h-16 md:h-18">
+          {heroEffects.kin_mask && <div className="kin-mask mt-5 h-16 md:h-18">
             <p
               key={idx}
               className="kin-line font-serif-bn text-[19px] leading-[1.6] font-bold text-ink/90 md:text-[24px]"
@@ -104,6 +116,7 @@ export default function Hero({
               <span className="caret" />
             </p>
           </div>
+          }
 
           <p className="mt-5 max-w-xl text-[13.5px] leading-relaxed text-ink/55">
             শহরের ঘটনা, মানুষের কথা। হৈচৈয়ের সম্পাদকীয় ডেস্কে প্রতিটি খবর ও

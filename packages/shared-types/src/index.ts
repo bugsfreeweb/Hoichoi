@@ -1160,6 +1160,19 @@ export interface SiteAppConfig {  /** Masthead "newsroom in numbers" hero sectio
   default_post_image: string;
   /** Motion applied to the site name / logo in the masthead. */
   brand_animation: BrandAnimation;
+  /** Decorative effect toggles for the home-page hero. */
+  hero_effects: HeroEffects;
+}
+
+/** Decorative effect toggles for the home-page hero. */
+export interface HeroEffects {
+  drift: boolean;
+  floaty: boolean;
+  beam: boolean;
+  headline_grad: boolean;
+  kin_mask: boolean;
+  tauri_win: boolean;
+  ping: boolean;
 }
 
 /** Masthead / brand-name motion. `none` keeps the static wordmark. */
@@ -1184,6 +1197,15 @@ export const DEFAULT_APP_CONFIG: SiteAppConfig = {
   footer_socials: [],
   default_post_image: "",
   brand_animation: "none",
+  hero_effects: {
+    drift: true,
+    floaty: true,
+    beam: true,
+    headline_grad: true,
+    kin_mask: true,
+    tauri_win: true,
+    ping: true,
+  },
 };
 
 /** Tone of an announcement. `alert` is the most urgent (used by the special

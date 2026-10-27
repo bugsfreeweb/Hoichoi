@@ -171,6 +171,44 @@ export function SiteSection() {
         ) : null}
       </Section>
 
+      <Section
+        kicker="Hero decorative effects"
+        title="হোম হিরো ডেকোরেটিভ ইফেক্ট"
+        hint="হোম পেজের হিরো সেকশনের ডেকোরেটিভ অ্যানিমেশন ও গ্রাফিক টগল — প্রয়োজনে বন্ধ করুন।"
+      >
+        <div className="grid gap-3 md:grid-cols-2">
+          {(
+            [
+              ["drift", "ড্রিফট ব্লব (blur blobs)"],
+              ["floaty", "ফ্লোটিং কার্ড"],
+              ["beam", "বিম লাইট"],
+              ["headline_grad", "গ্রেডিয়েন্ট হেডলাইন"],
+              ["kin_mask", "কাইনেটিক মাস্ক"],
+              ["tauri_win", "উইন্ডো ক্রোম"],
+              ["ping", "লাইভ পিং ডট"],
+            ] as const
+          ).map(([key, label]) => (
+            <label
+              key={key}
+              className="flex items-center justify-between gap-3 border border-ink/15 bg-ink/[0.03] px-3 py-2"
+            >
+              <span className="text-[12.5px] font-medium text-ink">{label}</span>
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-alizarin"
+                checked={cfg.hero_effects[key]}
+                onChange={(e) =>
+                  setCfg((c) => ({
+                    ...c,
+                    hero_effects: { ...c.hero_effects, [key]: e.target.checked },
+                  }))
+                }
+              />
+            </label>
+          ))}
+        </div>
+      </Section>
+
       <SocialLinksEditor />
 
       <Section kicker="Contact & trust" title="যোগাযোগ ও জরুরি লাইন">

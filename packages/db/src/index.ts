@@ -44,6 +44,7 @@ import type {
   ReaderReportWithPost,
   SiteSettings,
   StatsSnapshot,
+  HeroEffects,
 } from "@hoichoi/shared-types";
 import type { InValue } from "@libsql/client";
 import { randomUUID } from "node:crypto";
@@ -162,6 +163,13 @@ export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
         const allowed = ["none", "fade", "typewriter", "shimmer", "slide"];
         if (typeof v === "string" && allowed.includes(v)) {
           merged.brand_animation = v as SiteAppConfig["brand_animation"];
+        }
+      } else if (k === "hero_effects") {
+        if (v && typeof v === "object") {
+          const he = v as Partial<HeroEffects>;
+          for (const key of Object.keys(merged.hero_effects) as Array<keyof HeroEffects>) {
+            if (typeof he[key] === "boolean") merged.hero_effects[key] = he[key] as boolean;
+          }
         }
       } else if (typeof v === "boolean") {
         (merged as unknown as Record<string, boolean>)[k] = v;
