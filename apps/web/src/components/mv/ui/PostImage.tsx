@@ -1,13 +1,13 @@
+"use client";
+
 /* eslint-disable @next/next/no-img-element */
+import { useState } from "react";
 import clsx from "clsx";
 
 /**
  * Cover artwork for a report. Always renders a gradient scrim so Bangla
  * headlines stay readable on top of the photo in both themes.
  */
-"use client";
-
-import { useState } from "react";
 
 export default function PostImage({
   src,
