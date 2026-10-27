@@ -50,7 +50,7 @@ import {
   type AdminCodeList,
   type CreatedAdminLoginCode,
 } from "../lib/tauri";
-import { listGithubSecrets, pushGithubSecret } from "../lib/github";
+import { actionsSecretName, listGithubSecrets, pushGithubSecret } from "../lib/github";
 import { autoPull, autoPush } from "../lib/autosync";
 import { toBn } from "../lib/format";
 import DeskCategoryManager from "../components/DeskCategoryManager";
@@ -76,11 +76,13 @@ const TABS = [
 
 type SettingsTab = (typeof TABS)[number]["id"];
 
-const FIELDS: Array<{ name: CredentialName; label: string; secret: boolean }> = [
+const FIELDS: Array<{ name: CredentialName; label: string; secret: boolean; push?: boolean }> = [
   { name: "turso_url", label: "TURSO_DATABASE_URL", secret: false },
   { name: "turso_token", label: "TURSO_AUTH_TOKEN", secret: true },
-  { name: "github_pat", label: "GitHub PAT", secret: true },
-  { name: "github_repo", label: "GitHub repo (owner/name)", secret: false },
+  { name: "github_pat", label: "GitHub PAT (app repo + Actions)", secret: true },
+  { name: "github_repo", label: "App repo (owner/name)", secret: false },
+  { name: "github_media_repos", label: "Media repo(s) — owner/name, comma separated", secret: false, push: true },
+  { name: "media_github_token", label: "Media repo PAT (optional, falls back to GitHub PAT)", secret: true },
   { name: "GOOGLE_API_KEY", label: "Google Gemini API key", secret: true },
   { name: "GROQ_API_KEY", label: "Groq API key", secret: true },
   { name: "OPENROUTER_API_KEY", label: "OpenRouter API key", secret: true },
@@ -340,17 +342,20 @@ export default function Settings({
     const v = values[f.name];
     if (v == null || v === "") return;
     try {
-      if (f.secret) {
+      if (f.secret || f.push) {
         await storeCredential(f.name, v.trim());
         // Push under the *env* name, not the vault key: workflows read
         // `secrets.VERCEL_DEPLOY_HOOK_URL` / `secrets.TURSO_AUTH_TOKEN`, so
         // pushing `vercel_deploy_hook_url` would store a secret nothing reads.
         const envName = envNameFor(f.name) ?? f.name;
+        // `GITHUB_*` is reserved by GitHub Actions, so media credentials are
+        // mirrored as `MEDIA_*` and mapped back inside the workflow.
+        const secretName = actionsSecretName(envName);
         // Never swallow this: a silently-failed push leaves the cron workflow
         // reading an empty secret, which looks exactly like "I saved it but
         // nothing happens".
-        await pushGithubSecret(envName, v.trim());
-        show(`${f.label} সংরক্ষিত — GitHub secret ${envName} হিসেবেও পাঠানো হয়েছে`);
+        await pushGithubSecret(secretName, v.trim());
+        show(`${f.label} সংরক্ষিত — GitHub secret ${secretName} হিসেবেও পাঠানো হয়েছে`);
       } else {
         await storeCredential(f.name, v.trim());
         show(`${f.label} saved`);

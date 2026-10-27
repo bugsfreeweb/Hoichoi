@@ -23,6 +23,7 @@ import {
   copyTables,
   getMediaStorageConfig,
   saveMediaStorageConfig,
+  mediaObjectStats,
   listSourceErrors,
   setSourceErrorStatus,
   createAdminLoginCode,
@@ -463,7 +464,12 @@ media
       await ensureSchema(getClient());
       const cfg = await readMediaStorageArg(json, { stdin: true });
       if (cfg) await saveMediaStorageConfig(cfg);
-      console.log(JSON.stringify({ ok: true, config: await getMediaStorageConfig(), registry: await storageRegistryCount() }, null, 2));
+      console.log(JSON.stringify({
+        ok: true,
+        config: await getMediaStorageConfig(),
+        registry: await storageRegistryCount(),
+        stats: await mediaObjectStats(),
+      }, null, 2));
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -1888,7 +1894,8 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
         }
         const config = await getMediaStorageConfig();
         const registry = await storageRegistryCount();
-        console.log(JSON.stringify({ ok: true, config, registry }, null, 2));
+        const stats = await mediaObjectStats();
+        console.log(JSON.stringify({ ok: true, config, registry, stats }, null, 2));
       } else if (sub === "cleanup") {
         const { flags, bools } = parseArgs(args.slice(2));
         const result = await cleanupMedia({

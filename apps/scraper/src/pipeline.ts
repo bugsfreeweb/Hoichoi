@@ -84,6 +84,16 @@ export interface PipelineStats {
   lowConfidence: number;
   /** Posts that received an AI-generated fallback hero image. */
   aiHero: number;
+  /**
+   * Sources whose scrape step threw (feed 404, blocked page, network error).
+   *
+   * A single dead feed used to mark the whole run `failed`, even when every
+   * other source collected and published normally — the dashboard then showed
+   * a red "last run failed" next to real new posts. A run is only failed when
+   * every source fails; individual failures are counted here and kept in
+   * `errors`.
+   */
+  sourcesFailed: number;
   providerUsed: string[] | null;
   errors: string[];
 }
@@ -215,7 +225,8 @@ export function assessRisk(
   return { tier: "routine", status: "published" };
 }
 
-export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineStats> {  const log = opts.log ?? ((s: string) => console.log(s));
+export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineStats> {
+  const log = opts.log ?? ((s: string) => console.log(s));
   const client = getClient();
   const resolver = newResolver();
   const runId = crypto.randomUUID();
@@ -232,6 +243,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
     pendingReview: 0,
     lowConfidence: 0,
     aiHero: 0,
+    sourcesFailed: 0,
     providerUsed: [],
     errors: [],
   };
@@ -318,6 +330,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       const msg = `[scrape] ${source.page_name}: ${(err as Error).message}`;
       log(msg);
       stats.errors.push(msg);
+      stats.sourcesFailed++;
       await recordSourceError(source.id, "scrape", (err as Error).message).catch(() => undefined);
       continue;
     }
@@ -823,7 +836,11 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
   }
 
   const finished = nowIso();
-  const finalStatus = stats.errors.length > 0 ? "failed" : "completed";
+  // One dead feed must not paint the whole run red. The run fails only when
+  // every attempted source failed to scrape; per-source failures are still
+  // counted in `sourcesFailed` and kept in `error`.
+  const finalStatus =
+    stats.sources > 0 && stats.sourcesFailed >= stats.sources ? "failed" : "completed";
   await client.execute({
     sql: `
       UPDATE pipeline_runs
@@ -835,6 +852,8 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       finalStatus,
       JSON.stringify({
         sources: stats.sources,
+        sourcesFailed: stats.sourcesFailed,
+        errors: stats.errors.length,
         scraped: stats.scraped,
         rawInserted: stats.rawInserted,
         rewritten: stats.rewritten,

@@ -9,7 +9,11 @@
  *
  * Adapters:
  *   github     — Git repository (private or public) via the contents API.
- *                Env: GITHUB_TOKEN, GITHUB_REPO, GITHUB_BRANCH, GITHUB_MEDIA_PATH.
+ *                Credentials: GITHUB_TOKEN / GITHUB_PAT.
+ *                Repository: configured per adapter in settings, or an explicit
+ *                GITHUB_MEDIA_REPOS list (comma-separated `owner/name`). The
+ *                app repository (`GITHUB_REPO`) is intentionally NOT used as a
+ *                media fallback: media must live in a dedicated data repo.
  *   idrivee2   — IDrive e2 object storage (S3-compatible, SigV4).
  *                Env: IDRIVEE2_ACCESS_KEY, IDRIVEE2_SECRET_KEY, IDRIVEE2_BUCKET,
  *                     IDRIVEE2_ENDPOINT, IDRIVEE2_REGION.
@@ -17,9 +21,9 @@
  *                Env: B2_ACCESS_KEY, B2_SECRET_KEY, B2_BUCKET, B2_ENDPOINT, B2_REGION.
  *
  * The adapter chain + retention policy live in `settings.media_storage_json`
- * (edited from the desktop "মিডিয়া স্টোরেজ" panel). When that list is empty
- * the legacy single-adapter setup (`STORAGE_ADAPTER=github` + vault creds)
- * still works, so existing installs keep uploading without any config step.
+ * (edited from the web admin and desktop "মিডিয়া স্টোরেজ" panels). When that
+ * list is empty, an explicit GITHUB_MEDIA_REPOS list is still honoured so a
+ * headless runner can be configured entirely through env vars.
  *
  * Lives in @hoichoi/db (not the scraper) so the web admin and the desktop can
  * push generated images through the same chain the scraper uses for scraped
@@ -195,16 +199,33 @@ interface GitHubConfig {
   baseUrl: string | null;
 }
 
-const legacyGithub: GitHubConfig = (() => {
-  // Accept both spellings: the runner/CLI docs and Actions use GITHUB_TOKEN, the
-  // desktop .env ships GITHUB_PAT. Same secret, so resolve either.
-  const token = process.env.GITHUB_TOKEN ?? process.env.GITHUB_PAT ?? "";
-  const repo = process.env.GITHUB_REPO ?? "";
+const legacyGithub: Omit<GitHubConfig, "repo"> = (() => {
+  // Accept every documented spelling: MEDIA_GITHUB_TOKEN (dedicated media
+  // credential), GITHUB_TOKEN (Actions env) and GITHUB_PAT (desktop .env).
+  const token = process.env.MEDIA_GITHUB_TOKEN ?? process.env.GITHUB_TOKEN ?? process.env.GITHUB_PAT ?? "";
   const branch = process.env.GITHUB_BRANCH ?? "main";
   const mediaPath = process.env.GITHUB_MEDIA_PATH ?? "media/";
   const baseUrl = process.env.GITHUB_CDN_URL ?? null;
-  return { token, repo, branch, mediaPath, baseUrl };
+  return { token, branch, mediaPath, baseUrl };
 })();
+
+/**
+ * Explicit media repositories from the environment. Only media-specific vars
+ * are read — `GITHUB_REPO` is the app repository and must never receive media
+ * uploads implicitly.
+ */
+export function githubMediaReposFromEnv(): string[] {
+  const raw = process.env.GITHUB_MEDIA_REPOS ?? process.env.GITHUB_MEDIA_REPO ?? "";
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of raw.split(",")) {
+    const repo = part.trim().replace(/^https?:\/\/github\.com\//i, "").replace(/\.git$/i, "");
+    if (!repo || seen.has(repo.toLowerCase())) continue;
+    seen.add(repo.toLowerCase());
+    out.push(repo);
+  }
+  return out;
+}
 
 function githubMediaUrl(key: string, cfg: GitHubConfig): string {
   const base = cfg.baseUrl ?? `https://cdn.jsdelivr.net/gh/${cfg.repo}@${cfg.branch}`;
@@ -340,11 +361,11 @@ export async function buildAdapters(): Promise<ResolvedAdapter[]> {
   for (const a of cfg.adapters) {
     if (!a.enabled) continue;
     if (a.kind === "github") {
-      const token = process.env.GITHUB_TOKEN ?? process.env.GITHUB_PAT ?? "";
-      // Per-adapter repo wins; blank falls back to the legacy single-repo env so
-      // existing installs keep working without re-configuring anything.
-      const repo = (a.repo ?? "").trim() || (process.env.GITHUB_REPO ?? "");
-      const baseUrl = (a.cdnBase ?? "").trim() || (process.env.GITHUB_CDN_URL ?? null);
+      const token = process.env.MEDIA_GITHUB_TOKEN ?? process.env.GITHUB_TOKEN ?? process.env.GITHUB_PAT ?? "";
+      // The repository must be configured explicitly on the adapter. A blank
+      // repo means "not configured yet", never "use the app repository".
+      const repo = (a.repo ?? "").trim().replace(/^https?:\/\/github\.com\//i, "").replace(/\.git$/i, "");
+      const baseUrl = (a.cdnBase ?? "").trim() || null;
       adapters.push({
         id: "github",
         tag: githubTag(repo),
@@ -383,43 +404,38 @@ export async function buildAdapters(): Promise<ResolvedAdapter[]> {
     }
   }
 
-  // Legacy fallback: STORAGE_ADAPTER=github (vault) with no settings chain yet.
-  if (adapters.length === 0 && process.env.STORAGE_ADAPTER === "github" && legacyGithub.token && legacyGithub.repo) {
-    adapters.push({
-      id: "github",
-      tag: githubTag(legacyGithub.repo),
-      label: "GitHub",
-      enabled: true,
-      ...legacyGithub,
-      baseUrl: legacyGithub.baseUrl,
-      region: "us-east-1",
-      prefix: legacyGithub.mediaPath,
-    });
+  // Headless fallback: no settings chain yet, but an explicit media repo list
+  // was supplied to the runner. Keeps GitHub Actions configuration declarative
+  // without ever falling back to the app repository.
+  if (adapters.length === 0 && legacyGithub.token) {
+    const repos = githubMediaReposFromEnv();
+    for (const [i, repo] of repos.entries()) {
+      adapters.push({
+        id: "github",
+        tag: githubTag(repo),
+        label: repos.length > 1 ? `GitHub media ${i + 1}` : "GitHub media",
+        enabled: true,
+        ...legacyGithub,
+        repo,
+        baseUrl: legacyGithub.baseUrl,
+        region: "us-east-1",
+        prefix: legacyGithub.mediaPath,
+      });
+    }
   }
 
   return adapters;
 }
 
-/** True when a registry row belongs to a resolved adapter (incl. legacy tags). */
+/**
+ * True when a registry row belongs to exactly this adapter.
+ *
+ * Legacy bare tags (`github`, `s3:idrivee2`) do not identify a repository, so
+ * they must not be attributed to whichever repo happens to be configured now.
+ * The dashboards show them as former targets with their own measured totals.
+ */
 export function rowMatchesAdapter(rowAdapter: string, a: ResolvedAdapter): boolean {
-  if (rowAdapter === a.tag) return true;
-  // Legacy rows carry a bare engine/provider tag.
-  if (rowAdapter === "github" && a.id === "github") return true;
-  if (rowAdapter === a.id) return true;
-  return false;
-}
-
-export function remoteStorageEnabled(): boolean {
-  return Boolean(
-    (process.env.STORAGE_ADAPTER === "github" && legacyGithub.token && process.env.GITHUB_REPO) ||
-      process.env.B2_BUCKET ||
-      process.env.IDRIVEE2_BUCKET,
-  );
-}
-
-/** True when the pipeline should try to push media to GitHub. */
-export function githubStorageEnabled(): boolean {
-  return Boolean(process.env.STORAGE_ADAPTER === "github" && legacyGithub.token && process.env.GITHUB_REPO);
+  return rowAdapter === a.tag;
 }
 
 export function storageRegistryCount(): Promise<number> {
@@ -591,10 +607,12 @@ export async function cleanupMedia(opts: { dryRun?: boolean; months?: number } =
       skipped += 1;
       continue;
     }
-    if (opts.dryRun) continue;
+    if (opts.dryRun) {
+      removed += 1;
+      continue;
+    }
     await deleteMediaObjectRowAndBlob(row);
     removed += 1;
   }
-  if (!opts.dryRun) removed = rows.length - skipped;
   return { dryRun: Boolean(opts.dryRun), considered: rows.length, removed, skipped, cutoff };
 }

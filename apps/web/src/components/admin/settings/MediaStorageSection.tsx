@@ -5,16 +5,7 @@ import type { MediaStorageAdapterConfig, MediaStorageConfig, MediaStorageMode } 
 import { Field, Section, Segmented, TextInput, ToggleRow } from "./ui";
 
 const DEFAULT_CONFIG: MediaStorageConfig = {
-  adapters: [
-    {
-      kind: "github",
-      label: "GitHub Media (Primary)",
-      repo: "bugsfreeweb/HoichoiMedia",
-      branch: "main",
-      mediaPath: "media/",
-      enabled: true,
-    },
-  ],
+  adapters: [],
   mode: "failover",
   purge_local_after_upload: false,
   retention_months: 1,
@@ -35,7 +26,7 @@ export function MediaStorageSection({
       return {
         ...DEFAULT_CONFIG,
         ...parsed,
-        adapters: Array.isArray(parsed.adapters) && parsed.adapters.length > 0 ? parsed.adapters : DEFAULT_CONFIG.adapters,
+        adapters: Array.isArray(parsed.adapters) ? parsed.adapters : [],
       };
     } catch {
       return DEFAULT_CONFIG;
@@ -60,8 +51,8 @@ export function MediaStorageSection({
         ...prev.adapters,
         {
           kind: "github",
-          label: `GitHub Media Repo ${prev.adapters.length + 1}`,
-          repo: "bugsfreeweb/HoichoiMedia2",
+          label: `GitHub media repo ${prev.adapters.length + 1}`,
+          repo: "",
           branch: "main",
           mediaPath: "media/",
           enabled: true,
@@ -94,7 +85,7 @@ export function MediaStorageSection({
       <Section
         title="মাল্টি-রিপোজিটরি মিডিয়া স্টোরেজ পলিসি"
         kicker="MEDIA STORAGE & CDN DECOUPLING"
-        hint="আপনার অ্যাপের মিডিয়া ফাইলগুলোকে অ্যাপ থেকে সম্পূর্ণ আলাদা করে একাধিক পাবলিক GitHub রিপোজিটরিতে (যেমন bugsfreeweb/HoichoiMedia) সংসংরক্ষণ করুন।"
+        hint="আপনার অ্যাপের মিডিয়া ফাইলগুলোকে অ্যাপ রিপো থেকে সম্পূর্ণ আলাদা করে এক বা একাধিক ডেডিকেটেড পাবলিক GitHub রিপোজিটরিতে সংরক্ষণ করুন। রিপো নাম শুধু এখানেই কনফিগার হবে — অ্যাপ রিপোতে কোনো ফলব্যাক হয় না।"
       >
         <Field
           label="ডিস্ট্রিবিউশন মোড (DISTRIBUTION MODE)"
@@ -125,6 +116,13 @@ export function MediaStorageSection({
             </button>
           </div>
 
+          {cfg.adapters.length === 0 && (
+            <div className="rounded-lg border border-dashed border-ink/25 bg-paper-deep/40 p-5 text-[12.5px] text-ink-soft">
+              এখনো কোনো মিডিয়া রিপো কনফিগার করা হয়নি। উপরের বোতাম দিয়ে একটি GitHub মিডিয়া রিপো
+              যোগ করুন। কনফিগার না করা পর্যন্ত মিডিয়া শুধু লোকাল ডিস্কে থাকবে।
+            </div>
+          )}
+
           {cfg.adapters.map((ad, idx) => (
             <div key={idx} className="space-y-3 rounded-lg border border-ink/20 bg-paper p-4">
               <div className="flex items-center justify-between gap-2 border-b border-ink/10 pb-2">
@@ -137,15 +135,13 @@ export function MediaStorageSection({
                     onChange={(v) => updateAdapter(idx, { enabled: v })}
                     label={ad.enabled ? "সক্রিয়" : "নিষ্ক্রিয়"}
                   />
-                  {cfg.adapters.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeAdapter(idx)}
-                      className="text-[11px] font-bold text-rose-600 hover:underline"
-                    >
-                      মুছে ফেলুন
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeAdapter(idx)}
+                    className="text-[11px] font-bold text-rose-600 hover:underline"
+                  >
+                    মুছে ফেলুন
+                  </button>
                 </div>
               </div>
 
@@ -161,8 +157,8 @@ export function MediaStorageSection({
                   <Field label="GitHub রিপোজিটরি (OWNER/REPO)">
                     <TextInput
                       value={ad.repo ?? ""}
-                      placeholder="bugsfreeweb/HoichoiMedia"
-                      onChange={(e) => updateAdapter(idx, { repo: e.target.value })}
+                      placeholder="owner/media-repo"
+                      onChange={(e) => updateAdapter(idx, { repo: e.target.value.trim() })}
                     />
                   </Field>
                 )}
@@ -177,6 +173,15 @@ export function MediaStorageSection({
                 )}
 
                 {ad.kind === "github" && (
+                  <Field label="রিপো পাথ (MEDIA PATH)">
+                    <TextInput
+                      value={ad.mediaPath ?? "media/"}
+                      onChange={(e) => updateAdapter(idx, { mediaPath: e.target.value })}
+                    />
+                  </Field>
+                )}
+
+                {ad.kind === "github" && (
                   <Field label="CDN Base URL (ঐচ্ছিক কাস্টম সিডিএন)">
                     <TextInput
                       value={ad.cdnBase ?? ""}
@@ -186,6 +191,13 @@ export function MediaStorageSection({
                   </Field>
                 )}
               </div>
+
+              {ad.kind === "github" && !(ad.repo ?? "").trim() && (
+                <p className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11.5px] text-amber-800">
+                  ⚠ রিপো নাম খালি — এই অ্যাডাপ্টার আপলোডে অংশ নেবে না। মিডিয়া অ্যাপ রিপোতে
+                  ফলব্যাক করবে না।
+                </p>
+              )}
             </div>
           ))}
         </div>

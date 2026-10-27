@@ -902,9 +902,9 @@ export interface MediaStorageAdapterConfig {
   /** Object key prefix inside the bucket (default `media/`). */
   prefix?: string;
   /**
-   * GitHub-only: the media repository as `owner/name`. Left blank it falls back
-   * to the legacy `GITHUB_REPO` env var, so existing single-repo installs keep
-   * working. This is what makes multiple public media-only repos possible.
+   * GitHub-only: the media repository as `owner/name`. Required for the adapter
+   * to upload; it never falls back to the app repository. This is what makes
+   * multiple public media-only repos possible.
    */
   repo?: string;
   /** GitHub-only: branch to push to (default `main`). */

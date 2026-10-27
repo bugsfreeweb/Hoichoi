@@ -5,6 +5,8 @@ export const CREDENTIAL_NAMES = [
   "turso_token",
   "github_pat",
   "github_repo",
+  "github_media_repos",
+  "media_github_token",
   "github_branch",
   "github_cdn_url",
   "idrivee2_access_key",
@@ -39,6 +41,8 @@ const ENV_MAP: Partial<Record<CredentialName, string>> = {
   fb_session_cookie: "FB_SESSION_COOKIE",
   github_pat: "GITHUB_TOKEN",
   github_repo: "GITHUB_REPO",
+  github_media_repos: "GITHUB_MEDIA_REPOS",
+  media_github_token: "MEDIA_GITHUB_TOKEN",
   github_branch: "GITHUB_BRANCH",
   github_cdn_url: "GITHUB_CDN_URL",
   idrivee2_access_key: "IDRIVEE2_ACCESS_KEY",
@@ -112,11 +116,13 @@ export async function getEnvFromVault(): Promise<Record<string, string>> {
     const v = snap[name];
     if (v) out[ENV_MAP[name] ?? name] = v;
   }
-  // Enable the GitHub media adapter when both repo credentials exist: every
-  // processed image/video is pushed to the repo and the deployed web serves
-  // the blobs from jsDelivr (the serverless app can't reach the desktop disk).
-  if (snap.github_pat && snap.github_repo) {
+  // Enable the GitHub media adapter only when an explicit media repo list
+  // exists. `github_repo` is the app repository and must never receive media.
+  const mediaToken = snap.media_github_token || snap.github_pat;
+  const mediaRepos = (snap.github_media_repos ?? "").trim();
+  if (mediaToken && mediaRepos) {
     out.STORAGE_ADAPTER = "github";
+    if (!out.MEDIA_GITHUB_TOKEN) out.MEDIA_GITHUB_TOKEN = mediaToken;
   }
   // Raw imports live under their real ENV name (they have no canonical vault
   // key), so surface every extra vault entry verbatim. Without this, keys pasted

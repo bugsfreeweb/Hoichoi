@@ -34,6 +34,11 @@ env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
   FB_SESSION_COOKIE: ${{ secrets.FB_SESSION_COOKIE }}
+  # Dedicated media credentials. The runner reads MEDIA_GITHUB_TOKEN and never
+  # touches the app repository for media. If these are absent, uploads fall back
+  # to committing mirrored files into apps/web/public/uploads (existing path).
+  MEDIA_GITHUB_TOKEN: ${{ secrets.MEDIA_GITHUB_TOKEN }}
+  GITHUB_MEDIA_REPOS: ${{ secrets.MEDIA_GITHUB_REPOS }}
   MAX_SOURCES_PER_RUN: ${{ vars.MAX_SOURCES_PER_RUN }}
   MAX_POSTS_PER_RUN: ${{ vars.MAX_POSTS_PER_RUN }}
   ARCHIVE_VISIBLE_DAYS: ${{ vars.ARCHIVE_VISIBLE_DAYS }}

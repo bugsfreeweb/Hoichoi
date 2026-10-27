@@ -154,34 +154,9 @@ async function tableSizes(): Promise<StorageTableSize[]> {
 /** The registry tag a configured adapter writes to (mirrors storage.ts). */
 function adapterTagFor(a: MediaStorageAdapterConfig): string {
   if (a.kind === "github") {
-    const repo = (a.repo ?? "").trim() || (process.env.GITHUB_REPO ?? "");
-    return githubTag(repo);
+    return githubTag((a.repo ?? "").trim());
   }
-  const bucket = (a.bucket ?? "").trim() || (process.env[a.provider === "backblaze" ? "B2_BUCKET" : "IDRIVEE2_BUCKET"] ?? "");
-  return s3Tag(a.provider ?? a.kind, bucket);
-}
-
-/** Fold one registry stat into another (used for legacy bare tags). */
-function mergeStat(into: MediaObjectStat, from: MediaObjectStat): MediaObjectStat {
-  into.files += from.files;
-  into.bytes += from.bytes;
-  into.todayFiles += from.todayFiles;
-  into.todayBytes += from.todayBytes;
-  if (from.lastUploadAt && (!into.lastUploadAt || from.lastUploadAt > into.lastUploadAt)) {
-    into.lastUploadAt = from.lastUploadAt;
-  }
-  const days = new Map(into.byDay.map((d) => [d.day, d]));
-  for (const d of from.byDay) {
-    const cur = days.get(d.day);
-    if (cur) {
-      cur.files += d.files;
-      cur.bytes += d.bytes;
-    } else {
-      days.set(d.day, { ...d });
-    }
-  }
-  into.byDay = [...days.values()].sort((a, b) => (a.day < b.day ? 1 : -1)).slice(0, 30);
-  return into;
+  return s3Tag(a.provider ?? a.kind, (a.bucket ?? "").trim());
 }
 
 const EMPTY_STAT = (adapter: string): MediaObjectStat => ({
@@ -227,35 +202,23 @@ export async function storageSnapshot(): Promise<StorageSnapshot> {
 
   const statByTag = new Map(stats.map((s) => [s.adapter, s]));
   const adapters = mediaCfg?.adapters ?? [];
-  const ghCount = adapters.filter((a) => a.kind === "github").length;
   const consumed = new Set<string>();
 
   for (const [i, a] of adapters.entries()) {
     const tag = adapterTagFor(a);
     consumed.add(tag);
-    let stat = statByTag.get(tag);
-    // Fold legacy bare-`github` rows into the sole GitHub repo so the numbers
-    // stay right for installs that uploaded before per-repo tagging existed.
-    if (a.kind === "github" && ghCount === 1) {
-      const legacy = statByTag.get("github");
-      if (legacy && legacy.adapter !== tag) {
-        stat = stat ? mergeStat({ ...stat, byDay: [...stat.byDay] }, legacy) : { ...legacy };
-        consumed.add("github");
-      }
-    }
+    const stat = statByTag.get(tag);
     const s = stat ?? EMPTY_STAT(tag);
+    const repo = a.kind === "github" ? (a.repo ?? "").trim() : "";
     locations.push({
       id: tag || `adapter-${i}`,
       label: a.label || (a.kind === "github" ? "GitHub" : (a.provider ?? "S3")),
       kind: a.kind,
       provider: a.provider,
-      repo: a.kind === "github" ? (a.repo ?? "").trim() || (process.env.GITHUB_REPO ?? null) : null,
-      cdnBase:
-        a.kind === "github"
-          ? (a.cdnBase ?? "").trim() || (process.env.GITHUB_CDN_URL ?? null)
-          : null,
+      repo: repo || null,
+      cdnBase: a.kind === "github" ? (a.cdnBase ?? "").trim() || null : null,
       enabled: Boolean(a.enabled),
-      configured: Boolean(a.bucket || a.endpoint || a.kind === "github"),
+      configured: a.kind === "github" ? Boolean(repo) : Boolean(a.bucket || a.endpoint),
       bytes: s.bytes,
       files: s.files,
       lastUploadAt: s.lastUploadAt,
@@ -273,12 +236,13 @@ export async function storageSnapshot(): Promise<StorageSnapshot> {
   for (const s of stats) {
     if (consumed.has(s.adapter)) continue;
     const isGh = s.adapter === "github" || s.adapter.startsWith("github:");
+    const knownRepo = isGh && s.adapter.includes(":") ? s.adapter.slice("github:".length) : null;
     locations.push({
       id: s.adapter,
-      label: s.adapter,
+      label: knownRepo ?? (isGh ? "GitHub (লিগ্যাসি — রিপো অজানা)" : s.adapter),
       kind: isGh ? "github" : "s3",
       provider: isGh ? undefined : s.adapter.replace(/^s3:/, "").split(":")[0],
-      repo: isGh && s.adapter.includes(":") ? s.adapter.slice("github:".length) : null,
+      repo: knownRepo,
       enabled: false,
       configured: false,
       bytes: s.bytes,
@@ -287,7 +251,9 @@ export async function storageSnapshot(): Promise<StorageSnapshot> {
       uploadedToday: s.todayFiles,
       bytesToday: s.todayBytes,
       byDay: s.byDay,
-      detail: `সাবেক টার্গেট — এখন কনফিগে নেই, তবে ${s.files.toLocaleString()} ব্লব আছে`,
+      detail: knownRepo
+        ? `সাবেক টার্গেট — এখন কনফিগে নেই, তবে ${s.files.toLocaleString()} ব্লব আছে`
+        : `লিগ্যাসি টার্গেট (রিপো রেকর্ড হয়নি) — ${s.files.toLocaleString()} ব্লব, ${s.bytes.toLocaleString()} বাইট মাপা`,
     });
   }
 

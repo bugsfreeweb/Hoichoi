@@ -272,6 +272,11 @@ export function PostEditor({ post }: { post: Post }) {
     setBusy("save");
     setMsg(null);
     setErr(null);
+    if (!title.trim()) {
+      setErr("শিরোনাম খালি রাখা যাবে না — একটি শিরোনাম লিখুন।");
+      setBusy(null);
+      return;
+    }
     try {
       const res = await fetch(`/api/posts/${post.id}`, {
         method: "PATCH",

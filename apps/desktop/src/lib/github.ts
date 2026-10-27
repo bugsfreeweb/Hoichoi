@@ -1,6 +1,17 @@
 import sodium from "libsodium-wrappers";
 import { getCredential } from "./vault";
 
+/**
+ * GitHub does not allow Actions secrets whose name starts with `GITHUB_`, so
+ * the dedicated media credentials are mirrored under `MEDIA_*` names and the
+ * workflow maps them back to the env var the runner reads.
+ */
+export function actionsSecretName(envName: string): string {
+  if (envName === "GITHUB_TOKEN" || envName === "GITHUB_PAT") return "MEDIA_GITHUB_TOKEN";
+  if (envName === "GITHUB_MEDIA_REPOS") return "MEDIA_GITHUB_REPOS";
+  return envName;
+}
+
 /** GitHub Actions secrets API — mirror desktop keys to the cron mirror. */
 export async function getGithubCredentials() {
   const pat = await getCredential("github_pat");

@@ -4,6 +4,7 @@ import { toBn } from "@/lib/format";
 import { categoryLabel, categoryTint, readableOn } from "@/lib/category-style";
 import { readMinutesBn, shortId } from "@/lib/bn";
 import { mediaUrl } from "@/lib/media";
+import SafeImage from "@/components/SafeImage";
 
 interface ArticleCardProps {
   post: Post;
@@ -42,9 +43,8 @@ export default function ArticleCard({ post, index, categories }: ArticleCardProp
                 playsInline
               />
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={mediaUrl({ media_path: post.media_path, media_kind: post.media_kind }) ?? undefined}
+              <SafeImage
+                src={mediaUrl({ media_path: post.media_path, media_kind: post.media_kind }) ?? ""}
                 alt={post.title_bn}
                 className="photo-grade h-full w-full object-cover"
               />

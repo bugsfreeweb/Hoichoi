@@ -5,6 +5,10 @@ import clsx from "clsx";
  * Cover artwork for a report. Always renders a gradient scrim so Bangla
  * headlines stay readable on top of the photo in both themes.
  */
+"use client";
+
+import { useState } from "react";
+
 export default function PostImage({
   src,
   alt,
@@ -26,22 +30,30 @@ export default function PostImage({
   rounded?: string;
   children?: React.ReactNode;
 }) {
+  const [broken, setBroken] = useState(false);
   return (
     <div
       className={clsx("relative overflow-hidden bg-ink-800", rounded, className)}
       style={{ aspectRatio: ratio }}
     >
-      <img
-        src={src}
-        alt={alt}
-        loading="lazy"
-        decoding="async"
-        className={clsx(
-          "h-full w-full object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
-          zoom && "group-hover:scale-[1.07]",
-          imgClassName,
-        )}
-      />
+      {broken ? (
+        <div className="flex h-full w-full items-center justify-center bg-ink-800/60 px-4 text-center">
+          <p className="font-serif-bn text-[14px] font-bold text-ink/40">{alt}</p>
+        </div>
+      ) : (
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          onError={() => setBroken(true)}
+          className={clsx(
+            "h-full w-full object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
+            zoom && "group-hover:scale-[1.07]",
+            imgClassName,
+          )}
+        />
+      )}
       {/* tonal wash keeps photos consistent with the newsroom palette */}
       <span
         aria-hidden
