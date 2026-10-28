@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { MaintenanceSiteConfig } from "@hoichoi/shared-types";
 import "./maintenance.css";
 
@@ -171,7 +171,7 @@ export function MaintenanceScreen({
   if (isMaintenanceTheme(design)) {
     return (
       <div
-        className={`mc-root mc-theme-root ${thumbnail ? "mc-thumbnail" : ""} ${config.effects.grain ? "mc-grain" : ""} ${preview ? "mc-paused" : ""}`}
+        className={`mc-root mc-theme-root ${thumbnail ? "mc-thumbnail" : ""} ${config.effects.grain ? "mc-grain" : ""}`}
         style={
           {
             background: config.colors.bg,
@@ -197,7 +197,7 @@ export function MaintenanceScreen({
 
   return (
     <div
-      className={`mc-root mc-theme-root mc-theme-editorial ${thumbnail ? "mc-thumbnail" : ""} ${config.effects.grain ? "mc-grain" : ""} ${preview ? "mc-paused" : ""}`}
+      className={`mc-root mc-theme-root mc-theme-editorial ${thumbnail ? "mc-thumbnail" : ""} ${config.effects.grain ? "mc-grain" : ""}`}
       style={
         {
           background: config.colors.bg,
@@ -515,9 +515,43 @@ function AlternateMaintenanceTheme({
   const ticker = L === "en" ? config.tickerEn : config.tickerBn;
   const dark = theme !== "editorial" && theme !== "aurora";
 
-  const pipeline = (
-    <ThemePipeline config={config} L={L} />
-  );
+  const stageRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (theme !== "aurora" && theme !== "orbit") return;
+    const stage = stageRef.current;
+    if (!stage || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const card = stage.querySelector<HTMLElement>(".mc-theme-card");
+    const move = (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
+      const bounds = stage.getBoundingClientRect();
+      const x = (event.clientX - bounds.left) / bounds.width;
+      const y = (event.clientY - bounds.top) / bounds.height;
+      stage.style.setProperty("--mc-pointer-x", `${(x - 0.5) * 22}px`);
+      stage.style.setProperty("--mc-pointer-y", `${(y - 0.5) * 16}px`);
+      card?.style.setProperty("--mc-tilt-x", `${(0.5 - y) * 3}deg`);
+      card?.style.setProperty("--mc-tilt-y", `${(x - 0.5) * 3}deg`);
+    };
+    const reset = () => {
+      stage.style.setProperty("--mc-pointer-x", "0px");
+      stage.style.setProperty("--mc-pointer-y", "0px");
+      card?.style.setProperty("--mc-tilt-x", "0deg");
+      card?.style.setProperty("--mc-tilt-y", "0deg");
+    };
+
+    stage.addEventListener("pointermove", move);
+    stage.addEventListener("pointerleave", reset);
+    return () => {
+      stage.removeEventListener("pointermove", move);
+      stage.removeEventListener("pointerleave", reset);
+    };
+  }, [theme]);
+
+  const pipeline = <ThemePipeline config={config} L={L} />;
+  const tickerStrip = config.showTicker && config.effects.marquee
+    ? <ThemeTicker config={config} ticker={ticker} L={L} />
+    : null;
   const countdown = (
     <ThemeCountdown config={config} remaining={remaining} L={L} flip={theme === "flip"} />
   );
@@ -536,7 +570,7 @@ function AlternateMaintenanceTheme({
   ) : null;
 
   return (
-    <main className={`mc-theme-stage mc-theme-${theme} ${dark ? "mc-theme-dark" : "mc-theme-light"}`}>
+    <main ref={stageRef} className={`mc-theme-stage mc-theme-${theme} ${dark ? "mc-theme-dark" : "mc-theme-light"}`}>
       {config.effects.particles && <ThemeDust />}
       {theme === "neon" && <div aria-hidden className="mc-neon-orb" />}
       {theme === "aurora" && <div aria-hidden className="mc-aurora-wash" />}
@@ -547,12 +581,9 @@ function AlternateMaintenanceTheme({
         </div>
       )}
       {theme === "neon" && <div aria-hidden className="mc-neon-grid" />}
-      {config.showTicker && config.effects.marquee && (
-        <ThemeTicker config={config} ticker={ticker} L={L} />
-      )}
-
       {theme === "editorial" ? (
         <>
+          {tickerStrip}
           <div className="mc-editorial-meta">{L === "en" ? "WEEKLY EDITION" : "সাপ্তাহিক সংস্করণ"} · 2026 <span>{copy.badge}</span></div>
           <header className="mc-editorial-header">
             <ThemeBrand config={config} brand={brand} />
@@ -580,24 +611,28 @@ function AlternateMaintenanceTheme({
           <ThemeFooter config={config} L={L} />
         </>
       ) : theme === "terminal" ? (
-        <div className="mc-terminal-window">
-          <div className="mc-terminal-titlebar">
-            <span className="mc-traffic-lights"><i /><i /><i /></span>
-            <strong>{L === "en" ? "Hoichoi Desk" : "হৈচৈ ডেস্ক"}</strong>
-            <span>ISR 300s · EDGE CACHE ON</span>
+        <>
+          <div className="mc-terminal-window">
+            <div className="mc-terminal-titlebar">
+              <span className="mc-traffic-lights"><i /><i /><i /></span>
+              <strong>{L === "en" ? "Hoichoi Desk" : "হৈচৈ ডেস্ক"}</strong>
+              <span>ISR 300s · EDGE CACHE ON</span>
+            </div>
+            <div className="mc-terminal-stats">
+              <ThemeStat config={config} stats={stats} L={L} />
+            </div>
+            <div className="mc-terminal-content">
+              <p className="mc-terminal-log"><span>&gt; COLLECTOR_SYNC · HASH_VERIFY · EDGE_CACHE_WARM</span></p>
+              <ThemeBrand config={config} brand={brand} />
+              <ThemeHero copy={copy} />
+              <ThemeStatus config={config} L={L} lastRunIso={lastRunIso} />
+              <div className="mc-theme-columns">{countdown}{progress}</div>
+              {signup}{contact}{pipeline}
+            </div>
           </div>
-          <div className="mc-terminal-stats">
-            <ThemeStat config={config} stats={stats} L={L} />
-          </div>
-          <div className="mc-terminal-content">
-            <p className="mc-terminal-log">&gt; COLLECTOR_SYNC · HASH_VERIFY · EDGE_CACHE_WARM</p>
-            <ThemeBrand config={config} brand={brand} />
-            <ThemeHero copy={copy} />
-            <ThemeStatus config={config} L={L} lastRunIso={lastRunIso} />
-            <div className="mc-theme-columns">{countdown}{progress}</div>
-            {signup}{contact}{pipeline}
-          </div>
-        </div>
+          {tickerStrip}
+          <ThemeFooter config={config} L={L} />
+        </>
       ) : theme === "neon" ? (
         <>
           <div className="mc-neon-band"><span>● ON AIR</span><strong>{copy.badge}</strong><span>HOICHOI NEWSROOM · LIVE SIGNAL</span></div>
@@ -611,6 +646,7 @@ function AlternateMaintenanceTheme({
             {signup}
             {pipeline}
           </div>
+          <div className="mc-neon-bottom">{tickerStrip}<ThemeFooter config={config} L={L} /></div>
         </>
       ) : theme === "blueprint" ? (
         <>
@@ -626,7 +662,11 @@ function AlternateMaintenanceTheme({
             {statsView}
             {signup}{contact}
           </section>
-          <div className="mc-blueprint-footer">SYSTEM BLUEPRINT · BUGSFREE STUDIO · ASIA/UTC+6</div>
+          <div className="mc-blueprint-footer">
+            {tickerStrip}
+            <ThemeFooter config={config} L={L} />
+            <span>SYSTEM BLUEPRINT · BUGSFREE STUDIO · ASIA/UTC+6</span>
+          </div>
         </>
       ) : theme === "flip" ? (
         <>
@@ -641,15 +681,17 @@ function AlternateMaintenanceTheme({
             <p className="mc-theme-body">{copy.body}</p>
             {progress}{statsView}{signup}
           </section>
-          <ThemeFooter config={config} L={L} />
+          <div className="mc-flip-bottom">{tickerStrip}<ThemeFooter config={config} L={L} /></div>
         </>
       ) : theme === "aurora" ? (
-        <section className="mc-aurora-card">
-          <header><ThemeBrand config={config} brand={brand} /><span className="mc-aurora-badge"><i />{copy.badge}</span></header>
-          <ThemeHero copy={copy} />
-          {countdown}{statsView}{progress}{signup}{contact}
-          <ThemeFooter config={config} L={L} />
-        </section>
+        <>
+          <section className="mc-aurora-card mc-theme-card">
+            <header><ThemeBrand config={config} brand={brand} /><span className="mc-aurora-badge"><i />{copy.badge}</span></header>
+            <ThemeHero copy={copy} />
+            {countdown}{statsView}{progress}{signup}{contact}
+          </section>
+          <div className="mc-aurora-bottom">{tickerStrip}<ThemeFooter config={config} L={L} /></div>
+        </>
       ) : theme === "nebula" ? (
         <>
           <header className="mc-nebula-header"><ThemeBrand config={config} brand={brand} /><span className="mc-nebula-badge"><i />{copy.badge}</span></header>
@@ -658,7 +700,7 @@ function AlternateMaintenanceTheme({
             <ThemeHero copy={copy} />
             {countdown}{statsView}{signup}{progress}{contact}
           </section>
-          <ThemeFooter config={config} L={L} />
+          <div className="mc-nebula-bottom">{tickerStrip}<ThemeFooter config={config} L={L} /></div>
         </>
       ) : (
         <>
@@ -667,23 +709,28 @@ function AlternateMaintenanceTheme({
             <span className="mc-orbit-indicator"><i /> {copy.badge}</span>
           </header>
           <div className="mc-orbit-stage">
-            {PIPELINE.map((stage, index) => (
+            {config.showPipeline && PIPELINE.map((stage, index) => (
               <span
                 key={stage.en}
-                className={`mc-orbit-node mc-orbit-node-${index + 1}`}
-                style={{ ["--orbit-index" as string]: index }}
+                className="mc-orbit-track"
+                style={{
+                  ["--orbit-radius" as string]: `${18 + (index % 3) * 7}cqw`,
+                  ["--orbit-duration" as string]: `${22 + index * 3}s`,
+                  ["--orbit-delay" as string]: `${-index * 2.5}s`,
+                  ["--orbit-direction" as string]: index % 2 ? "reverse" : "normal",
+                }}
               >
-                0{index + 1} · {L === "en" ? stage.en : stage.bn}
+                <span className="mc-orbit-node">0{index + 1} · {L === "en" ? stage.en : stage.bn}</span>
               </span>
             ))}
-            <section className="mc-orbit-card">
+            <section className="mc-orbit-card mc-theme-card">
               <ThemeBrand config={config} brand={brand} />
               <span className="mc-theme-eyebrow">{L === "en" ? "SYNC ORBIT · SIX STAGES" : "সিঙ্ক অরবিট · ছয় ধাপ"}</span>
               <ThemeHero copy={copy} />
               {countdown}{config.showPipeline && pipeline}{signup}{progress}{statsView}{contact}
             </section>
           </div>
-          <ThemeFooter config={config} L={L} />
+          <div className="mc-orbit-bottom">{tickerStrip}<ThemeFooter config={config} L={L} /></div>
         </>
       )}
     </main>
@@ -700,6 +747,9 @@ function ThemeDust() {
             left: `${(i * 47 + 13) % 100}%`,
             animationDelay: `${(i * 1.7) % 9}s`,
             animationDuration: `${7 + (i % 5) * 1.5}s`,
+            width: `${2 + (i % 3)}px`,
+            height: `${2 + (i % 3)}px`,
+            ["--mc-dx" as string]: `${((i * 31) % 81) - 40}px`,
           }}
         />
       ))}
@@ -766,7 +816,7 @@ function ThemeCountdown({
     <section className={`mc-theme-countdown ${flip ? "mc-theme-countdown-flip" : ""}`}>
       <p>{L === "en" ? "TIME REMAINING" : "বাকি সময়"}</p>
       <div>{units.map(([value, label]) => (
-        <span key={label}><b>{bn(value, L)}</b><small>{label}</small></span>
+        <span key={label}><b key={value} className={flip ? "mc-flip-value" : undefined}>{bn(String(value).padStart(2, "0"), L)}</b><small>{label}</small></span>
       ))}</div>
     </section>
   );
