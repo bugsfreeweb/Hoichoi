@@ -19,6 +19,7 @@ import { timeBn, readMinutesBn, shortId, bnNum } from "@/lib/bn";
 import { agoBn } from "@/lib/format";
 import { categoryLabel, categoryTint, readableOn } from "@/lib/category-style";
 import { mediaUrl, withDefaultImages } from "@/lib/media";
+import { LiveEventSection } from "@/components/home/LiveEventSection";
 
 export const revalidate = 300;
 
@@ -119,6 +120,8 @@ export default async function HomePage({
         </div>
       </section>
       )}
+
+      <LiveEventSection enabled={cfg.show_live_events} settings={cfg.live_events} />
 
       {cfg.show_hero && featured && (
         <section className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">

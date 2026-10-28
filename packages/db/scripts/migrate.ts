@@ -18,6 +18,7 @@ import {
   ensureRuntimeProviders,
   ensureSectionsTable,
   ensureDefaultVariantColumn,
+  ensureLiveEventTables,
 } from "../src/client";
 import { seedDefaults } from "../src/seed";
 
@@ -68,6 +69,8 @@ const seeded = await seedDefaults(client, nowIso());
   await ensureSectionsTable(client);
   await ensureDefaultVariantColumn(client);
   console.log("hoichoi:db — section variant engine ensured");
+  await ensureLiveEventTables(client);
+  console.log("hoichoi:db — live-event tables ensured");
   await client.close();
 }
 

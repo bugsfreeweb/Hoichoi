@@ -1151,6 +1151,10 @@ export interface SiteAppConfig {  /** Masthead "newsroom in numbers" hero sectio
   ai_hero_images: boolean;
   /** Default theme seeded before hydration (`light` | `dark`). */
   theme_default: "light" | "dark";
+  /** Show real live events on the public site. */
+  show_live_events: boolean;
+  /** Global live-event presentation and reader experience settings. */
+  live_events: LiveEventSettings;
   /** New-posts surge threshold used by the live graph. */
   surge_threshold: number;
   /** How many posts the home page list shows per page (12/14/16/20/custom). */
@@ -1172,6 +1176,17 @@ export interface SiteAppConfig {  /** Masthead "newsroom in numbers" hero sectio
   brand_animation: BrandAnimation;
   /** Decorative effect toggles for the home-page hero. */
   hero_effects: HeroEffects;
+}
+
+export type LiveThemeKey = "stage" | "broadsheet" | "scoreboard" | "timeline" | "compact" | "studio";
+
+export interface LiveEventSettings {
+  default_theme: LiveThemeKey;
+  refresh_seconds: number;
+  floating_player: boolean;
+  auto_moderation: boolean;
+  ticker_label: string;
+  banned_words: string[];
 }
 
 /** Decorative effect toggles for the home-page hero. */
@@ -1199,6 +1214,15 @@ export const DEFAULT_APP_CONFIG: SiteAppConfig = {
   maintenance_mode: false,
   ai_hero_images: true,
   theme_default: "light",
+  show_live_events: true,
+  live_events: {
+    default_theme: "stage",
+    refresh_seconds: 8,
+    floating_player: true,
+    auto_moderation: true,
+    ticker_label: "জরুরি আপডেট",
+    banned_words: [],
+  },
   surge_threshold: 12,
   home_post_count: 12,
   detail_similar_count: 3,

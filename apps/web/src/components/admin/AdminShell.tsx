@@ -55,6 +55,7 @@ const NAV_GROUPS: Array<{ title: string; en: string; items: NavItem[] }> = [
       { href: "/admin/sources", emoji: "📡", label: "সোর্স" },
       { href: "/admin/categories", emoji: "🗂️", label: "বিভাগ" },
       { href: "/admin/posts", emoji: "✏️", label: "পোস্ট এডিটর" },
+      { href: "/admin/live", emoji: "📡", label: "লাইভ ইভেন্ট" },
       { href: "/admin/notices", emoji: "📢", label: "নোটিশ" },
       { href: "/admin/archive", emoji: "📁", label: "আর্কাইভ" },
     ],

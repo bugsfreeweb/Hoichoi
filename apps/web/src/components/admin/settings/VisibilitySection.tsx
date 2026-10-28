@@ -3,9 +3,10 @@
 import { Field, Section, Segmented, ToggleRow } from "./ui";
 import { useSettings } from "./state";
 
-const GRID_ITEMS: Array<{ key: "show_hero" | "show_live_graph" | "show_categories" | "show_ads" | "show_rewrite_engine" | "show_footer" | "ai_hero_images"; label: string; hint: string }> = [
+const GRID_ITEMS: Array<{ key: "show_hero" | "show_live_graph" | "show_categories" | "show_ads" | "show_rewrite_engine" | "show_footer" | "ai_hero_images" | "show_live_events"; label: string; hint: string }> = [
   { key: "show_hero", label: "হিরো সেকশন", hint: "শীর্ষের বড় ক্যাটাগরি-কার্ড" },
   { key: "show_live_graph", label: "Live Analytics গ্রাফ", hint: "প্রবন্ধ-card-এর উপরে ট্রেন্ডগ্রাফ" },
+  { key: "show_live_events", label: "লাইভ ইভেন্ট", hint: "আসল, অ্যাডমিন-তৈরি লাইভ কভারেজ হোমপেজ ও পাবলিক লাইভ কেন্দ্রে দেখান" },
   { key: "show_categories", label: "বিভাগ স্ট্রিপ", hint: "হোমপেজ গ্রিডের আগে ক্যাটাগরি-বোতাম" },
   { key: "show_ads", label: "বিজ্ঞাপন স্লট", hint: "সব ad slot জায়গা" },
   { key: "show_rewrite_engine", label: "রিরাইট ইঞ্জিন ব্যাজ", hint: "আর্টিকেল পেজে AI Engine-লেবেল" },

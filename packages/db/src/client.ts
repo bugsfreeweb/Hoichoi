@@ -777,10 +777,135 @@ export async function ensureSchema(client: Client, externalUrl?: string): Promis
   await ensureTrafficTables(client);
   await ensureSectionsTable(client);
   await ensureDefaultVariantColumn(client);
+  await ensureLiveEventTables(client);
   await seedDefaults(client, nowIso());
   await ensureGeneralCategories(client);
   await ensureCategoryKeywords(client);
   lastSchemaSig = sig;
+}
+
+export async function ensureLiveEventTables(client: Client): Promise<void> {
+  await client.executeMultiple(`
+CREATE TABLE IF NOT EXISTS live_events (
+  id TEXT PRIMARY KEY,
+  slug TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  kicker TEXT NOT NULL DEFAULT 'লাইভ',
+  summary TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT 'জাতীয়',
+  category_color TEXT NOT NULL DEFAULT '#d2202c',
+  location TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled','live','ended')),
+  stream_type TEXT NOT NULL DEFAULT 'youtube',
+  stream_url TEXT NOT NULL DEFAULT '',
+  streams_json TEXT NOT NULL DEFAULT '[]',
+  cover_image TEXT NOT NULL DEFAULT '',
+  template TEXT NOT NULL DEFAULT 'auto',
+  scoreboard_json TEXT,
+  key_points_json TEXT NOT NULL DEFAULT '[]',
+  featured INTEGER NOT NULL DEFAULT 0,
+  comments_enabled INTEGER NOT NULL DEFAULT 1,
+  reactions_enabled INTEGER NOT NULL DEFAULT 1,
+  polls_enabled INTEGER NOT NULL DEFAULT 1,
+  qa_enabled INTEGER NOT NULL DEFAULT 1,
+  show_viewer_count INTEGER NOT NULL DEFAULT 1,
+  moderation TEXT NOT NULL DEFAULT 'post' CHECK (moderation IN ('pre','post')),
+  slow_mode INTEGER NOT NULL DEFAULT 0,
+  starts_at TEXT NOT NULL,
+  ended_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_live_events_status ON live_events (status, featured, starts_at DESC);
+CREATE TABLE IF NOT EXISTS live_updates (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL REFERENCES live_events(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL DEFAULT 'update' CHECK (kind IN ('update','key','breaking','quote','stat')),
+  title TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL,
+  author TEXT NOT NULL DEFAULT 'হৈচৈ ডেস্ক',
+  media_url TEXT NOT NULL DEFAULT '',
+  pinned INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_live_updates_event ON live_updates (event_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS live_comments (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL REFERENCES live_events(id) ON DELETE CASCADE,
+  session_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  body TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('approved','pending','rejected')),
+  flagged INTEGER NOT NULL DEFAULT 0,
+  pinned INTEGER NOT NULL DEFAULT 0,
+  likes INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_live_comments_event ON live_comments (event_id, status, created_at DESC);
+CREATE TABLE IF NOT EXISTS live_reactions (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL REFERENCES live_events(id) ON DELETE CASCADE,
+  session_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE (event_id, session_id, kind)
+);
+CREATE TABLE IF NOT EXISTS live_polls (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL REFERENCES live_events(id) ON DELETE CASCADE,
+  question TEXT NOT NULL,
+  options_json TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','closed')),
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_live_polls_event ON live_polls (event_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS live_poll_votes (
+  id TEXT PRIMARY KEY,
+  poll_id TEXT NOT NULL REFERENCES live_polls(id) ON DELETE CASCADE,
+  option_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE (poll_id, session_id)
+);
+CREATE TABLE IF NOT EXISTS live_questions (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL REFERENCES live_events(id) ON DELETE CASCADE,
+  session_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  body TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','answered','hidden')),
+  answer TEXT NOT NULL DEFAULT '',
+  upvotes INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_live_questions_event ON live_questions (event_id, status, created_at DESC);
+CREATE TABLE IF NOT EXISTS live_engagement_votes (
+  id TEXT PRIMARY KEY,
+  target_type TEXT NOT NULL CHECK (target_type IN ('comment','question')),
+  target_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE (target_type, target_id, session_id)
+);
+CREATE TABLE IF NOT EXISTS live_viewers (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL REFERENCES live_events(id) ON DELETE CASCADE,
+  session_id TEXT NOT NULL,
+  first_seen TEXT NOT NULL,
+  last_seen TEXT NOT NULL,
+  UNIQUE (event_id, session_id)
+);
+CREATE INDEX IF NOT EXISTS idx_live_viewers_seen ON live_viewers (event_id, last_seen);
+CREATE TABLE IF NOT EXISTS live_event_activity (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL REFERENCES live_events(id) ON DELETE CASCADE,
+  session_id TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('share','play')),
+  label TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_live_activity_event ON live_event_activity (event_id, kind, created_at);
+`);
 }
 
 /**

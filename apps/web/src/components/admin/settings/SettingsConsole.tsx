@@ -13,15 +13,17 @@ import { SiteSection } from "./SiteSection";
 import { AdsSection } from "./AdsSection";
 import { VisibilitySection } from "./VisibilitySection";
 import { MaintenanceEditor } from "./MaintenanceEditor";
+import { LiveEventsSettings } from "./LiveEventsSettings";
 import { OperationsSection } from "./OperationsSection";
 import { MediaStorageSection } from "./MediaStorageSection";
 import { VariantSwitcher } from "@/components/admin/VariantSwitcher";
 
-type Tab = "site" | "visibility" | "ads" | "design" | "media" | "maintenance" | "operations";
+type Tab = "site" | "visibility" | "live-events" | "ads" | "design" | "media" | "maintenance" | "operations";
 
 const TABS: Array<{ key: Tab; emoji: string; bn: string; en: string }> = [
   { key: "site", emoji: "📰", bn: "সাইট", en: "Site" },
   { key: "visibility", emoji: "👁️", bn: "ভিজিবিলিটি", en: "Visibility" },
+  { key: "live-events", emoji: "📡", bn: "লাইভ ইভেন্ট", en: "Live events" },
   { key: "ads", emoji: "📣", bn: "বিজ্ঞাপন", en: "Ads" },
   { key: "design", emoji: "🎨", bn: "ডিজাইন", en: "Design" },
   { key: "media", emoji: "🖼️", bn: "মিডিয়া স্টোরেজ", en: "Media Storage" },
@@ -69,6 +71,7 @@ export function SettingsConsole({
   sections,
   siteVariant,
   initialTab,
+  liveEventCount,
 }: {
   initial: SiteSettings;
   initialRuns: RecentPipelineRun[];
@@ -76,6 +79,7 @@ export function SettingsConsole({
   sections: SectionState[];
   siteVariant: string;
   initialTab?: string;
+  liveEventCount: number;
 }) {
   const [tab, setTab] = useState<Tab>(() =>
     TABS.some((t) => t.key === initialTab) ? (initialTab as Tab) : "site",
@@ -88,7 +92,12 @@ export function SettingsConsole({
         ? (JSON.parse(initial.app_config_json) as Partial<SiteAppConfig>)
         : {};
       const base: SiteAppConfig = JSON.parse(JSON.stringify(DEFAULT_APP_CONFIG));
-      return { ...base, ...parsed, maintenance: { ...base.maintenance, ...(parsed.maintenance ?? {}) } };
+      return {
+        ...base,
+        ...parsed,
+        maintenance: { ...base.maintenance, ...(parsed.maintenance ?? {}) },
+        live_events: { ...base.live_events, ...(parsed.live_events ?? {}) },
+      };
     } catch {
       return JSON.parse(JSON.stringify(DEFAULT_APP_CONFIG));
     }
@@ -196,6 +205,7 @@ export function SettingsConsole({
         <div className="mt-4">
           {tab === "site" && <SiteSection />}
           {tab === "visibility" && <VisibilitySection />}
+          {tab === "live-events" && <LiveEventsSettings eventCount={liveEventCount} />}
           {tab === "ads" && <AdsSection />}
           {tab === "design" && (
             <div className="border border-ink/15 bg-paper-deep/40 p-2 sm:p-4">

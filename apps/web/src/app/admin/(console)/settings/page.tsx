@@ -1,5 +1,5 @@
 import { getSettings } from "@/lib/settings";
-import { listPipelineRunsPage, maintenanceInboxSnapshot, listSections, getSiteVariant } from "@hoichoi/db";
+import { listLiveEvents, listPipelineRunsPage, maintenanceInboxSnapshot, listSections, getSiteVariant } from "@hoichoi/db";
 import { SettingsConsole } from "@/components/admin/settings/SettingsConsole";
 
 export const dynamic = "force-dynamic";
@@ -15,11 +15,12 @@ export default async function AdminSettingsPage({
   // "triggered but failed" apart from "trigger never reached GitHub".
   // ManualRun only renders the newest run and the newest finished one, so a
   // handful is plenty. Full paginated history lives at /admin/logs.
-  const [recent, inbox, sections, siteVariant] = await Promise.all([
+  const [recent, inbox, sections, siteVariant, liveEvents] = await Promise.all([
     listPipelineRunsPage(1, 5).catch(() => null),
     maintenanceInboxSnapshot().catch(() => null),
     listSections().catch(() => []),
     getSiteVariant().catch(() => "default"),
+    listLiveEvents(),
   ]);
   return (
     <div>
@@ -31,6 +32,7 @@ export default async function AdminSettingsPage({
         sections={sections}
         siteVariant={siteVariant}
         initialTab={tab}
+        liveEventCount={liveEvents.length}
       />
     </div>
   );

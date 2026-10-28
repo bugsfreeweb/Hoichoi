@@ -14,6 +14,7 @@ export * from "./media-objects";
 export * from "./post-images";
 export * from "./traffic";
 export * from "./storage-report";
+export * from "./live-events";
 
 import {
   DEFAULT_APP_CONFIG,
@@ -169,6 +170,27 @@ export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
           const he = v as Partial<HeroEffects>;
           for (const key of Object.keys(merged.hero_effects) as Array<keyof HeroEffects>) {
             if (typeof he[key] === "boolean") merged.hero_effects[key] = he[key] as boolean;
+          }
+        }
+      } else if (k === "live_events") {
+        if (v && typeof v === "object" && !Array.isArray(v)) {
+          const live = v as Partial<SiteAppConfig["live_events"]>;
+          const themes = ["stage", "broadsheet", "scoreboard", "timeline", "compact", "studio"];
+          if (typeof live.default_theme === "string" && themes.includes(live.default_theme)) {
+            merged.live_events.default_theme = live.default_theme as SiteAppConfig["live_events"]["default_theme"];
+          }
+          if (typeof live.refresh_seconds === "number" && Number.isFinite(live.refresh_seconds)) {
+            merged.live_events.refresh_seconds = Math.min(60, Math.max(4, Math.trunc(live.refresh_seconds)));
+          }
+          if (typeof live.floating_player === "boolean") merged.live_events.floating_player = live.floating_player;
+          if (typeof live.auto_moderation === "boolean") merged.live_events.auto_moderation = live.auto_moderation;
+          if (typeof live.ticker_label === "string") merged.live_events.ticker_label = live.ticker_label.slice(0, 60);
+          if (Array.isArray(live.banned_words)) {
+            merged.live_events.banned_words = live.banned_words
+              .filter((word): word is string => typeof word === "string")
+              .map((word) => word.trim().slice(0, 40))
+              .filter(Boolean)
+              .slice(0, 100);
           }
         }
       } else if (typeof v === "boolean") {
@@ -2616,4 +2638,3 @@ function unusableTitleClause(): string {
     OR TRIM(COALESCE(body_bn, '')) = ''
   )`;
 }
-
