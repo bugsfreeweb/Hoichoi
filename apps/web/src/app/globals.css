@@ -510,6 +510,7 @@ html[data-theme="light"] .admin-footer {
 .admin-console .bg-paper { background-color: #10141b; }
 .admin-console .bg-paper-deep { background-color: #0a0c10; }
 .admin-console .border-ink { border-color: rgba(255, 255, 255, 0.14); }
+.admin-console .border-ink\/12 { border-color: rgba(255, 255, 255, 0.1); }
 .admin-console .border-ink\/15 { border-color: rgba(255, 255, 255, 0.12); }
 .admin-console .border-ink\/20 { border-color: rgba(255, 255, 255, 0.16); }
 .admin-console .border-ink\/25 { border-color: rgba(255, 255, 255, 0.2); }
@@ -1041,6 +1042,7 @@ html[data-theme="light"] .admin-console .bg-ink\/95 { background-color: rgba(26,
 html[data-theme="light"] .admin-console .bg-paper { background-color: #f3eee1; }
 html[data-theme="light"] .admin-console .bg-paper-deep { background-color: #e9e2cf; }
 html[data-theme="light"] .admin-console .border-ink { border-color: rgba(26, 20, 13, 0.16); }
+html[data-theme="light"] .admin-console .border-ink\/12 { border-color: rgba(26, 20, 13, 0.1); }
 html[data-theme="light"] .admin-console .border-ink\/15 { border-color: rgba(26, 20, 13, 0.12); }
 html[data-theme="light"] .admin-console .border-ink\/20 { border-color: rgba(26, 20, 13, 0.16); }
 html[data-theme="light"] .admin-console .border-ink\/25 { border-color: rgba(26, 20, 13, 0.2); }

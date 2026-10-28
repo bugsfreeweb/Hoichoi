@@ -9,6 +9,7 @@ import {
   createLivePoll,
   deleteLiveEvent,
   getLiveEventById,
+  getLiveEventBySlug,
   moderateAllCleanLiveComments,
   moderateLiveComment,
   moderateLiveQuestion,
@@ -25,6 +26,8 @@ import {
   type LiveUpdateKind,
 } from "@hoichoi/db";
 import { requirePageUser, requiresRole } from "@/lib/auth";
+
+export type SaveLiveEventState = { error: string } | null;
 
 const THEMES: LiveThemeKey[] = ["stage", "broadsheet", "scoreboard", "timeline", "compact", "studio"];
 const STATUSES: LiveEventStatus[] = ["scheduled", "live", "ended"];
@@ -45,45 +48,74 @@ function checked(data: FormData, key: string): boolean {
   return data.get(key) === "on";
 }
 
-function parseDhakaDate(value: string): string {
+function parseDhakaDate(value: string): string | null {
   if (!value) return new Date().toISOString();
   const date = new Date(`${value}:00+06:00`);
-  if (!Number.isFinite(date.getTime())) throw new Error("শুরুর সময়টি সঠিক নয়।");
-  return date.toISOString();
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
-function parseStreams(raw: string): LiveStream[] {
-  return raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).map((line) => {
+function parseStreams(raw: string): { streams?: LiveStream[]; error?: string } {
+  const lines = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length > 5) return { error: "সর্বোচ্চ ৫টি বিকল্প চ্যানেল যোগ করা যাবে।" };
+  const streams: LiveStream[] = [];
+  for (const line of lines) {
     const [label, rawType, ...parts] = line.split("|").map((part) => part.trim());
     const url = parts.join("|");
     const type = (rawType || "").toLowerCase();
     if (!label || !url || !STREAM_TYPES.includes(type as (typeof STREAM_TYPES)[number])) {
-      throw new Error("বিকল্প চ্যানেলের প্রতিটি লাইন: নাম | youtube/hls/iframe/mp4 | URL");
+      return { error: "বিকল্প চ্যানেলের প্রতিটি লাইন সম্পূর্ণ করুন: নাম, ধরন ও URL।" };
     }
-    if (!/^https?:\/\//i.test(url)) throw new Error("স্ট্রিম URL অবশ্যই http বা https দিয়ে শুরু হবে।");
-    return { label: label.slice(0, 60), type: type as LiveStream["type"], url: url.slice(0, 1000) };
-  }).slice(0, 5);
+    if (!/^https?:\/\//i.test(url)) return { error: "স্ট্রিম URL অবশ্যই http বা https দিয়ে শুরু হবে।" };
+    streams.push({ label: label.slice(0, 60), type: type as LiveStream["type"], url: url.slice(0, 1000) });
+  }
+  return { streams };
 }
 
-export async function saveLiveEvent(formData: FormData) {
+function generatedSlug(title: string): string {
+  const ascii = title.toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 89)
+    .replace(/-+$/g, "");
+  if (ascii.length >= 2) return ascii;
+  return `live-event-${Date.now().toString(36)}`;
+}
+
+export async function saveLiveEvent(
+  _previousState: SaveLiveEventState,
+  formData: FormData,
+): Promise<SaveLiveEventState> {
   await requireEditor();
   const id = text(formData, "id", 80) || undefined;
   const title = text(formData, "title", 200);
-  const slug = text(formData, "slug", 90).toLowerCase();
+  const slug = (text(formData, "slug", 90) || generatedSlug(title)).toLowerCase();
   const statusValue = text(formData, "status", 20) as LiveEventStatus;
   const themeValue = text(formData, "template", 30);
   const streamTypeValue = text(formData, "streamType", 20);
   const coverImage = text(formData, "coverImage", 1000);
   const startsAt = parseDhakaDate(text(formData, "startsAt", 40));
 
-  if (!title || title.length < 2) throw new Error("ইভেন্টের শিরোনাম লিখুন।");
-  if (!/^[a-z0-9][a-z0-9-]{1,88}$/.test(slug)) throw new Error("স্লাগে ছোট হাতের ইংরেজি অক্ষর, সংখ্যা ও হাইফেন ব্যবহার করুন।");
-  if (!STATUSES.includes(statusValue)) throw new Error("ইভেন্টের অবস্থা সঠিক নয়।");
-  if (themeValue !== "auto" && !THEMES.includes(themeValue as LiveThemeKey)) throw new Error("লাইভ থিমটি সঠিক নয়।");
-  if (!STREAM_TYPES.includes(streamTypeValue as (typeof STREAM_TYPES)[number])) throw new Error("স্ট্রিমের ধরন সঠিক নয়।");
+  if (!title || title.length < 2) return { error: "ইভেন্টের শিরোনাম অন্তত ২ অক্ষরের হতে হবে।" };
+  if (!/^[a-z0-9][a-z0-9-]{1,88}$/.test(slug)) return { error: "স্লাগে ছোট হাতের ইংরেজি অক্ষর, সংখ্যা ও হাইফেন ব্যবহার করুন।" };
+  if (!STATUSES.includes(statusValue)) return { error: "ইভেন্টের অবস্থা সঠিক নয়।" };
+  if (themeValue !== "auto" && !THEMES.includes(themeValue as LiveThemeKey)) return { error: "লাইভ থিমটি সঠিক নয়।" };
+  if (!STREAM_TYPES.includes(streamTypeValue as (typeof STREAM_TYPES)[number])) return { error: "স্ট্রিমের ধরন সঠিক নয়।" };
+  if (!startsAt) return { error: "শুরুর সময়টি সঠিক নয়।" };
   if (coverImage && !coverImage.startsWith("/") && !/^https?:\/\//i.test(coverImage)) {
-    throw new Error("কভার ছবির URL / অথবা http(s) দিয়ে শুরু হতে হবে।");
+    return { error: "কভার ছবির URL / অথবা http(s) দিয়ে শুরু হতে হবে।" };
   }
+  const parsedStreams = parseStreams(text(formData, "streams", 5000));
+  if (parsedStreams.error || !parsedStreams.streams) return { error: parsedStreams.error ?? "বিকল্প চ্যানেলগুলো পরীক্ষা করুন।" };
+
+  const [existingSlug, existingEvent] = await Promise.all([
+    getLiveEventBySlug(slug),
+    id ? getLiveEventById(id) : Promise.resolve(null),
+  ]);
+  if (existingSlug && existingSlug.id !== id) return { error: "এই স্লাগটি আগে থেকেই ব্যবহৃত। অন্য স্লাগ দিন।" };
+  if (id && !existingEvent) return { error: "সম্পাদনার ইভেন্টটি আর পাওয়া যাচ্ছে না। ইভেন্ট তালিকা রিফ্রেশ করুন।" };
 
   const input: LiveEventInput = {
     id,
@@ -97,10 +129,10 @@ export async function saveLiveEvent(formData: FormData) {
     status: statusValue,
     streamType: streamTypeValue as LiveStream["type"],
     streamUrl: text(formData, "streamUrl", 1000),
-    streams: parseStreams(text(formData, "streams", 5000)),
+    streams: parsedStreams.streams,
     coverImage,
     template: themeValue === "auto" ? "auto" : (themeValue as LiveThemeKey),
-    scoreboard: (await getLiveEventById(id ?? ""))?.scoreboard ?? null,
+    scoreboard: existingEvent?.scoreboard ?? null,
     keyPoints: text(formData, "keyPoints", 4000).split(/\r?\n/).map((point) => point.trim()).filter(Boolean).slice(0, 20),
     featured: checked(formData, "featured"),
     commentsEnabled: checked(formData, "commentsEnabled"),
@@ -114,7 +146,15 @@ export async function saveLiveEvent(formData: FormData) {
     endedAt: statusValue === "ended" ? new Date().toISOString() : null,
   };
 
-  const event = await createLiveEvent(input);
+  let event: Awaited<ReturnType<typeof createLiveEvent>>;
+  try {
+    event = await createLiveEvent(input);
+  } catch (error) {
+    if (error instanceof Error && /UNIQUE constraint failed: live_events\.slug/i.test(error.message)) {
+      return { error: "এই স্লাগটি অন্য একটি ইভেন্ট ব্যবহার করছে। স্লাগটি পরিবর্তন করে আবার চেষ্টা করুন।" };
+    }
+    throw error;
+  }
   if (event.featured) await setFeaturedLiveEvent(event.id);
   revalidatePath("/");
   revalidatePath("/live");
