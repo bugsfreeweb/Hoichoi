@@ -948,7 +948,17 @@ export interface SourceError {
 /* ------------------------- maintenance page ------------------------ */
 
 /** Visual theme for the public maintenance screen. */
-export type MaintenanceThemeId = "editorial" | "newsprint" | "midnight" | "aurora";
+export type MaintenanceThemeId =
+  | "editorial"
+  | "terminal"
+  | "neon"
+  | "blueprint"
+  | "flip"
+  | "aurora"
+  | "nebula"
+  | "orbit"
+  | "newsprint"
+  | "midnight";
 
 /** Locale the maintenance screen renders in (bn default). */
 export type MaintenanceLocale = "bn" | "en";

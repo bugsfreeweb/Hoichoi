@@ -126,11 +126,13 @@ export function MaintenanceScreen({
   stats = null,
   lastRunIso = null,
   preview = false,
+  thumbnail = false,
 }: {
   config: MaintenanceSiteConfig;
   stats?: MaintenanceStats | null;
   lastRunIso?: string | null;
   preview?: boolean;
+  thumbnail?: boolean;
 }) {
   const L: L = config.language === "en" ? "en" : "bn";
   const T = STR[L];
@@ -165,9 +167,37 @@ export function MaintenanceScreen({
     }));
   }, []);
 
+  const design = config.theme === "newsprint" ? "flip" : config.theme === "midnight" ? "nebula" : config.theme;
+  if (isMaintenanceTheme(design)) {
+    return (
+      <div
+        className={`mc-root mc-theme-root ${thumbnail ? "mc-thumbnail" : ""} ${config.effects.grain ? "mc-grain" : ""} ${preview ? "mc-paused" : ""}`}
+        style={
+          {
+            background: config.colors.bg,
+            "--mc-bg": config.colors.bg,
+            "--mc-surface": config.colors.surface,
+            "--mc-text": config.colors.text,
+            "--mc-primary": config.colors.primary,
+            "--mc-accent": config.colors.accent,
+          } as React.CSSProperties
+        }
+      >
+        <AlternateMaintenanceTheme
+          config={config}
+          theme={design}
+          stats={stats}
+          lastRunIso={lastRunIso}
+          remaining={remaining}
+          preview={preview}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`mc-root ${config.effects.grain ? "mc-grain" : ""} ${preview ? "mc-paused" : ""}`}
+      className={`mc-root mc-theme-root mc-theme-editorial ${thumbnail ? "mc-thumbnail" : ""} ${config.effects.grain ? "mc-grain" : ""} ${preview ? "mc-paused" : ""}`}
       style={
         {
           background: config.colors.bg,
@@ -198,7 +228,7 @@ export function MaintenanceScreen({
         </div>
       )}
 
-      <div className="relative z-[6] min-h-[100dvh]">
+      <div className={`relative z-[6] ${thumbnail ? "h-full min-h-0" : "min-h-[100dvh]"}`}>
         {/* ===== breaking/ticker band ===== */}
         <div className="flex items-center gap-3 overflow-hidden px-4 py-2" style={{ background: config.colors.text }}>
             <span
@@ -402,10 +432,10 @@ export function MaintenanceScreen({
           {/* newsletter + contact */}
           <div className="mt-6 grid gap-6 md:grid-cols-2">
             {config.showNewsletter && (
-              <NewsletterShell config={config} L={L} />
+              <NewsletterShell config={config} L={L} disabled={preview} />
             )}
             {config.showContact && (
-              <ContactShell config={config} L={L} />
+              <ContactShell config={config} L={L} disabled={preview} />
             )}
           </div>
         </section>
@@ -447,6 +477,369 @@ export function MaintenanceScreen({
   );
 }
 
+type ActiveMaintenanceTheme = Exclude<MaintenanceSiteConfig["theme"], "newsprint" | "midnight">;
+const ACTIVE_MAINTENANCE_THEMES: readonly ActiveMaintenanceTheme[] = [
+  "editorial",
+  "terminal",
+  "neon",
+  "blueprint",
+  "flip",
+  "aurora",
+  "nebula",
+  "orbit",
+];
+type CountdownParts = { d: number; h: number; m: number; s: number };
+
+function isMaintenanceTheme(theme: string): theme is ActiveMaintenanceTheme {
+  return ACTIVE_MAINTENANCE_THEMES.some((activeTheme) => activeTheme === theme);
+}
+
+function AlternateMaintenanceTheme({
+  config,
+  theme,
+  stats,
+  lastRunIso,
+  remaining,
+  preview,
+}: {
+  config: MaintenanceSiteConfig;
+  theme: ActiveMaintenanceTheme;
+  stats: MaintenanceStats | null;
+  lastRunIso: string | null;
+  remaining: CountdownParts | null;
+  preview: boolean;
+}) {
+  const L: L = config.language === "en" ? "en" : "bn";
+  const copy = L === "en" ? config.copyEn : config.copyBn;
+  const brand = L === "en" ? config.brand.name : config.brand.nameBn;
+  const ticker = L === "en" ? config.tickerEn : config.tickerBn;
+  const dark = theme !== "editorial" && theme !== "aurora";
+
+  const pipeline = (
+    <ThemePipeline config={config} L={L} />
+  );
+  const countdown = (
+    <ThemeCountdown config={config} remaining={remaining} L={L} flip={theme === "flip"} />
+  );
+  const progress = <ThemeProgress config={config} L={L} />;
+  const statsView = <ThemeStats config={config} stats={stats} L={L} />;
+  const signup = config.showNewsletter ? (
+    <div className="mc-theme-form">
+      <p className="mb-3 text-sm font-bold">{L === "en" ? "Get notified when we're back" : "ফিরে এলে জানিয়ে দেব"}</p>
+      <NewsletterShell config={config} L={L} disabled={preview} />
+    </div>
+  ) : null;
+  const contact = config.showContact ? (
+    <div className="mc-theme-form">
+      <ContactShell config={config} L={L} disabled={preview} />
+    </div>
+  ) : null;
+
+  return (
+    <main className={`mc-theme-stage mc-theme-${theme} ${dark ? "mc-theme-dark" : "mc-theme-light"}`}>
+      {config.effects.particles && <ThemeDust />}
+      {theme === "neon" && <div aria-hidden className="mc-neon-orb" />}
+      {theme === "aurora" && <div aria-hidden className="mc-aurora-wash" />}
+      {theme === "nebula" && <div aria-hidden className="mc-nebula-stars" />}
+      {theme === "orbit" && (
+        <div aria-hidden className="mc-orbit-rings">
+          {[0, 1, 2].map((ring) => <span key={ring} />)}
+        </div>
+      )}
+      {theme === "neon" && <div aria-hidden className="mc-neon-grid" />}
+      {config.showTicker && config.effects.marquee && (
+        <ThemeTicker config={config} ticker={ticker} L={L} />
+      )}
+
+      {theme === "editorial" ? (
+        <>
+          <div className="mc-editorial-meta">{L === "en" ? "WEEKLY EDITION" : "সাপ্তাহিক সংস্করণ"} · 2026 <span>{copy.badge}</span></div>
+          <header className="mc-editorial-header">
+            <ThemeBrand config={config} brand={brand} />
+            <div className="mc-editorial-edition"><b>{L === "en" ? "LEAD STORY" : "লিড স্টোরি"}</b><span>BUGSFREE STUDIO · ASIA/UTC+6</span></div>
+          </header>
+          <div className="mc-editorial-double-rule" />
+          <section className="mc-editorial-grid">
+            <article className="mc-editorial-lead">
+              <span className="mc-editorial-kicker">{L === "en" ? "LEAD STORY · THIS SYNC'S TOP UPDATE" : "লিড স্টোরি · এই সিঙ্কের প্রধান আপডেট"}</span>
+              <ThemeHero copy={copy} />
+              <div className="mc-hash-stamp mc-editorial-stamp">SHA-256 · FACT GATE · VERIFIED REWRITE <b>A3F9 · C41D · 88E2</b></div>
+              <div className="mc-editorial-timing">{countdown}{progress}</div>
+              {signup}
+              {statsView}
+            </article>
+            <aside className="mc-editorial-side">
+              <div><small>{L === "en" ? "STATUS" : "অবস্থা"}</small><b className="mc-editorial-live"><i />{copy.badge}</b></div>
+              {config.countdown.enabled && <div><small>{L === "en" ? "BACK ONLINE" : "ফিরছি"}</small>{countdown}</div>}
+              {config.showPipeline && <div><small>{L === "en" ? "PIPELINE" : "পাইপলাইন"}</small>{pipeline}</div>}
+              {config.contactEmail && <div><small>{L === "en" ? "REACH US" : "যোগাযোগ"}</small><a href={`mailto:${config.contactEmail}`}>{config.contactEmail}</a>{config.contactPhone && <a href={`tel:${config.contactPhone}`}>{config.contactPhone}</a>}</div>}
+              {contact}
+            </aside>
+          </section>
+          {config.showPipeline && <div className="mc-editorial-pipeline">{pipeline}</div>}
+          <ThemeFooter config={config} L={L} />
+        </>
+      ) : theme === "terminal" ? (
+        <div className="mc-terminal-window">
+          <div className="mc-terminal-titlebar">
+            <span className="mc-traffic-lights"><i /><i /><i /></span>
+            <strong>{L === "en" ? "Hoichoi Desk" : "হৈচৈ ডেস্ক"}</strong>
+            <span>ISR 300s · EDGE CACHE ON</span>
+          </div>
+          <div className="mc-terminal-stats">
+            <ThemeStat config={config} stats={stats} L={L} />
+          </div>
+          <div className="mc-terminal-content">
+            <p className="mc-terminal-log">&gt; COLLECTOR_SYNC · HASH_VERIFY · EDGE_CACHE_WARM</p>
+            <ThemeBrand config={config} brand={brand} />
+            <ThemeHero copy={copy} />
+            <ThemeStatus config={config} L={L} lastRunIso={lastRunIso} />
+            <div className="mc-theme-columns">{countdown}{progress}</div>
+            {signup}{contact}{pipeline}
+          </div>
+        </div>
+      ) : theme === "neon" ? (
+        <>
+          <div className="mc-neon-band"><span>● ON AIR</span><strong>{copy.badge}</strong><span>HOICHOI NEWSROOM · LIVE SIGNAL</span></div>
+          <div className="mc-neon-content">
+            <span className="mc-neon-status"><i /> {L === "en" ? "LIVE DESK · ISR" : "সরাসরি ডেস্ক · ISR"}</span>
+            <h1>{copy.headline}</h1>
+            <p className="mc-theme-subtitle">{copy.subheadline}</p>
+            <p className="mc-theme-body">{copy.body}</p>
+            {countdown}
+            <div className="mc-theme-columns">{progress}{statsView}</div>
+            {signup}
+            {pipeline}
+          </div>
+        </>
+      ) : theme === "blueprint" ? (
+        <>
+          <header className="mc-blueprint-meta">
+            <span>SHEET 06 / 06 · REV 2.4<br />FEED → SHOT → HASH → LLM → GIT → DEPLOY</span>
+            <span className="mc-blueprint-badge"><i />{copy.badge}</span>
+          </header>
+          <section className="mc-blueprint-content">
+            <ThemeBrand config={config} brand={brand} />
+            <ThemeHero copy={copy} />
+            {config.showPipeline && pipeline}
+            <div className="mc-theme-columns">{countdown}{progress}</div>
+            {statsView}
+            {signup}{contact}
+          </section>
+          <div className="mc-blueprint-footer">SYSTEM BLUEPRINT · BUGSFREE STUDIO · ASIA/UTC+6</div>
+        </>
+      ) : theme === "flip" ? (
+        <>
+          <header className="mc-flip-header">
+            <ThemeBrand config={config} brand={brand} />
+            <span className="mc-hash-stamp">SHA-256 · VERIFIED<br /><b>A3F9 · C41D · 88E2</b></span>
+          </header>
+          <section className="mc-flip-content">
+            <span className="mc-theme-eyebrow">{copy.subheadline}</span>
+            <h1>{copy.headline}</h1>
+            {countdown}
+            <p className="mc-theme-body">{copy.body}</p>
+            {progress}{statsView}{signup}
+          </section>
+          <ThemeFooter config={config} L={L} />
+        </>
+      ) : theme === "aurora" ? (
+        <section className="mc-aurora-card">
+          <header><ThemeBrand config={config} brand={brand} /><span className="mc-aurora-badge"><i />{copy.badge}</span></header>
+          <ThemeHero copy={copy} />
+          {countdown}{statsView}{progress}{signup}{contact}
+          <ThemeFooter config={config} L={L} />
+        </section>
+      ) : theme === "nebula" ? (
+        <>
+          <header className="mc-nebula-header"><ThemeBrand config={config} brand={brand} /><span className="mc-nebula-badge"><i />{copy.badge}</span></header>
+          <section className="mc-nebula-content">
+            <span className="mc-theme-eyebrow">{L === "en" ? "LATE EDITION · NIGHT DESK" : "শেষ সংস্করণ · নাইট ডেস্ক"}</span>
+            <ThemeHero copy={copy} />
+            {countdown}{statsView}{signup}{progress}{contact}
+          </section>
+          <ThemeFooter config={config} L={L} />
+        </>
+      ) : (
+        <>
+          <header className="mc-orbit-header">
+            <span>{L === "en" ? "HOICHOI · SYNC ORBIT" : "হৈচৈ · সিঙ্ক অরবিট"}</span>
+            <span className="mc-orbit-indicator"><i /> {copy.badge}</span>
+          </header>
+          <div className="mc-orbit-stage">
+            {PIPELINE.map((stage, index) => (
+              <span
+                key={stage.en}
+                className={`mc-orbit-node mc-orbit-node-${index + 1}`}
+                style={{ ["--orbit-index" as string]: index }}
+              >
+                0{index + 1} · {L === "en" ? stage.en : stage.bn}
+              </span>
+            ))}
+            <section className="mc-orbit-card">
+              <ThemeBrand config={config} brand={brand} />
+              <span className="mc-theme-eyebrow">{L === "en" ? "SYNC ORBIT · SIX STAGES" : "সিঙ্ক অরবিট · ছয় ধাপ"}</span>
+              <ThemeHero copy={copy} />
+              {countdown}{config.showPipeline && pipeline}{signup}{progress}{statsView}{contact}
+            </section>
+          </div>
+          <ThemeFooter config={config} L={L} />
+        </>
+      )}
+    </main>
+  );
+}
+
+function ThemeDust() {
+  return (
+    <div aria-hidden className="mc-theme-dust">
+      {Array.from({ length: 18 }, (_, i) => (
+        <i
+          key={i}
+          style={{
+            left: `${(i * 47 + 13) % 100}%`,
+            animationDelay: `${(i * 1.7) % 9}s`,
+            animationDuration: `${7 + (i % 5) * 1.5}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ThemeTicker({ config, ticker, L }: { config: MaintenanceSiteConfig; ticker: string[]; L: L }) {
+  return (
+    <div className="mc-theme-ticker">
+      <b>{config.language === "en" ? "BREAKING" : "জরুরি"}</b>
+      <div className="mc-theme-ticker-window">
+        <div className="mc-theme-ticker-track">
+          {[0, 1].map((copy) => (
+            <span key={copy}>{(ticker.length ? ticker : [L === "en" ? "Back online soon" : "শীঘ্রই ফিরছি"]).map((item, index) => (
+              <span key={`${copy}-${index}`}>{item}<i>◆</i></span>
+            ))}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ThemeBrand({ config, brand }: { config: MaintenanceSiteConfig; brand: string }) {
+  return (
+    <div className="mc-theme-brand">
+      <b>{config.brand.mark || "হ"}</b>
+      <span><strong>{brand}</strong><small>ASIA/UTC+6 · BUGSFREE STUDIO</small></span>
+    </div>
+  );
+}
+
+function ThemeHero({ copy }: { copy: MaintenanceSiteConfig["copyBn"] }) {
+  return (
+    <div className="mc-theme-hero">
+      <span className="mc-theme-eyebrow">{copy.badge}</span>
+      <h1>{copy.headline}</h1>
+      <p className="mc-theme-subtitle">{copy.subheadline}</p>
+      <p className="mc-theme-body">{copy.body}</p>
+    </div>
+  );
+}
+
+function ThemeCountdown({
+  config,
+  remaining,
+  L,
+  flip,
+}: {
+  config: MaintenanceSiteConfig;
+  remaining: CountdownParts | null;
+  L: L;
+  flip: boolean;
+}) {
+  if (!config.countdown.enabled || !remaining) return null;
+  const units = [
+    [remaining.d, L === "en" ? "DAYS" : "দিন"],
+    [remaining.h, L === "en" ? "HOURS" : "ঘণ্টা"],
+    [remaining.m, L === "en" ? "MINUTES" : "মিনিট"],
+    [remaining.s, L === "en" ? "SECONDS" : "সেকেন্ড"],
+  ] as const;
+  return (
+    <section className={`mc-theme-countdown ${flip ? "mc-theme-countdown-flip" : ""}`}>
+      <p>{L === "en" ? "TIME REMAINING" : "বাকি সময়"}</p>
+      <div>{units.map(([value, label]) => (
+        <span key={label}><b>{bn(value, L)}</b><small>{label}</small></span>
+      ))}</div>
+    </section>
+  );
+}
+
+function ThemeProgress({ config, L }: { config: MaintenanceSiteConfig; L: L }) {
+  if (!config.progress.enabled) return null;
+  const value = Math.max(0, Math.min(100, config.progress.value));
+  return (
+    <section className="mc-theme-progress">
+      <div><span>{L === "en" ? "BACK ONLINE" : "ফিরছি"}</span><b>{bn(Math.round(value), L)}%</b></div>
+      <div className="mc-theme-progress-track"><i style={{ width: `${value}%` }} /></div>
+    </section>
+  );
+}
+
+function ThemeStats({ config, stats, L }: { config: MaintenanceSiteConfig; stats: MaintenanceStats | null; L: L }) {
+  if (!config.showStats) return null;
+  const values = [
+    [L === "en" ? "Collected today" : "আজ সংগৃহীত", stats?.collectedToday ?? 0],
+    [L === "en" ? "Published reports" : "প্রকাশিত প্রতিবেদন", stats?.published ?? 0],
+    [L === "en" ? "Duplicates flagged" : "ডুপ্লিকেট চিহ্নিত", stats?.duplicates ?? 0],
+    [L === "en" ? "Pending comments" : "অপেক্ষমান মন্তব্য", stats?.pendingComments ?? 0],
+  ] as const;
+  return <div className="mc-theme-stats">{values.map(([label, value]) => <div key={label}><small>{label}</small><b>{bn(value, L)}</b></div>)}</div>;
+}
+
+function ThemeStat({ config, stats, L }: { config: MaintenanceSiteConfig; stats: MaintenanceStats | null; L: L }) {
+  if (!config.showStats) return null;
+  const values = [
+    [L === "en" ? "Collected" : "সংগৃহীত", stats?.collectedToday ?? 0],
+    [L === "en" ? "Published" : "প্রকাশিত", stats?.published ?? 0],
+    [L === "en" ? "Duplicates" : "ডুপ্লিকেট", stats?.duplicates ?? 0],
+    [L === "en" ? "Comments" : "মন্তব্য", stats?.pendingComments ?? 0],
+  ] as const;
+  return <>{values.map(([label, value]) => <div key={label}><b>{bn(value, L)}</b><small>{label}</small></div>)}</>;
+}
+
+function ThemeStatus({ config, L, lastRunIso }: { config: MaintenanceSiteConfig; L: L; lastRunIso: string | null }) {
+  if (!config.showPipeline) return null;
+  const statuses = [
+    [L === "en" ? "Turso database" : "TURSO ডাটাবেস", "TURSO"],
+    [L === "en" ? "Public data API" : "পাবলিক ডেটা API", "API"],
+    [L === "en" ? "Desktop collector" : "ডেস্কটপ কালেক্টর", lastRunIso ? "OK" : "SLEEP"],
+  ] as const;
+  return <div className="mc-theme-status">{statuses.map(([label, value]) => <span key={value}><i /><b>{label}</b><small>{value}</small></span>)}</div>;
+}
+
+function ThemePipeline({ config, L }: { config: MaintenanceSiteConfig; L: L }) {
+  if (!config.showPipeline) return null;
+  return (
+    <section className="mc-theme-pipeline">
+      <p>{L === "en" ? "FEED TO LIVE · SIX STAGES · ZERO TOUCH" : "ফিড থেকে লাইভ · ছয় ধাপ · শূন্য ছোঁয়া"}</p>
+      <div>{PIPELINE.map((step, index) => <span key={step.en}><b>0{index + 1}</b><strong>{L === "en" ? step.en : step.bn}</strong><small>{step.sub}</small></span>)}</div>
+    </section>
+  );
+}
+
+function ThemeFooter({ config, L }: { config: MaintenanceSiteConfig; L: L }) {
+  const note = L === "en" ? config.footerNoteEn : config.footerNoteBn;
+  return (
+    <footer className="mc-theme-footer">
+      <span>{note}</span>
+      <span>
+        {config.contactEmail && <a href={`mailto:${config.contactEmail}`}>{config.contactEmail}</a>}
+        {config.contactPhone && <a href={`tel:${config.contactPhone}`}>{config.contactPhone}</a>}
+      </span>
+      {config.socialsEnabled && <span>{SOC_LINKS.filter((link) => config.socials[link.key]).map((link) => <a key={link.key} href={config.socials[link.key]} target="_blank" rel="noopener noreferrer">{link.glyph}</a>)}</span>}
+      <a href="/admin">{L === "en" ? "ADMIN" : "অ্যাডমিন"} ↗</a>
+    </footer>
+  );
+}
+
 const SOC_LINKS = [
   { key: "facebook", glyph: "f" },
   { key: "x", glyph: "𝕏" },
@@ -477,7 +870,7 @@ function bhTime(iso: string): string {
   }
 }
 
-function NewsletterShell({ config, L }: { config: MaintenanceSiteConfig; L: L }) {
+function NewsletterShell({ config, L, disabled = false }: { config: MaintenanceSiteConfig; L: L; disabled?: boolean }) {
   const T = STR[L];
   const [email, setEmail] = useState("");
   const [note, setNote] = useState<null | "ok" | "dup" | "err">(null);
@@ -526,12 +919,13 @@ function NewsletterShell({ config, L }: { config: MaintenanceSiteConfig; L: L })
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
+          disabled={disabled}
           className="flex-1 rounded-lg border bg-transparent px-3 py-2.5 text-[13px] outline-none focus:border-current"
           style={{ borderColor: "color-mix(in srgb, var(--mc-text) 22%, transparent)" }}
         />
         <button
           type="submit"
-          disabled={busy}
+          disabled={busy || disabled}
           className="mc-primary-btn rounded-lg px-5 py-2.5 text-[13px] font-bold disabled:opacity-60"
         >
           {busy ? "…" : T.notifyMe}
@@ -549,7 +943,7 @@ function NewsletterShell({ config, L }: { config: MaintenanceSiteConfig; L: L })
   );
 }
 
-function ContactShell({ config, L }: { config: MaintenanceSiteConfig; L: L }) {
+function ContactShell({ config, L, disabled = false }: { config: MaintenanceSiteConfig; L: L; disabled?: boolean }) {
   const T = STR[L];
   const [form, setForm] = useState({ name: "", email: "", body: "" });
   const [note, setNote] = useState<null | "ok" | "err">(null);
@@ -591,6 +985,7 @@ function ContactShell({ config, L }: { config: MaintenanceSiteConfig; L: L }) {
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder={T.yourName}
+            disabled={disabled}
             className={field}
             style={{ borderColor: border }}
           />
@@ -600,6 +995,7 @@ function ContactShell({ config, L }: { config: MaintenanceSiteConfig; L: L }) {
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             placeholder={T.email}
+            disabled={disabled}
             className={field}
             style={{ borderColor: border }}
           />
@@ -609,6 +1005,7 @@ function ContactShell({ config, L }: { config: MaintenanceSiteConfig; L: L }) {
           rows={3}
           value={form.body}
           onChange={(e) => setForm({ ...form, body: e.target.value })}
+          disabled={disabled}
           className={`${field} resize-y leading-relaxed`}
           style={{ borderColor: border }}
         />
@@ -618,7 +1015,7 @@ function ContactShell({ config, L }: { config: MaintenanceSiteConfig; L: L }) {
               {note === "ok" ? T.sentOk : T.invalidEmail}
             </span>
           )}
-          <button type="submit" disabled={busy} className="mc-accent-btn rounded-lg px-5 py-2.5 text-[13px] font-bold disabled:opacity-60">
+          <button type="submit" disabled={busy || disabled} className="mc-accent-btn rounded-lg px-5 py-2.5 text-[13px] font-bold disabled:opacity-60">
             {busy ? "…" : `${T.send} →`}
           </button>
         </div>
