@@ -57,6 +57,7 @@ const NAV_GROUPS: Array<{ title: string; en: string; items: NavItem[] }> = [
       { href: "/admin/posts", emoji: "✏️", label: "পোস্ট এডিটর" },
       { href: "/admin/live", emoji: "📡", label: "লাইভ ইভেন্ট" },
       { href: "/admin/notices", emoji: "📢", label: "নোটিশ" },
+      { href: "/admin/polls", emoji: "🗳️", label: "পোল" },
       { href: "/admin/archive", emoji: "📁", label: "আর্কাইভ" },
     ],
   },
