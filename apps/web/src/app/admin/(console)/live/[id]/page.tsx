@@ -35,8 +35,15 @@ const UPDATE_KINDS = [
   ["stat", "ডেটা / পরিসংখ্যান"],
 ];
 
-export default async function LiveEventControlPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function LiveEventControlPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { id } = await params;
+  const sp = await searchParams;
   const [data, settings] = await Promise.all([getLiveEventAdmin(id), getSettings()]);
   if (!data) notFound();
   const { event } = data;
@@ -47,6 +54,7 @@ export default async function LiveEventControlPage({ params }: { params: Promise
   });
   const pendingComments = data.comments.filter((comment) => comment.status === "pending").length;
   const pendingQuestions = data.questions.filter((question) => question.status === "pending").length;
+  const tab = typeof sp.tab === "string" && ["desk", "moderation", "polls", "data", "settings", "analytics"].includes(sp.tab) ? sp.tab : "desk";
 
   return (
     <div>
@@ -97,19 +105,33 @@ export default async function LiveEventControlPage({ params }: { params: Promise
       </div>
 
       <nav className="no-scrollbar mt-6 flex gap-2 overflow-x-auto border-b border-ink/15 pb-3 font-mono-x text-[10px] tracking-[0.12em] uppercase">
-        <a href="#event-settings" className="shrink-0 text-ink-soft hover:text-ink">ইভেন্ট সেটিংস</a>
-        <a href="#updates" className="shrink-0 text-ink-soft hover:text-ink">আপডেট</a>
-        <a href="#scoreboard" className="shrink-0 text-ink-soft hover:text-ink">স্কোর ও তথ্য</a>
-        <a href="#polls" className="shrink-0 text-ink-soft hover:text-ink">পোল</a>
-        <a href="#moderation" className="shrink-0 text-ink-soft hover:text-ink">মডারেশন ({bn(pendingComments + pendingQuestions)})</a>
+        {([
+          ["desk", "লাইভ ডেস্ক"],
+          ["moderation", `মডারেশন (${bn(pendingComments + pendingQuestions)})`],
+          ["polls", "পোল"],
+          ["data", "স্কোর ও তথ্য"],
+          ["settings", "সেটিংস"],
+          ["analytics", "অ্যানালিটিক্স"],
+        ] as const).map(([key, label]) => (
+          <Link
+            key={key}
+            href={`/admin/live/${event.id}?tab=${key}`}
+            className={`shrink-0 border-b-2 px-3 py-2 ${tab === key ? "border-ink text-ink" : "border-transparent text-ink-soft hover:text-ink"}`}
+          >
+            {label}
+          </Link>
+        ))}
       </nav>
 
+      <div className={tab !== "settings" ? "hidden" : ""}>
       <section id="event-settings" className="mt-8 scroll-mt-20 border border-line bg-paper p-5 md:p-7">
         <p className="eyebrow">▚ EVENT SETTINGS</p>
         <h2 className="mt-1 mb-5 font-serif-bn text-[22px] font-black text-ink">ইভেন্টের তথ্য ও থিম</h2>
         <LiveEventForm event={event} />
       </section>
 
+      </div>
+      <div className={tab !== "desk" ? "hidden" : ""}>
       <section id="updates" className="mt-10 scroll-mt-20 border border-line bg-paper p-5 md:p-7">
         <p className="eyebrow">▚ VERIFIED LIVE DESK</p>
         <h2 className="mt-1 font-serif-bn text-[22px] font-black text-ink">লাইভ আপডেট</h2>
@@ -164,6 +186,8 @@ export default async function LiveEventControlPage({ params }: { params: Promise
         </div>
       </section>
 
+      </div>
+      <div className={tab !== "data" ? "hidden" : ""}>
       <section id="scoreboard" className="mt-10 scroll-mt-20 border border-line bg-paper p-5 md:p-7">
         <p className="eyebrow">▚ REAL-TIME DATA</p>
         <h2 className="mt-1 font-serif-bn text-[22px] font-black text-ink">স্কোরবোর্ড ও গুরুত্বপূর্ণ তথ্য</h2>
@@ -207,6 +231,8 @@ export default async function LiveEventControlPage({ params }: { params: Promise
         </form>
       </section>
 
+      </div>
+      <div className={tab !== "polls" ? "hidden" : ""}>
       <section id="polls" className="mt-10 scroll-mt-20 border border-line bg-paper p-5 md:p-7">
         <p className="eyebrow">▚ READER POLL</p>
         <h2 className="mt-1 font-serif-bn text-[22px] font-black text-ink">লাইভ পোল</h2>
@@ -260,6 +286,8 @@ export default async function LiveEventControlPage({ params }: { params: Promise
         ) : <p className="mt-3 text-[12px] text-ink-soft">এই ইভেন্টে পোল বন্ধ রাখা হয়েছে।</p>}
       </section>
 
+      </div>
+      <div className={tab !== "moderation" ? "hidden" : ""}>
       <section id="moderation" className="mt-10 scroll-mt-20 border border-line bg-paper p-5 md:p-7">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -329,6 +357,28 @@ export default async function LiveEventControlPage({ params }: { params: Promise
           </div>
         </div>
       </section>
+      </div>
+      <div className={tab !== "analytics" ? "hidden" : ""}>
+        <section id="analytics" className="mt-10 scroll-mt-20 border border-line bg-paper p-5 md:p-7">
+          <p className="eyebrow">▚ ANALYTICS</p>
+          <h2 className="mt-1 font-serif-bn text-[22px] font-black text-ink">ইভেন্ট অ্যানালিটিক্স</h2>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {[
+              ["এখনকার দর্শক", bnCompact(feed?.viewers ?? 0)],
+              ["লাইভ আপডেট", bn(feed?.totals.updates ?? 0)],
+              ["অনুমোদিত মন্তব্য", bn(feed?.totals.comments ?? 0)],
+              ["রিঅ্যাকশন", bn(feed?.totals.reactions ?? 0)],
+              ["পোল ভোট", bn(feed?.totals.votes ?? 0)],
+            ].map(([label, value]) => (
+              <div key={label} className="border border-ink/15 bg-card px-4 py-3">
+                <p className="font-mono-x text-[9px] tracking-[0.15em] text-ink-soft uppercase">{label}</p>
+                <p className="mt-1 font-display text-[22px] font-bold text-ink">{value}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-[12px] text-ink-soft">বিস্তারিত সময়-ভিত্তিক চার্ট ও ট্রাফিক সোর্স পরবর্তী সংস্করণে যোগ করা হবে।</p>
+        </section>
+      </div>
     </div>
   );
 }
