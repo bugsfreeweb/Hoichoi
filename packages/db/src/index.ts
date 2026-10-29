@@ -16,6 +16,7 @@ export * from "./traffic";
 export * from "./storage-report";
 export * from "./live-events";
 export * from "./polls";
+export * from "./ads";
 
 import {
   DEFAULT_APP_CONFIG,
