@@ -93,6 +93,7 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
     () => event?.streams.map((source) => ({ ...source, autoLabel: false, autoType: false })) ?? [],
   );
   const [summary, setSummary] = useState(event?.summary ?? "");
+  const [template, setTemplate] = useState(event?.template ?? "auto");
   const input = "field";
   const hiddenSources = sources
     .filter((source) => source.label.trim() || source.url.trim())
@@ -100,6 +101,7 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
     .join("\n");
   const hasSignedUrl = [streamUrl, ...sources.map((source) => source.url)]
     .some((url) => /[?&](?:token|signature|sig)=/i.test(url));
+  const selectedTheme = template === "auto" ? null : LIVE_THEMES.find((theme) => theme.key === template) ?? null;
 
   function updateSource(index: number, patch: Partial<StreamDraft>) {
     setSources((current) => current.map((source, sourceIndex) => {
@@ -205,7 +207,7 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
               </label>
               <label className="md:col-span-2">
                 <span className="field-label">পাবলিক পেজের ডিজাইন</span>
-                <select name="template" defaultValue={event?.template ?? "auto"} className={input}>
+                <select name="template" value={template} onChange={(e) => setTemplate(e.target.value)} className={input}>
                   <option value="auto">সাইটের গ্লোবাল ডিফল্ট</option>
                   {LIVE_THEMES.map((theme) => <option key={theme.key} value={theme.key}>{theme.bn} — {theme.en}</option>)}
                 </select>
@@ -379,6 +381,12 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
                 </span>
                 <Clapperboard size={15} className="text-white/45" />
               </div>
+              {selectedTheme && (
+                <div className="mt-3 flex items-center gap-2 border border-white/10 bg-white/5 px-2.5 py-1.5">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: selectedTheme.accent }} />
+                  <span className="font-mono-x text-[9px] tracking-[0.16em] text-white/75 uppercase">{selectedTheme.no} · {selectedTheme.bn} — {selectedTheme.en}</span>
+                </div>
+              )}
               <h3 className="mt-4 font-serif-bn text-[19px] leading-snug font-extrabold">{title || "আপনার ইভেন্টের শিরোনাম"}</h3>
               <p className="mt-2 line-clamp-3 text-[11.5px] leading-relaxed text-white/60">{summary || "ইভেন্টের সংক্ষিপ্ত বিবরণ এখানে দেখা যাবে।"}</p>
               <div className="mt-4 flex items-center gap-2 border-t border-white/10 pt-3 font-mono-x text-[10px] text-white/60">
