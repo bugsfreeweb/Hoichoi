@@ -208,10 +208,22 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
               </label>
               <label className="md:col-span-2">
                 <span className="field-label">পাবলিক পেজের ডিজাইন</span>
-                <select name="template" value={template} onChange={(e) => setTemplate(e.target.value as LiveThemeKey | "auto")} className={input}>
-                  <option value="auto">সাইটের গ্লোবাল ডিফল্ট</option>
-                  {LIVE_THEMES.map((theme) => <option key={theme.key} value={theme.key}>{theme.bn} — {theme.en}</option>)}
-                </select>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <label className={`flex cursor-pointer flex-col border p-3 transition-colors ${template === "auto" ? "border-ink bg-paper shadow-[3px_3px_0_0_var(--color-ink)]" : "border-ink/15 bg-paper-deep hover:border-ink/45"}`}>
+                    <input type="radio" name="template" value="auto" checked={template === "auto"} onChange={() => setTemplate("auto")} className="sr-only" />
+                    <span className="font-mono-x text-[9px] text-ink-soft">AUTO</span>
+                    <span className="mt-1 font-serif-bn text-[15px] font-black text-ink">সাইটের ডিফল্ট</span>
+                    <span className="mt-1 text-[10.5px] leading-snug text-ink-soft">গ্লোবাল থিম ব্যবহার হবে</span>
+                  </label>
+                  {LIVE_THEMES.map((theme) => (
+                    <label key={theme.key} className={`flex cursor-pointer flex-col border p-3 transition-colors ${template === theme.key ? "border-ink bg-paper shadow-[3px_3px_0_0_var(--color-ink)]" : "border-ink/15 bg-paper-deep hover:border-ink/45"}`}>
+                      <input type="radio" name="template" value={theme.key} checked={template === theme.key} onChange={() => setTemplate(theme.key)} className="sr-only" />
+                      <span className="font-mono-x text-[9px] tracking-[0.16em] text-alizarin">{theme.no} · {theme.en}</span>
+                      <span className="mt-1 font-serif-bn text-[15px] font-black text-ink">{theme.bn}</span>
+                      <span className="mt-1 text-[10.5px] leading-snug text-ink-soft">{theme.hint}</span>
+                    </label>
+                  ))}
+                </div>
               </label>
             </div>
           </fieldset>

@@ -11,11 +11,19 @@ export const dynamic = "force-dynamic";
 export default async function AdminLiveEventsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ deleted?: string }>;
+  searchParams: Promise<{ deleted?: string; status?: string }>;
 }) {
-  const { deleted } = await searchParams;
+  const { deleted, status } = await searchParams;
   const [events, cards] = await Promise.all([listLiveEvents(), getLiveEventCards()]);
+  const activeStatus = status === "live" || status === "scheduled" || status === "ended" ? status : "all";
+  const filteredEvents = activeStatus === "all" ? events : events.filter((event) => event.status === activeStatus);
   const cardMap = new Map(cards.map((card) => [card.id, card]));
+  const counts = {
+    all: events.length,
+    live: events.filter((event) => event.status === "live").length,
+    scheduled: events.filter((event) => event.status === "scheduled").length,
+    ended: events.filter((event) => event.status === "ended").length,
+  };
 
   return (
     <div>
@@ -31,9 +39,25 @@ export default async function AdminLiveEventsPage({
         </Link>
       </header>
 
-      {events.length > 0 ? (
+              <div className="mt-6 flex flex-wrap items-center gap-2">
+          {([
+            ["all", "সব", counts.all],
+            ["live", "চলমান", counts.live],
+            ["scheduled", "আসন্ন", counts.scheduled],
+            ["ended", "শেষ", counts.ended],
+          ] as const).map(([key, label, count]) => (
+            <Link
+              key={key}
+              href={key === "all" ? "/admin/live" : `/admin/live?status=${key}`}
+              className={`inline-flex items-center gap-2 border px-3 py-1.5 text-[11.5px] font-bold ${activeStatus === key ? "border-ink bg-ink text-paper" : "border-ink/20 text-ink hover:border-ink"}`}
+            >
+              {label} <span className="font-mono-x text-[10px] opacity-75">{count}</span>
+            </Link>
+          ))}
+        </div>
+        {filteredEvents.length > 0 ? (
         <div className="mt-8 space-y-4">
-          {events.map((event) => {
+          {filteredEvents.map((event) => {
             const card = cardMap.get(event.id);
             return (
               <article key={event.id} className={clsx("grid gap-4 border bg-card p-4 md:grid-cols-[180px_1fr_auto]", event.featured ? "border-ink shadow-[5px_5px_0_0_var(--color-ink)]" : "border-line")}>
