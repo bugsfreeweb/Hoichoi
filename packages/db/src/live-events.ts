@@ -563,6 +563,25 @@ export async function getLiveEventAdmin(id: string) {
     client.execute({ sql: "SELECT * FROM live_questions WHERE event_id = ? ORDER BY created_at DESC LIMIT 200", args: [id] }),
     client.execute({ sql: "SELECT * FROM live_polls WHERE event_id = ? ORDER BY created_at DESC LIMIT 50", args: [id] }),
   ]);
+  const pollIds = polls.rows.map((row) => String(row.id));
+  let voteRows: Array<Record<string, unknown>> = [];
+  if (pollIds.length) {
+    const placeholders = pollIds.map(() => "?").join(",");
+    const votesRes = await client.execute({
+      sql: "SELECT poll_id, option_id, COUNT(*) AS n FROM live_poll_votes WHERE poll_id IN (" + placeholders + ") GROUP BY poll_id, option_id",
+      args: pollIds,
+    });
+    voteRows = votesRes.rows;
+  }
+  const voteCountByPoll = new Map();
+  for (const row of voteRows) {
+    const pollId = String(row.poll_id);
+    const optionId = String(row.option_id);
+    const n = Number(row.n ?? 0);
+    if (!voteCountByPoll.has(pollId)) voteCountByPoll.set(pollId, new Map());
+    voteCountByPoll.get(pollId).set(optionId, n);
+  }
+
   return {
     event,
     updates: updates.rows.map((row) => mapUpdate(row as Record<string, unknown>)),
@@ -588,13 +607,26 @@ export async function getLiveEventAdmin(id: string) {
       mine: false,
       voted: false,
     })),
-    polls: polls.rows.map((row) => ({
-      id: String(row.id),
-      question: String(row.question),
-      status: String(row.status) as "open" | "closed",
-      options: jsonValue<Array<{ id: string; label: string }>>(row.options_json, []),
-      createdAt: String(row.created_at),
-    })),
+    polls: polls.rows.map((row) => {
+      const id = String(row.id);
+      const options = jsonValue<Array<{ id: string; label: string }>>(row.options_json, []);
+      const counts = voteCountByPoll.get(id) ?? new Map<string, number>();
+      const mappedOptions = options.map((option) => ({
+        id: option.id,
+        label: option.label,
+        votes: counts.get(option.id) ?? 0,
+      }));
+      const total = mappedOptions.reduce((sum, option) => sum + option.votes, 0);
+      return {
+        id,
+        question: String(row.question),
+        status: String(row.status) as "open" | "closed",
+        options: mappedOptions,
+        total,
+        myVote: null,
+        createdAt: String(row.created_at),
+      };
+    }),
   };
 }
 

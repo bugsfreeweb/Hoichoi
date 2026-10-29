@@ -231,7 +231,23 @@ export default async function LiveEventControlPage({ params }: { params: Promise
                     <div>
                       <p className="font-serif-bn text-[15px] font-bold text-ink">{poll.question}</p>
                       <p className="mt-1 font-mono-x text-[9px] text-ink-soft uppercase">{poll.status} · {bnTime(poll.createdAt)}</p>
-                      <ul className="mt-2 space-y-1 text-[12px] text-ink-soft">{poll.options.map((option) => <li key={option.id}>• {option.label}</li>)}</ul>
+                      <ul className="mt-2 space-y-2 text-[12px] text-ink-soft">
+                      {poll.options.map((option) => {
+                        const percent = poll.total > 0 ? Math.round((option.votes / poll.total) * 100) : 0;
+                        return (
+                          <li key={option.id}>
+                            <div className="flex items-center justify-between gap-2">
+                              <span>• {option.label}</span>
+                              <span className="font-mono-x text-[10px] text-ink-soft">{option.votes} · {percent}%</span>
+                            </div>
+                            <div className="mt-1 h-1.5 overflow-hidden bg-ink/10">
+                              <div className="h-full bg-alizarin" style={{ width: `${percent}%` }} />
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <p className="mt-2 font-mono-x text-[9px] text-ink-soft uppercase">মোট ভোট: {poll.total}</p>
                     </div>
                     <form action={changePollStatus.bind(null, poll.id, event.id, poll.status === "open" ? "closed" : "open")}>
                       <button className="border border-ink/25 px-3 py-2 text-[11px] font-bold text-ink">{poll.status === "open" ? "পোল বন্ধ করুন" : "পোল আবার খুলুন"}</button>
