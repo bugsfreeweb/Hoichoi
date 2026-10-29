@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { CalendarClock, Clapperboard, Link2, LoaderCircle, Plus, Radio, Sparkles, Trash2 } from "lucide-react";
 import type { LiveEventRecord, LiveStream, LiveStreamType } from "@hoichoi/db";
+import type { LiveThemeKey } from "@hoichoi/shared-types";
 import { saveLiveEvent } from "@/app/admin/(console)/live/actions";
 import { LIVE_THEMES } from "@/lib/live-themes";
 
@@ -93,7 +94,7 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
     () => event?.streams.map((source) => ({ ...source, autoLabel: false, autoType: false })) ?? [],
   );
   const [summary, setSummary] = useState(event?.summary ?? "");
-  const [template, setTemplate] = useState(event?.template ?? "auto");
+  const [template, setTemplate] = useState<LiveThemeKey | "auto">(event?.template ?? "auto");
   const input = "field";
   const hiddenSources = sources
     .filter((source) => source.label.trim() || source.url.trim())
@@ -207,7 +208,7 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
               </label>
               <label className="md:col-span-2">
                 <span className="field-label">পাবলিক পেজের ডিজাইন</span>
-                <select name="template" value={template} onChange={(e) => setTemplate(e.target.value)} className={input}>
+                <select name="template" value={template} onChange={(e) => setTemplate(e.target.value as LiveThemeKey | "auto")} className={input}>
                   <option value="auto">সাইটের গ্লোবাল ডিফল্ট</option>
                   {LIVE_THEMES.map((theme) => <option key={theme.key} value={theme.key}>{theme.bn} — {theme.en}</option>)}
                 </select>

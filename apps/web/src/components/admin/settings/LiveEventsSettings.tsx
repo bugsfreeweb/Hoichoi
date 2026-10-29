@@ -29,7 +29,7 @@ export function LiveEventsSettings({ eventCount }: { eventCount: number }) {
   const patch = <K extends keyof typeof live>(key: K, value: (typeof live)[K]) =>
     setCfg((current) => ({ ...current, live_events: { ...current.live_events, [key]: value } }));
 
-  const activeTheme = THEMES.find((theme) => theme.key === live.default_theme) ?? THEMES[0];
+  const activeTheme = (THEMES.find((theme) => theme.key === live.default_theme) ?? THEMES[0])!;
 
   return (
     <div className="space-y-6">
