@@ -1153,6 +1153,8 @@ export interface SiteAppConfig {  /** Masthead "newsroom in numbers" hero sectio
   theme_default: "light" | "dark";
   /** Show real live events on the public site. */
   show_live_events: boolean;
+  /** Show real live polls on the public site. */
+  show_live_polls: boolean;
   /** Global live-event presentation and reader experience settings. */
   live_events: LiveEventSettings;
   /** New-posts surge threshold used by the live graph. */
@@ -1215,6 +1217,7 @@ export const DEFAULT_APP_CONFIG: SiteAppConfig = {
   ai_hero_images: true,
   theme_default: "light",
   show_live_events: true,
+  show_live_polls: true,
   live_events: {
     default_theme: "stage",
     refresh_seconds: 8,
