@@ -203,8 +203,8 @@ export async function createAdBooking(input: {
 export async function recordAdDeliveryEvent(input: { bookingId?: string; slotKey: string; kind: string; path?: string; device?: string; }) {
   const client = getClient();
   await client.execute({
-    sql: "INSERT INTO ad_events (id, booking_id, slot_key, kind, path, device, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    args: [crypto.randomUUID(), input.bookingId || null, input.slotKey, input.kind, input.path || null, input.device || null, new Date().toISOString()],
+    sql: "INSERT INTO ad_events (id, slot_key, kind, path, device, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+    args: [crypto.randomUUID(), input.slotKey, input.kind, input.path || null, input.device || null, new Date().toISOString()],
   });
   if (input.bookingId && input.kind === "impression") {
     await client.execute({ sql: "UPDATE ad_bookings SET impressions = impressions + 1 WHERE id = ?", args: [input.bookingId] });

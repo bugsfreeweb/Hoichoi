@@ -86,8 +86,7 @@ CREATE TABLE IF NOT EXISTS ad_slot_config (
   updated_at TEXT NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_ad_events_slot ON ad_events (slot_key, kind);
 CREATE INDEX IF NOT EXISTS idx_ad_bookings_slot ON ad_bookings (slot_key, status);
 CREATE INDEX IF NOT EXISTS idx_ad_bookings_client ON ad_bookings (client_id);
-CREATE INDEX IF NOT EXISTS idx_ad_events_slot ON ad_events (slot_key, kind);
-CREATE INDEX IF NOT EXISTS idx_ad_events_booking ON ad_events (booking_id);
 CREATE INDEX IF NOT EXISTS idx_ad_creatives_client ON ad_creatives (client_id);
