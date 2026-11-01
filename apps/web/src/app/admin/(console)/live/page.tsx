@@ -11,9 +11,9 @@ export const dynamic = "force-dynamic";
 export default async function AdminLiveEventsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ deleted?: string; status?: string }>;
+  searchParams: Promise<{ deleted?: string; status?: string; new?: string }>;
 }) {
-  const { deleted, status } = await searchParams;
+  const { deleted, status, new: createRequested } = await searchParams;
   const [events, cards] = await Promise.all([listLiveEvents(), getLiveEventCards()]);
   const activeStatus = status === "live" || status === "scheduled" || status === "ended" ? status : "all";
   const filteredEvents = activeStatus === "all" ? events : events.filter((event) => event.status === activeStatus);
@@ -34,7 +34,7 @@ export default async function AdminLiveEventsPage({
           <h1 className="mt-2 font-serif-bn text-[32px] font-black text-ink md:text-[40px]">লাইভ ইভেন্ট</h1>
           <p className="mt-1 text-[13px] text-ink-soft">শুধু এখানে তৈরি ও সংরক্ষিত আসল ইভেন্ট দেখানো হয়; কোনো নমুনা বা সিমুলেটেড ডেটা নেই।</p>
         </div>
-        <Link href="#new-live-event" className="flex items-center gap-2 bg-alizarin px-4 py-2.5 text-[13px] font-bold text-paper hover:bg-alizarin-deep">
+        <Link href="/admin/live?new=1#new-live-event" className="flex items-center gap-2 bg-alizarin px-4 py-2.5 text-[13px] font-bold text-paper hover:bg-alizarin-deep">
           <Plus size={15} /> নতুন লাইভ ইভেন্ট
         </Link>
       </header>
@@ -115,14 +115,19 @@ export default async function AdminLiveEventsPage({
         </div>
       )}
 
-      <section id="new-live-event" className="mt-14 scroll-mt-14 border-t-2 border-ink pt-8">
+      {createRequested === "1" && <section id="new-live-event" className="mt-14 scroll-mt-14 border-t-2 border-ink pt-8">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
         <p className="eyebrow">▚ NEW LIVE EVENT</p>
         <h2 className="mt-2 font-serif-bn text-[28px] font-black text-ink">নতুন লাইভ ইভেন্ট তৈরি করুন</h2>
         <p className="mt-1 mb-6 text-[13px] text-ink-soft">YouTube, HLS, MP4 বা অনুমোদিত এমবেড লিংক ও সম্পাদকের যাচাইকৃত ইভেন্ট তথ্য দিন।</p>
+          </div>
+          <Link href="/admin/live" className="border border-ink/20 px-3 py-2 text-[11px] font-bold text-ink hover:border-ink">বন্ধ করুন</Link>
+        </div>
         <div className="border border-line bg-paper p-5 md:p-7">
           <LiveEventForm />
         </div>
-      </section>
+      </section>}
     </div>
   );
 }

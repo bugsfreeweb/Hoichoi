@@ -6,10 +6,9 @@ import {
   updateStandalonePoll,
 } from "./actions";
 import { StandalonePollForm } from "@/components/admin/polls/StandalonePollForm";
+import { PollTemplatePicker } from "@/components/admin/polls/PollTemplatePicker";
 
 export const dynamic = "force-dynamic";
-
-const TEMPLATES = ["bar", "battle", "donut", "card", "rank", "meter"];
 
 function dhakaDateInput(value: string): string {
   const date = new Date(value);
@@ -83,7 +82,7 @@ export default async function AdminPollsPage() {
                     <label className="md:col-span-2"><span className="field-label">প্রশ্ন</span><input name="question" required minLength={3} maxLength={300} defaultValue={poll.question} className="field" /></label>
                     <label className="md:col-span-2"><span className="field-label">বিবরণ</span><textarea name="description" rows={2} maxLength={1200} defaultValue={poll.description} className="field" /></label>
                     <label className="md:col-span-2"><span className="field-label">অপশন · প্রতি লাইনে একটি</span><textarea name="options" required rows={3} defaultValue={poll.options.map((option) => option.label).join("\n")} className="field" /></label>
-                    <label><span className="field-label">ডিজাইন</span><select name="template" defaultValue={poll.template} className="field">{TEMPLATES.map((template) => <option key={template} value={template}>{template}</option>)}</select></label>
+                    <div className="md:col-span-2"><PollTemplatePicker defaultValue={poll.template} /></div>
                     <label><span className="field-label">অবস্থা</span><select name="status" defaultValue={poll.status} className="field"><option value="open">চলমান</option><option value="scheduled">আসন্ন</option><option value="closed">বন্ধ</option></select></label>
                     <label><span className="field-label">শুরুর সময় · ঢাকা</span><input type="datetime-local" name="startsAt" defaultValue={dhakaDateInput(poll.startsAt)} className="field" /></label>
                     <label><span className="field-label">শেষের সময় · ঐচ্ছিক</span><input type="datetime-local" name="endsAt" defaultValue={poll.endsAt ? dhakaDateInput(poll.endsAt) : ""} className="field" /></label>

@@ -44,6 +44,7 @@ export interface LiveEventRecord {
   streamType: LiveStreamType;
   streamUrl: string;
   streams: LiveStream[];
+  streamPrivacyNotice?: boolean;
   coverImage: string;
   template: LiveThemeKey | "auto";
   scoreboard: LiveScoreboard | null;

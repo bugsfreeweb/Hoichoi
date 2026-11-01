@@ -18,6 +18,15 @@ export interface ResolverOptions {
   cooldownMs?: number;
   /** Per-provider health probe timeout before a rewrite, default 10s. */
   probeTimeoutMs?: number;
+  /** Maximum time for one rewrite provider before trying the next, default 15s. */
+  rewriteAttemptTimeoutMs?: number;
+  /** Maximum time for one embedding provider before trying the next, default 15s. */
+  embeddingAttemptTimeoutMs?: number;
+}
+
+function withTimeout(signal: AbortSignal | undefined, timeoutMs: number): AbortSignal {
+  const timeout = AbortSignal.timeout(timeoutMs);
+  return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
 
 /** Reads llm_providers and walks them FREE-tier-first with failure fallback. */
@@ -89,15 +98,36 @@ export class Resolver {
    *  failure still records and still falls through the chain. */
   async next(
     operation: Operation,
-    opts: { ignoreProviderDown?: boolean } = {},
+    opts: {
+      ignoreProviderDown?: boolean;
+      signal?: AbortSignal;
+      excludeProviderIds?: ReadonlySet<string>;
+    } = {},
   ): Promise<ActiveProvider | null> {
     const active = await this.activeProviders(operation);
+    return this.nextFrom(active, operation, opts);
+  }
+
+  private async nextFrom(
+    active: ActiveProvider[],
+    operation: Operation,
+    opts: {
+      ignoreProviderDown?: boolean;
+      signal?: AbortSignal;
+      excludeProviderIds?: ReadonlySet<string>;
+    },
+  ): Promise<ActiveProvider | null> {
     // Why each candidate was passed over. Every `continue` below records a
     // reason: without this the chain is silent, and a total failure surfaced as
     // `all providers exhausted []` with an empty bracket - which is unreadable
     // and hid a four-day publishing outage behind a green workflow run.
     const skipped: string[] = [];
     for (const ap of active) {
+      if (opts.signal?.aborted) break;
+      if (opts.excludeProviderIds?.has(ap.row.id)) {
+        skipped.push(`${ap.row.display_name}: already attempted in this run`);
+        continue;
+      }
       if (!opts.ignoreProviderDown) {
         if (this.isCoolingDown(ap.row.id)) {
           skipped.push(`${ap.row.display_name}: cooling down`);
@@ -117,8 +147,9 @@ export class Resolver {
         this.probed.add(ap.row.id);
         try {
           const hc = await ap.provider.healthCheck?.(
-            AbortSignal.timeout(this.opts.probeTimeoutMs ?? 10_000),
+            withTimeout(opts.signal, this.opts.probeTimeoutMs ?? 10_000),
           );
+          if (opts.signal?.aborted) break;
           if (!hc?.ok) {
             throw new ProviderError(
               (hc as unknown as { kind?: ProviderError["kind"] }).kind ?? "network",
@@ -127,6 +158,7 @@ export class Resolver {
           }
           this.markSuccess(ap.row.id, ap.row.display_name);
         } catch (err) {
+          if (opts.signal?.aborted) break;
           const e = err as ProviderError | Error;
           this.markFailure(
             ap.row.id,
@@ -144,36 +176,74 @@ export class Resolver {
 
   async rewrite(ctx: RewriteContext, signal?: AbortSignal): Promise<{ out: ParsedRewrite; provider: string }> {
     const lastError: string[] = [];
+    const attemptedProviderIds = new Set<string>();
     let provider: ActiveProvider | null = null;
-    while ((provider = await this.next("rewrite"))) {
+    const active = signal?.aborted ? [] : await this.activeProviders("rewrite");
+    while (
+      !signal?.aborted &&
+      (provider = await this.nextFrom(active, "rewrite", {
+        signal,
+        excludeProviderIds: attemptedProviderIds,
+      }))
+    ) {
+      if (signal?.aborted) break;
+      attemptedProviderIds.add(provider.row.id);
       try {
-        const out = await provider.provider.rewrite(ctx, signal);
+        const out = await provider.provider.rewrite(
+          ctx,
+          withTimeout(signal, this.opts.rewriteAttemptTimeoutMs ?? 15_000),
+        );
         this.markSuccess(provider.row.id, provider.row.display_name);
         return { out, provider: provider.row.display_name };
       } catch (err) {
         const e = err as ProviderError | Error;
         lastError.push(`${provider.row.display_name}: ${e.message}`);
-        this.markFailure(provider.row.id, e instanceof ProviderError ? e.kind : "unknown");
+        if (!signal?.aborted) {
+          this.markFailure(provider.row.id, e instanceof ProviderError ? e.kind : "unknown");
+        }
         if (e instanceof ProviderError && e.kind === "bad_output") break;
       }
+    }
+    if (signal?.aborted) {
+      const reason = signal.reason instanceof Error ? signal.reason.message : "request timed out";
+      throw new ProviderError("network", `rewrite deadline exceeded: ${reason}`);
     }
     throw new ProviderError("network", `all providers exhausted [${describe(lastError, this.lastSkipped)}]`);
   }
 
   async embedText(text: string, signal?: AbortSignal): Promise<{ vector: number[]; provider: string }> {
     const lastError: string[] = [];
+    const attemptedProviderIds = new Set<string>();
     let provider: ActiveProvider | null = null;
-    while ((provider = await this.next("embed", { ignoreProviderDown: true }))) {
+    const active = signal?.aborted ? [] : await this.activeProviders("embed");
+    while (
+      !signal?.aborted &&
+      (provider = await this.nextFrom(active, "embed", {
+        ignoreProviderDown: true,
+        signal,
+        excludeProviderIds: attemptedProviderIds,
+      }))
+    ) {
+      attemptedProviderIds.add(provider.row.id);
       if (!provider.provider.embed) continue;
       try {
-        const vector = await provider.provider.embed(text, signal);
+        const vector = await provider.provider.embed(
+          text,
+          withTimeout(signal, this.opts.embeddingAttemptTimeoutMs ?? 15_000),
+        );
         this.markSuccess(provider.row.id, provider.row.display_name);
         return { vector, provider: provider.row.display_name };
       } catch (err) {
         const e = err as Error;
         lastError.push(`${provider.row.display_name}: ${e.message}`);
-        this.markFailure(provider.row.id, e instanceof ProviderError ? e.kind : "unknown");
+        if (!signal?.aborted) {
+          this.markFailure(provider.row.id, e instanceof ProviderError ? e.kind : "unknown");
+        }
       }
+    }
+    if (signal?.aborted) {
+      const reason = signal.reason instanceof Error ? signal.reason.message : "request timed out";
+      throw new ProviderError("network", `embedding deadline exceeded: ${reason}`);
     }
     throw new ProviderError("network", `no embedding provider available [${describe(lastError, this.lastSkipped)}]`);
   }

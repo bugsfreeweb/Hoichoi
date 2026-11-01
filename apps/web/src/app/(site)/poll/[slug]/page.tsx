@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPollBySlug, getPollResults, pollResultsVisible } from "@hoichoi/db";
+import { getPollBySlug, getPollResults, parseAppConfig, pollResultsVisible } from "@hoichoi/db";
 import { PollWidget } from "@/components/polls/PollWidget";
+import { getSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,8 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const poll = await getPollBySlug(slug);
+  const [settings, poll] = await Promise.all([getSettings(), getPollBySlug(slug)]);
+  if (!parseAppConfig(settings.app_config_json).show_live_polls) return { title: "পোল পাওয়া যায়নি" };
   return poll
     ? { title: `${poll.question} · লাইভ পোল`, description: poll.description || `${poll.topic} · পাঠকের মতামত` }
     : { title: "পোল পাওয়া যায়নি" };
@@ -18,8 +20,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PollDetailPage({ params }: Props) {
   const { slug } = await params;
-  const poll = await getPollBySlug(slug);
-  if (!poll) notFound();
+  const [settings, poll] = await Promise.all([getSettings(), getPollBySlug(slug)]);
+  if (!poll || !parseAppConfig(settings.app_config_json).show_live_polls) notFound();
   const results = pollResultsVisible(poll, false) ? await getPollResults(poll.id) : [];
 
   return (

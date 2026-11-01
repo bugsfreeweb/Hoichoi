@@ -4,6 +4,7 @@ import { ArrowRight, Eye, MapPin, Radio } from "lucide-react";
 import { getLiveEventCards, getSettings, parseAppConfig } from "@hoichoi/db";
 import { notFound } from "next/navigation";
 import { bn, bnCompact, bnDateTime, bnTime, clsx } from "@/lib/live-format";
+import { protectLiveEventCard } from "@/lib/live-stream-proxy";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "লাইভ কেন্দ্র" };
@@ -55,7 +56,7 @@ function EventCard({ event, featured = false }: { event: Awaited<ReturnType<type
 export default async function LiveHubPage() {
   const settings = await getSettings();
   if (!parseAppConfig(settings.app_config_json).show_live_events) notFound();
-  const cards = await getLiveEventCards();
+  const cards = (await getLiveEventCards()).map(protectLiveEventCard);
   const live = cards.filter((event) => event.status === "live");
   const upcoming = cards.filter((event) => event.status === "scheduled");
   const ended = cards.filter((event) => event.status === "ended");

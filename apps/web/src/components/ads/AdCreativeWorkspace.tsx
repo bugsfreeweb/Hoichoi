@@ -1,5 +1,6 @@
 import { listAdCreatives, listAdSlots } from "@hoichoi/db";
 import { PortalManagementForms } from "@/components/ads/PortalManagementForms";
+import { AdCreativeLibrary } from "@/components/ads/AdCreativeLibrary";
 import { requireAdClient } from "@/lib/ad-client-auth";
 
 export async function AdCreativeWorkspace({
@@ -22,19 +23,13 @@ export async function AdCreativeWorkspace({
         <p className="mt-1 text-[12px] text-ink-soft">{description}</p>
       </header>
       <PortalManagementForms mode="creative" creatives={creatives} slots={slots} />
-      {creatives.length > 0 && (
-        <section className="border border-ink/15 bg-card p-4">
+      <section className="border border-ink/15 bg-card p-4">
+        <div className="mb-3">
           <h2 className="font-serif-bn text-[17px] font-bold text-ink">আপনার creative</h2>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {creatives.map((creative) => (
-              <article key={creative.id} className="border border-ink/10 bg-paper p-3">
-                <p className="text-[12px] font-bold text-ink">{creative.name}</p>
-                <p className="mt-1 font-mono-x text-[9px] uppercase text-ink-soft">{creative.templateId} · {creative.palette}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
+          <p className="mt-1 text-[11px] text-ink-soft">Preview দেখুন, সংরক্ষিত creative সম্পাদনা করুন, পরে বুকিংয়ে ব্যবহার করুন।</p>
+        </div>
+        <AdCreativeLibrary creatives={creatives} />
+      </section>
     </div>
   );
 }

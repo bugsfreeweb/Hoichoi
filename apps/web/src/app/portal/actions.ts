@@ -7,6 +7,7 @@ import {
   getAdClientAuthRecord,
   getAdSlot,
   listAdCreatives,
+  updateAdCreative,
 } from "@hoichoi/db";
 import {
   createAdClientSession,
@@ -14,7 +15,9 @@ import {
   currentAdClient,
 } from "@/lib/ad-client-auth";
 import bcrypt from "bcryptjs";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { AD_CREATIVE_LAYOUTS, AD_CREATIVE_PALETTES } from "@/lib/ad-creative-style";
 
 export type PortalActionState = { error?: string; notice?: string } | null;
 
@@ -91,7 +94,11 @@ export async function createClientCreative(
   const body = value(formData, "body", 240);
   const cta = value(formData, "cta", 40);
   const url = value(formData, "url", 1000);
+  const templateId = value(formData, "templateId", 40);
+  const palette = value(formData, "palette", 40);
   if (name.length < 2 || !headline) return { error: "ক্রিয়েটিভের নাম ও শিরোনাম পূরণ করুন।" };
+  if (!AD_CREATIVE_LAYOUTS.some((template) => template.key === templateId)) return { error: "একটি বৈধ creative layout বেছে নিন।" };
+  if (!AD_CREATIVE_PALETTES.some((option) => option.key === palette)) return { error: "একটি বৈধ creative palette বেছে নিন।" };
   try {
     const destination = new URL(url);
     if (destination.protocol !== "https:" && destination.protocol !== "http:") throw new Error("invalid URL scheme");
@@ -102,11 +109,51 @@ export async function createClientCreative(
   await createAdCreative({
     clientId: client.id,
     name,
-    templateId: "leaderboard",
-    palette: "newsprint",
+    templateId,
+    palette,
     data: { headline, body, cta, url },
   });
   redirect("/portal?created=creative");
+}
+
+export async function updateClientCreative(
+  _previous: PortalActionState,
+  formData: FormData,
+): Promise<PortalActionState> {
+  const client = await currentAdClient();
+  if (!client) redirect("/portal/login");
+
+  const id = value(formData, "creativeId", 80);
+  const name = value(formData, "creativeName", 120);
+  const headline = value(formData, "headline", 100);
+  const body = value(formData, "body", 240);
+  const cta = value(formData, "cta", 40);
+  const url = value(formData, "url", 1000);
+  const templateId = value(formData, "templateId", 40);
+  const palette = value(formData, "palette", 40);
+  if (!id || name.length < 2 || !headline) return { error: "ক্রিয়েটিভের নাম ও শিরোনাম পূরণ করুন।" };
+  if (!AD_CREATIVE_LAYOUTS.some((template) => template.key === templateId) || !AD_CREATIVE_PALETTES.some((option) => option.key === palette)) {
+    return { error: "একটি বৈধ creative layout ও palette বেছে নিন।" };
+  }
+  try {
+    const destination = new URL(url);
+    if (destination.protocol !== "https:" && destination.protocol !== "http:") throw new Error("invalid URL scheme");
+  } catch {
+    return { error: "গন্তব্য URL অবশ্যই http বা https লিংক হতে হবে।" };
+  }
+
+  await updateAdCreative({
+    id,
+    clientId: client.id,
+    name,
+    templateId,
+    palette,
+    data: { headline, body, cta, url },
+  });
+  revalidatePath("/portal");
+  revalidatePath("/portal/studio");
+  revalidatePath("/portal/creatives");
+  return { notice: "পরিবর্তন সংরক্ষণ হয়েছে।" };
 }
 
 export async function requestAdBooking(

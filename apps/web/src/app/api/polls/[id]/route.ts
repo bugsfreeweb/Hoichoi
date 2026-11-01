@@ -1,4 +1,6 @@
 import { getPoll, getPollResults, getPollVotes, pollResultsVisible, setPollVotes } from "@hoichoi/db";
+import { getSettings } from "@/lib/settings";
+import { parseAppConfig } from "@hoichoi/db";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +28,7 @@ function limited(sessionId: string): boolean {
 }
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+  if (!parseAppConfig((await getSettings()).app_config_json).show_live_polls) return json({ error: "পোলটি পাওয়া যায়নি।" }, 404);
   const { id: rawId } = await context.params;
   const id = Number(rawId);
   if (!Number.isSafeInteger(id) || id < 1) return json({ error: "পোলটি পাওয়া যায়নি।" }, 404);
@@ -39,6 +42,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 }
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+  if (!parseAppConfig((await getSettings()).app_config_json).show_live_polls) return json({ error: "পোলটি পাওয়া যায়নি।" }, 404);
   const { id: rawId } = await context.params;
   const id = Number(rawId);
   if (!Number.isSafeInteger(id) || id < 1) return json({ error: "পোলটি পাওয়া যায়নি।" }, 404);

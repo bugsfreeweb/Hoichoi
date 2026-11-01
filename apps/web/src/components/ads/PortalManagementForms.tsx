@@ -1,8 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import type { AdCreative, AdSlot } from "@hoichoi/db";
 import { createClientCreative, requestAdBooking } from "@/app/portal/actions";
+import { AD_CREATIVE_LAYOUTS, AD_CREATIVE_PALETTES } from "@/lib/ad-creative-style";
+import { AdCreativePreview } from "./AdCreativePreview";
 
 function ActionMessage({ error }: { error?: string }) {
   return error ? <p role="alert" className="border border-alizarin/30 bg-alizarin/10 px-3 py-2 text-[11px] font-semibold text-alizarin">{error}</p> : null;
@@ -19,6 +21,12 @@ export function PortalManagementForms({
 }) {
   const [creativeState, createCreativeForm, creating] = useActionState(createClientCreative, null);
   const [bookingState, requestBookingForm, booking] = useActionState(requestAdBooking, null);
+  const [creativeName, setCreativeName] = useState("");
+  const [headline, setHeadline] = useState("");
+  const [body, setBody] = useState("");
+  const [cta, setCta] = useState("");
+  const [templateId, setTemplateId] = useState("leaderboard");
+  const [palette, setPalette] = useState("newsprint");
   const field = "mt-1 w-full border border-ink/25 bg-paper px-3 py-2 text-[12px] text-ink outline-none focus:border-alizarin";
   const availableSlots = slots.filter((slot) => slot.enabled && slot.deliveryMode !== "house");
   const showCreativeForm = mode !== "booking";
@@ -26,20 +34,50 @@ export function PortalManagementForms({
 
   return (
     <div className={`grid gap-5 ${mode === "all" ? "xl:grid-cols-2" : ""}`}>
-      {showCreativeForm && <form action={createCreativeForm} className="space-y-3 border border-ink/15 bg-card p-4">
-        <div>
+      {showCreativeForm && <form action={createCreativeForm} className="grid gap-4 border border-ink/15 bg-card p-4 md:grid-cols-2 md:p-5">
+        <div className="md:col-span-2">
           <h3 className="font-serif-bn text-[16px] font-bold text-ink">নতুন ক্রিয়েটিভ</h3>
-          <p className="mt-1 text-[11px] text-ink-soft">শিরোনাম, বার্তা ও গন্তব্য লিংক যোগ করুন।</p>
+          <p className="mt-1 text-[11px] text-ink-soft">লেখা, layout ও palette বেছে live preview দেখে creative সংরক্ষণ করুন।</p>
         </div>
-        <label className="block"><span className="field-label">ক্রিয়েটিভের নাম</span><input name="creativeName" required maxLength={120} className={field} /></label>
-        <label className="block"><span className="field-label">বিজ্ঞাপনের শিরোনাম</span><input name="headline" required maxLength={100} className={field} /></label>
-        <label className="block"><span className="field-label">বার্তা</span><textarea name="body" maxLength={240} rows={2} className={field} /></label>
-        <label className="block"><span className="field-label">বাটনের লেখা</span><input name="cta" maxLength={40} className={field} /></label>
-        <label className="block"><span className="field-label">গন্তব্য URL</span><input name="url" type="url" required maxLength={1000} placeholder="https://" className={field} /></label>
-        <ActionMessage error={creativeState?.error} />
-        <button type="submit" disabled={creating} className="bg-ink px-3 py-2 text-[11px] font-bold text-paper hover:bg-alizarin disabled:opacity-50">
-          {creating ? "সংরক্ষণ হচ্ছে…" : "ক্রিয়েটিভ সংরক্ষণ"}
-        </button>
+        <div className="space-y-3">
+          <label className="block"><span className="field-label">ক্রিয়েটিভের নাম</span><input name="creativeName" required maxLength={120} value={creativeName} onChange={(event) => setCreativeName(event.target.value)} className={field} /></label>
+          <label className="block"><span className="field-label">বিজ্ঞাপনের শিরোনাম</span><input name="headline" required maxLength={100} value={headline} onChange={(event) => setHeadline(event.target.value)} className={field} /></label>
+          <label className="block"><span className="field-label">বার্তা</span><textarea name="body" maxLength={240} rows={2} value={body} onChange={(event) => setBody(event.target.value)} className={field} /></label>
+          <label className="block"><span className="field-label">বাটনের লেখা</span><input name="cta" maxLength={40} value={cta} onChange={(event) => setCta(event.target.value)} className={field} /></label>
+          <label className="block"><span className="field-label">গন্তব্য URL</span><input name="url" type="url" required maxLength={1000} placeholder="https://" className={field} /></label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="field-label">Layout</span>
+              <select name="templateId" value={templateId} onChange={(event) => setTemplateId(event.target.value)} className={field}>
+                {AD_CREATIVE_LAYOUTS.map((layout) => <option key={layout.key} value={layout.key}>{layout.name}</option>)}
+              </select>
+            </label>
+            <label className="block">
+              <span className="field-label">Palette</span>
+              <select name="palette" value={palette} onChange={(event) => setPalette(event.target.value)} className={field}>
+                {AD_CREATIVE_PALETTES.map((option) => <option key={option.key} value={option.key}>{option.name}</option>)}
+              </select>
+            </label>
+          </div>
+          <ActionMessage error={creativeState?.error} />
+          <button type="submit" disabled={creating} className="bg-ink px-3 py-2 text-[11px] font-bold text-paper hover:bg-alizarin disabled:opacity-50">
+            {creating ? "সংরক্ষণ হচ্ছে…" : "ক্রিয়েটিভ সংরক্ষণ"}
+          </button>
+        </div>
+        <aside className="border border-ink/10 bg-paper-deep/30 p-3">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <span className="font-mono-x text-[9px] tracking-[0.16em] text-ink-soft uppercase">LIVE PREVIEW</span>
+            <span className="font-mono-x text-[8px] text-ink-soft">{templateId} · {palette}</span>
+          </div>
+          <AdCreativePreview
+            name={creativeName}
+            headline={headline}
+            body={body}
+            cta={cta}
+            templateId={templateId}
+            palette={palette}
+          />
+        </aside>
       </form>}
 
       {showBookingForm && <form action={requestBookingForm} className="space-y-3 border border-ink/15 bg-card p-4">

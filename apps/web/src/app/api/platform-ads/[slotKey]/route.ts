@@ -21,7 +21,7 @@ export async function GET(
     const ad = await getActiveAdForSlot(slotKey);
     const data = ad?.data && typeof ad.data === "object" && !Array.isArray(ad.data) ? ad.data : {};
     return NextResponse.json(
-      { ad: ad ? { bookingId: ad.bookingId, slotKey, name: ad.name, data } : null },
+      { ad: ad ? { bookingId: ad.bookingId, slotKey, name: ad.name, templateId: ad.templateId, palette: ad.palette, data } : null },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {

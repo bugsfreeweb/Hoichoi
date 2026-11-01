@@ -41,11 +41,15 @@ export function LiveThemePreview({
   const [mode, setMode] = useState<"light" | "dark">("light");
   const [expanded, setExpanded] = useState(false);
   const [width, setWidth] = useState(760);
+  const [expandedWidth, setExpandedWidth] = useState(760);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const expandedCanvasRef = useRef<HTMLDivElement>(null);
   const selected = LIVE_THEMES.find((item) => item.key === theme);
   const template = selected?.key ?? "stage";
   const light = mode === "light";
-  const scale = expanded ? 1 : Math.max(0.4, Math.min(1, width / 760));
+  const scale = expanded
+    ? Math.max(0.25, Math.min(1.5, expandedWidth / 760))
+    : Math.max(0.25, Math.min(1, width / 760));
   const previewStyle: PreviewStyle = {
     "--color-paper": light ? "#f3eee1" : "#0a0c10",
     "--color-paper-deep": light ? "#e9e2cf" : "#10141b",
@@ -79,9 +83,20 @@ export function LiveThemePreview({
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    if (!expanded) return;
+    const element = expandedCanvasRef.current;
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setExpandedWidth(entry.contentRect.width);
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [expanded]);
+
   const canvas = (
     <div
-      className="overflow-hidden"
+      className="w-full overflow-hidden"
       style={{ height: `${520 * scale}px` }}
     >
       <div
@@ -89,12 +104,12 @@ export function LiveThemePreview({
         style={{ width: 760, transform: `scale(${scale})` }}
       >
         <div
-          className="max-h-[520px] overflow-auto"
+          className="max-h-[520px] overflow-y-auto overflow-x-hidden"
           data-preview-theme={mode}
           data-preview-template={template}
           style={previewStyle}
         >
-          <div className="min-w-[760px]">
+          <div className="w-[760px]">
             <LivePreviewProvider event={{ title: previewTitle, summary: previewSummary, template: theme }}>
               <LiveTemplate template={template} />
             </LivePreviewProvider>
@@ -158,8 +173,8 @@ export function LiveThemePreview({
                 </button>
               </div>
             </div>
-            <div className="max-h-[calc(100vh-130px)] overflow-auto p-2 md:p-4">
-              <div className="mx-auto w-fit">
+            <div className="max-h-[calc(100vh-130px)] overflow-y-auto overflow-x-hidden p-2 md:p-4">
+              <div ref={expandedCanvasRef} className="mx-auto w-full max-w-[1140px]">
                 {canvas}
               </div>
             </div>

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getLiveEventCards, getLiveEventFeed, getSettings, parseAppConfig } from "@hoichoi/db";
 import LiveProvider from "@/components/live/LiveProvider";
 import LivePageBody from "@/components/live/LivePageBody";
+import { protectLiveEventCard, protectLiveEventFeed } from "@/lib/live-stream-proxy";
 
 export const dynamic = "force-dynamic";
 
@@ -28,14 +29,15 @@ export default async function LiveEventPage({ params }: Props) {
   const [settings, cards] = await Promise.all([getSettings(), getLiveEventCards()]);
   const config = parseAppConfig(settings.app_config_json);
   if (!config.show_live_events) notFound();
-  const feed = await getLiveEventFeed(slug, "", {
+  const rawFeed = await getLiveEventFeed(slug, "", {
     refreshSeconds: config.live_events.refresh_seconds,
     floatingPlayer: config.live_events.floating_player,
   });
-  if (!feed) notFound();
+  if (!rawFeed) notFound();
+  const feed = protectLiveEventFeed(rawFeed);
   return (
     <LiveProvider key={feed.event.id} initial={feed}>
-      <LivePageBody others={cards} />
+      <LivePageBody others={cards.map(protectLiveEventCard)} />
     </LiveProvider>
   );
 }

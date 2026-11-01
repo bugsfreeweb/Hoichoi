@@ -101,8 +101,10 @@ export default function LiveMedia({
   if (!source) {
     return (
       <div className={clsx("relative flex aspect-video w-full items-center justify-center bg-[#0a0c10] px-5 text-center text-white/65", className)}>
-        <p className="font-mono-x text-[10px] tracking-[0.18em] uppercase">
-          {event.status === "ended" ? "রিপ্লে লিংক যোগ করা হয়নি" : "সম্প্রচার লিংক যোগ করা হয়নি"}
+        <p className="max-w-lg font-mono-x text-[10px] leading-relaxed tracking-[0.12em]">
+          {event.streamPrivacyNotice
+            ? "এই সম্প্রচারটি ব্যক্তিগতভাবে এম্বেড করা যায় না। মূল লিংক লুকিয়ে রাখতে HLS (.m3u8) বা MP4 সোর্স ব্যবহার করুন।"
+            : event.status === "ended" ? "রিপ্লে লিংক যোগ করা হয়নি" : "সম্প্রচার লিংক যোগ করা হয়নি"}
         </p>
       </div>
     );

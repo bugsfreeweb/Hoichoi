@@ -292,6 +292,9 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
             </div>
 
             <div className="mt-6 border-t border-ink/10 pt-5">
+              <p className="mb-3 border-l-2 border-lime bg-lime/10 px-3 py-2 text-[11px] leading-relaxed text-ink">
+                HLS/MP4 সোর্স দর্শকের কাছে encrypted proxy token দিয়ে চলে। YouTube-এর ভিডিও/চ্যানেল আইডি প্রদানকারীর এমবেডে দৃশ্যমান থাকে; iframe সোর্স গোপন রাখা যায় না বলে পাবলিক প্লেয়ারে দেখানো হবে না। সংরক্ষিত মূল লিংক প্রশাসক ও হোস্টিং অপারেটরের কাছে দৃশ্যমান থাকবে।
+              </p>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h4 className="text-[12.5px] font-bold text-ink">বিকল্প চ্যানেল</h4>
@@ -368,7 +371,7 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
               )}
               {hasSignedUrl && (
                 <p role="status" className="mt-3 border-l-2 border-amberx bg-amberx/10 px-3 py-2 text-[11px] leading-relaxed text-ink">
-                  স্বাক্ষরযুক্ত URL-এ অ্যাক্সেস টোকেন থাকতে পারে। পাবলিক লাইভ পাতায় স্ট্রিম URL পাঠানো হয়—শুধু শেয়ার করার অনুমতি আছে এমন URL ব্যবহার করুন।
+                  URL-এ অ্যাক্সেস টোকেন থাকতে পারে। stream credentials বা sensitive access parameters যুক্ত URL ব্যবহার করার আগে অনুমতি ও মেয়াদ যাচাই করুন।
                 </p>
               )}
             </div>

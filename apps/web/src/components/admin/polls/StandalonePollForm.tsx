@@ -2,15 +2,7 @@
 
 import { useActionState } from "react";
 import { createStandalonePoll } from "@/app/admin/(console)/polls/actions";
-
-const TEMPLATES = [
-  ["bar", "বার"],
-  ["battle", "মুখোমুখি"],
-  ["donut", "ডোনাট"],
-  ["card", "কার্ড"],
-  ["rank", "র‌্যাঙ্কিং"],
-  ["meter", "মিটার"],
-];
+import { PollTemplatePicker } from "./PollTemplatePicker";
 
 export function StandalonePollForm() {
   const [state, action, pending] = useActionState(createStandalonePoll, null);
@@ -37,12 +29,9 @@ export function StandalonePollForm() {
         <span className="field-label">অপশন · প্রতি লাইনে একটি (২–১২টি)</span>
         <textarea name="options" required rows={4} maxLength={2000} className={`${field} resize-y`} placeholder={"বাংলাদেশ\nভারত"} />
       </label>
-      <label>
-        <span className="field-label">ডিজাইন</span>
-        <select name="template" defaultValue="bar" className={field}>
-          {TEMPLATES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-        </select>
-      </label>
+      <div className="md:col-span-2">
+        <PollTemplatePicker />
+      </div>
       <label>
         <span className="field-label">ভোটের অবস্থা</span>
         <select name="status" defaultValue="open" className={field}>

@@ -9,6 +9,7 @@ import {
 import type { LiveEventSettings } from "@hoichoi/shared-types";
 import LiveProvider from "@/components/live/LiveProvider";
 import LiveTemplate from "@/components/live-templates/LiveTemplate";
+import { protectLiveEventCard, protectLiveEventFeed } from "@/lib/live-stream-proxy";
 
 export async function LiveEventSection({
   enabled,
@@ -26,11 +27,13 @@ export async function LiveEventSection({
     ?? events.find((item) => item.featured)
     ?? events[0];
   if (!event) return null;
-  const feed = await getLiveEventFeed(event.slug, "", {
+  const rawFeed = await getLiveEventFeed(event.slug, "", {
     refreshSeconds: settings.refresh_seconds,
     floatingPlayer: settings.floating_player,
   });
-  if (!feed) return null;
+  if (!rawFeed) return null;
+  const feed = protectLiveEventFeed(rawFeed);
+  const publicCards = cards.map(protectLiveEventCard);
   const template = (event.template === "auto" ? settings.default_theme : event.template) as LiveThemeKey;
 
   return (
@@ -45,7 +48,7 @@ export async function LiveEventSection({
         </Link>
       </header>
       <LiveProvider key={feed.event.id} initial={feed}>
-        <LiveTemplate template={template} others={cards} />
+        <LiveTemplate template={template} others={publicCards} />
       </LiveProvider>
     </section>
   );

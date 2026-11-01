@@ -196,6 +196,7 @@ export default function VideoPlayer({
       ref={videoRef}
       className={clsx("h-full w-full bg-black object-contain", className)}
       controls
+      controlsList="nodownload"
       muted
       autoPlay
       playsInline
@@ -203,6 +204,7 @@ export default function VideoPlayer({
       loop={url === "/media/live-preview.mp4"}
       onError={() => setError("ভিডিও লিংকটি খোলা যাচ্ছে না — মূল লিংক পরীক্ষা করুন বা ডেমো ভিডিও বেছে নিন")}
       poster={thumb || undefined}
+      onContextMenu={(event) => event.preventDefault()}
     />
   );
 }

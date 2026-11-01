@@ -960,8 +960,8 @@ html[data-theme="light"] .desk-scene {
    bright lime/amber accents for the darkened light-palette versions. Dark
    theme is untouched (these rules only apply under html[data-theme="light"]). */
 .live-studio {
-  background-color: #0a0c10;
-  color: #f3eee1;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
 }
 .live-scoreboard {
   background-color: #10141b;

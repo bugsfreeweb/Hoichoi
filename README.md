@@ -123,15 +123,21 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   The collector runs Facebook and RSS/Atom (`news`/`magazine`) sources. It skips
   enabled sources with missing identity/URL, malformed or non-HTTP URLs, and
   unsupported platforms (`x`, `social`, `other`) with an explicit log reason.
-  A source-level error does not stop other eligible sources from publishing.
+  Facebook sources are skipped when `FB_SESSION_COOKIE` is absent; RSS/Atom
+  collection continues. A source-level error does not stop other eligible
+  sources from publishing.
 - **Live events.** `/admin/live` creates and edits persisted events with six
   layouts, stream channels, event controls, polls, moderation, analytics, and
   notices. The setup/editor uses grouped sections, direct edit links, and an
   expandable preview rendered from the actual event template in both color
-  modes; the Studio remains intentionally dark.
+  modes; the Studio remains intentionally dark. Public HLS/MP4 playback uses
+  encrypted, expiring proxy tokens and rewrites HLS segment links; provider
+  embeds can still expose their provider/video ID, so browser playback is not
+  anonymity or access control.
 - **Standalone polls.** Admins can edit and schedule polls, feature a poll, and
-  allow single- or multiple-option voting. Polls appear on the homepage only
-  when `show_live_polls` is enabled.
+  allow single- or multiple-option voting. `/poll` presents featured, open,
+  scheduled, and closed polls with inline voting. Polls appear on the homepage
+  only when `show_live_polls` is enabled.
 - **Unified ad placements.** Settings → Visibility controls all public ads.
   Settings → Ads keeps the existing HTML/Google snippets; `/admin/ads/slots`
   chooses HTML/Google, platform bookings, or both for each shared placement.
@@ -140,10 +146,11 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   `/advertise`, `/portal`, and `/admin/ads`.
 - **Platform ad management.** `/advertise` links to the email/password client
   portal (`/portal/signup`, `/portal/login`). New accounts remain pending until
-  an admin approves them. Approved clients can create creatives and request
-  bookings; admins approve/activate or reject those requests at `/admin/ads`.
-  Clients sign in through the web portal; a dedicated advertiser desktop app is
-  not part of this release.
+  an admin approves them. Approved clients can create and edit saved creatives
+  with selectable layout/palette live previews, then request bookings; admins
+  approve/activate or reject those requests at `/admin/ads`. Clients sign in
+  through the web portal; a dedicated advertiser desktop app is not part of this
+  release.
 - **AI fallback hero images.** When a post reaches publish with no media at all,
   a Gemini image model generates one editorial hero (`ai_hero_images` app-config
   toggle, off when no `GOOGLE_API_KEY`). Sensitive categories
@@ -300,6 +307,11 @@ on the CLI, a select in the admin form) so the rewrite chain and the AI hero-ima
 generator resolve independently. Custom OpenAI-compatible providers get automatic
 `/v1`/`/openai/v1` endpoint fallback, and rewrite output is parsed leniently
 (fences, bold/bullet labels, Bangla aliases and value shorthands).
+Each collector run loads its provider chain once, bounds health probes and
+per-provider rewrite/embedding attempts, and stops at `HOICHOI_LLM_TIMEOUT_MS`
+(default 45 seconds for provider network attempts). A failed embedding is
+best-effort and does not block a valid rewrite from being published; a failed
+rewrite is reported in the run summary instead of leaving collection stuck.
 
 ## CLI cheat-sheet
 

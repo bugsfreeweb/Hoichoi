@@ -162,6 +162,23 @@ export async function createAdCreative(input: { name: string; templateId: string
     updatedAt: String(row.updated_at),
   };
 }
+
+export async function updateAdCreative(input: {
+  id: string;
+  clientId: string;
+  name: string;
+  templateId: string;
+  palette: string;
+  data: Record<string, unknown>;
+}) {
+  const client = getClient();
+  const result = await client.execute({
+    sql: "UPDATE ad_creatives SET name = ?, template_id = ?, palette = ?, data_json = ?, updated_at = ? WHERE id = ? AND client_id = ?",
+    args: [input.name, input.templateId, input.palette, JSON.stringify(input.data), nowIso(), input.id, input.clientId],
+  });
+  if (result.rowsAffected === 0) throw new Error("ক্রিয়েটিভটি আপনার অ্যাকাউন্টে পাওয়া যায়নি।");
+}
+
 export async function listAdBookings(clientId?: string) {
   const client = getClient();
   const res = await client.execute(

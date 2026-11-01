@@ -14,6 +14,7 @@ import {
   type LiveReactionKind,
 } from "@hoichoi/db";
 import { getSettings } from "@/lib/settings";
+import { protectLiveEventFeed } from "@/lib/live-stream-proxy";
 
 export const dynamic = "force-dynamic";
 
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     floatingPlayer: config.live_events.floating_player,
   });
   if (!feed) return fail("not_found", 404);
-  return NextResponse.json(feed, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json(protectLiveEventFeed(feed), { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {

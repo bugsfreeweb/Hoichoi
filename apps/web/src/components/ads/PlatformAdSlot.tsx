@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AdCreativePreview } from "./AdCreativePreview";
 
 interface PlatformAd {
   bookingId: string;
   slotKey: string;
   name: string;
+  templateId: string;
+  palette: string;
   data: Record<string, unknown>;
 }
 
@@ -76,23 +79,17 @@ export function PlatformAdSlot({ slotKey }: { slotKey: string }) {
   }
 
   return (
-    <aside ref={root} aria-label="স্পনসরকৃত বিজ্ঞাপন" className="mx-auto my-5 max-w-[1400px] border border-ink/15 bg-card p-4 md:my-7 md:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="min-w-0">
-          <p className="font-mono-x text-[8px] font-bold tracking-[0.18em] text-ink-soft uppercase">স্পনসরকৃত · Sponsored</p>
-          <h2 className="mt-1 font-serif-bn text-[16px] font-extrabold text-ink">{headline}</h2>
-          {body && <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-ink-soft">{body}</p>}
-        </div>
-        <a
-          href={destination}
-          target="_blank"
-          rel="noopener noreferrer sponsored"
-          onClick={() => { void sendEvent(ad, "click"); }}
-          className="shrink-0 bg-ink px-3.5 py-2 text-[10px] font-bold text-paper hover:bg-alizarin"
-        >
-          {cta}
-        </a>
-      </div>
+    <aside ref={root} aria-label="স্পনসরকৃত বিজ্ঞাপন" className="mx-auto my-5 max-w-[1400px] md:my-7">
+      <AdCreativePreview
+        name={ad.name}
+        headline={headline}
+        body={body}
+        cta={cta}
+        templateId={ad.templateId}
+        palette={ad.palette}
+        href={destination}
+        onClick={() => { void sendEvent(ad, "click"); }}
+      />
     </aside>
   );
 }

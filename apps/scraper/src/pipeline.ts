@@ -49,7 +49,10 @@ function mediaFetchInit(timeoutMs = 20_000): RequestInit {
   };
 }
 
-export function sourceSkipReason(row: Record<string, unknown>): string | null {
+export function sourceSkipReason(
+  row: Record<string, unknown>,
+  options: { facebookSessionAvailable?: boolean } = {},
+): string | null {
   const id = typeof row.id === "string" ? row.id.trim() : "";
   const name = typeof row.page_name === "string" ? row.page_name.trim() : "";
   const pageUrl = typeof row.page_url === "string" ? row.page_url.trim() : "";
@@ -62,6 +65,9 @@ export function sourceSkipReason(row: Record<string, unknown>): string | null {
   const platform = normalizePlatform(typeof row.platform === "string" ? row.platform : null);
   if (platform !== "facebook" && platform !== "news" && platform !== "magazine") {
     return `unsupported platform (${platform})`;
+  }
+  if (platform === "facebook" && options.facebookSessionAvailable === false) {
+    return "Facebook session cookie is not configured";
   }
 
   try {
@@ -330,6 +336,8 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
   const appCfg = parseAppConfig(String(setRow.app_config_json ?? ""));
   const aiHeroEnabled = Boolean(process.env.GOOGLE_API_KEY) && appCfg.ai_hero_images !== false;
 
+  const sessionCookie = process.env.FB_SESSION_COOKIE?.trim() || null;
+
   // Sources
   const srcRes = await client.execute(
     "SELECT * FROM sources WHERE is_active = 1 ORDER BY last_scraped_at IS NULL DESC, last_scraped_at ASC",
@@ -337,7 +345,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
   const eligibleSources: Source[] = [];
   for (const raw of srcRes.rows) {
     const row = raw as Record<string, unknown>;
-    const reason = sourceSkipReason(row);
+    const reason = sourceSkipReason(row, { facebookSessionAvailable: Boolean(sessionCookie) });
     if (reason) {
       stats.sourcesSkipped++;
       const sourceName = typeof row.page_name === "string" && row.page_name.trim() ? row.page_name.trim() : String(row.id ?? "unknown");
@@ -372,9 +380,6 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
   } catch {
     for (const s of sources) s.categories = [s.category];
   }
-
-  // Session cookie for logged-in FB scraping (optional)
-  const sessionCookie = process.env.FB_SESSION_COOKIE ?? null;
 
   for (const source of sources) {
     stats.sources++;
@@ -612,6 +617,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       ) {
         try {
           const aiRel = await generateAIHero({ title: source.page_name, summary: sp.rawText ?? "", log });
+          if (!aiRel) log("[ai-img] fallback complete — no image");
           if (aiRel) {
             media.kind = "image";
             media.path = aiRel;

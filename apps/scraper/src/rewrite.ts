@@ -115,7 +115,9 @@ export async function rewritePost(input: {
   };
 
   const rewriteSignal = llmRequestSignal();
+  log("[llm] rewrite started");
   const { out, provider } = await resolver.rewrite(ctx, rewriteSignal);
+  log(`[llm] rewrite completed (${provider})`);
   const flags: string[] = [];
   const redaction =
     input.categoryConfig.redaction_strict === "none"
@@ -136,6 +138,7 @@ export async function rewritePost(input: {
 
   let embedding: number[] | null = null;
   try {
+    log("[llm] embedding started");
     const { vector } = await resolver.embedText(
       `${out.title_bn} ${out.summary_bn} ${out.body_bn}`,
       llmRequestSignal(),
