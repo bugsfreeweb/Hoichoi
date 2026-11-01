@@ -121,9 +121,34 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
       {event && <input type="hidden" name="id" value={event.id} />}
       <input type="hidden" name="streams" value={hiddenSources} />
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="space-y-5">
-          <fieldset className="border border-ink/15 bg-card p-4 md:p-6">
+      <header className="border border-ink/10 bg-paper-deep/30 px-4 py-4 md:px-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="font-mono-x text-[9px] font-bold tracking-[0.2em] text-alizarin uppercase">{event ? "Event editor · saved record" : "Live desk · new event"}</p>
+            <h3 className="mt-1 font-serif-bn text-[20px] font-black text-ink">{event ? "ইভেন্ট সম্পাদনা" : "ইভেন্ট সেটআপ"}</h3>
+            <p className="mt-1 text-[11px] text-ink-soft">একই ফর্মে সংরক্ষণ, সম্পাদনা ও থিম প্রিভিউ—সব পরিবর্তন সেভ না করা পর্যন্ত পাবলিক হবে না।</p>
+          </div>
+          <span className="border border-ink/15 bg-card px-2.5 py-1.5 font-mono-x text-[9px] font-semibold text-ink-soft">
+            {event ? `ID ${event.id.slice(0, 8)}` : "DRAFT"}
+          </span>
+        </div>
+        <nav aria-label="ইভেন্ট ফর্ম বিভাগ" className="no-scrollbar mt-4 flex gap-2 overflow-x-auto border-t border-ink/10 pt-3">
+          {[
+            ["live-event-info", "01", "পরিচিতি"],
+            ["live-event-stream", "02", "সম্প্রচার"],
+            ["live-event-points", "03", "তথ্য"],
+            ["live-event-engagement", "04", "অংশগ্রহণ"],
+          ].map(([id, number, label]) => (
+            <a key={id} href={`#${id}`} className="flex shrink-0 items-center gap-2 border border-ink/15 bg-card px-3 py-2 text-[10px] font-bold text-ink transition-colors hover:border-ink">
+              <span className="font-mono-x text-[9px] text-alizarin">{number}</span>{label}
+            </a>
+          ))}
+        </nav>
+      </header>
+
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-4">
+          <fieldset id="live-event-info" className="scroll-mt-24 border border-ink/12 bg-card p-4 md:p-6">
             <SectionHeading number="01" title="ইভেন্ট পরিচিতি" description="শিরোনাম লিখুন—ইউআরএল স্লাগ স্বয়ংক্রিয়ভাবে তৈরি হবে, চাইলে পরে সম্পাদনা করুন।" />
             <div className="grid gap-4 md:grid-cols-2">
               <label className="md:col-span-2">
@@ -208,7 +233,7 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
               </label>
               <label className="md:col-span-2">
                 <span className="field-label">পাবলিক পেজের ডিজাইন</span>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                   <label className={`flex cursor-pointer flex-col border p-3 transition-colors ${template === "auto" ? "border-ink bg-paper shadow-[3px_3px_0_0_var(--color-ink)]" : "border-ink/15 bg-paper-deep hover:border-ink/45"}`}>
                     <input type="radio" name="template" value="auto" checked={template === "auto"} onChange={() => setTemplate("auto")} className="sr-only" />
                     <span className="font-mono-x text-[9px] text-ink-soft">AUTO</span>
@@ -228,7 +253,7 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
             </div>
           </fieldset>
 
-          <fieldset className="border border-ink/15 bg-card p-4 md:p-6">
+          <fieldset id="live-event-stream" className="scroll-mt-24 border border-ink/12 bg-card p-4 md:p-6">
             <SectionHeading number="02" title="লাইভ সম্প্রচার" description="স্ট্রিম URL দিলে ধরনটি অটো শনাক্ত হবে; প্রয়োজনে ম্যানুয়ালি বদলান।" />
             <div className="grid gap-4 md:grid-cols-2">
               <label>
@@ -349,12 +374,12 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
             </div>
           </fieldset>
 
-          <fieldset className="border border-ink/15 bg-card p-4 md:p-6">
+          <fieldset id="live-event-points" className="scroll-mt-24 border border-ink/12 bg-card p-4 md:p-6">
             <SectionHeading number="03" title="গুরুত্বপূর্ণ তথ্য" description="যাচাইকৃত তথ্যগুলো আলাদা লাইনে লিখুন; ফাঁকা রাখলেও ইভেন্ট তৈরি হবে।" />
             <textarea name="keyPoints" rows={4} defaultValue={(event?.keyPoints ?? []).join("\n")} className={`${input} resize-y leading-relaxed`} placeholder={"প্রতি লাইনে একটি তথ্য\nযেমন: টস জিতে ব্যাটিংয়ে বাংলাদেশ"} />
           </fieldset>
 
-          <fieldset className="border border-ink/15 bg-card p-4 md:p-6">
+          <fieldset id="live-event-engagement" className="scroll-mt-24 border border-ink/12 bg-card p-4 md:p-6">
             <SectionHeading number="04" title="পাঠকের অংশগ্রহণ" description="মন্তব্য, রিঅ্যাকশন, পোল ও প্রশ্নোত্তরের নিয়ন্ত্রণ নির্ধারণ করুন।" />
             <div className="grid gap-2 sm:grid-cols-2">
               <Check name="featured" label="হোমপেজে ফিচার্ড" hint="লাইভ ইভেন্ট সেকশনে অগ্রাধিকার" checked={event?.featured ?? false} />
@@ -383,15 +408,20 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
 
         <aside className="space-y-4 xl:sticky xl:top-20">
           <LiveThemePreview theme={template} title={title} summary={summary} />
-          <section className="border border-ink/15 bg-paper p-4">
+          <section className="border border-ink/10 bg-paper p-4">
             <div className="flex items-start gap-2.5">
               <CalendarClock size={15} className="mt-0.5 shrink-0 text-alizarin" />
               <div>
                 <p className="text-[11.5px] font-bold text-ink">প্রকাশের আগে যাচাই</p>
-                <p className="mt-1 text-[10.5px] leading-relaxed text-ink-soft">শিরোনাম, সম্প্রচারের অনুমতি, সঠিক সময় ও স্ট্রিম লিংক নিশ্চিত করে তারপর প্রকাশ করুন।</p>
+                <p className="mt-1 text-[10.5px] leading-relaxed text-ink-soft">শিরোনাম, সম্প্রচারের অনুমতি, সঠিক সময় ও স্ট্রিম লিংক নিশ্চিত করে তারপর সংরক্ষণ করুন।</p>
               </div>
             </div>
           </section>
+          {event && (
+            <a href={`/live/${event.slug}`} target="_blank" rel="noreferrer" className="block border border-ink/15 bg-card px-4 py-3 text-center text-[11px] font-bold text-ink transition-colors hover:border-ink">
+              বর্তমান পাবলিক ইভেন্ট দেখুন ↗
+            </a>
+          )}
         </aside>
       </div>
 

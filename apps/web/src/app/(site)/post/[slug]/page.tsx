@@ -14,8 +14,7 @@ import { ReportForm } from "@/components/ReportForm";
 import { PostCard } from "@/components/PostCard";
 import { PostGallery } from "@/components/PostGallery";
 import { CommentsSection } from "@/components/CommentsSection";
-import { AdSlot } from "@/components/AdSlot";
-import { PlatformAdSlot } from "@/components/ads/PlatformAdSlot";
+import { UnifiedAdPlacement } from "@/components/ads/UnifiedAdPlacement";
 import { FbPost } from "@/components/FbPost";
 import { getSettings } from "@/lib/settings";
 import { getLive } from "@/lib/mv/live";
@@ -196,6 +195,7 @@ function PostContent({
   settings: Awaited<ReturnType<typeof getSettings>>;
   cat: Awaited<ReturnType<typeof findCategory>>;
 }) {
+  const cfg = parseAppConfig(settings.app_config_json);
   const tint = categoryTint(post!.category, cat ? [cat] : null);
   // Category dots are admin-editable, so a pale hue is entirely possible.
   // A fixed text-white would become unreadable white-on-white in light theme.
@@ -393,10 +393,11 @@ function PostContent({
           </div>
 
           {/* ad · in-article */}
-          <div className="mt-10">
-            <AdSlot variant="leaderboard" html={settings.ad_leaderboard_html} />
-          </div>
-          <PlatformAdSlot slotKey="article_leaderboard" />
+          {cfg.show_ads && (
+            <div className="mt-10">
+              <UnifiedAdPlacement slotKey="article_leaderboard" variant="leaderboard" html={settings.ad_leaderboard_html} />
+            </div>
+          )}
         </div>
 
         {/* sidebar */}
@@ -431,8 +432,7 @@ function PostContent({
             </div>
 
             {/* ad · rectangle */}
-            <AdSlot variant="rect" html={settings.ad_rect_html} />
-            <PlatformAdSlot slotKey="article_rect" />
+            {cfg.show_ads && <UnifiedAdPlacement slotKey="article_rect" variant="rect" html={settings.ad_rect_html} />}
 
             {/* data discipline — fixed dark band, readable in both themes */}
             <div className="bg-band p-6 text-bandline">

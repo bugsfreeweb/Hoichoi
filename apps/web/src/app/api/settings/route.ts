@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getSettings, updateSettings } from "@hoichoi/db";
 import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
 
@@ -36,5 +37,7 @@ export async function PATCH(req: NextRequest) {
     app_config_json: body.app_config_json as string | undefined,
     media_storage_json: body.media_storage_json as string | undefined,
   });
+  revalidatePath("/");
+  revalidatePath("/post/[slug]", "page");
   return NextResponse.json({ ok: true });
 }

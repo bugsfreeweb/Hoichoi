@@ -20,7 +20,7 @@ export function PortalManagementForms({
   const [creativeState, createCreativeForm, creating] = useActionState(createClientCreative, null);
   const [bookingState, requestBookingForm, booking] = useActionState(requestAdBooking, null);
   const field = "mt-1 w-full border border-ink/25 bg-paper px-3 py-2 text-[12px] text-ink outline-none focus:border-alizarin";
-  const availableSlots = slots.filter((slot) => slot.enabled);
+  const availableSlots = slots.filter((slot) => slot.enabled && slot.deliveryMode !== "house");
   const showCreativeForm = mode !== "booking";
   const showBookingForm = mode !== "creative";
 
@@ -45,7 +45,7 @@ export function PortalManagementForms({
       {showBookingForm && <form action={requestBookingForm} className="space-y-3 border border-ink/15 bg-card p-4">
         <div>
           <h3 className="font-serif-bn text-[16px] font-bold text-ink">স্লট বুকিং অনুরোধ</h3>
-          <p className="mt-1 text-[11px] text-ink-soft">অনুমোদনের পরেই বিজ্ঞাপনটি প্রকাশিত হবে।</p>
+          <p className="mt-1 text-[11px] text-ink-soft">অনুমোদনের পর নির্বাচিত সময়সীমায় বিজ্ঞাপনটি প্রকাশিত হবে।</p>
         </div>
         <label className="block">
           <span className="field-label">বিজ্ঞাপন স্লট</span>

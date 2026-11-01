@@ -40,7 +40,7 @@ export async function registerAdClient(
 
   if (name.length < 2) return { error: "আপনার নাম অন্তত ২ অক্ষরের হতে হবে।" };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "সঠিক ইমেইল ঠিকানা দিন।" };
-  if (password.length < 12) return { error: "পাসওয়ার্ডে অন্তত ১২টি অক্ষর থাকতে হবে।" };
+  if (password.length < 8) return { error: "পাসওয়ার্ডে অন্তত ৮টি অক্ষর থাকতে হবে।" };
   if (password !== confirmation) return { error: "দুটি পাসওয়ার্ড মিলছে না।" };
 
   const passwordHash = await bcrypt.hash(password, 12);
@@ -129,7 +129,7 @@ export async function requestAdBooking(
   const startsAt = new Date(`${startDate}T00:00:00.000Z`);
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
-  if (!slot?.enabled) return { error: "এই বিজ্ঞাপন স্লটটি এখন বুকিংয়ের জন্য চালু নেই।" };
+  if (!slot?.enabled || slot.deliveryMode === "house") return { error: "এই বিজ্ঞাপন স্লটটি এখন বুকিংয়ের জন্য চালু নেই।" };
   if (!creative) return { error: "নির্বাচিত ক্রিয়েটিভটি আপনার অ্যাকাউন্টে নেই।" };
   if (!Number.isFinite(startsAt.getTime()) || startsAt < today) return { error: "শুরুর তারিখ আজ বা তার পরের হতে হবে।" };
 

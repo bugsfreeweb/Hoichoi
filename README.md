@@ -17,18 +17,18 @@ Web (apps/web)        Next.js 15 public site (SSR feed, /sitemap, OG images, vis
                       /appearance, /setup, …), /desk preview, live /api/stats. First-party
                       cookie-less analytics (page_views + ad_events) power the dashboard's
                       ট্রাফিক ও স্টোরেজ tab with a /api/track beacon. Home sections are gated by settings.app_config_json
-                      (show_hero / show_ads / … / maintenance_mode / ai_hero_images /
+                      (show_hero / show_ads / show_live_polls / … / maintenance_mode / ai_hero_images /
                       default_post_image / brand_animation);
                       admin Settings is a tabbed console (সাইট / ভিজিবিলিটি / বিজ্ঞাপন /
                       রক্ষণাবেক্ষণ / অপারেশন / ডিজাইন) with a single save → PATCH /api/settings.
                       The first-party advertising platform has admin operations
                       (/admin/ads and its clients, bookings, slots, analytics and activity
                       views), email/password client signup with admin approval, a client
-                      portal (/portal), four platform-sponsored placements and delivery
-                      analytics stored separately in platform_ad_events. The legacy
-                      ad_events table remains dedicated to page-traffic analytics. This
-                      platform is separate from the existing HTML/Google ad slots, which
-                      remain unchanged.
+                      portal (/portal), five platform placements and delivery analytics
+                      stored separately in platform_ad_events. Each shared placement can
+                      serve platform ads, existing HTML/Google code, or both; booking
+                      start/end dates gate client delivery. The legacy ad_events table
+                      remains dedicated to page-traffic analytics.
                       The ডিজাইন tab folds in the section-variant switcher with a live
                       preview (cookie overlay, no DB write) and a one-click reset to default.
                       Admin shell has a grouped, collapsible sidebar with a persisted
@@ -92,8 +92,11 @@ packages/
   dash/       Shared dashboard: chart kit, `DashModel` contract, and the 5-tab
               DashboardView. Consumed by apps/web (admin home) and apps/desktop
               (Monitor); every panel maps to a real DB row — no fabricated telemetry.
-docs/         All documentation (deploy, desktop build, design system, editorial policy)
-mockup/       Static design reference (do not deploy; not part of the build)
+docs/         Local operating/reference guides (excluded from source pushes)
+live-event-feature-mockup/   Live-event and poll design reference (local only)
+ad-management-system-mockup/ Advertising portal design reference (local only)
+maintenance-page-mockup/     Maintenance page design reference (local only)
+multi-style-web-mockup/      Site theme design reference (local only)
 .github/workflows/   ci · pipeline-cron (every 8h) · rolling-archive · keep-alive · deploy-web
 ```
 
@@ -123,15 +126,24 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   A source-level error does not stop other eligible sources from publishing.
 - **Live events.** `/admin/live` creates and edits persisted events with six
   layouts, stream channels, event controls, polls, moderation, analytics, and
-  notices. Admin previews show each layout in both site color modes; the Studio
-  remains an intentional dark surface and the scoreboard uses contrast-safe
-  colors in light mode. See [docs/live-event-platform.md](./docs/live-event-platform.md).
+  notices. The setup/editor uses grouped sections, direct edit links, and an
+  expandable preview rendered from the actual event template in both color
+  modes; the Studio remains intentionally dark.
+- **Standalone polls.** Admins can edit and schedule polls, feature a poll, and
+  allow single- or multiple-option voting. Polls appear on the homepage only
+  when `show_live_polls` is enabled.
+- **Unified ad placements.** Settings → Visibility controls all public ads.
+  Settings → Ads keeps the existing HTML/Google snippets; `/admin/ads/slots`
+  chooses HTML/Google, platform bookings, or both for each shared placement.
+  Platform campaigns render only during their approved booking window. Advertiser
+  signup supports show/hide password and an eight-character minimum. See
+  `/advertise`, `/portal`, and `/admin/ads`.
 - **Platform ad management.** `/advertise` links to the email/password client
   portal (`/portal/signup`, `/portal/login`). New accounts remain pending until
   an admin approves them. Approved clients can create creatives and request
   bookings; admins approve/activate or reject those requests at `/admin/ads`.
-  This is separate from the existing admin-pasted ad-network HTML/JS slots,
-  which remain in Settings. See [docs/AD-MANAGEMENT.md](./docs/AD-MANAGEMENT.md).
+  Clients sign in through the web portal; a dedicated advertiser desktop app is
+  not part of this release.
 - **AI fallback hero images.** When a post reaches publish with no media at all,
   a Gemini image model generates one editorial hero (`ai_hero_images` app-config
   toggle, off when no `GOOGLE_API_KEY`). Sensitive categories

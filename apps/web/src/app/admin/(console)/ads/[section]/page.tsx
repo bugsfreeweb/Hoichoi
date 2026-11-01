@@ -122,6 +122,14 @@ export default async function AdminAdsSectionPage({
                     </select>
                   </label>
                   <label className="grid gap-1 text-[10px] text-ink-soft">
+                    ডেলিভারি
+                    <select name="deliveryMode" defaultValue={slot.deliveryMode} disabled={!canManage} className={field}>
+                      <option value="both">প্ল্যাটফর্ম + HTML/Google</option>
+                      <option value="platform">শুধু বুক করা ক্লায়েন্ট বিজ্ঞাপন</option>
+                      <option value="house">শুধু HTML/Google বিজ্ঞাপন</option>
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-[10px] text-ink-soft">
                     দৈনিক মূল্য (৳)
                     <input name="dayRateBdt" type="number" min={0} max={100000000} step={1} required defaultValue={slot.dayRateBdt} disabled={!canManage} className={`${field} w-32`} />
                   </label>
@@ -130,7 +138,7 @@ export default async function AdminAdsSectionPage({
               ))}
             </div>
           )}
-          <p className="mt-4 text-[10px] leading-relaxed text-ink-soft">এই স্লট সেটিংগুলো platform ad booking-এর জন্য। বিদ্যমান HTML/Google ad slot configuration আলাদা এবং অপরিবর্তিত থাকে।</p>
+          <p className="mt-4 text-[10px] leading-relaxed text-ink-soft">একই প্লেসমেন্টে HTML/Google বিজ্ঞাপন ও ক্লায়েন্ট বুকিংয়ের ডেলিভারি বেছে নিন। বুক করা বিজ্ঞাপন শুধু অনুমোদিত বুকিংয়ের শুরুর ও শেষ সময়ের মধ্যে দেখা যায়; ‘প্ল্যাটফর্ম + HTML/Google’ নির্বাচন করলে দুটিই দেখাবে।</p>
         </Panel>
       )}
 

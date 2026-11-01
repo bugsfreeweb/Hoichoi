@@ -15,7 +15,7 @@ export async function GET(
 
   try {
     const slot = await getAdSlot(slotKey);
-    if (!slot?.enabled) {
+    if (!slot?.enabled || slot.deliveryMode === "house") {
       return NextResponse.json({ ad: null }, { headers: { "Cache-Control": "no-store" } });
     }
     const ad = await getActiveAdForSlot(slotKey);

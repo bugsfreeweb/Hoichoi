@@ -4,6 +4,7 @@ import { Fragment, useState } from "react";
 import type { Post } from "@hoichoi/shared-types";
 import ArticleCard from "@/components/ArticleCard";
 import { AdSlot } from "@/components/AdSlot";
+import { PlatformAdSlot } from "@/components/ads/PlatformAdSlot";
 import { toBn } from "@/lib/format";
 import { categoryLabel } from "@/lib/category-style";
 import type { CategoryMeta } from "@hoichoi/shared-types";
@@ -12,11 +13,13 @@ export default function ArticleGrid({
   posts,
   ads = false,
   adInfeedHtml = null,
+  adDeliveryMode = "both",
   categories = null,
 }: {
   posts: Post[];
   ads?: boolean;
   adInfeedHtml?: string | null;
+  adDeliveryMode?: "both" | "platform" | "house";
   categories?: CategoryMeta[] | null;
 }) {
   const cats = Array.from(new Set(posts.map((a) => a.category)));
@@ -70,7 +73,8 @@ export default function ArticleGrid({
             </div>
             {ads && i !== shown.length - 1 && (i + 1) % 4 === 0 && (
               <div className="mt-10">
-                <AdSlot variant="infeed" html={adInfeedHtml} />
+                {(adDeliveryMode === "both" || adDeliveryMode === "house") && <AdSlot variant="infeed" html={adInfeedHtml} />}
+                {(adDeliveryMode === "both" || adDeliveryMode === "platform") && <PlatformAdSlot slotKey="home_infeed" />}
               </div>
             )}
           </Fragment>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
+import { useState } from "react";
 import { loginAdClient, registerAdClient } from "@/app/portal/actions";
 
 export function PortalAuthForm({ mode }: { mode: "login" | "signup" }) {
@@ -9,6 +10,8 @@ export function PortalAuthForm({ mode }: { mode: "login" | "signup" }) {
   const [state, formAction, pending] = useActionState(action, null);
   const field = "mt-1 w-full border border-ink/25 bg-paper px-3 py-2.5 text-[14px] text-ink outline-none focus:border-alizarin";
   const signup = mode === "signup";
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   return (
     <form action={formAction} className="grid gap-4">
@@ -30,29 +33,39 @@ export function PortalAuthForm({ mode }: { mode: "login" | "signup" }) {
       </label>
       <label>
         <span className="field-label">পাসওয়ার্ড *</span>
-        <input
-          name="password"
-          type="password"
-          required
-          minLength={12}
-          maxLength={128}
-          autoComplete={signup ? "new-password" : "current-password"}
-          className={field}
-        />
-        {signup && <span className="mt-1 block text-[10.5px] text-ink-soft">অন্তত ১২টি অক্ষর।</span>}
+        <span className="relative block">
+          <input
+            name="password"
+            type={showPassword ? "text" : "password"}
+            required
+            minLength={signup ? 8 : undefined}
+            maxLength={128}
+            autoComplete={signup ? "new-password" : "current-password"}
+            className={`${field} pr-16`}
+          />
+          <button type="button" aria-label={showPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখান"} aria-pressed={showPassword} onClick={() => setShowPassword((value) => !value)} className="absolute inset-y-1 right-2 px-2 text-[10px] font-bold text-alizarin hover:underline">
+            {showPassword ? "লুকান" : "দেখুন"}
+          </button>
+        </span>
+        {signup && <span className="mt-1 block text-[10.5px] text-ink-soft">অন্তত ৮টি অক্ষর।</span>}
       </label>
       {signup && (
         <label>
           <span className="field-label">পাসওয়ার্ড নিশ্চিত করুন *</span>
-          <input
-            name="confirmPassword"
-            type="password"
-            required
-            minLength={12}
-            maxLength={128}
-            autoComplete="new-password"
-            className={field}
-          />
+          <span className="relative block">
+            <input
+              name="confirmPassword"
+              type={showConfirmation ? "text" : "password"}
+              required
+              minLength={8}
+              maxLength={128}
+              autoComplete="new-password"
+              className={`${field} pr-16`}
+            />
+            <button type="button" aria-label={showConfirmation ? "নিশ্চিতকরণ পাসওয়ার্ড লুকান" : "নিশ্চিতকরণ পাসওয়ার্ড দেখান"} aria-pressed={showConfirmation} onClick={() => setShowConfirmation((value) => !value)} className="absolute inset-y-1 right-2 px-2 text-[10px] font-bold text-alizarin hover:underline">
+              {showConfirmation ? "লুকান" : "দেখুন"}
+            </button>
+          </span>
         </label>
       )}
       {state?.error && <p role="alert" className="border border-alizarin/30 bg-alizarin/10 px-3 py-2 text-[12px] font-semibold text-alizarin">{state.error}</p>}

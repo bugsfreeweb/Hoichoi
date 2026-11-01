@@ -7,6 +7,7 @@ export interface AdSlot {
   enabled: boolean;
   dayRateBdt: number;
   houseHtmlEnabled: boolean;
+  deliveryMode: "both" | "platform" | "house";
   updatedAt: string;
 }
 
@@ -67,6 +68,11 @@ function nowIso() {
 function uuid() {
   return crypto.randomUUID();
 }
+
+function slotDeliveryMode(value: unknown): AdSlot["deliveryMode"] {
+  return value === "platform" || value === "house" ? value : "both";
+}
+
 export async function listAdSlots() {
   const client = getClient();
   const res = await client.execute("SELECT * FROM ad_slots ORDER BY slot_key");
@@ -77,6 +83,7 @@ export async function listAdSlots() {
     enabled: Number(row.enabled) === 1,
     dayRateBdt: Number(row.day_rate_bdt ?? 0),
     houseHtmlEnabled: Number(row.house_html_enabled) === 1,
+    deliveryMode: slotDeliveryMode(row.delivery_mode),
     updatedAt: String(row.updated_at),
   }));
 }
@@ -85,11 +92,12 @@ export async function updateAdSlotSettings(input: {
   slotKey: string;
   enabled: boolean;
   dayRateBdt: number;
+  deliveryMode: AdSlot["deliveryMode"];
 }) {
   const client = getClient();
   const result = await client.execute({
-    sql: "UPDATE ad_slots SET enabled = ?, day_rate_bdt = ?, updated_at = ? WHERE slot_key = ?",
-    args: [input.enabled ? 1 : 0, input.dayRateBdt, nowIso(), input.slotKey],
+    sql: "UPDATE ad_slots SET enabled = ?, day_rate_bdt = ?, delivery_mode = ?, updated_at = ? WHERE slot_key = ?",
+    args: [input.enabled ? 1 : 0, input.dayRateBdt, input.deliveryMode, nowIso(), input.slotKey],
   });
   if (result.rowsAffected === 0) throw new Error("বিজ্ঞাপন স্লটটি পাওয়া যায়নি।");
 }
@@ -106,6 +114,7 @@ export async function getAdSlot(slotKey: string) {
     enabled: Number(row.enabled) === 1,
     dayRateBdt: Number(row.day_rate_bdt ?? 0),
     houseHtmlEnabled: Number(row.house_html_enabled) === 1,
+    deliveryMode: slotDeliveryMode(row.delivery_mode),
     updatedAt: String(row.updated_at),
   };
 }

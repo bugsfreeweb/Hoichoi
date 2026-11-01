@@ -86,6 +86,7 @@ export default async function AdminLiveEventsPage({
                   <Link href={`/admin/live/${event.id}`} className="flex items-center gap-1.5 bg-ink px-3 py-1.5 text-[12px] font-bold text-paper hover:bg-alizarin">
                     <Radio size={13} /> কন্ট্রোল রুম
                   </Link>
+                  <Link href={`/admin/live/${event.id}?tab=settings`} className="border border-ink/20 px-3 py-1.5 text-[11px] font-bold text-ink transition-colors hover:border-ink">সম্পাদনা</Link>
                   {event.status !== "live" ? (
                     <form action={changeLiveEventStatus.bind(null, event.id, "live")}>
                       <button type="submit" className="border border-live px-3 py-1.5 text-[11.5px] font-bold text-live hover:bg-live hover:text-white">● লাইভ শুরু</button>

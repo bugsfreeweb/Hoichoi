@@ -36,17 +36,26 @@ export async function saveAdSlotSettings(formData: FormData): Promise<void> {
   const slotKey = formData.get("slotKey");
   const enabled = formData.get("enabled");
   const dayRate = Number(formData.get("dayRateBdt"));
+  const deliveryMode = formData.get("deliveryMode");
   if (
     typeof slotKey !== "string" ||
     !slotKey ||
     (enabled !== "true" && enabled !== "false") ||
+    (deliveryMode !== "both" && deliveryMode !== "platform" && deliveryMode !== "house") ||
     !Number.isSafeInteger(dayRate) ||
     dayRate < 0 ||
     dayRate > 100_000_000
   ) {
     throw new Error("স্লটের অবস্থা বা দৈনিক মূল্য সঠিক নয়।");
   }
-  await updateAdSlotSettings({ slotKey, enabled: enabled === "true", dayRateBdt: dayRate });
+  await updateAdSlotSettings({
+    slotKey,
+    enabled: enabled === "true",
+    dayRateBdt: dayRate,
+    deliveryMode,
+  });
   revalidatePath("/admin/ads");
   revalidatePath("/admin/ads/slots");
+  revalidatePath("/");
+  revalidatePath("/post/[slug]", "page");
 }

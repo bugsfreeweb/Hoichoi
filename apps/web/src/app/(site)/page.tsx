@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { windowPosts, countWindowPosts, categoriesWithCounts, parseAppConfig, listCategories } from "@hoichoi/db";
+import { windowPosts, countWindowPosts, categoriesWithCounts, parseAppConfig, listCategories, getFeaturedPoll, getPollResults, pollResultsVisible, getAdSlot } from "@hoichoi/db";
 import { ScrollProgress } from "@/components/ScrollProgress";
 import Hero from "@/components/home/Hero";
 import LiveAnalytics from "@/components/home/live-analytics";
@@ -8,8 +8,7 @@ import RewriteSlider from "@/components/home/RewriteSlider";
 import TiltCard from "@/components/home/TiltCard";
 import ArticleGrid from "@/components/ArticleGrid";
 import { Pagination } from "@/components/Pagination";
-import { AdSlot } from "@/components/AdSlot";
-import { PlatformAdSlot } from "@/components/ads/PlatformAdSlot";
+import { UnifiedAdPlacement } from "@/components/ads/UnifiedAdPlacement";
 import { Reveal } from "@/components/Reveal";
 import { HomeLiveProvider } from "@/components/home/live-data";
 import { getSettings } from "@/lib/settings";
@@ -21,6 +20,7 @@ import { agoBn } from "@/lib/format";
 import { categoryLabel, categoryTint, readableOn } from "@/lib/category-style";
 import { mediaUrl, withDefaultImages } from "@/lib/media";
 import { LiveEventSection } from "@/components/home/LiveEventSection";
+import { HomePollSection } from "@/components/home/HomePollSection";
 
 export const revalidate = 300;
 
@@ -46,12 +46,17 @@ export default async function HomePage({
   const cfg = parseAppConfig(settings.app_config_json);
   const PAGE_SIZE = pageSize(cfg.home_post_count);
   const offset = (page - 1) * PAGE_SIZE;
-  const [postsRaw, total, catStats, catRows] = await Promise.all([
+  const [postsRaw, total, catStats, catRows, featuredPoll, infeedSlot] = await Promise.all([
     windowPosts({ limit: PAGE_SIZE, offset }),
     countWindowPosts(),
     categoriesWithCounts(),
     listCategories(),
+    cfg.show_live_polls ? getFeaturedPoll() : Promise.resolve(null),
+    cfg.show_ads ? getAdSlot("home_infeed") : Promise.resolve(null),
   ]);
+  const pollResults = featuredPoll && pollResultsVisible(featuredPoll, false)
+    ? await getPollResults(featuredPoll.id)
+    : [];
   // Fill any image-less post with the admin-configured default image so the
   // featured card, hero and grid all render a picture instead of a text tile.
   const posts = withDefaultImages(postsRaw, cfg.default_post_image);
@@ -84,9 +89,8 @@ export default async function HomePage({
       {cfg.show_ads && (
         <>
           <div className="mx-auto max-w-[1400px] px-4 pt-8 md:px-8">
-            <AdSlot variant="leaderboard" html={settings.ad_leaderboard_html} />
+            <UnifiedAdPlacement slotKey="home_leaderboard" variant="leaderboard" html={settings.ad_leaderboard_html} />
           </div>
-          <PlatformAdSlot slotKey="home_leaderboard" />
         </>
       )}
 
@@ -126,6 +130,7 @@ export default async function HomePage({
       )}
 
       <LiveEventSection enabled={cfg.show_live_events} settings={cfg.live_events} />
+      {cfg.show_live_polls && <HomePollSection poll={featuredPoll} results={pollResults} />}
 
       {cfg.show_hero && featured && (
         <section className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
@@ -390,16 +395,15 @@ export default async function HomePage({
           </p>
         </div>
         </Reveal>
-        <ArticleGrid posts={rest} ads={cfg.show_ads} adInfeedHtml={settings.ad_infeed_html} categories={catRows} />
+        <ArticleGrid posts={rest} ads={cfg.show_ads} adInfeedHtml={settings.ad_infeed_html} adDeliveryMode={infeedSlot?.deliveryMode ?? "both"} categories={catRows} />
         <Pagination page={page} pageCount={pageCount} base="/" />
       </section>
 
       {cfg.show_ads && (
         <>
           <div className="mx-auto max-w-[1400px] px-4 pb-12 md:px-8">
-            <AdSlot variant="strip" html={settings.ad_strip_html} />
+            <UnifiedAdPlacement slotKey="home_strip" variant="strip" html={settings.ad_strip_html} />
           </div>
-          <PlatformAdSlot slotKey="home_strip" />
         </>
       )}
     </HomeLiveProvider>
