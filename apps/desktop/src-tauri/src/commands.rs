@@ -155,9 +155,7 @@ pub async fn run_pipeline(
         Some(envs) => envs,
         None => HashMap::new(),
     };
-    for (k, v) in &envs {
-        cmd.env(k, v);
-    }
+    let (local_db_only, has_database_config) = apply_runner_env(&mut cmd, &envs);
 
     // Prefer a locally-installed system browser (Edge/Chrome) over a
     // downloaded Playwright bundle. The scraper falls back across candidate
@@ -175,12 +173,13 @@ pub async fn run_pipeline(
         if !envs.contains_key("HOICHOI_MEDIA_ROOT") {
             cmd.env("HOICHOI_MEDIA_ROOT", win32_path(&data_dir.join("media")));
         }
-        if !envs.contains_key("TURSO_DATABASE_URL") && !envs.contains_key("DATABASE_URL") {
-            cmd.env(
-                "TURSO_DATABASE_URL",
-                format!("file:{}", win32_path(&data_dir.join("hoichoi.db")).display()),
-            );
-        }
+    }
+    if local_db_only || !has_database_config {
+        cmd.env_remove("DATABASE_URL");
+        cmd.env(
+            "TURSO_DATABASE_URL",
+            format!("file:{}", win32_path(&data_dir.join("hoichoi.db")).display()),
+        );
     }
 
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
@@ -280,18 +279,16 @@ fn load_dotenv_fallback() -> Vec<(String, String)> {
     let mut candidates: Vec<PathBuf> = vec![std::env::current_dir().unwrap_or_default()];
     candidates.push(repo_root_dir());
     if let Ok(exe) = std::env::current_exe() {
-        candidates.push(exe);
+        if let Some(parent) = exe.parent() {
+            candidates.push(parent.to_path_buf());
+        }
     }
+    let mut out: Vec<(String, String)> = Vec::new();
     for base in candidates {
-        let file = if base.ends_with(".env") {
-            base
-        } else {
-            base.join(".env")
-        };
+        let file = base.join(".env");
         let Ok(lines) = std::fs::read_to_string(&file) else {
             continue;
         };
-        let mut out = Vec::new();
         for line in lines.lines() {
             let line = line.trim();
             if line.is_empty() || line.starts_with('#') {
@@ -300,16 +297,57 @@ fn load_dotenv_fallback() -> Vec<(String, String)> {
             if let Some((k, v)) = line.split_once('=') {
                 let k = k.trim();
                 let v = v.trim().trim_matches('"').trim_matches('\'');
-                if !k.is_empty() && !v.is_empty() {
+                if !k.is_empty() && !v.is_empty() && !out.iter().any(|(key, _)| key == k) {
                     out.push((k.to_string(), v.to_string()));
                 }
             }
         }
-        if !out.is_empty() {
-            return out;
-        }
     }
-    Vec::new()
+    out
+}
+
+fn apply_runner_env(cmd: &mut Command, env: &HashMap<String, String>) -> (bool, bool) {
+    let local_db_only = env
+        .get("HOICHOI_LOCAL_DB_ONLY")
+        .is_some_and(|value| value == "1");
+    let dotenv = load_dotenv_fallback();
+    let has_database_config = !local_db_only
+        && (["TURSO_DATABASE_URL", "DATABASE_URL"]
+            .iter()
+            .any(|key| {
+                env.get(*key)
+                    .is_some_and(|value| !value.trim().is_empty())
+                    || std::env::var(key)
+                        .ok()
+                        .is_some_and(|value| !value.trim().is_empty())
+            })
+            || dotenv.iter().any(|(key, _)| {
+                matches!(key.as_str(), "TURSO_DATABASE_URL" | "DATABASE_URL")
+            }));
+
+    for (key, value) in dotenv {
+        if env.contains_key(&key) {
+            continue;
+        }
+        if local_db_only
+            && matches!(
+                key.as_str(),
+                "TURSO_DATABASE_URL" | "TURSO_AUTH_TOKEN" | "DATABASE_URL"
+            )
+        {
+            continue;
+        }
+        cmd.env(key, value);
+    }
+    for (key, value) in env {
+        cmd.env(key, value);
+    }
+    if local_db_only {
+        cmd.env_remove("DATABASE_URL");
+        cmd.env_remove("TURSO_DATABASE_URL");
+        cmd.env_remove("TURSO_AUTH_TOKEN");
+    }
+    (local_db_only, has_database_config)
 }
 
 fn run_runner(
@@ -357,16 +395,9 @@ fn run_runner(
         c
     };
 
-    // Caller-supplied env wins; fall back to a discovered .env for anything
-    // missing (turso creds etc.), then to a local file DB as the last resort.
-    for (k, v) in env {
-        cmd.env(k, v);
-    }
-    for (k, v) in load_dotenv_fallback() {
-        if !env.contains_key(&k) {
-            cmd.env(k, v);
-        }
-    }
+    // Vault values win; `.env` fills missing provider credentials. Local-only
+    // mode excludes cloud DB values even if they exist in `.env` or the parent.
+    let (local_db_only, has_database_config) = apply_runner_env(&mut cmd, env);
     cmd.env("HOICHOI_USE_SYSTEM_BROWSER", "1");
     if let Some((_, cli)) = bundled_runner(app) {
         let app_dir = cli
@@ -375,7 +406,8 @@ fn run_runner(
             .unwrap_or_default();
         cmd.env("HOICHOI_MIGRATIONS_DIR", app_dir.join("migrations"));
     }
-    if !env.contains_key("TURSO_DATABASE_URL") && !env.contains_key("DATABASE_URL") {
+    if local_db_only || !has_database_config {
+        cmd.env_remove("DATABASE_URL");
         cmd.env(
             "TURSO_DATABASE_URL",
             format!("file:{}", win32_path(&data_dir.join("hoichoi.db")).display()),

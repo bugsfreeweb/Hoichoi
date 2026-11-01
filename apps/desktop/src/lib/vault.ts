@@ -152,6 +152,9 @@ export async function getRunEnv(): Promise<Record<string, string>> {
   if (!cloud) {
     delete env.TURSO_DATABASE_URL;
     delete env.TURSO_AUTH_TOKEN;
+    env.HOICHOI_LOCAL_DB_ONLY = "1";
+  } else {
+    delete env.HOICHOI_LOCAL_DB_ONLY;
   }
   return env;
 }

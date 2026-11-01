@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CalendarPlus, ExternalLink, X } from "lucide-react";
+import { CalendarPlus, X } from "lucide-react";
 import type { StreamSource } from "@/lib/live-types";
 import VideoPlayer from "./VideoPlayer";
 import { useLive } from "./LiveProvider";
@@ -124,20 +124,6 @@ export default function LiveMedia({
           onActiveChange={setPlaying}
         />
         {showBadge && <div className="pointer-events-none absolute top-3 left-3"><LiveBadge status={event.status} size={isFloating ? "sm" : "md"} /></div>}
-        {!compact && !isFloating && /^https?:\/\//.test(source.url) && (
-          <div className="absolute top-3 right-3">
-            <a
-              href={source.url}
-              target="_blank"
-              rel="noreferrer"
-              title="সম্প্রচারের মূল লিংক খুলুন"
-              aria-label="সম্প্রচারের মূল লিংক খুলুন"
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-black/75 text-white hover:bg-[#d2202c]"
-            >
-              <ExternalLink size={12} />
-            </a>
-          </div>
-        )}
         {isFloating && (
           <button
             type="button"

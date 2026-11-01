@@ -3,7 +3,7 @@ import { readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { createInterface } from "node:readline";
-import { runPipeline, type PipelineOptions } from "./pipeline";
+import { parsePipelineLimit, runPipeline, type PipelineOptions } from "./pipeline";
 import { runArchivePass } from "./archive";
 import { cleanupMedia, storageRegistryCount } from "./storage";
 import { backfillMissingMedia, recoverOrphanedMedia, syncExistingMediaToWeb, aiFillMissingHeroes, generateManualImage } from "./media-backfill";
@@ -106,19 +106,20 @@ program
   .command("scrape")
   .description("run the full scrape → rewrite → dedup pipeline")
   .option("--mock", "generate sample posts instead of live FB scraping (offline dev/demo)")
-  .option("--max-sources <n>", "limit number of sources", "30")
-  .option("--max-posts <n>", "limit posts per source", "200")
+  .option("--max-sources <n>", "limit number of sources (default: all eligible sources)")
+  .option("--max-posts <n>", "limit posts per source (default: 50 Facebook, 200 feeds)")
   .option("--evidence", "capture full-page screenshots as moderation evidence")
   .action(async (opts: { mock?: boolean; maxSources?: string; maxPosts?: string; evidence?: boolean }) => {
-    const options: PipelineOptions = {
-      mock: opts.mock ?? (process.env.HOICHOI_MOCK === "1"),
-      maxSources: Number(opts.maxSources),
-      maxPosts: Number(opts.maxPosts),
-      evidence: opts.evidence ?? false,
-    };
     try {
+      const options: PipelineOptions = {
+        mock: opts.mock ?? (process.env.HOICHOI_MOCK === "1"),
+        maxSources: parsePipelineLimit(opts.maxSources ?? process.env.MAX_SOURCES_PER_RUN, "MAX_SOURCES_PER_RUN"),
+        maxPosts: parsePipelineLimit(opts.maxPosts ?? process.env.MAX_POSTS_PER_RUN, "MAX_POSTS_PER_RUN"),
+        evidence: opts.evidence ?? false,
+      };
       await ensureSchema(getClient());
-      await runPipeline(options);
+      const stats = await runPipeline(options);
+      if (stats.status === "failed") process.exitCode = 1;
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;

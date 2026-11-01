@@ -163,7 +163,7 @@ export async function scrapePage(
       ]);
     }
     const page = await ctx.newPage();
-    await page.goto(source.page_url, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.goto(source.page_url, { waitUntil: "domcontentloaded", timeout: 30_000 });
     await page.waitForTimeout(2_500);
     await page.mouse.wheel(0, 6_000);
     await page.waitForTimeout(2_000);
@@ -179,7 +179,8 @@ export async function scrapePage(
       .slice(0, opts.maxPosts ?? 50);
 
     const posts: ScrapedPost[] = [];
-    for (const url of postUrls) {
+    for (const [index, url] of postUrls.entries()) {
+      opts.log?.(`[facebook] visiting post ${index + 1}/${postUrls.length} from ${source.page_name}`);
       const scraped = await extractPost(page, url, opts);
       if (scraped) posts.push(scraped);
     }
@@ -216,7 +217,7 @@ async function newFbContext(browser: Browser, sessionCookie?: string | null) {
  */
 async function extractPost(page: Page, url: string, opts: ScrapeOptions): Promise<ScrapedPost | null> {
   try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
     await page.waitForTimeout(opts.requestDelayMs ?? 2_000);
     const id = fbPostKey(url);
     // Prefer the message body over the whole FeedUnit. Both selectors were

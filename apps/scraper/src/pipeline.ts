@@ -81,7 +81,18 @@ export interface PipelineOptions {
   log?: (msg: string) => void;
 }
 
+export function parsePipelineLimit(value: string | undefined, name: string): number | undefined {
+  const raw = value?.trim();
+  if (!raw) return undefined;
+  const parsed = Number(raw);
+  if (!Number.isSafeInteger(parsed) || parsed < 1) {
+    throw new Error(`${name} must be a positive whole number`);
+  }
+  return parsed;
+}
+
 export interface PipelineStats {
+  status: "running" | "completed" | "failed";
   sources: number;
   sourcesSkipped: number;
   scraped: number;
@@ -122,6 +133,19 @@ export interface PipelineStats {
   sourcesFailed: number;
   providerUsed: string[] | null;
   errors: string[];
+}
+
+export function pipelineFinalStatus(
+  stats: Pick<PipelineStats, "sources" | "sourcesFailed" | "sourcesSkipped" | "rewritten" | "errors">,
+): "completed" | "failed" {
+  if (
+    (stats.sources > 0 && stats.sourcesFailed >= stats.sources) ||
+    (stats.sources === 0 && stats.sourcesSkipped > 0) ||
+    (stats.rewritten === 0 && stats.errors.some((error) => error.startsWith("[rewrite]")))
+  ) {
+    return "failed";
+  }
+  return "completed";
 }
 
 /**
@@ -258,6 +282,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
   const runId = crypto.randomUUID();
   const started = nowIso();
   const stats: PipelineStats = {
+    status: "running",
     sources: 0,
     sourcesSkipped: 0,
     scraped: 0,
@@ -323,7 +348,13 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
     }
     eligibleSources.push(mapSource(row));
   }
-  const sources = eligibleSources.slice(0, opts.maxSources ?? 30);
+  const sources = opts.maxSources === undefined
+    ? eligibleSources
+    : eligibleSources.slice(0, opts.maxSources);
+  const deferredSources = eligibleSources.length - sources.length;
+  if (deferredSources > 0) {
+    log(`[source] ${deferredSources} eligible sources deferred by the max-sources limit`);
+  }
 
   // Multi-category membership (source_categories) — feeds the config fallback
   // and keeps the source's own category list accurate for the rewrite step.
@@ -359,7 +390,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       } else {
         scraped = await scrapePage(source, {
           sessionCookie,
-          maxPosts: opts.maxPosts ?? 200,
+          maxPosts: opts.maxPosts ?? 50,
           mock: opts.mock,
           requestDelayMs: 3000,
           log,
@@ -878,11 +909,8 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
   // One dead feed must not paint the whole run red. The run fails only when
   // every attempted source failed to scrape; per-source failures are still
   // counted in `sourcesFailed` and kept in `error`.
-  const finalStatus =
-    (stats.sources > 0 && stats.sourcesFailed >= stats.sources) ||
-    (stats.sources === 0 && stats.sourcesSkipped > 0)
-      ? "failed"
-      : "completed";
+  const finalStatus = pipelineFinalStatus(stats);
+  stats.status = finalStatus;
   await client.execute({
     sql: `
       UPDATE pipeline_runs
