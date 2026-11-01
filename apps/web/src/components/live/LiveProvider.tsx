@@ -38,6 +38,114 @@ export function useLive(): LiveContextValue {
   if (!ctx) throw new Error("useLive must be used inside <LiveProvider>");
   return ctx;
 }
+
+export function LivePreviewProvider({
+  event,
+  children,
+}: {
+  event: Pick<LiveFeed["event"], "title" | "summary" | "template">;
+  children: ReactNode;
+}) {
+  const feed = useMemo<LiveFeed>(() => {
+    const now = new Date().toISOString();
+    const recent = new Date(Date.now() - 3 * 60_000).toISOString();
+    return {
+      event: {
+        id: "live-preview",
+        slug: "live-preview",
+        title: event.title || "আপনার ইভেন্টের শিরোনাম",
+        kicker: "সরাসরি সম্প্রচার",
+        summary: event.summary || "ইভেন্টের সংক্ষিপ্ত বিবরণ এখানে দেখা যাবে।",
+        category: "লাইভ ইভেন্ট",
+        categoryColor: "#d2202c",
+        location: "ঢাকা",
+        status: "live",
+        streamType: "youtube",
+        streamUrl: "",
+        streams: [],
+        coverImage: "",
+        template: event.template,
+        scoreboard: {
+          kind: "metrics",
+          title: "লাইভ ডেস্ক · অগ্রগতি",
+          items: [
+            { label: "সর্বশেষ আপডেট", value: 24, display: "২৪", sub: "আজ", color: "#5f8f0e" },
+            { label: "দর্শক", value: 1248, display: "১,২৪৮", sub: "এখন", color: "#2563eb" },
+          ],
+          meta: [
+            { label: "আপডেট", value: "২৪" },
+            { label: "প্রতিক্রিয়া", value: "৩৮৬" },
+          ],
+        },
+        keyPoints: ["সর্বশেষ তথ্য যাচাই করা হচ্ছে", "গুরুত্বপূর্ণ আপডেট এখানে দেখা যাবে"],
+        featured: true,
+        commentsEnabled: true,
+        reactionsEnabled: true,
+        pollsEnabled: true,
+        qaEnabled: true,
+        showViewerCount: true,
+        moderation: "pre",
+        slowMode: 5,
+        startsAt: recent,
+        endedAt: null,
+        createdAt: recent,
+        updatedAt: now,
+      },
+      updates: [
+        { id: "preview-update-1", kind: "breaking", title: "সর্বশেষ অগ্রগতি", body: "ঘটনাস্থল থেকে নতুন তথ্য পাওয়া যাচ্ছে।", author: "লাইভ ডেস্ক", mediaUrl: "", pinned: true, createdAt: recent },
+        { id: "preview-update-2", kind: "key", title: "কর্তৃপক্ষের বক্তব্য", body: "সংশ্লিষ্ট কর্তৃপক্ষের বক্তব্য এবং যাচাইকৃত তথ্য যোগ হবে।", author: "লাইভ ডেস্ক", mediaUrl: "", pinned: false, createdAt: recent },
+        { id: "preview-update-3", kind: "update", title: "আরও তথ্যের অপেক্ষা", body: "নতুন তথ্য নিশ্চিত হলে এই লাইভ ফিডে আপডেট করা হবে।", author: "লাইভ ডেস্ক", mediaUrl: "", pinned: false, createdAt: recent },
+      ],
+      comments: [
+        { id: "preview-comment", name: "পাঠক", body: "লাইভ আপডেটের জন্য এখানে আপনার মতামত দেখাবে।", pinned: false, likes: 12, status: "approved", createdAt: recent, mine: false, liked: false },
+      ],
+      reactions: { like: 84, love: 36, clap: 18, wow: 12, sad: 4, angry: 2 },
+      poll: {
+        id: "preview-poll",
+        question: "এই বিষয়ে আপনার মত কী?",
+        status: "open",
+        options: [
+          { id: "preview-option-1", label: "ইতিবাচক", votes: 46 },
+          { id: "preview-option-2", label: "আরও তথ্য দরকার", votes: 32 },
+        ],
+        total: 78,
+        myVote: null,
+      },
+      questions: [
+        { id: "preview-question", name: "পাঠক", body: "এই লাইভ ইভেন্ট সম্পর্কে প্রশ্ন এখানে দেখাবে।", status: "approved", answer: "", upvotes: 6, createdAt: recent, mine: false, voted: false },
+      ],
+      viewers: 1248,
+      peakViewers: 1890,
+      totals: { comments: 38, reactions: 386, votes: 78, shares: 24, updates: 24 },
+      refreshSeconds: 8,
+      floatingPlayer: false,
+      serverTime: now,
+    };
+  }, [event.title, event.summary, event.template]);
+  const value = useMemo<LiveContextValue>(() => ({
+    feed,
+    sid: "",
+    connected: true,
+    lastSync: 0,
+    fresh: [],
+    bursts: [],
+    follow: false,
+    refresh: async () => undefined,
+    react: () => undefined,
+    comment: async () => ({ ok: true, status: 200 }),
+    like: () => undefined,
+    liking: [],
+    vote: async () => ({ ok: true, status: 200 }),
+    ask: async () => ({ ok: true, status: 200 }),
+    upvote: () => undefined,
+    share: () => undefined,
+    play: () => undefined,
+    toggleFollow: async () => undefined,
+    notify: () => undefined,
+  }), [feed]);
+  return <LiveContext.Provider value={value}>{children}</LiveContext.Provider>;
+}
+
 let burstSeq = 0;
 
 const API_ERRORS: Record<string, string> = {

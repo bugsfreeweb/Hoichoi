@@ -9,6 +9,7 @@ import TiltCard from "@/components/home/TiltCard";
 import ArticleGrid from "@/components/ArticleGrid";
 import { Pagination } from "@/components/Pagination";
 import { AdSlot } from "@/components/AdSlot";
+import { PlatformAdSlot } from "@/components/ads/PlatformAdSlot";
 import { Reveal } from "@/components/Reveal";
 import { HomeLiveProvider } from "@/components/home/live-data";
 import { getSettings } from "@/lib/settings";
@@ -81,9 +82,12 @@ export default async function HomePage({
       )}
 
       {cfg.show_ads && (
-      <div className="mx-auto max-w-[1400px] px-4 pt-8 md:px-8">
-        <AdSlot variant="leaderboard" html={settings.ad_leaderboard_html} />
-      </div>
+        <>
+          <div className="mx-auto max-w-[1400px] px-4 pt-8 md:px-8">
+            <AdSlot variant="leaderboard" html={settings.ad_leaderboard_html} />
+          </div>
+          <PlatformAdSlot slotKey="home_leaderboard" />
+        </>
       )}
 
       {cfg.show_live_graph && <LiveAnalytics />}
@@ -391,9 +395,12 @@ export default async function HomePage({
       </section>
 
       {cfg.show_ads && (
-      <div className="mx-auto max-w-[1400px] px-4 pb-12 md:px-8">
-        <AdSlot variant="strip" html={settings.ad_strip_html} />
-      </div>
+        <>
+          <div className="mx-auto max-w-[1400px] px-4 pb-12 md:px-8">
+            <AdSlot variant="strip" html={settings.ad_strip_html} />
+          </div>
+          <PlatformAdSlot slotKey="home_strip" />
+        </>
       )}
     </HomeLiveProvider>
   );

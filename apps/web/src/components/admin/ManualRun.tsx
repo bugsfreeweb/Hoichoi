@@ -22,7 +22,7 @@ function bnTime(d: string | null | undefined): string {
   }
 }
 
-type Msg = null | "ok" | "err" | "local" | "denied";
+type Msg = null | "ok" | "err" | "local" | "denied" | "timeout";
 
 function runStats(r: RecentPipelineRun | null) {
   const s = (r?.stats ?? {}) as Record<string, unknown>;
@@ -30,6 +30,7 @@ function runStats(r: RecentPipelineRun | null) {
     collected: Number(s.collected ?? s.scraped ?? 0),
     duplicates: Number(s.duplicatesBlocked ?? 0),
     published: Number(s.published ?? 0),
+    skippedSources: Number(s.sourcesSkipped ?? 0),
     // Posts that arrived with no body text. Worth showing because a run can
     // collect these and still publish nothing, which otherwise looks like a
     // broken pipeline rather than a source returning image-only posts.
@@ -48,8 +49,12 @@ export function ManualRun({ initialRuns }: { initialRuns: RecentPipelineRun[] })
   const [msg, setMsg] = useState<Msg>(null);
   const [runs, setRuns] = useState<RecentPipelineRun[]>(initialRuns);
   const [polling, setPolling] = useState(false);
+  const [errorDetail, setErrorDetail] = useState("");
   const stopped = useRef(false);
   const inFlight = useRef(false);
+  const previousRunId = useRef<string | null>(null);
+  const dispatchedAt = useRef(0);
+  const pollDeadline = useRef(0);
 
   useEffect(() => {
     stopped.current = false;
@@ -77,31 +82,54 @@ export function ManualRun({ initialRuns }: { initialRuns: RecentPipelineRun[] })
       if (stopped.current) return;
       setRuns(next);
       const top = next[0];
-      if (top && top.status === "running") {
+      const isNewRun = Boolean(top && top.id !== previousRunId.current && Date.parse(top.started_at) >= dispatchedAt.current - 5000);
+      if (isNewRun && top?.status === "running") {
+        window.setTimeout(() => void poll(), 2500);
+      } else if (isNewRun) {
+        setPolling(false);
+      } else if (Date.now() < pollDeadline.current) {
         window.setTimeout(() => void poll(), 2500);
       } else {
         setPolling(false);
+        setMsg("timeout");
       }
-    } catch {
-      if (!stopped.current) window.setTimeout(() => void poll(), 3000);
+    } catch (error) {
+      if (stopped.current) return;
+      if (Date.now() < pollDeadline.current) {
+        window.setTimeout(() => void poll(), 3000);
+      } else {
+        setPolling(false);
+        setMsg("err");
+        setErrorDetail(error instanceof Error ? error.message : "pipeline run status could not be loaded");
+      }
     } finally {
       inFlight.current = false;
     }
   };
 
   const run = async () => {
-    if (busy || running) return;
+    if (busy || polling) return;
     setBusy(true);
     setMsg(null);
+    setErrorDetail("");
     try {
+      const baseline = await load();
+      setRuns(baseline);
+      previousRunId.current = baseline[0]?.id ?? null;
+      dispatchedAt.current = Date.now();
       const res = await fetch("/api/admin/run-pipeline", { method: "POST" });
       const data = (await res.json()) as { error?: string; local?: boolean };
       if (res.status === 401 || res.status === 403) return setMsg("denied");
-      if (!res.ok) return setMsg(data?.local ? "local" : "err");
+      if (!res.ok) {
+        setErrorDetail(data.error ?? "");
+        return setMsg(data?.local ? "local" : "err");
+      }
       setMsg("ok");
+      pollDeadline.current = Date.now() + 120_000;
       setPolling(true);
       void poll();
     } catch {
+      setErrorDetail("ম্যানুয়াল রান ট্রিগার করা যায়নি।");
       setMsg("err");
     } finally {
       setBusy(false);
@@ -114,7 +142,7 @@ export function ManualRun({ initialRuns }: { initialRuns: RecentPipelineRun[] })
 
       <button
         onClick={() => void run()}
-        disabled={busy || running}
+        disabled={busy || polling}
         className="flex w-full items-center justify-center gap-2 rounded-xl bg-lime py-3 text-[12.5px] font-bold text-night transition-all duration-300 hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {running ? (
@@ -136,13 +164,13 @@ export function ManualRun({ initialRuns }: { initialRuns: RecentPipelineRun[] })
         </p>
       )}
 
-      {running && (
+      {polling && (
         <div className="mt-4">
           <div className="flex items-center justify-between font-mono-x text-[10px] text-white/50">
             <span className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-lime" /> রান চলছে…
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-lime" /> {running ? "রান চলছে…" : "রানার শুরু হওয়ার অপেক্ষা…"}
             </span>
-            <span>লাইভ অগ্রগতি</span>
+            <span>{running ? "লাইভ অগ্রগতি" : "ওয়ার্কফ্লো কিউ"}</span>
           </div>
           <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/10">
             <div
@@ -163,6 +191,11 @@ export function ManualRun({ initialRuns }: { initialRuns: RecentPipelineRun[] })
           {lastDone.status === "failed" && lastDone.error
             ? `রান ব্যর্থ: ${lastDone.error}`
             : `+${toBn(st?.published ?? 0)} প্রকাশিত · ${toBn(st?.duplicates ?? 0)} ডুপ্লিকেট ব্লক · ${toBn(st?.collected ?? 0)} সংগৃহীত`}
+          {(st?.skippedSources ?? 0) > 0 && (
+            <span className="mt-1 block text-[11px] font-normal text-amber">
+              {toBn(st?.skippedSources ?? 0)}টি অনুপযোগী সোর্স বাদ দেওয়া হয়েছে।
+            </span>
+          )}
           {(st?.emptyText ?? 0) > 0 && (
             <span className="mt-1 block text-[11px] font-normal text-amber">
               {toBn(st?.emptyText ?? 0)}টি পোস্টে লেখা ছিল না (শুধু ছবি/লিংক) — এগুলো
@@ -195,7 +228,7 @@ export function ManualRun({ initialRuns }: { initialRuns: RecentPipelineRun[] })
         <div className="mt-3 rounded-lg border border-rose-400/40 bg-rose-500/10 p-3">
           <p className="text-[11.5px] font-bold text-rose-300">✕ ট্রিগার ব্যর্থ।</p>
           <p className="mt-1 text-[11px] leading-relaxed text-white/55">
-            লগে বিস্তারিত দেখুন, অথবা GitHub → Actions → Pipeline cron-এ হাতে চাপ দিন।
+            {errorDetail || "লগে বিস্তারিত দেখুন, অথবা GitHub → Actions → Pipeline cron-এ হাতে চাপ দিন।"}
           </p>
           <Link
             href="/admin/logs"
@@ -204,6 +237,11 @@ export function ManualRun({ initialRuns }: { initialRuns: RecentPipelineRun[] })
             রান লগ দেখুন →
           </Link>
         </div>
+      )}
+      {msg === "timeout" && !polling && (
+        <p role="status" className="mt-3 border border-amber/40 bg-amber/10 p-3 text-[11px] leading-relaxed text-white/75">
+          ট্রিগার গ্রহণ করা হয়েছে, কিন্তু ২ মিনিটের মধ্যে কোনো নতুন pipeline run শুরু হয়নি। Runner বা GitHub Actions status পরীক্ষা করুন।
+        </p>
       )}
     </div>
   );

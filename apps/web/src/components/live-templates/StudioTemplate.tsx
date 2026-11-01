@@ -33,7 +33,7 @@ export default function StudioTemplate() {
   const loop = [...headlines, ...headlines];
 
   return (
-    <section className="theme-night surface-night relative overflow-hidden text-ink">
+    <section className="live-studio relative overflow-hidden text-white">
       <div className="pointer-events-none absolute -top-40 left-1/3 h-[420px] w-[620px] rounded-full bg-[#d2202c]/15 blur-[120px]" />
       <div className="relative mx-auto max-w-site px-4 py-8 md:px-8 md:py-10">
         {/* channel bar */}

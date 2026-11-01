@@ -12,7 +12,8 @@ Live site: <https://hoichoifeed.vercel.app> · Source: <https://github.com/bugsf
 Web (apps/web)        Next.js 15 public site (SSR feed, /sitemap, OG images, visitor
                       announcement bell + pinned banner, DB-driven footer with
                       admin-editable social links) + admin shell (/notices, /moderation,
-                      /comments, /posts, /providers, /reports, /logs, /settings,
+                      /comments, /posts, /providers, /reports, /logs, /settings, /live,
+                      /ads, /portal,
                       /appearance, /setup, …), /desk preview, live /api/stats. First-party
                       cookie-less analytics (page_views + ad_events) power the dashboard's
                       ট্রাফিক ও স্টোরেজ tab with a /api/track beacon. Home sections are gated by settings.app_config_json
@@ -20,6 +21,14 @@ Web (apps/web)        Next.js 15 public site (SSR feed, /sitemap, OG images, vis
                       default_post_image / brand_animation);
                       admin Settings is a tabbed console (সাইট / ভিজিবিলিটি / বিজ্ঞাপন /
                       রক্ষণাবেক্ষণ / অপারেশন / ডিজাইন) with a single save → PATCH /api/settings.
+                      The first-party advertising platform has admin operations
+                      (/admin/ads and its clients, bookings, slots, analytics and activity
+                      views), email/password client signup with admin approval, a client
+                      portal (/portal), four platform-sponsored placements and delivery
+                      analytics stored separately in platform_ad_events. The legacy
+                      ad_events table remains dedicated to page-traffic analytics. This
+                      platform is separate from the existing HTML/Google ad slots, which
+                      remain unchanged.
                       The ডিজাইন tab folds in the section-variant switcher with a live
                       preview (cookie overlay, no DB write) and a one-click reset to default.
                       Admin shell has a grouped, collapsible sidebar with a persisted
@@ -108,7 +117,21 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   source's `page_url` at an RSS 2.0 / Atom / RDF feed; the adapter normalizes
   entries into the same shape as Facebook posts (stable id, permalink, text,
   media enclosures/`media:`/`<img>`), so *every downstream step is shared*.
-  Other platforms (`facebook`, `x`, `social`, `other`) are ingested as before.
+  The collector runs Facebook and RSS/Atom (`news`/`magazine`) sources. It skips
+  enabled sources with missing identity/URL, malformed or non-HTTP URLs, and
+  unsupported platforms (`x`, `social`, `other`) with an explicit log reason.
+  A source-level error does not stop other eligible sources from publishing.
+- **Live events.** `/admin/live` creates and edits persisted events with six
+  layouts, stream channels, event controls, polls, moderation, analytics, and
+  notices. Admin previews show each layout in both site color modes; the Studio
+  remains an intentional dark surface and the scoreboard uses contrast-safe
+  colors in light mode. See [docs/live-event-platform.md](./docs/live-event-platform.md).
+- **Platform ad management.** `/advertise` links to the email/password client
+  portal (`/portal/signup`, `/portal/login`). New accounts remain pending until
+  an admin approves them. Approved clients can create creatives and request
+  bookings; admins approve/activate or reject those requests at `/admin/ads`.
+  This is separate from the existing admin-pasted ad-network HTML/JS slots,
+  which remain in Settings. See [docs/AD-MANAGEMENT.md](./docs/AD-MANAGEMENT.md).
 - **AI fallback hero images.** When a post reaches publish with no media at all,
   a Gemini image model generates one editorial hero (`ai_hero_images` app-config
   toggle, off when no `GOOGLE_API_KEY`). Sensitive categories

@@ -144,7 +144,7 @@ export default function ScoreboardTemplate() {
   const { feed, connected } = useLive();
   const ev = feed.event;
   return (
-    <section className="border-y border-line bg-[#f6f1e3] dark:bg-panel">
+    <section className="live-scoreboard border-y border-line">
       <div className="mx-auto max-w-site px-4 py-12 md:px-8 md:py-14">
         <header className="flex flex-wrap items-end justify-between gap-5">
           <div className="max-w-3xl">

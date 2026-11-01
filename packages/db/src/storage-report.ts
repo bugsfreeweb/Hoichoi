@@ -44,6 +44,7 @@ const TABLE_NAMES = [
   "admin_login_log",
   "page_views",
   "ad_events",
+  "platform_ad_events",
 ] as const;
 
 interface Cache {

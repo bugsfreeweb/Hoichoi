@@ -1,11 +1,12 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { CalendarClock, Clapperboard, Link2, LoaderCircle, Plus, Radio, Sparkles, Trash2 } from "lucide-react";
+import { CalendarClock, LoaderCircle, Plus, Radio, Trash2 } from "lucide-react";
 import type { LiveEventRecord, LiveStream, LiveStreamType } from "@hoichoi/db";
 import type { LiveThemeKey } from "@hoichoi/shared-types";
 import { saveLiveEvent } from "@/app/admin/(console)/live/actions";
 import { LIVE_THEMES } from "@/lib/live-themes";
+import { LiveThemePreview } from "./LiveThemePreview";
 
 type StreamDraft = LiveStream & { autoLabel: boolean; autoType: boolean };
 
@@ -102,7 +103,6 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
     .join("\n");
   const hasSignedUrl = [streamUrl, ...sources.map((source) => source.url)]
     .some((url) => /[?&](?:token|signature|sig)=/i.test(url));
-  const selectedTheme = template === "auto" ? null : LIVE_THEMES.find((theme) => theme.key === template) ?? null;
 
   function updateSource(index: number, patch: Partial<StreamDraft>) {
     setSources((current) => current.map((source, sourceIndex) => {
@@ -382,36 +382,7 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
         </div>
 
         <aside className="space-y-4 xl:sticky xl:top-20">
-          <section className="overflow-hidden border border-ink/15 bg-[#111827] text-white">
-            <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
-              <Sparkles size={14} className="text-[#c8f65d]" />
-              <p className="font-mono-x text-[9px] tracking-[0.18em] text-white/65 uppercase">লাইভ প্রিভিউ</p>
-            </div>
-            <div className="p-4">
-              <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1.5 bg-live px-2 py-1 font-mono-x text-[9px] font-bold tracking-wider uppercase">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" /> {event?.status === "live" ? "LIVE" : "নতুন ইভেন্ট"}
-                </span>
-                <Clapperboard size={15} className="text-white/45" />
-              </div>
-              {selectedTheme && (
-                <div className="mt-3 flex items-center gap-2 border border-white/10 bg-white/5 px-2.5 py-1.5">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: selectedTheme.accent }} />
-                  <span className="font-mono-x text-[9px] tracking-[0.16em] text-white/75 uppercase">{selectedTheme.no} · {selectedTheme.bn} — {selectedTheme.en}</span>
-                </div>
-              )}
-              <h3 className="mt-4 font-serif-bn text-[19px] leading-snug font-extrabold">{title || "আপনার ইভেন্টের শিরোনাম"}</h3>
-              <p className="mt-2 line-clamp-3 text-[11.5px] leading-relaxed text-white/60">{summary || "ইভেন্টের সংক্ষিপ্ত বিবরণ এখানে দেখা যাবে।"}</p>
-              <div className="mt-4 flex items-center gap-2 border-t border-white/10 pt-3 font-mono-x text-[10px] text-white/60">
-                <Link2 size={12} className="shrink-0" />
-                <span className="truncate">/live/{slug || "event-url"}</span>
-              </div>
-              <div className="mt-2 flex items-center justify-between gap-2 font-mono-x text-[9px] text-white/45">
-                <span>{streamType.toUpperCase()}</span>
-                <span>{sources.length + Number(Boolean(streamUrl))}টি উৎস</span>
-              </div>
-            </div>
-          </section>
+          <LiveThemePreview theme={template} title={title} summary={summary} />
           <section className="border border-ink/15 bg-paper p-4">
             <div className="flex items-start gap-2.5">
               <CalendarClock size={15} className="mt-0.5 shrink-0 text-alizarin" />

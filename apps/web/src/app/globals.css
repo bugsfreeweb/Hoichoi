@@ -766,7 +766,8 @@ html[data-theme="light"] .admin-footer {
     0 4px 12px rgba(0, 0, 0, 0.3);
   transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
 }
-html[data-theme="light"] .tauri-win {
+html[data-theme="light"] .tauri-win,
+[data-preview-theme="light"] .tauri-win {
   background: var(--color-window);
   border-color: var(--color-win-border);
   box-shadow:
@@ -853,10 +854,10 @@ html[data-theme="light"] .desk-scene {
   --ds-kb10: rgba(26, 20, 13, 0.12);
   --ds-active: #16110a;
   --ds-active-tx: #fbfaf5;
-  --ds-acc: #5f8f0e;
-  --ds-acc-soft: rgba(95, 143, 14, 0.12);
-  --ds-amber: #b45309;
-  --ds-amber-soft: rgba(180, 83, 9, 0.12);
+  --ds-acc: #4a7009;
+  --ds-acc-soft: rgba(74, 112, 9, 0.12);
+  --ds-amber: #9a4208;
+  --ds-amber-soft: rgba(154, 66, 8, 0.12);
   --ds-rose: #be123c;
   --ds-rose-soft: rgba(190, 18, 60, 0.1);
   --ds-rose-bd: rgba(190, 18, 60, 0.35);
@@ -958,44 +959,61 @@ html[data-theme="light"] .desk-scene {
    light, these scope-dark backgrounds to light values and swap the forced
    bright lime/amber accents for the darkened light-palette versions. Dark
    theme is untouched (these rules only apply under html[data-theme="light"]). */
-html[data-theme="light"] .bg-night-grid {
+.live-studio {
+  background-color: #0a0c10;
+  color: #f3eee1;
+}
+.live-scoreboard {
+  background-color: #10141b;
+}
+html[data-theme="light"] .live-scoreboard,
+[data-preview-theme="light"] .live-scoreboard {
+  background-color: #f6f1e3;
+  --color-lime: #4a7009;
+}
+html[data-theme="light"] .bg-night-grid,
+[data-preview-theme="light"] .bg-night-grid {
   background-color: #f6f1e3;
   background-image:
     linear-gradient(rgba(26, 20, 13, 0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(26, 20, 13, 0.05) 1px, transparent 1px);
-  --color-lime: #5f8f0e;
-  --color-amberx: #b45309;
+  --color-lime: #4a7009;
+  --color-amberx: #9a4208;
 }
-html[data-theme="light"] .bg-band {
+html[data-theme="light"] .bg-band,
+[data-preview-theme="light"] .bg-band {
   --color-band: #f3eee1;
   --color-bandline: #1a140d;
-  --color-lime: #5f8f0e;
-  --color-amberx: #b45309;
+  --color-lime: #4a7009;
+  --color-amberx: #9a4208;
 }
-html[data-theme="light"] .panel {
+html[data-theme="light"] .panel,
+[data-preview-theme="light"] .panel {
   background: rgba(246, 241, 227, 0.9);
   border-color: rgba(26, 20, 13, 0.16);
-  --color-lime: #5f8f0e;
-  --color-amberx: #b45309;
+  --color-lime: #4a7009;
+  --color-amberx: #9a4208;
 }
-html[data-theme="light"] .headline-grad {
+html[data-theme="light"] .headline-grad,
+[data-preview-theme="light"] .headline-grad {
   background-image: linear-gradient(
     112deg,
     #1a140d 0%,
     rgba(26, 20, 13, 0.74) 16%,
-    #5f8f0e 31%,
-    #b45309 41%,
+    #4a7009 31%,
+    #9a4208 41%,
     #d2202c 49%,
-    #5f8f0e 57%,
+    #4a7009 57%,
     rgba(26, 20, 13, 0.74) 68%,
     #1a140d 84%
   );
 }
 /* Tauri windows sitting on the flipped light night-grid get the darker
    light-palette accents instead of the bright dark-island lime/amber. */
-html[data-theme="light"] .bg-night-grid .tauri-win {
-  --color-lime: #5f8f0e;
-  --color-amberx: #b45309;
+html[data-theme="light"] .bg-night-grid .tauri-win,
+[data-preview-theme="light"] .bg-night-grid .tauri-win {
+  --color-lime: #4a7009;
+  --color-amberx: #9a4208;
 }
 
 /* =============== ADMIN CONSOLE — LIGHT THEME ===============
@@ -1095,8 +1113,8 @@ html[data-theme="light"] .admin-console .text-\[#e9e6da\] { color: #1a140d; }
 html[data-theme="light"] .admin-console .bg-lime .bg-white,
 html[data-theme="light"] .admin-console .bg-ink\/25 .bg-white { background-color: #ffffff; }
 html[data-theme="light"] .admin-console .text-\[#22d3ee\] { color: #0e7490; }
-html[data-theme="light"] .admin-console .text-\[#c8f65d\] { color: #5f8f0e; }
-html[data-theme="light"] .admin-console .text-\[#ffb454\] { color: #b45309; }
+html[data-theme="light"] .admin-console .text-\[#c8f65d\] { color: #4a7009; }
+html[data-theme="light"] .admin-console .text-\[#ffb454\] { color: #9a4208; }
 html[data-theme="light"] .admin-console .text-\[#ff6b6b\] { color: #be123c; }
 html[data-theme="light"] .admin-console .bg-\[#22d3ee\]\/15 { background-color: rgba(14, 116, 144, 0.14); }
 html[data-theme="light"] .admin-console .bg-\[#c8f65d\]\/15 { background-color: rgba(95, 143, 14, 0.14); }

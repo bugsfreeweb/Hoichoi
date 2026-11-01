@@ -1,8 +1,14 @@
 import { listAdSlots, listAdCreatives, listAdBookings, listAdClients } from "@hoichoi/db";
+import Link from "next/link";
+import { requirePageUser, requiresRole } from "@/lib/auth";
+import { updateAdBookingStatus, updateAdClientStatus } from "./actions";
+import { AdsAdminNavigation } from "@/components/admin/ads/AdsAdminNavigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminAdsPage() {
+  const user = await requirePageUser();
+  const canManageClients = requiresRole(user, "admin");
   const [slots, creatives, bookings, clients] = await Promise.all([
     listAdSlots(),
     listAdCreatives(),
@@ -18,7 +24,10 @@ export default async function AdminAdsPage() {
           <h1 className="mt-2 font-serif-bn text-[32px] font-black text-ink md:text-[40px]">বিজ্ঞাপন</h1>
           <p className="mt-1 text-[13px] text-ink-soft">বিজ্ঞাপন স্লট, ক্রিয়েটিভ, বুকিং ও অ্যানালিটিক্স পরিচালনা করুন।</p>
         </div>
+        <Link href="/portal/login" className="border border-ink/20 px-3 py-2 text-[11px] font-bold text-ink hover:border-ink">ক্লায়েন্ট পোর্টাল</Link>
       </header>
+
+      <AdsAdminNavigation active="" />
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
@@ -87,11 +96,25 @@ export default async function AdminAdsPage() {
               <div key={booking.id} className="flex items-center justify-between border border-ink/15 bg-card p-4">
                 <div>
                   <p className="font-mono-x text-[10px] tracking-[0.12em] text-alizarin uppercase">{booking.slotKey}</p>
-                  <p className="mt-1 font-mono-x text-[9px] text-ink-soft uppercase">{booking.status} · {booking.days} দিন</p>
+                  <p className="mt-1 font-mono-x text-[9px] text-ink-soft uppercase">{clients.find((client) => client.id === booking.clientId)?.email ?? "ক্লায়েন্ট"} · {booking.status} · {booking.days} দিন</p>
                 </div>
                 <div className="text-right">
                   <p className="font-display text-[16px] font-bold text-ink">৳{booking.totalBdt}</p>
                   <p className="font-mono-x text-[9px] text-ink-soft">{booking.impressions} imp · {booking.clicks} clk</p>
+                  {canManageClients && booking.status !== "active" && booking.status !== "rejected" && (
+                    <div className="mt-2 flex justify-end gap-2">
+                      <form action={updateAdBookingStatus}>
+                        <input type="hidden" name="bookingId" value={booking.id} />
+                        <input type="hidden" name="status" value="active" />
+                        <button type="submit" className="border border-lime/40 px-2 py-1 text-[9px] font-bold text-lime hover:bg-lime/10">অনুমোদন ও চালু</button>
+                      </form>
+                      <form action={updateAdBookingStatus}>
+                        <input type="hidden" name="bookingId" value={booking.id} />
+                        <input type="hidden" name="status" value="rejected" />
+                        <button type="submit" className="border border-alizarin/30 px-2 py-1 text-[9px] font-bold text-alizarin hover:bg-alizarin/10">প্রত্যাখ্যান</button>
+                      </form>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -112,9 +135,20 @@ export default async function AdminAdsPage() {
                   <p className="font-serif-bn text-[15px] font-bold text-ink">{client.name}</p>
                   <p className="mt-0.5 font-mono-x text-[10px] text-ink-soft">{client.email} · {client.role}</p>
                 </div>
-                <span className={`px-2 py-1 text-[10px] font-bold ${client.status === "approved" ? "bg-lime text-paper" : "bg-ink/10 text-ink-soft"}`}>
-                  {client.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-1 text-[10px] font-bold ${client.status === "approved" ? "bg-lime text-paper" : "bg-ink/10 text-ink-soft"}`}>
+                    {client.status}
+                  </span>
+                  {canManageClients && client.role === "client" && (
+                    <form action={updateAdClientStatus}>
+                      <input type="hidden" name="clientId" value={client.id} />
+                      <input type="hidden" name="status" value={client.status === "approved" ? "suspended" : "approved"} />
+                      <button type="submit" className="border border-ink/20 px-2 py-1 text-[9px] font-bold text-ink hover:border-ink">
+                        {client.status === "approved" ? "স্থগিত" : "অনুমোদন"}
+                      </button>
+                    </form>
+                  )}
+                </div>
               </div>
             ))}
           </div>

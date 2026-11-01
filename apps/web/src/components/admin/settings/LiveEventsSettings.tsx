@@ -5,6 +5,7 @@ import { ArrowUpRight, Check } from "lucide-react";
 import { Field, Section, ToggleRow } from "./ui";
 import { useSettings } from "./state";
 import type { LiveThemeKey } from "@hoichoi/shared-types";
+import { LiveThemePreview } from "../live/LiveThemePreview";
 
 const THEMES: Array<{
   key: LiveThemeKey;
@@ -82,29 +83,17 @@ export function LiveEventsSettings({ eventCount }: { eventCount: number }) {
               );
             })}
           </div>
-          <div className="mt-4 border border-ink/15 bg-paper p-4">
-            <p className="font-mono-x text-[9px] tracking-[0.18em] text-ink-soft uppercase">প্রিভিউ · সক্রিয় করার আগে</p>
-            <div className="mt-3 flex items-center gap-3">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center font-display text-[18px] font-black text-white" style={{ backgroundColor: activeTheme.accent }}>{activeTheme.no}</span>
-              <div className="min-w-0">
-                <p className="font-serif-bn text-[16px] font-extrabold text-ink">{activeTheme.bn} — {activeTheme.en}</p>
-                <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-soft">{activeTheme.hint}</p>
-              </div>
-            </div>
-            <div className="mt-3 overflow-hidden border border-white/10 bg-[#0a0c10] p-3 text-white">
-              <p className="font-mono-x text-[9px] tracking-[0.18em] text-white/60 uppercase">লাইভ প্রিভিউ · {activeTheme.en}</p>
-              <p className="mt-2 font-serif-bn text-[15px] font-bold leading-snug">আপনার ইভেন্টের শিরোনাম</p>
-              <p className="mt-1 text-[11px] leading-relaxed text-white/60">{activeTheme.features}</p>
-              <div className="mt-2 flex items-center gap-2 font-mono-x text-[9px] text-white/45">
-                <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-live" /> LIVE</span>
-                <span>ভিডিও · স্কোর · আপডেট</span>
-              </div>
-            </div>
+          <div className="mt-4">
+            <LiveThemePreview
+              theme={activeTheme.key}
+              title="বাংলাদেশ বনাম ভারত — লাইভ আপডেট"
+              summary="ম্যাচের যাচাইকৃত আপডেট, স্কোর ও দর্শকের অংশগ্রহণ একসাথে দেখুন।"
+            />
             <p className="mt-2 text-[10.5px] leading-relaxed text-ink-soft">সংরক্ষণের পর এই ডিজাইনটি গ্লোবাল ডিফল্ট হিসেবে প্রযোজ্য হবে; কোনো ইভেন্টে আলাদা থিম বেছে নিলে সেটি ওই ইভেন্টেই প্রযোজ্য হবে।</p>
           </div>
           {eventCount === 0 && (
             <p className="mt-3 border-l-2 border-amberx px-3 py-2 text-[11.5px] text-ink-soft">
-              আসল ইভেন্ট তৈরি হলে এখানে সেটির তথ্য দিয়ে প্রিভিউ দেখা যাবে। এখন কোনো কল্পিত শিরোনাম বা ভিডিও ব্যবহার করা হচ্ছে না।
+              প্রিভিউটি নমুনা লেখা দিয়ে দেখানো হয়েছে; এটি কোনো সংরক্ষিত বা প্রকাশিত ইভেন্ট তৈরি করে না।
             </p>
           )}
         </div>

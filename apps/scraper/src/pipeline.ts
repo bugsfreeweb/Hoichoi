@@ -6,6 +6,7 @@ import type {
   PostStatus,
   Source,
 } from "@hoichoi/shared-types";
+import { normalizePlatform } from "@hoichoi/shared-types";
 import { buildProvider } from "@hoichoi/llm";
 import { checkAndArchive } from "./archive";
 import { checkDedup } from "./dedup";
@@ -48,6 +49,30 @@ function mediaFetchInit(timeoutMs = 20_000): RequestInit {
   };
 }
 
+export function sourceSkipReason(row: Record<string, unknown>): string | null {
+  const id = typeof row.id === "string" ? row.id.trim() : "";
+  const name = typeof row.page_name === "string" ? row.page_name.trim() : "";
+  const pageUrl = typeof row.page_url === "string" ? row.page_url.trim() : "";
+  if (!id) return "missing source id";
+  if (!name) return "missing source name";
+  if (!pageUrl || pageUrl.toLowerCase() === "null" || pageUrl.toLowerCase() === "undefined") {
+    return "missing source URL";
+  }
+
+  const platform = normalizePlatform(typeof row.platform === "string" ? row.platform : null);
+  if (platform !== "facebook" && platform !== "news" && platform !== "magazine") {
+    return `unsupported platform (${platform})`;
+  }
+
+  try {
+    const url = new URL(pageUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return "source URL must use http or https";
+  } catch {
+    return "invalid source URL";
+  }
+  return null;
+}
+
 export interface PipelineOptions {
   mock?: boolean;
   maxSources?: number;
@@ -58,6 +83,7 @@ export interface PipelineOptions {
 
 export interface PipelineStats {
   sources: number;
+  sourcesSkipped: number;
   scraped: number;
   rawInserted: number;
   rewritten: number;
@@ -233,6 +259,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
   const started = nowIso();
   const stats: PipelineStats = {
     sources: 0,
+    sourcesSkipped: 0,
     scraped: 0,
     rawInserted: 0,
     rewritten: 0,
@@ -282,9 +309,21 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
   const srcRes = await client.execute(
     "SELECT * FROM sources WHERE is_active = 1 ORDER BY last_scraped_at IS NULL DESC, last_scraped_at ASC",
   );
-  const sources = srcRes.rows
-    .map((r) => mapSource(r as Record<string, unknown>))
-    .slice(0, opts.maxSources ?? 30);
+  const eligibleSources: Source[] = [];
+  for (const raw of srcRes.rows) {
+    const row = raw as Record<string, unknown>;
+    const reason = sourceSkipReason(row);
+    if (reason) {
+      stats.sourcesSkipped++;
+      const sourceName = typeof row.page_name === "string" && row.page_name.trim() ? row.page_name.trim() : String(row.id ?? "unknown");
+      const message = `[source] skipped ${sourceName}: ${reason}`;
+      stats.errors.push(message);
+      log(message);
+      continue;
+    }
+    eligibleSources.push(mapSource(row));
+  }
+  const sources = eligibleSources.slice(0, opts.maxSources ?? 30);
 
   // Multi-category membership (source_categories) — feeds the config fallback
   // and keeps the source's own category list accurate for the rewrite step.
@@ -840,7 +879,10 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
   // every attempted source failed to scrape; per-source failures are still
   // counted in `sourcesFailed` and kept in `error`.
   const finalStatus =
-    stats.sources > 0 && stats.sourcesFailed >= stats.sources ? "failed" : "completed";
+    (stats.sources > 0 && stats.sourcesFailed >= stats.sources) ||
+    (stats.sources === 0 && stats.sourcesSkipped > 0)
+      ? "failed"
+      : "completed";
   await client.execute({
     sql: `
       UPDATE pipeline_runs
@@ -852,6 +894,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       finalStatus,
       JSON.stringify({
         sources: stats.sources,
+        sourcesSkipped: stats.sourcesSkipped,
         sourcesFailed: stats.sourcesFailed,
         errors: stats.errors.length,
         scraped: stats.scraped,

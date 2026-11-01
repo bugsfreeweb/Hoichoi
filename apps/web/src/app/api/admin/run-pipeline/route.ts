@@ -14,10 +14,22 @@ export async function POST() {
   const runnerUrl = process.env.RUNNER_URL;
   if (runnerUrl) {
     try {
-      const res = await fetch(runnerUrl, { method: "POST", body: JSON.stringify({ trigger: "manual" }) });
-      return NextResponse.json({ ok: res.ok, deployed: true });
+      const res = await fetch(runnerUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ trigger: "manual" }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!res.ok) {
+        return NextResponse.json(
+          { ok: false, error: `runner rejected the request (HTTP ${res.status})` },
+          { status: 502 },
+        );
+      }
+      return NextResponse.json({ ok: true, deployed: true });
     } catch (err) {
-      return NextResponse.json({ error: (err as Error).message }, { status: 502 });
+      const message = err instanceof Error ? err.message : "runner request failed";
+      return NextResponse.json({ ok: false, error: message }, { status: 502 });
     }
   }
 
@@ -29,7 +41,13 @@ export async function POST() {
       headers: { authorization: `Bearer ${ghToken}`, "content-type": "application/json" },
       body: JSON.stringify({ event_type: "run-pipeline" }),
     });
-    return NextResponse.json({ ok: res.ok, deployed: true });
+    if (!res.ok) {
+      return NextResponse.json(
+        { ok: false, error: `GitHub rejected the pipeline dispatch (HTTP ${res.status})` },
+        { status: 502 },
+      );
+    }
+    return NextResponse.json({ ok: true, deployed: true });
   }
 
   return NextResponse.json(

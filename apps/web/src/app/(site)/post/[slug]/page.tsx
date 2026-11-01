@@ -15,6 +15,7 @@ import { PostCard } from "@/components/PostCard";
 import { PostGallery } from "@/components/PostGallery";
 import { CommentsSection } from "@/components/CommentsSection";
 import { AdSlot } from "@/components/AdSlot";
+import { PlatformAdSlot } from "@/components/ads/PlatformAdSlot";
 import { FbPost } from "@/components/FbPost";
 import { getSettings } from "@/lib/settings";
 import { getLive } from "@/lib/mv/live";
@@ -395,6 +396,7 @@ function PostContent({
           <div className="mt-10">
             <AdSlot variant="leaderboard" html={settings.ad_leaderboard_html} />
           </div>
+          <PlatformAdSlot slotKey="article_leaderboard" />
         </div>
 
         {/* sidebar */}
@@ -430,6 +432,7 @@ function PostContent({
 
             {/* ad · rectangle */}
             <AdSlot variant="rect" html={settings.ad_rect_html} />
+            <PlatformAdSlot slotKey="article_rect" />
 
             {/* data discipline — fixed dark band, readable in both themes */}
             <div className="bg-band p-6 text-bandline">

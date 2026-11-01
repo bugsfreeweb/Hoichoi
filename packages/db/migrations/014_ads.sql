@@ -58,11 +58,11 @@ CREATE TABLE IF NOT EXISTS ad_bookings (
   updated_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS ad_events (
+CREATE TABLE IF NOT EXISTS platform_ad_events (
   id TEXT PRIMARY KEY,
-  booking_id TEXT,
+  booking_id TEXT NOT NULL,
   slot_key TEXT NOT NULL,
-  kind TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('impression', 'click')),
   path TEXT,
   device TEXT,
   created_at TEXT NOT NULL
@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS ad_slot_config (
   updated_at TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_ad_events_slot ON ad_events (slot_key, kind);
+CREATE INDEX IF NOT EXISTS idx_platform_ad_events_slot ON platform_ad_events (slot_key, kind);
 CREATE INDEX IF NOT EXISTS idx_ad_bookings_slot ON ad_bookings (slot_key, status);
 CREATE INDEX IF NOT EXISTS idx_ad_bookings_client ON ad_bookings (client_id);
 CREATE INDEX IF NOT EXISTS idx_ad_creatives_client ON ad_creatives (client_id);
