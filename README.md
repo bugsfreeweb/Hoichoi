@@ -115,7 +115,9 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   web admin (`/admin` → categories) *and* the desktop desk (Settings → desk
   categories), and kept in sync because both sides share the `settings` DB. New
   categories added in the apps get their keywords stored as data — no deploy
-  needed to correct the term pool.
+  needed to correct the term pool. For a source assigned to multiple categories,
+  classification only considers those selected categories; a source with one
+  category retains the existing full-category classifier behavior.
 - **Multi-platform sources.** `sources add --platform news|magazine` points a
   source's `page_url` at an RSS 2.0 / Atom / RDF feed; the adapter normalizes
   entries into the same shape as Facebook posts (stable id, permalink, text,
@@ -164,8 +166,9 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   `@hoichoi/llm` exposes an optional `generateImage` on the provider interface plus
   `composeImagePrompt` / `listImageProviders`; only `purpose = image` providers are
   eligible. Generated buffers flow through `packages/db`'s shared uploader
-  (`writeGeneratedMedia`), so they land in the same storage (local mirror or R2)
-  as scraped media. Sensitive categories stay blocked here too.
+  (`writeGeneratedMedia`), so they land in the configured media storage
+  (filesystem or GitHub/IDrive e2/Backblaze) as scraped media. Sensitive
+  categories stay blocked here too.
 - **First-party traffic analytics (v1.1.10).** A cookie-less telemetry layer —
   `page_views` + `ad_events` (migration `011_traffic.sql`) — captures anonymous
   page views and ad view/click events. No raw IP is stored: visitors are counted
@@ -287,7 +290,8 @@ Copy `.env.example` → `.env`. Key ones:
 | `ADMIN_AUTH_SECRET` | 32-byte hex for admin sessions (`openssl rand -hex 32`) |
 | `ADMIN_ALLOWED_EMAILS` | Comma-separated login allow-list |
 | `NEXT_PUBLIC_SITE_URL`, `SITE_URL` | Canonical site URL for SEO/sitemap/base metadata |
-| `STORAGE_ADAPTER` | `local` or `r2` (+ `R2_*` credentials) |
+| `MEDIA_GITHUB_TOKEN` | Optional GitHub media-repository write token; media targets are configured in Media Storage |
+| `IDRIVEE2_ACCESS_KEY` `IDRIVEE2_SECRET_KEY` `B2_ACCESS_KEY` `B2_SECRET_KEY` | Optional credentials for configured IDrive e2 / Backblaze media targets |
 | `GOOGLE_API_KEY` `GROQ_API_KEY` `OPENROUTER_API_KEY` `OLLAMA_BASE_URL` … | LLM resolver keys |
 | `GOOGLE_API_KEY` + `GEMINI_IMAGE_MODEL` | AI hero images (default `gemini-2.5-flash-image`) |
 | `FB_SESSION_COOKIE` | Optional `c_user`/`xs` cookie for logged-in Facebook scraping |
@@ -364,6 +368,34 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 > After any change to `packages/db/migrations/` you **must** re-run `bundle:runner`
 > before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
 > (latest e.g. `012_post_images.sql`).
+
+## Desktop and media operations (v1.1.17)
+
+- **Collector and categories:** the desktop collector uses the same bundled runner
+  and supported-source checks as the web/CLI pipeline. A source must have an
+  explicit category assignment; sources assigned to multiple categories are
+  classified only among those categories.
+- **Sync feedback:** desktop sync, smart resync, and refresh actions report
+  completion or failure. With cloud sync enabled, refresh actions reload the
+  shared database instead of copying potentially stale local records over cloud
+  data. Local/cloud transfer remains available when cloud sync is disabled.
+- **Media location:** the default filesystem root is `<repository>/media` for a
+  working checkout; a packaged desktop install without a workspace uses its
+  application-data media directory. Existing `data/media` and app-data files are
+  retained as legacy read locations. Media settings display the effective CDN
+  base URL for the selected repository and branch.
+- **Remote media:** configure a GitHub repository in Media Storage and provide
+  its media token in the desktop vault. A failed remote upload is reported and
+  the local generated/downloaded copy is retained where possible; it is not
+  treated as a successful remote upload.
+- **Image generation:** desktop and web image tools require an active provider
+  whose purpose is `image` and a compatible image-generation model. Desktop
+  queue prompts are prefilled from the post; the web and desktop surfaces report
+  provider/storage errors rather than silently presenting a blank or successful
+  result. Hosted web generation uses the GitHub Actions runner when configured.
+- **Custom AI providers:** custom provider entries require a valid base URL.
+  Multiple provider entries can coexist; configure image-purpose entries
+  separately from text providers.
 
 ## Editorial & safety
 

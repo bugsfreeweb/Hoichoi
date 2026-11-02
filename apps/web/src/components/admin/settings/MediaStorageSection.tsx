@@ -12,6 +12,14 @@ const DEFAULT_CONFIG: MediaStorageConfig = {
   cleanup_enabled: false,
 };
 
+function effectiveCdnBase(adapter: MediaStorageAdapterConfig): string {
+  const custom = adapter.cdnBase?.trim();
+  if (custom) return custom;
+  const repo = adapter.repo?.trim();
+  if (!repo) return "";
+  return `https://cdn.jsdelivr.net/gh/${repo}@${adapter.branch?.trim() || "main"}`;
+}
+
 export function MediaStorageSection({
   initialJson,
   onSave,
@@ -188,6 +196,9 @@ export function MediaStorageSection({
                       placeholder="https://cdn.jsdelivr.net/gh/owner/repo@main"
                       onChange={(e) => updateAdapter(idx, { cdnBase: e.target.value })}
                     />
+                    <p className="mt-1 break-all font-mono-x text-[10px] text-ink-soft">
+                      কার্যকর CDN: {effectiveCdnBase(ad) || "repo নির্বাচন করলে স্বয়ংক্রিয়ভাবে তৈরি হবে"}
+                    </p>
                   </Field>
                 )}
               </div>

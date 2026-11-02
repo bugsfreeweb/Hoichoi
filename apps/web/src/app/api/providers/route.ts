@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClient, nowIso, mapProvider } from "@hoichoi/db";
+import { ensureSchema, getClient, nowIso, mapProvider } from "@hoichoi/db";
 import { PROCESSOR_ENV_DEFAULTS, type ProviderKey } from "@hoichoi/shared-types";
 import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
 
@@ -32,8 +32,12 @@ export async function POST(req: NextRequest) {
   if (!body?.providerKey || !body?.modelName || !KEYS.includes(body.providerKey)) {
     return NextResponse.json({ error: "providerKey + modelName required" }, { status: 400 });
   }
+  if (body.providerKey === "custom" && !body.baseUrl?.trim()) {
+    return NextResponse.json({ error: "custom providers require a base URL" }, { status: 400 });
+  }
   try {
     const client = getClient();
+    await ensureSchema(client);
     const purposeVal = body.purpose?.trim() === "image" ? "image" : "text";
     await client.execute({
       sql: `

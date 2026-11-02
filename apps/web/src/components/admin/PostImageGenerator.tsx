@@ -130,6 +130,7 @@ export function PostImageGenerator({
             provider?: string;
             model?: string;
             error?: string;
+            warning?: string;
             queued?: boolean;
             message?: string;
           }
@@ -149,7 +150,11 @@ export function PostImageGenerator({
         baseRef.current = j.media_path;
         onAttached(j.media_path);
       }
-      setMsg(`✓ ছবি তৈরি হয়েছে (${j?.provider ?? "?"} · ${j?.model ?? "?"}) ও পোস্টে যুক্ত হয়েছে`);
+      setMsg(
+        `✓ ছবি তৈরি হয়েছে (${j?.provider ?? "?"} · ${j?.model ?? "?"}) ও পোস্টে যুক্ত হয়েছে${
+          j?.warning ? ` · স্টোরেজ সতর্কতা: ${j.warning}` : ""
+        }`,
+      );
     } catch (e) {
       setErr(e instanceof Error ? e.message : "ছবি তৈরি ব্যর্থ");
     } finally {

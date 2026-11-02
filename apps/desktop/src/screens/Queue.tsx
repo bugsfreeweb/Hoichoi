@@ -33,6 +33,13 @@ const STATUS_STYLE: Record<string, { bg: string; tx: string; icon: typeof Circle
   removed: { bg: "bg-white/8", tx: "text-white/50", icon: Ban, bn: "সরানো হয়েছে" },
 };
 
+function suggestedImagePrompt(row: DeskQueueRow): string {
+  const subject = [row.title_bn, row.summary_bn].filter(Boolean).join(" — ").slice(0, 500);
+  return subject
+    ? `Editorial news illustration, clean modern flat style with soft natural light, dignified print-journalism tone, no text, no logos, no watermarks.\n\nবিষয়: ${subject}`
+    : "Editorial news illustration, clean modern flat style with soft natural light, dignified print-journalism tone, no text, no logos, no watermarks.";
+}
+
 function EditModal({
   row,
   onClose,
@@ -60,11 +67,12 @@ function EditModal({
   // Manual AI image generation (used when the pipeline produced no image).
   const [genProviders, setGenProviders] = useState<DeskProvider[]>([]);
   const [genProvider, setGenProvider] = useState("");
-  const [genPrompt, setGenPrompt] = useState("");
+  const [genPrompt, setGenPrompt] = useState(() => suggestedImagePrompt(row));
   const [genRatio, setGenRatio] = useState("16:9");
   const [genBusy, setGenBusy] = useState(false);
   const [genMsg, setGenMsg] = useState<string | null>(null);
   const [genErr, setGenErr] = useState<string | null>(null);
+  const [genLoadErr, setGenLoadErr] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -108,8 +116,14 @@ function EditModal({
         setGenProviders(list);
         const usable = list.find((p) => Boolean(p.api_key) || Boolean(p.api_key_env_var));
         setGenProvider(usable?.id ?? list[0]?.id ?? "");
-      } catch {
-        /* generator is optional; the manual URL field still works */
+      } catch (e) {
+        if (live) {
+          setGenLoadErr(
+            e instanceof Error
+              ? `ইমেজ প্রোভাইডার লোড ব্যর্থ: ${e.message}`
+              : "ইমেজ প্রোভাইডার লোড করা যায়নি। সেটিংস ও ডেটাবেস সংযোগ পরীক্ষা করুন।",
+          );
+        }
       }
     })();
     return () => {
@@ -197,7 +211,9 @@ function EditModal({
         attach: true,
       });
       setMedia(r.media_path);
-      setGenMsg(`✓ ছবি তৈরি হয়েছে (${r.provider} · ${r.model}) ও যুক্ত হয়েছে`);
+      setGenMsg(
+        `✓ ছবি তৈরি হয়েছে (${r.provider} · ${r.model}) ও যুক্ত হয়েছে${r.warning ? ` · স্টোরেজ সতর্কতা: ${r.warning}` : ""}`,
+      );
     } catch (e) {
       setGenErr(e instanceof Error ? e.message : "ছবি তৈরি ব্যর্থ।");
     } finally {
@@ -406,6 +422,13 @@ function EditModal({
                 {genProviders.length === 0 ? "প্রোভাইডার নেই" : `${genProviders.length} প্রোভাইডার`}
               </span>
             </div>
+            {genLoadErr ? (
+              <p className="mt-2 text-[10.5px] text-rose-300">{genLoadErr}</p>
+            ) : genProviders.length === 0 ? (
+              <p className="mt-2 text-[10.5px] leading-relaxed text-white/45">
+                AI প্রোভাইডার সেটিংসে একটি সক্রিয় provider যোগ করে Purpose = Image নির্বাচন করুন; API key এবং image-generation model সেট করা থাকতে হবে।
+              </p>
+            ) : null}
             <textarea
               rows={2}
               className={`${field} mt-2`}

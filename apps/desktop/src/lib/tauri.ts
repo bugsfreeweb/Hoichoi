@@ -485,6 +485,7 @@ export interface DeskImageGenResult {
   contentType: string;
   bytes: number;
   attached: boolean;
+  warning?: string;
 }
 
 /** Manually generate an image for a queued post via the bundled runner. */

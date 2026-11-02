@@ -18,7 +18,7 @@ import { mirrorMediaFile } from "./media-backfill";
 import { processVideo } from "./video";
 import { makeSlug, rewritePost } from "./rewrite";
 import { captureScreenshot } from "./screenshot";
-import { classifyContent } from "./classify";
+import { classifyContent, sourceCategoryCandidates } from "./classify";
 import { uploadRemote } from "./storage";
 import { aiHeroEligible, generateAIHero } from "./ai-image";
 import { fetchRssPosts, isFeedPlatform } from "./rss";
@@ -587,7 +587,12 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         // public folder, which is what the deployed site serves.
         for (const item of collected) {
           if (/^https?:\/\//.test(item.path)) continue;
-          const pub = await uploadRemote(item.path);
+          let pub: string | null = null;
+          try {
+            pub = await uploadRemote(item.path);
+          } catch (err) {
+            log(`[media] remote upload failed for ${item.path}: ${(err as Error).message}`);
+          }
           if (pub) {
             item.path = pub;
             log(`[media] uploaded → ${pub}`);
@@ -621,7 +626,12 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           if (aiRel) {
             media.kind = "image";
             media.path = aiRel;
-            const pub = await uploadRemote(aiRel);
+            let pub: string | null = null;
+            try {
+              pub = await uploadRemote(aiRel);
+            } catch (err) {
+              log(`[media] AI hero remote upload failed: ${(err as Error).message}`);
+            }
             if (pub) {
               media.path = pub;
               log(`[media] AI hero uploaded → ${pub}`);
@@ -730,7 +740,12 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           const kw = c.config.keywords;
           if (kw && kw.length) kwProfiles[c.slug] = kw;
         }
-        const detected = classifyContent(sp.rawText, [...cats.keys()], source.category, kwProfiles);
+        const detected = classifyContent(
+          sp.rawText,
+          sourceCategoryCandidates([...cats.keys()], [source.category, ...(source.categories ?? [])]),
+          source.category,
+          kwProfiles,
+        );
         const postCategory: CategorySlug =
           detected && typeof detected.slug === "string" ? (detected.slug as CategorySlug) : source.category;
         if (postCategory !== source.category) {

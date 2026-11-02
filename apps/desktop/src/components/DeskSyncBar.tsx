@@ -3,6 +3,7 @@ import { ArrowDownToLine, ArrowUpToLine, Loader2, Zap } from "lucide-react";
 import { agoBn, toBn } from "../lib/format";
 import { syncDb, type DeskQueueRow } from "../lib/tauri";
 import { getCloudEnv, isCloudSync } from "../lib/vault";
+import { toast } from "../lib/toast";
 
 type Direction = "push" | "pull";
 type Action = Direction | "auto";
@@ -19,9 +20,9 @@ const DIR_LABEL: Record<Direction, string> = { push: "ডেস্ক→ওয�
  * `getRunEnv` — a manual resync is precisely the local-only → Turso hop, so
  * stripping the Turso URL/token here is what made "desk to web" fail.
  *
- * In cloud-sync mode the desktop writes straight to the shared DB, so the two
- * buttons are disabled: pushing the (unused) local file DB would clobber
- * production with a stale snapshot.
+ * In cloud-sync mode the desktop writes straight to the shared DB. The sync
+ * buttons therefore refresh the shared snapshot rather than copying a stale
+ * local file over production.
  */
 export default function DeskSyncBar({
   queueRows,
@@ -43,7 +44,10 @@ export default function DeskSyncBar({
     } catch {
       /* private mode */
     }
-    void isCloudSync().then(setCloud, () => setCloud(false));
+    void isCloudSync().then(setCloud).catch((e) => {
+      setCloud(true);
+      setError(e instanceof Error ? e.message : "সিঙ্ক মোড নির্ধারণ করা যায়নি।");
+    });
   }, []);
 
   const pending = queueRows.filter(
@@ -62,16 +66,33 @@ export default function DeskSyncBar({
 
   const run = async (action: Action) => {
     if (busy) return;
-    if (cloud) {
-      setError("ক্লাউড মোড সক্রিয় — ডেস্ক সরাসরি ওয়েব ডেটাবেসেই লেখে, আলাদা সিঙ্ক লাগে না।");
-      setNote("");
-      return;
-    }
     const dir: Direction = action === "auto" ? (pending > 0 ? "push" : "pull") : action;
     setBusy(action);
     setError("");
     setNote("");
+    const toastId = toast.busy(
+      cloud ? "শেয়ার্ড ডেটা রিফ্রেশ হচ্ছে" : "ডেটা সিঙ্ক হচ্ছে",
+      cloud ? "ডেস্ক ও ওয়েব একই ডেটাবেস ব্যবহার করছে।" : DIR_LABEL[dir],
+    );
     try {
+      if (cloud) {
+        const refreshed = await onSynced();
+        if (
+          refreshed &&
+          typeof refreshed === "object" &&
+          "ok" in refreshed &&
+          refreshed.ok === false
+        ) {
+          throw new Error(
+            "error" in refreshed && typeof refreshed.error === "string"
+              ? refreshed.error
+              : "ডেস্কের ডেটা রিফ্রেশ করা যায়নি।",
+          );
+        }
+        setNote("শেয়ার্ড ডেটাবেস রিফ্রেশ হয়েছে");
+        toast.ok("ডেটা রিফ্রেশ সম্পন্ন", "ডেস্ক ও ওয়েব একই ডেটাবেসে সংযুক্ত।");
+        return;
+      }
       const res = await syncDb(dir, await getCloudEnv());
       const tables = res.tablesSynced ?? res.syncedTables ?? 0;
       const rows = res.rowsAffected ?? 0;
@@ -81,10 +102,26 @@ export default function DeskSyncBar({
         }`,
       );
       remember(dir);
-      await onSynced();
+      const refreshed = await onSynced();
+      if (
+        refreshed &&
+        typeof refreshed === "object" &&
+        "ok" in refreshed &&
+        refreshed.ok === false
+      ) {
+        throw new Error(
+          "error" in refreshed && typeof refreshed.error === "string"
+            ? refreshed.error
+            : "সিঙ্কের পর ডেস্ক রিফ্রেশ করা যায়নি।",
+        );
+      }
+      toast.ok("সিঙ্ক সম্পন্ন", `${DIR_LABEL[dir]} · ${toBn(tables)} টেবিল · ${toBn(rows)} রো`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "রিসিঙ্ক সম্পন্ন হয়নি।");
+      const message = e instanceof Error ? e.message : "রিসিঙ্ক সম্পন্ন হয়নি।";
+      setError(message);
+      toast.err("সিঙ্ক ব্যর্থ", message);
     } finally {
+      toast.dismiss(toastId);
       setBusy(null);
     }
   };
@@ -95,7 +132,7 @@ export default function DeskSyncBar({
     </span>
   );
 
-  const disabled = busy !== null || cloud;
+  const disabled = busy !== null;
 
   return (
     <div className="flex h-9 shrink-0 items-center gap-3 border-b border-white/8 bg-[var(--win-2)] px-3">
@@ -107,7 +144,7 @@ export default function DeskSyncBar({
         type="button"
         onClick={() => void run("auto")}
         disabled={disabled}
-        title={cloud ? "ক্লাউড মোড সক্রিয়" : undefined}
+        title={cloud ? "শেয়ার্ড ডেটাবেস রিফ্রেশ করুন" : undefined}
         className={`relative flex items-center gap-1.5 rounded border px-3 py-1 text-[11px] font-bold transition-all active:scale-[0.98] disabled:opacity-50 ${
           pending > 0
             ? "border-lime bg-lime text-night shadow-[0_6px_18px_rgba(200,246,93,0.25)] hover:brightness-110"
@@ -123,7 +160,7 @@ export default function DeskSyncBar({
         type="button"
         onClick={() => void run("push")}
         disabled={disabled}
-        title={cloud ? "ক্লাউড মোড সক্রিয়" : undefined}
+        title={cloud ? "শেয়ার্ড ডেটাবেস রিফ্রেশ করুন" : undefined}
         className="flex items-center gap-1.5 rounded border border-lime/40 bg-lime/15 px-2.5 py-1 text-[11px] font-bold text-lime transition-colors hover:border-lime hover:bg-lime hover:text-night disabled:opacity-50"
       >
         {busy === "push" ? <Loader2 size={11} className="animate-spin" /> : <ArrowUpToLine size={11} />}
@@ -134,7 +171,7 @@ export default function DeskSyncBar({
         type="button"
         onClick={() => void run("pull")}
         disabled={disabled}
-        title={cloud ? "ক্লাউড মোড সক্রিয়" : undefined}
+        title={cloud ? "শেয়ার্ড ডেটাবেস রিফ্রেশ করুন" : undefined}
         className="flex items-center gap-1.5 rounded border border-white/15 px-2.5 py-1 text-[11px] font-bold text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
       >
         {busy === "pull" ? <Loader2 size={11} className="animate-spin" /> : <ArrowDownToLine size={11} />}

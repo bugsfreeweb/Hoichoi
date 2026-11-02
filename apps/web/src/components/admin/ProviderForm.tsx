@@ -32,6 +32,7 @@ export function ProviderForm() {
     purpose: "text" as "text" | "image",
   });
   const [status, setStatus] = useState<null | "ok" | "err" | "denied">(null);
+  const [submitError, setSubmitError] = useState("");
   const [fetching, setFetching] = useState(false);
   const [models, setModels] = useState<ModelPick[] | null>(null);
   const [fetchError, setFetchError] = useState("");
@@ -40,6 +41,8 @@ export function ProviderForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setStatus(null);
+    setSubmitError("");
     try {
       const res = await fetch("/api/providers", {
         method: "POST",
@@ -56,12 +59,17 @@ export function ProviderForm() {
         }),
       });
       if (res.status === 401 || res.status === 403) return setStatus("denied");
-      if (!res.ok) return setStatus("err");
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        setSubmitError(data?.error ?? `HTTP ${res.status}`);
+        return setStatus("err");
+      }
       setStatus("ok");
       setModels(null);
       setFetchError("");
       setForm({ providerKey: "google", displayName: "", baseUrl: "", modelName: "", apiKey: "", priority: 100, free: true, purpose: "text" });
     } catch {
+      setSubmitError("নেটওয়ার্ক সমস্যা — আবার চেষ্টা করুন।");
       setStatus("err");
     }
   }
@@ -118,7 +126,13 @@ export function ProviderForm() {
       </div>
       <label className="block">
         <span className="text-[11px] font-bold uppercase text-ink-soft">Base URL</span>
-        <input className={field} placeholder="খালি রাখলে ডিফল্ট" value={form.baseUrl} onChange={(e) => setForm({ ...form, baseUrl: e.target.value })} />
+        <input
+          required={form.providerKey === "custom"}
+          className={field}
+          placeholder={form.providerKey === "custom" ? "https://api.example.com/v1" : "খালি রাখলে ডিফল্ট"}
+          value={form.baseUrl}
+          onChange={(e) => setForm({ ...form, baseUrl: e.target.value })}
+        />
       </label>
       <label className="block">
         <span className="text-[11px] font-bold uppercase text-ink-soft">
@@ -140,6 +154,9 @@ export function ProviderForm() {
           <option value="text">Text (rewrite/content)</option>
           <option value="image">Image (AI generation)</option>
         </select>
+        <span className="mt-1 block text-[10.5px] text-ink-soft">
+          Post image generation-এর জন্য provider-এর purpose Image করুন এবং image-capable model ব্যবহার করুন।
+        </span>
       </label>
       <label className="flex items-center gap-2 text-[12.5px] font-medium text-ink">
         <input type="checkbox" checked={form.free} onChange={(e) => setForm({ ...form, free: e.target.checked })} />
@@ -176,7 +193,11 @@ export function ProviderForm() {
       </div>
 
       {status === "ok" && <p className="border border-cat-teal bg-cat-teal/10 px-3 py-2 text-[12px] font-bold text-ink">✓ যোগ হয়েছে।</p>}
-      {status === "err" && <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[12px] font-bold text-ink">✗ ব্যর্থ।</p>}
+      {status === "err" && (
+        <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[12px] font-bold text-ink">
+          ✗ {submitError || "ব্যর্থ।"}
+        </p>
+      )}
       {status === "denied" && <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[12px] font-bold text-ink">অনুমতি নেই — admin প্রয়োজন।</p>}
       <button className="w-fit border-2 border-ink bg-ink px-5 py-2 text-[12.5px] font-bold text-paper transition hover:bg-alizarin">
         প্রোভাইডার যোগ করুন →

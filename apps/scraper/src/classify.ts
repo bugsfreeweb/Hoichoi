@@ -44,6 +44,19 @@ export interface ClassifyResult {
 }
 
 /**
+ * For a multi-category source, classify only among the categories the operator
+ * assigned to that source. Single-category sources still allow reclassification
+ * against the full catalogue when a post clearly belongs elsewhere.
+ */
+export function sourceCategoryCandidates(
+  allCategories: CategorySlug[],
+  sourceCategories: CategorySlug[],
+): CategorySlug[] {
+  const selected = [...new Set(sourceCategories)].filter((slug) => allCategories.includes(slug));
+  return selected.length > 1 ? selected : allCategories;
+}
+
+/**
  * Score raw text against candidate categories. Only a category whose score
  * clears the threshold AND beats the runner-up by a clear margin overrides the
  * source-assigned category.

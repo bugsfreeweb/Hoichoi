@@ -2,7 +2,7 @@
  * Media backfill + web mirroring.
  *
  * Why this exists: the collector writes media into the *local* media root
- * (`HOICHOI_MEDIA_ROOT` on the desktop, `<repo>/data/media` otherwise), but the
+ * (`HOICHOI_MEDIA_ROOT` on the desktop, `<repo>/media` otherwise), but the
  * deployed web app is serverless — it can only serve bytes that were committed
  * to the repo (or pushed to a remote storage adapter). Posts whose media was
  * never uploaded therefore render a 404 image on the site, and posts whose media
@@ -13,7 +13,7 @@
  *      in `raw_posts.media_urls`), processes them to webp and points the post at
  *      the new file;
  *   2. mirrors every file it touches into the web app's `public/uploads` folder
- *      (served at `/uploads/<rel>`) plus `<repo>/data/media`, so the relative
+ *      (served at `/uploads/<rel>`) plus `<repo>/media`, so the relative
  *      `media_path` resolves on the deployed site and in local dev as well.
  *
  * The original relative `media_path` is preserved (no CDN URL rewriting), which
@@ -461,6 +461,7 @@ export interface ManualImageResult {
   contentType: string;
   bytes: number;
   attached: boolean;
+  warning?: string;
 }
 
 /**
@@ -510,7 +511,14 @@ export async function generateManualImage(opts: {
   const rel = randomMediaName("img", "webp");
   await processImage(Buffer.from(result.bytes), rel, { maxWidthPx: MAX_WIDTH_PX });
   mirrorMediaFile(rel);
-  const pub = await uploadRemote(rel, opts.postId);
+  let pub: string | null = null;
+  let warning: string | undefined;
+  try {
+    pub = await uploadRemote(rel, opts.postId);
+  } catch (err) {
+    warning = err instanceof Error ? err.message : String(err);
+    log(`[img-gen] remote upload failed: ${warning}`);
+  }
   const applied = pub ?? rel;
   log(`[img-gen] ${opts.postId.slice(0, 8)} -> ${applied} via ${result.provider} (${result.model})`);
 
@@ -525,5 +533,6 @@ export async function generateManualImage(opts: {
     contentType: result.contentType,
     bytes: result.bytes.length,
     attached: attach,
+    ...(warning ? { warning } : {}),
   };
 }

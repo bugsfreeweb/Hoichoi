@@ -9,7 +9,7 @@
  *
  * Adapters:
  *   github     — Git repository (private or public) via the contents API.
- *                Credentials: GITHUB_TOKEN / GITHUB_PAT.
+ *                Credentials: MEDIA_GITHUB_TOKEN, GITHUB_TOKEN, or GITHUB_PAT.
  *                Repository: configured per adapter in settings, or an explicit
  *                GITHUB_MEDIA_REPOS list (comma-separated `owner/name`). The
  *                app repository (`GITHUB_REPO`) is intentionally NOT used as a
@@ -35,6 +35,7 @@ import { readFile, unlink, writeFile, mkdir } from "node:fs/promises";
 import * as path from "node:path";
 import { localMediaPath, mediaRoot, ensureMediaDir } from "./media";
 import { getMediaStorageConfig } from "./media-storage";
+import type { MediaStorageConfig } from "@hoichoi/shared-types";
 import {
   recordMediaObject,
   listMediaObjects,
@@ -491,6 +492,25 @@ export async function hasEnabledAdapter(): Promise<boolean> {
   return (await buildAdapters()).some((a) => a.enabled);
 }
 
+async function uploadAdapters(cfg: MediaStorageConfig): Promise<ResolvedAdapter[]> {
+  const configured = cfg.adapters.filter((adapter) => adapter.enabled);
+  const adapters = (await buildAdapters()).filter((adapter) => adapter.enabled);
+  if (adapters.length === 0 && configured.length > 0) {
+    const problems = configured.map((adapter) => {
+      if (adapter.kind === "github") {
+        return `${adapter.label}: ${adapter.repo?.trim() ? "MEDIA_GITHUB_TOKEN/GITHUB_TOKEN missing" : "repository is required"}`;
+      }
+      return `${adapter.label}: access key, secret key, bucket, and endpoint are required`;
+    });
+    throw new Error(`No media storage adapter is ready: ${problems.join("; ")}`);
+  }
+  return adapters;
+}
+
+function uploadFailureMessage(errors: string[]): Error {
+  return new Error(`Media upload failed: ${errors.join("; ")}`);
+}
+
 /**
  * Upload a local media file through the enabled adapter chain, honouring the
  * configured distribution mode. Returns the public URL of the primary target,
@@ -498,13 +518,14 @@ export async function hasEnabledAdapter(): Promise<boolean> {
  */
 export async function uploadRemote(rel: string, postId?: string | null): Promise<string | null> {
   const cfg = await getMediaStorageConfig();
-  const adapters = (await buildAdapters()).filter((a) => a.enabled);
+  const adapters = await uploadAdapters(cfg);
   if (adapters.length === 0) return null;
 
   const body = await readFile(localMediaPath(rel));
   const { targets, mirror } = orderForUpload(adapters, cfg.mode, rel);
   let firstUrl: string | null = null;
   let anyOk = false;
+  const errors: string[] = [];
   for (const a of targets) {
     try {
       const key = adapterKey(a, rel);
@@ -514,10 +535,11 @@ export async function uploadRemote(rel: string, postId?: string | null): Promise
       anyOk = true;
       if (firstUrl == null) firstUrl = url;
       if (!mirror) break; // failover/shard: first success wins
-    } catch {
-      /* try the next adapter */
+    } catch (err) {
+      errors.push(`${a.label}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
+  if (!anyOk && errors.length > 0) throw uploadFailureMessage(errors);
   if (anyOk && cfg.purge_local_after_upload) {
     await unlink(localMediaPath(rel)).catch(() => undefined);
   }
@@ -528,7 +550,8 @@ export async function uploadRemote(rel: string, postId?: string | null): Promise
  * Upload an in-memory buffer through the enabled adapter chain, without needing
  * a local file first. Used by the manual image generator, which holds generated
  * bytes and has no reason to round-trip through disk. Returns the public URL of
- * the primary target, or null when no adapter is configured/could not be reached.
+ * the primary target, null when no adapter is configured, or throws when every
+ * configured target fails.
  */
 export async function uploadBufferRemote(
   rel: string,
@@ -536,10 +559,11 @@ export async function uploadBufferRemote(
   postId?: string | null,
 ): Promise<string | null> {
   const cfg = await getMediaStorageConfig();
-  const adapters = (await buildAdapters()).filter((a) => a.enabled);
+  const adapters = await uploadAdapters(cfg);
   if (adapters.length === 0) return null;
   const { targets, mirror } = orderForUpload(adapters, cfg.mode, rel);
   let firstUrl: string | null = null;
+  const errors: string[] = [];
   for (const a of targets) {
     try {
       const key = adapterKey(a, rel);
@@ -548,10 +572,11 @@ export async function uploadBufferRemote(
       await recordMediaObject({ adapter: a.tag, key, url, post_id: postId ?? null, bytes: body.length });
       if (firstUrl == null) firstUrl = url;
       if (!mirror) break;
-    } catch {
-      /* try next adapter */
+    } catch (err) {
+      errors.push(`${a.label}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
+  if (!firstUrl && errors.length > 0) throw uploadFailureMessage(errors);
   return firstUrl;
 }
 

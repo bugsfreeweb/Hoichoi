@@ -88,6 +88,15 @@ fn repo_root_dir() -> PathBuf {
     manifest.join("..").join("..").join("..")
 }
 
+fn media_root_dir(app_data_dir: &Path) -> PathBuf {
+    let repo = repo_root_dir();
+    if repo.join("pnpm-workspace.yaml").is_file() {
+        repo.join("media")
+    } else {
+        app_data_dir.join("media")
+    }
+}
+
 /// Absolute path of the monorepo root (scope: frontend "open folder" hints).
 #[tauri::command]
 pub async fn repo_root() -> String {
@@ -171,7 +180,7 @@ pub async fn run_pipeline(
             .unwrap_or_default();
         cmd.env("HOICHOI_MIGRATIONS_DIR", app_dir.join("migrations"));
         if !envs.contains_key("HOICHOI_MEDIA_ROOT") {
-            cmd.env("HOICHOI_MEDIA_ROOT", win32_path(&data_dir.join("media")));
+            cmd.env("HOICHOI_MEDIA_ROOT", win32_path(&media_root_dir(&data_dir)));
         }
     }
     if local_db_only || !has_database_config {
@@ -499,13 +508,11 @@ fn spawn_daemon(app: &AppHandle, local_db_url: &str) -> Result<Arc<RunnerDaemon>
 
     let app_dir = cli.parent().map(|p| p.to_path_buf()).unwrap_or_default();
     cmd.env("HOICHOI_MIGRATIONS_DIR", app_dir.join("migrations"));
-    cmd.env("HOICHOI_MEDIA_ROOT", {
-        let data_dir = app
-            .path()
-            .app_data_dir()
-            .map_err(|e| format!("app_data_dir failed: {e}"))?;
-        win32_path(&data_dir.join("media"))
-    });
+    let data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("app_data_dir failed: {e}"))?;
+    cmd.env("HOICHOI_MEDIA_ROOT", win32_path(&media_root_dir(&data_dir)));
     cmd.env("HOICHOI_USE_SYSTEM_BROWSER", "1");
     cmd.env("HOICHOI_LOCAL_DB_URL", local_db_url);
     hide_console(&mut cmd);
@@ -806,7 +813,7 @@ pub async fn sync_db(
     app: AppHandle,
     direction: String,
     env: Option<HashMap<String, String>>,
-) -> Result<String, String> {
+) -> Result<serde_json::Value, String> {
     if direction != "push" && direction != "pull" {
         return Err("direction must be \"push\" or \"pull\"".to_string());
     }
@@ -853,8 +860,7 @@ pub async fn sync_db(
         "rowsAffected": rows,
         "conflicts": 0,
         "detail": written,
-    })
-    .to_string())
+    }))
 }
 
 /// Manage one-time admin login codes through the runner (`admin-code` CLI).

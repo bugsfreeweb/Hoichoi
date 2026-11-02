@@ -120,9 +120,9 @@ export async function getEnvFromVault(): Promise<Record<string, string>> {
   // exists. `github_repo` is the app repository and must never receive media.
   const mediaToken = snap.media_github_token || snap.github_pat;
   const mediaRepos = (snap.github_media_repos ?? "").trim();
+  if (mediaToken && !out.MEDIA_GITHUB_TOKEN) out.MEDIA_GITHUB_TOKEN = mediaToken;
   if (mediaToken && mediaRepos) {
     out.STORAGE_ADAPTER = "github";
-    if (!out.MEDIA_GITHUB_TOKEN) out.MEDIA_GITHUB_TOKEN = mediaToken;
   }
   // Raw imports live under their real ENV name (they have no canonical vault
   // key), so surface every extra vault entry verbatim. Without this, keys pasted

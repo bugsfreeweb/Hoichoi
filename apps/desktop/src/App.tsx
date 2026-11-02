@@ -492,6 +492,7 @@ export default function App() {
       }
       setLogs((prev) => [...prev, `[desk] failed to start: ${String(err)}`]);
       setRunning(false);
+      toast.err("কালেক্টর শুরু ব্যর্থ", err instanceof Error ? err.message : String(err));
     }
   };
 

@@ -116,7 +116,17 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const post = await getPostById(id);
   if (!post) return NextResponse.json({ error: "post not found" }, { status: 404 });
 
-  const providers = await listImageProviders().catch(() => []);
+  let providers: Awaited<ReturnType<typeof listImageProviders>>;
+  try {
+    providers = await listImageProviders();
+  } catch (error) {
+    console.error("[generate-image] failed to load image providers", error);
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json(
+      { error: `ইমেজ প্রোভাইডার লোড ব্যর্থ: ${message}` },
+      { status: 500 },
+    );
+  }
   const subject = [post.title_bn, post.summary_bn].filter(Boolean).join(" — ").slice(0, 500);
   const suggestedPrompt = subject ? `${DEFAULT_PROMPT_PREFIX}\n\nবিষয়: ${subject}` : DEFAULT_PROMPT_PREFIX;
 
@@ -251,14 +261,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   let applied: string | null = null;
   let stored: "remote" | "local" = "local";
+  let remoteWarning: string | null = null;
   try {
     const url = await uploadBufferRemote(rel, buf, id);
     if (url) {
       applied = url;
       stored = "remote";
     }
-  } catch {
-    /* fall through to local store */
+  } catch (err) {
+    remoteWarning = err instanceof Error ? err.message : String(err);
   }
   if (!applied) {
     try {
@@ -315,5 +326,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     contentType: result.contentType,
     bytes: result.bytes.length,
     attached: attach,
+    ...(remoteWarning ? { warning: remoteWarning } : {}),
   });
 }

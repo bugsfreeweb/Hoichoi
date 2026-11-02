@@ -31,6 +31,7 @@ import {
   type CredentialName,
 } from "../lib/vault";
 import { SECRET_SPECS, LLM_SECRET_NAMES } from "../lib/secret-specs";
+import { toast } from "../lib/toast";
 import {
   settingsGet,
   settingsSet,
@@ -230,6 +231,23 @@ export default function Settings({
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [tab, setTab] = useState<SettingsTab>("pref");
+
+  const refreshAfterSync = async () => {
+    const refreshed = await refresh();
+    if (
+      refreshed &&
+      typeof refreshed === "object" &&
+      "ok" in refreshed &&
+      refreshed.ok === false
+    ) {
+      throw new Error(
+        "error" in refreshed && typeof refreshed.error === "string"
+          ? refreshed.error
+          : "ডেস্কের ডেটা রিফ্রেশ করা যায়নি।",
+      );
+    }
+    await loadBrand();
+  };
 
   const [brand, setBrand] = useState<Record<string, string>>({});
   const [cloud, setCloud] = useState<boolean | null>(null);
@@ -530,6 +548,13 @@ export default function Settings({
     setSyncErr(null);
     setSyncing(direction);
     try {
+      if (cloud) {
+        await refreshAfterSync();
+        const message = "শেয়ার্ড ডেটাবেস রিফ্রেশ হয়েছে — ডেস্ক ও ওয়েব একই ডেটা ব্যবহার করছে।";
+        setSyncMsg(message);
+        toast.ok("ডেটা রিফ্রেশ সম্পন্ন", message);
+        return true;
+      }
       // A manual resync is the local-file-DB ⇄ Turso hop, so it must carry the
       // cloud credentials even when the vault's cloud-sync toggle is off.
       const res = await syncDb(direction, await getCloudEnv());
@@ -537,11 +562,16 @@ export default function Settings({
         `${direction === "push" ? "ডেস্ক → ওয়েব" : "ওয়েব → ডেস্ক"} সম্পন্ন — ${toBn(res.tablesSynced ?? 0)} টেবিল, ${toBn(res.rowsAffected ?? 0)} রো কপি হয়েছে।`,
       );
       setSyncErr(null);
-      await refresh();
-      await loadBrand();
+      await refreshAfterSync();
+      toast.ok(
+        "সিঙ্ক সম্পন্ন",
+        `${direction === "push" ? "ডেস্ক → ওয়েব" : "ওয়েব → ডেস্ক"} · ${toBn(res.tablesSynced ?? 0)} টেবিল · ${toBn(res.rowsAffected ?? 0)} রো`,
+      );
       return true;
     } catch (e) {
-      setSyncErr(e instanceof Error ? e.message : String(e));
+      const message = e instanceof Error ? e.message : String(e);
+      setSyncErr(message);
+      toast.err("সিঙ্ক ব্যর্থ", message);
       return false;
     } finally {
       setSyncing(null);
@@ -555,6 +585,13 @@ export default function Settings({
     setSyncMsg("সিঙ্ক শুরু — ধাপ ১/২: ডেস্ক → ওয়েব…");
     setSyncing("push");
     try {
+      if (cloud) {
+        await refreshAfterSync();
+        const message = "শেয়ার্ড ডেটাবেস রিফ্রেশ হয়েছে — স্থানীয় পুরোনো ডেটা পাঠানো হয়নি।";
+        setSyncMsg(message);
+        toast.ok("পূর্ণ রিফ্রেশ সম্পন্ন", message);
+        return;
+      }
       const res = await syncDb("push", await getCloudEnv());
       setSyncMsg(
         `ধাপ ১/২ সম্পন্ন — ${toBn(res.tablesSynced ?? 0)} টেবিল, ${toBn(res.rowsAffected ?? 0)} রো পাঠানো হয়েছে। এখন ধাপ ২/২: ওয়েব → ডেস্ক…`,
@@ -564,13 +601,18 @@ export default function Settings({
         `পূর্ণ সিঙ্ক সম্পন্ন — ${toBn(res.tablesSynced ?? 0)} টেবিল/ ${toBn(res.rowsAffected ?? 0)} রো পাঠানো, ${toBn(back.tablesSynced ?? 0)} টেবিল/ ${toBn(back.rowsAffected ?? 0)} রো আনা হয়েছে।`,
       );
       setSyncErr(null);
-      await refresh();
-      await loadBrand();
+      await refreshAfterSync();
+      toast.ok(
+        "পূর্ণ সিঙ্ক সম্পন্ন",
+        `${toBn(res.tablesSynced ?? 0)} টেবিল পাঠানো, ${toBn(back.tablesSynced ?? 0)} টেবিল আনা হয়েছে।`,
+      );
     } catch (e) {
+      const message = `পূর্ণ সিঙ্ক বন্ধ হয়েছে: ${e instanceof Error ? e.message : String(e)} — ওয়েব থেকে ডেস্কে আনা হয়নি, যাতে ত্রুটিপূর্ণ অবস্থায় ডেটা উল্টে না যায়।`;
       setSyncErr(
-        `পূর্ণ সিঙ্ক বন্ধ হয়েছে: ${e instanceof Error ? e.message : String(e)} — ওয়েব থেকে ডেস্কে আনা হয়নি, যাতে ত্রুটিপূর্ণ অবস্থায় ডেটা উল্টে না যায়।`,
+        message,
       );
       setSyncMsg(null);
+      toast.err("পূর্ণ সিঙ্ক ব্যর্থ", message);
     } finally {
       setSyncing(null);
     }
@@ -1141,15 +1183,15 @@ export default function Settings({
                 Cloud sync মোডে একই DB ব্যবহার হয় বলে অতিরিক্ত সিঙ্ক লাগে না।
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <button className="btn" disabled={syncing !== null || cloud === true} onClick={() => void doSync("push")}>
+                <button className="btn" disabled={syncing !== null} onClick={() => void doSync("push")}>
                   {syncing === "push" ? "⏳ পাঠানো হচ্ছে…" : "☁ ডেস্ক → ওয়েব"}
                 </button>
-                <button className="btn-ghost" disabled={syncing !== null || cloud === true} onClick={() => void doSync("pull")}>
+                <button className="btn-ghost" disabled={syncing !== null} onClick={() => void doSync("pull")}>
                   {syncing === "pull" ? "⏳ আনা হচ্ছে…" : "⬇ ওয়েব → ডেস্ক"}
                 </button>
                 <button
                   className="btn-ghost"
-                  disabled={syncing !== null || cloud === true}
+                  disabled={syncing !== null}
                   onClick={() => void doFullSync()}
                 >
                   ↻ পূর্ণ সিঙ্ক (আগে পাঠান, পরে আনুন)
@@ -1157,9 +1199,8 @@ export default function Settings({
               </div>
               {cloud === true && (
                 <p className="mt-2 text-[11.5px] font-bold text-amber-300">
-                  ⚠ Cloud sync মোড সক্রিয় — ডেস্কটপ সরাসরি shared Turso DB-তেই লেখে, তাই
-                  এই সিঙ্ক বাটনগুলো বন্ধ। স্থানীয় file DB এখন অব্যবহৃত ও পুরোনো, তাই এটি
-                  পাঠালে shared ডেটা মুছে যেত। ◌ Local only মোডে ফিরে গেলে সিঙ্ক চালু হবে।
+                  Cloud sync মোড সক্রিয় — এই বাটনগুলো shared DB-কে রিফ্রেশ করে; পুরোনো
+                  স্থানীয় file DB cloud-এ কপি করে না।
                 </p>
               )}
               <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">

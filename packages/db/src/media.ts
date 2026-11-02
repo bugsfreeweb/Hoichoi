@@ -8,23 +8,23 @@ import { findRepoRoot } from "./client";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-/** Filesystem-backed media store under <repo>/data/media (env-overridable for the desktop runtime). */
+/** Filesystem-backed media store under <repo>/media (env-overridable for desktop runtimes). */
 export function mediaRoot(): string {
   if (process.env.HOICHOI_MEDIA_ROOT) return process.env.HOICHOI_MEDIA_ROOT;
-  return path.join(findRepoRoot(), "data", "media");
+  return path.join(findRepoRoot(), "media");
 }
 
 /**
  * Candidate media roots to serve from, primary first.
  *
- * On Windows the Tauri desktop app runs its bundled runner with
- * `HOICHOI_MEDIA_ROOT` pointed at the app-data media dir, so media files scraped
- * by the desktop live there instead of the repo's `data/media`. The web server
- * (no such env) falls back to that app-data dir so desktop-scraped posts still
- * render their images locally.
+ * The repository media folder is primary. Older releases used `data/media`
+ * and packaged desktop builds used the app-data folder, so keep both available
+ * as read fallbacks while new writes use the configured root.
  */
 export function mediaRootCandidates(): string[] {
   const roots = [mediaRoot()];
+  const legacy = path.join(findRepoRoot(), "data", "media");
+  if (!roots.includes(legacy)) roots.push(legacy);
   if (process.platform === "win32" && process.env.APPDATA) {
     const desk = path.join(process.env.APPDATA, "com.hoichoi.desk", "media");
     if (desk !== roots[0] && !roots.includes(desk)) roots.push(desk);

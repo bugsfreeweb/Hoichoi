@@ -145,9 +145,11 @@ export default function Watchlist({
         ? categories.map((c) => c.slug)
         : form.categories.length
           ? form.categories
-          : categories.length
-            ? [categories[0].slug]
-            : [];
+          : [];
+    if (target.length === 0) {
+      setErr("সোর্স যোগ করার আগে অন্তত একটি ক্যাটাগরি বেছে নিন।");
+      return;
+    }
     try {
       await deskAddSource(await getRunEnv(), {
         pageUrl: fbUrl(form.fbId),

@@ -29,6 +29,14 @@ const ADAPTER_ICON: Record<string, typeof GitBranch> = {
   backblaze: HardDrive,
 };
 
+function effectiveCdnBase(adapter: MediaStorageAdapterConfig): string {
+  const custom = adapter.cdnBase?.trim();
+  if (custom) return custom;
+  const repo = adapter.repo?.trim();
+  if (!repo) return "";
+  return `https://cdn.jsdelivr.net/gh/${repo}@${adapter.branch?.trim() || "main"}`;
+}
+
 export default function MediaStoragePanel() {
   const [cfg, setCfg] = useState<MediaStorageConfig | null>(null);
   const [registry, setRegistry] = useState<number>(0);
@@ -346,6 +354,9 @@ export default function MediaStoragePanel() {
                             onChange={(e) => patch(i, { cdnBase: e.target.value || undefined })}
                             className="mt-0.5 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-2.5 py-1.5 font-mono-x text-[12px] text-white outline-none"
                           />
+                          <span className="mt-1 block break-all font-mono-x text-[9.5px] text-white/45">
+                            কার্যকর CDN: {effectiveCdnBase(a) || "repo নির্বাচন করলে স্বয়ংক্রিয়ভাবে তৈরি হবে"}
+                          </span>
                         </label>
                       </>
                     )}

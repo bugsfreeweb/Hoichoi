@@ -8,8 +8,24 @@
  */
 import assert from "node:assert/strict";
 import { normalizeMediaPath } from "../index";
+import { findRepoRoot } from "../client";
+import { mediaRoot } from "../media";
+import * as path from "node:path";
 
 const cases: Array<{ label: string; run: () => unknown }> = [
+  {
+    label: "default media root is the repository media directory",
+    run: () => {
+      const current = process.env.HOICHOI_MEDIA_ROOT;
+      delete process.env.HOICHOI_MEDIA_ROOT;
+      try {
+        assert.equal(mediaRoot(), path.join(findRepoRoot(), "media"));
+      } finally {
+        if (current === undefined) delete process.env.HOICHOI_MEDIA_ROOT;
+        else process.env.HOICHOI_MEDIA_ROOT = current;
+      }
+    },
+  },
   { label: "empty string clears the image", run: () => assert.equal(normalizeMediaPath(""), null) },
   { label: "whitespace only clears the image", run: () => assert.equal(normalizeMediaPath("   "), null) },
   {

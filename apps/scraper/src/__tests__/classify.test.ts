@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { classifyContent } from "../classify";
+import { classifyContent, sourceCategoryCandidates } from "../classify";
 import { CATEGORY_SEED, GENERAL_CATEGORY_SEED } from "@hoichoi/db";
 
 /**
@@ -21,6 +21,17 @@ for (const c of GENERAL_CATEGORY_SEED) {
 }
 
 const ALL = Object.keys(SEED_KW);
+
+assert.deepEqual(
+  sourceCategoryCandidates(ALL, ["missing-children", "health"]),
+  ["missing-children", "health"],
+  "multi-category sources classify only among their selected categories",
+);
+assert.deepEqual(
+  sourceCategoryCandidates(ALL, ["missing-children"]),
+  ALL,
+  "single-category sources can still be reclassified when the content clearly matches elsewhere",
+);
 
 const r1 = classifyContent("নিখোঁজ শিশুর সন্ধানে থানায় ব্যবস্থা নেওয়া হয়েছে", ALL, "child-sexual-abuse", SEED_KW);
 assert.equal(r1.slug, "missing-children", `expected missing-children, got ${r1.slug}`);
@@ -102,4 +113,4 @@ assert.equal(
   "the admin keyword list supplies the signal for a custom category",
 );
 
-console.log("[test] 12 classification checks passed");
+console.log("[test] classification checks passed");
