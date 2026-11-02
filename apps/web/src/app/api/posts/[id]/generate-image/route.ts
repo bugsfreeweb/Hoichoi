@@ -92,7 +92,7 @@ async function writeLocalMirror(rel: string, bytes: Uint8Array): Promise<void> {
 }
 
 const DEFAULT_PROMPT_PREFIX =
-  "Editorial news illustration, clean modern flat style with soft natural light, dignified print-journalism tone, no text, no logos, no watermarks.";
+  "Hoichoi (হৈচৈ) editorial hero illustration, modern cinematic Bengali visual language, deep charcoal with restrained red and warm ivory accents, dignified journalism tone. No text, letters, logos, watermarks, recognizable people, or children.";
 
 function bool(v: unknown): boolean {
   return v === true || v === "true" || v === 1 || v === "1";

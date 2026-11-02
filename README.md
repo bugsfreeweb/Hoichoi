@@ -122,12 +122,14 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   source's `page_url` at an RSS 2.0 / Atom / RDF feed; the adapter normalizes
   entries into the same shape as Facebook posts (stable id, permalink, text,
   media enclosures/`media:`/`<img>`), so *every downstream step is shared*.
-  The collector runs Facebook and RSS/Atom (`news`/`magazine`) sources. It skips
-  enabled sources with missing identity/URL, malformed or non-HTTP URLs, and
-  unsupported platforms (`x`, `social`, `other`) with an explicit log reason.
-  Facebook sources are skipped when `FB_SESSION_COOKIE` is absent; RSS/Atom
-  collection continues. A source-level error does not stop other eligible
-  sources from publishing.
+  The collector runs Facebook Page, public profile/group, and RSS/Atom
+  (`news`/`magazine`) sources. It tries Facebook anonymously first; an optional
+  `FB_SESSION_COOKIE` can retry a Page source that returns a login wall.
+  Profile/group sources remain anonymous-only, CAPTCHA/checkpoint challenges
+  are not bypassed, and private content is out of scope. Invalid sources and
+  per-source errors are logged without stopping other eligible sources.
+  Facebook collection uses selector-based loading and at most two post-detail
+  workers to reduce idle time while keeping requests bounded.
 - **Live events.** `/admin/live` creates and edits persisted events with six
   layouts, stream channels, event controls, polls, moderation, analytics, and
   notices. The setup/editor uses grouped sections, direct edit links, and an
@@ -153,12 +155,15 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   approve/activate or reject those requests at `/admin/ads`. Clients sign in
   through the web portal; a dedicated advertiser desktop app is not part of this
   release.
-- **AI fallback hero images.** When a post reaches publish with no media at all,
-  a Gemini image model generates one editorial hero (`ai_hero_images` app-config
-  toggle, off when no `GOOGLE_API_KEY`). Sensitive categories
-  (missing-children / child-sexual-abuse / extramarital-crime) are **always**
-  excluded, and the prompt itself bans text, logos, real people and children.
-  `media ai-fill` repairs already-published media-less posts.
+- **AI fallback hero images.** When a post has no media, the collector tries
+  active image-purpose providers in free-tier/priority order; Gemini is no
+  longer required. Cloudflare Workers AI, Together AI, Pollinations, and
+  compatible custom image APIs are supported. Cloudflare currently publishes a
+  limited daily free allocation; Together and Pollinations require paid usage
+  credits. Sensitive categories (missing-children / child-sexual-abuse /
+  extramarital-crime) remain excluded, and the branded Hoichoi prompt bans
+  text, logos, identifiable people, and children. `media ai-fill` repairs
+  existing media-less posts.
 - **On-demand manual image generation (v1.1.10).** Beyond the automatic fallback,
   an operator can generate a hero for any post: `media generate <id>` on the CLI,
   the **AI ছবি তৈরি** panel in the admin post editor
@@ -293,8 +298,9 @@ Copy `.env.example` → `.env`. Key ones:
 | `MEDIA_GITHUB_TOKEN` | Optional GitHub media-repository write token; media targets are configured in Media Storage |
 | `IDRIVEE2_ACCESS_KEY` `IDRIVEE2_SECRET_KEY` `B2_ACCESS_KEY` `B2_SECRET_KEY` | Optional credentials for configured IDrive e2 / Backblaze media targets |
 | `GOOGLE_API_KEY` `GROQ_API_KEY` `OPENROUTER_API_KEY` `OLLAMA_BASE_URL` … | LLM resolver keys |
-| `GOOGLE_API_KEY` + `GEMINI_IMAGE_MODEL` | AI hero images (default `gemini-2.5-flash-image`) |
-| `FB_SESSION_COOKIE` | Optional `c_user`/`xs` cookie for logged-in Facebook scraping |
+| image-purpose provider credentials | Automatic and manual AI image generation; configure in AI Providers (Cloudflare Workers AI has a limited daily free allocation) |
+| `FB_SESSION_COOKIE` | Optional semicolon-separated Facebook session cookie; public scraping is attempted without it first |
+| `SCRAPE_REQUEST_DELAY_MS` | Optional per-post delay for Facebook details (default 1000 ms, clamped to 500–10000 ms) |
 | `ARCHIVE_VISIBLE_DAYS` `ARCHIVE_RETENTION_DAYS` | Rolling policy |
 
 > **GitHub Actions secrets নিয়ে বিস্তারিত, প্রতিটির কোথা থেকে পাবেন, খরচ ও
@@ -306,10 +312,12 @@ Provider keys can also be registered per-provider from the admin `AI প্র�
 page: an optional **API key override** is stored on the `llm_providers` row
 (takes precedence over vault/env) and the **⚡ মডেল অটো-ফেচ** button pulls the
 provider's `/v1/models` list (OpenRouter auto-filtered to free models) so you can
-pick without hand-typing. Providers are tagged **text** or **image** (`--purpose`
-on the CLI, a select in the admin form) so the rewrite chain and the AI hero-image
-generator resolve independently. Custom OpenAI-compatible providers get automatic
-`/v1`/`/openai/v1` endpoint fallback, and rewrite output is parsed leniently
+pick without hand-typing. Providers are tagged **text** or **image** (`--purpose` on the CLI, a select in
+the admin form) so rewriting and image generation resolve independently.
+Custom OpenAI-compatible image providers include Together; Cloudflare
+Workers AI and Pollinations use their documented image endpoints. Custom
+OpenAI-compatible chat providers get automatic `/v1`/`/openai/v1` endpoint
+fallback, and rewrite output is parsed leniently
 (fences, bold/bullet labels, Bangla aliases and value shorthands).
 Each collector run loads its provider chain once, bounds health probes and
 per-provider rewrite/embedding attempts, and stops at `HOICHOI_LLM_TIMEOUT_MS`
@@ -369,12 +377,21 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 > before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
 > (latest e.g. `012_post_images.sql`).
 
-## Desktop and media operations (v1.1.17)
+## Desktop and media operations (v1.1.18)
 
 - **Collector and categories:** the desktop collector uses the same bundled runner
   and supported-source checks as the web/CLI pipeline. A source must have an
   explicit category assignment; sources assigned to multiple categories are
   classified only among those categories.
+- **Facebook collection:** public Page, profile, and group URLs are attempted
+  anonymously first. A session cookie is optional and is only retried for eligible
+  Page sources that show a login wall; private posts and CAPTCHA/checkpoint bypass
+  are not supported. The desktop Settings → Secrets and web setup guides explain
+  the optional cookie format and troubleshooting.
+- **Collector feedback and speed:** desktop logs show the newest event first and
+  keep the completion counters and detailed run result at the top. Facebook feed
+  loading uses bounded waits and a small parallel detail-page limit rather than
+  serial long waits.
 - **Sync feedback:** desktop sync, smart resync, and refresh actions report
   completion or failure. With cloud sync enabled, refresh actions reload the
   shared database instead of copying potentially stale local records over cloud
@@ -392,10 +409,14 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
   whose purpose is `image` and a compatible image-generation model. Desktop
   queue prompts are prefilled from the post; the web and desktop surfaces report
   provider/storage errors rather than silently presenting a blank or successful
-  result. Hosted web generation uses the GitHub Actions runner when configured.
+  result. Automatic and manual generation use the configured provider fallback
+  chain, including Cloudflare Workers AI, Together, Pollinations, and compatible
+  custom APIs. Hosted web generation uses the GitHub Actions runner when configured.
 - **Custom AI providers:** custom provider entries require a valid base URL.
   Multiple provider entries can coexist; configure image-purpose entries
   separately from text providers.
+- **Live-event studio:** the homepage ticker uses the shared marquee animation and
+  falls back to event title/summary text when there are no live updates.
 
 ## Editorial & safety
 
@@ -407,8 +428,9 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 - PII (phone numbers, national IDs, street addresses) is redacted during rewrite.
 - Every post follows the rolling retention policy (`ARCHIVE_VISIBLE_DAYS` /
   `ARCHIVE_RETENTION_DAYS`).
-- Facebook content is scraped only for **non-personal, public** pages/blogs
-  (group pages, personal profiles, and private content are hard-blocked).
-  Logged-in scraping requires accepting Meta's ToS at first-run setup.
+- Facebook sources may be public Pages, public profiles, or public groups.
+  Recognized profile/group links are fetched without cookies; optional sessions
+  are only used to retry a Page login wall. Private content is out of scope and
+  CAPTCHA/checkpoint or other access challenges are not bypassed.
 
 Full editorial standard: [`docs/editorial-policy.md`](docs/editorial-policy.md).

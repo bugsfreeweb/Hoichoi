@@ -14,6 +14,7 @@ const p = aiHeroPrompt("রেলপথে বাধা", "রেল যোগ�
 assert.ok(p.includes("no text") && p.includes("no logos") && p.includes("no watermarks"), "bans text/logo/watermark");
 assert.ok(p.includes("never depict children"), "bans children");
 assert.ok(p.includes("never recognizable") || p.includes("NEVER recognizable"), "bans recognizable faces");
+assert.ok(p.includes("Hoichoi") && p.includes("red"), "uses Hoichoi's editorial brand palette");
 assert.ok(p.includes("রেলপথে বাধা"), "carries the article subject");
 assert.ok(p.includes("রেল যোগাযোগ"), "carries the summary");
 

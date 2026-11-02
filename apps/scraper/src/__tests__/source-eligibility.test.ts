@@ -10,8 +10,6 @@ const base = {
 assert.equal(sourceSkipReason({ ...base, platform: "news" }), null);
 assert.equal(sourceSkipReason({ ...base, platform: "magazine" }), null);
 assert.equal(sourceSkipReason({ ...base, platform: "facebook" }), null);
-assert.equal(sourceSkipReason({ ...base, platform: "facebook" }, { facebookSessionAvailable: false }), "Facebook session cookie is not configured");
-assert.equal(sourceSkipReason({ ...base, platform: "facebook" }, { facebookSessionAvailable: true }), null);
 assert.equal(sourceSkipReason({ ...base, page_url: null, platform: "news" }), "missing source URL");
 assert.equal(sourceSkipReason({ ...base, page_url: "null", platform: "facebook" }), "missing source URL");
 assert.equal(sourceSkipReason({ ...base, page_url: "ftp://example.com/feed.xml", platform: "news" }), "source URL must use http or https");

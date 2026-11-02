@@ -30,6 +30,7 @@ export default function StudioTemplate() {
   const [channel, setChannel] = useState(0);
   const [switched, setSwitched] = useState(false);
   const headlines = feed.updates.slice(0, 6).map((u) => u.title || u.body.slice(0, 80));
+  if (headlines.length === 0) headlines.push(ev.title, ev.summary);
   const loop = [...headlines, ...headlines];
 
   return (
@@ -85,7 +86,7 @@ export default function StudioTemplate() {
                 <span className="font-serif-bn text-[13px] font-black">{ev.status === "live" ? "সরাসরি" : "হাইলাইট"}</span>
               </div>
               <div className="relative flex flex-1 items-center overflow-hidden bg-ink text-paper">
-                <div className="marquee">
+                <div className="marquee-track">
                   {loop.map((h, i) => (
                     <span key={i} className="flex items-center gap-3 px-5 text-[13px] font-semibold whitespace-nowrap">
                       <span className="h-1 w-1 rotate-45 bg-[#d2202c]" /> {h}

@@ -78,6 +78,15 @@ export function ProviderForm() {
     setFetching(true);
     setFetchError("");
     setModels(null);
+    if (
+      form.providerKey === "custom" &&
+      form.purpose === "image" &&
+      /(?:cloudflare\.com|gen\.pollinations\.ai)/i.test(form.baseUrl)
+    ) {
+      setFetchError("এই API-তে chat model তালিকা নেই; নিচের image model ID হাতে লিখুন।");
+      setFetching(false);
+      return;
+    }
     try {
       const res = await fetch("/api/providers/models", {
         method: "POST",
@@ -134,6 +143,15 @@ export function ProviderForm() {
           onChange={(e) => setForm({ ...form, baseUrl: e.target.value })}
         />
       </label>
+      {form.providerKey === "custom" && form.purpose === "image" && (
+        <div className="border border-ink/15 bg-ink/[0.03] p-3 text-[11px] leading-relaxed text-ink-soft">
+          <p className="font-bold text-ink">ইমেজ API সেটআপ</p>
+          <p>Cloudflare Workers AI (free daily quota): Base URL `https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/ai/run`; model `@cf/black-forest-labs/flux-1-schnell`.</p>
+          <p className="mt-1">Together AI: Base URL `https://api.together.ai/v1`; model `black-forest-labs/FLUX.1-schnell` (usage billed).</p>
+          <p className="mt-1">Pollinations: Base URL `https://gen.pollinations.ai`; model `black-forest-labs/flux.1-schnell` (Pollen credits required). Perchance has no documented public image API, so it is not wired as an automatic provider.</p>
+          <p className="mt-1">Cloudflare has a limited free daily allocation; Together and Pollinations are usage-billed. Mark only eligible providers as Free-tier.</p>
+        </div>
+      )}
       <label className="block">
         <span className="text-[11px] font-bold uppercase text-ink-soft">
           API Key <span className="normal-case text-ink-soft/70">(optional override — রো-লে সংরক্ষিত হয়, এখানে সেট করলে vault/env-কে অগ্রাহ্য করে)</span>

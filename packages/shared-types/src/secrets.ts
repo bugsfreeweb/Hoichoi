@@ -99,7 +99,7 @@ export const SECRET_SPECS: SecretSpec[] = [
     name: "FB_SESSION_COOKIE",
     labelBn: "Facebook সেশন কুকি",
     purposeBn:
-      "উন্মুক্ত ফেসবুক পেজ স্ক্র্যাপ করার জন্য লগইন-সেশন। এটি না থাকলে স্ক্র্যাপার ফেসবুকে ঢুকতে পারে না।",
+      "ঐচ্ছিক লগইন-সেশন। স্ক্র্যাপার আগে কুকি ছাড়াই প্রকাশ্য পেজ/প্রোফাইল/গ্রুপ পড়ার চেষ্টা করে; Facebook login wall দেখালে Page source-এর জন্য কুকি ব্যবহার করা যায়।",
     requirement: "recommended",
     consumers: ["pipeline", "desktop"],
     vaultKey: "fb_session_cookie",
@@ -108,7 +108,8 @@ export const SECRET_SPECS: SecretSpec[] = [
       "Chrome-এ ফেসবুক লগইন করুন (আলাদা একটি ব্রাউজার প্রোফাইল ব্যবহার করুন)।",
       "DevTools খুলুন: F12 → Console ট্যাব।",
       "এই কোডটি পেস্ট করে Enter চাপুন:\n    copy(document.cookie)",
-      "ক্লিপবোর্ডে যা কপি হবে (c_user=...; xs=...; datr=...) সেটিই FB_SESSION_COOKIE।",
+      "ক্লিপবোর্ডে যা কপি হবে (c_user=...; xs=...; datr=...) সেটিই FB_SESSION_COOKIE; প্রতিটি name=value জোড়া আলাদা করে যোগ হবে।",
+      "এটি কেবল নিজের অনুমোদিত অ্যাকাউন্ট থেকে নিন। Private group/post সংগ্রহ করবেন না; CAPTCHA, checkpoint বা অন্য access restriction এড়ানোর চেষ্টা করবেন না।",
       "ফেসবুক সেশন কখনো শেয়ার, গিট-এ কমিট বা চ্যাটে পাঠাবেন না।",
     ],
     dashboardUrl: "https://facebook.com",
@@ -116,7 +117,7 @@ export const SECRET_SPECS: SecretSpec[] = [
     envExample: 'FB_SESSION_COOKIE="c_user=10000xxx; xs=AbCdEf...; datr=..."',
     costNoteBn: "ফ্রি। তবে ফেসবুক সেশন লক হলে নতুন লগইন দিয়ে আবার নিতে হয়।",
     ifMissingBn:
-      "সব সোর্স স্ক্র্যাপ ব্যর্থ হবে; পাইপলাইন শূন্য পোস্ট নিয়ে শেষ হবে।",
+      "সমস্যা নয়: স্ক্র্যাপার কুকি ছাড়াই public content চেষ্টা করবে। কিছু পেজে Facebook login wall থাকলে শুধু সেই Page source ব্যর্থ হতে পারে।",
   },
   {
     name: "LLM_PROVIDER_KEY",

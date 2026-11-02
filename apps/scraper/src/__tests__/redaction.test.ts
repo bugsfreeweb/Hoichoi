@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { redactText } from "../rewrite";
 import { isBengaliScript } from "@hoichoi/llm";
-import { isPersonalProfileUrl, isAllowedPageUrl, fbPostKey } from "../facebook";
+import { isPersonalProfileUrl, isAllowedPageUrl, fbPostKey, parseFacebookCookieHeader } from "../facebook";
 import { canonicalPostUrl } from "../dedup";
 import { imagePhash, hammingDistance, isNearDuplicate } from "../hash";
 import sharp from "sharp";
@@ -24,12 +24,27 @@ function check(name: string, fn: () => void | Promise<void>) {
   );
 }
 
-check("personal profile URLs are blocked (the hard rule)", () => {
-  assert.equal(isPersonalProfileUrl("https://www.facebook.com/photo.php?fbid=123"), true);
+check("public Facebook page, profile, and group source URLs are supported", () => {
+  assert.equal(isPersonalProfileUrl("https://www.facebook.com/photo.php?fbid=123"), false);
   assert.equal(isPersonalProfileUrl("https://www.facebook.com/profile.php?id=1000123"), true);
   assert.equal(isAllowedPageUrl("https://www.facebook.com/photo.php?fbid=123"), false);
   assert.equal(isAllowedPageUrl("https://www.facebook.com/watch/?v=42"), false);
   assert.equal(isAllowedPageUrl("https://www.facebook.com/dhwaminfo"), true);
+  assert.equal(isAllowedPageUrl("https://www.facebook.com/profile.php?id=1000123"), true);
+  assert.equal(isAllowedPageUrl("https://www.facebook.com/groups/publicgroup"), true);
+  assert.equal(isAllowedPageUrl("https://example.com/dhwaminfo"), false);
+  assert.equal(isAllowedPageUrl("http://www.facebook.com/dhwaminfo"), false);
+  assert.equal(isPersonalProfileUrl("https://www.facebook.com/dhwaminfo"), false);
+});
+
+check("Facebook session cookie headers are split into valid cookie pairs", () => {
+  const cookies = parseFacebookCookieHeader("c_user=1000123; xs=abc=def; datr=xyz");
+  assert.deepEqual(cookies.map(({ name, value }) => ({ name, value })), [
+    { name: "c_user", value: "1000123" },
+    { name: "xs", value: "abc=def" },
+    { name: "datr", value: "xyz" },
+  ]);
+  assert.throws(() => parseFacebookCookieHeader("not a cookie"), /name=value pairs/);
 });
 
 check("bengali script detection", () => {

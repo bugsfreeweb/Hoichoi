@@ -159,6 +159,12 @@ export class OpenAICompatProvider implements LLMProvider {
   async generateImage(req: ImageGenRequest, signal?: AbortSignal): Promise<ImageGenResult> {
     const model = req.model?.trim() || this.row.model_name;
     const prompt = composeImagePrompt(req);
+    if (this.isCloudflareWorkersAi()) {
+      return this.generateCloudflareImage(model, prompt, signal);
+    }
+    if (this.isPollinations()) {
+      return this.generatePollinationsImage(model, prompt, signal);
+    }
     const body: Record<string, unknown> = {
       model,
       prompt,
@@ -168,8 +174,93 @@ export class OpenAICompatProvider implements LLMProvider {
     if (req.style) body.style = req.style;
     if (req.quality) body.quality = req.quality;
     const tryB64 = !/gpt-image/i.test(model);
-    if (tryB64) body.response_format = "b64_json";
+    if (tryB64) body.response_format = this.isTogether() ? "base64" : "b64_json";
     return this.postImageUntilOk(this.imageCandidates(), body, { model, prompt }, signal);
+  }
+
+  private isCloudflareWorkersAi(): boolean {
+    try {
+      const url = new URL(this.baseUrl);
+      return url.hostname === "api.cloudflare.com" && /\/client\/v4\/accounts\/[^/]+\/ai\/run(?:\/|$)/i.test(url.pathname);
+    } catch {
+      return false;
+    }
+  }
+
+  private isPollinations(): boolean {
+    try {
+      return new URL(this.baseUrl).hostname === "gen.pollinations.ai";
+    } catch {
+      return false;
+    }
+  }
+
+  private isTogether(): boolean {
+    try {
+      return new URL(this.baseUrl).hostname === "api.together.ai";
+    } catch {
+      return false;
+    }
+  }
+
+  private async generateCloudflareImage(
+    model: string,
+    prompt: string,
+    signal?: AbortSignal,
+  ): Promise<ImageGenResult> {
+    const modelPath = model
+      .split("/")
+      .map((segment) => encodeURIComponent(segment).replace(/%40/gi, "@"))
+      .join("/");
+    const basePath = this.baseUrl.replace(/\/+$/, "");
+    const url = basePath.endsWith(`/${modelPath}`) ? basePath : `${basePath}/${modelPath}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: this.headers,
+      signal,
+      body: JSON.stringify({ prompt, steps: 4 }),
+    });
+    if (!res.ok) classifyStatus(res.status, await res.text());
+    const raw = (await res.json()) as {
+      result?: { image?: string };
+      errors?: Array<{ message?: string }>;
+    };
+    const encoded = raw.result?.image;
+    if (!encoded) {
+      throw new ProviderError("bad_output", raw.errors?.map((error) => error.message).filter(Boolean).join("; ") || "Cloudflare response contained no image");
+    }
+    const bytes = decodeBase64(encoded);
+    return {
+      bytes,
+      contentType: sniffImageMime(bytes),
+      provider: this.name,
+      model,
+      prompt,
+    };
+  }
+
+  private async generatePollinationsImage(
+    model: string,
+    prompt: string,
+    signal?: AbortSignal,
+  ): Promise<ImageGenResult> {
+    const base = this.baseUrl.replace(/\/+$/, "");
+    const url = new URL(`${base}/image/${encodeURIComponent(prompt)}`);
+    url.searchParams.set("model", model);
+    const res = await fetch(url, { headers: this.headers, signal });
+    if (!res.ok) classifyStatus(res.status, await res.text());
+    const contentType = res.headers.get("content-type") ?? "";
+    if (!contentType.startsWith("image/")) {
+      throw new ProviderError("bad_output", `Pollinations returned ${contentType || "an unknown content type"}, not an image`);
+    }
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    return {
+      bytes,
+      contentType: contentType.split(";")[0]!,
+      provider: this.name,
+      model,
+      prompt,
+    };
   }
 
   /** The `/images/generations` analog of {@link chatCandidates}. */
@@ -244,7 +335,10 @@ export class OpenAICompatProvider implements LLMProvider {
       return { bytes, contentType: sniffImageMime(bytes), provider: this.name, model: meta.model, prompt: meta.prompt };
     }
     if (typeof first.url === "string" && first.url) {
-      const res = await fetch(first.url, { signal: AbortSignal.timeout(60_000) });
+      const res = await fetch(first.url, {
+        headers: { "user-agent": "Hoichoi/1.1 image-generator" },
+        signal: AbortSignal.timeout(60_000),
+      });
       if (!res.ok) throw new ProviderError("network", `image download failed: ${res.status}`);
       const bytes = new Uint8Array(await res.arrayBuffer());
       const ct = res.headers.get("content-type");

@@ -74,7 +74,7 @@ export default function Collector({
   }, []);
 
   useEffect(() => {
-    setLive(logs.slice(-400).map((l) => ({ ...parseLogLine(l), line: l })));
+    setLive(logs.slice(-400).reverse().map((l) => ({ ...parseLogLine(l), line: l })));
   }, [logs]);
 
   useEffect(() => {

@@ -16,7 +16,7 @@ export default function Pipeline({ logs }: { logs: string[] }) {
   const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    box.current?.scrollTo({ top: box.current.scrollHeight });
+    box.current?.scrollTo({ top: 0 });
   }, [logs]);
 
   return (
@@ -42,7 +42,7 @@ export default function Pipeline({ logs }: { logs: string[] }) {
           </p>
         ) : (
           <ul>
-            {logs.map((l, i) => {
+            {logs.slice(-400).reverse().map((l, i) => {
               const m = l.match(STAGE);
               const stage = m?.[1] ?? "";
               const rest = l.slice(m?.[0].length ?? 0);

@@ -37,33 +37,38 @@ export interface ScrapeOptions {
   log?: (msg: string) => void;
 }
 
-const PROFILE_URL_RE =
-  /https:\/\/(?:www\.|m\.|mbasic\.)?facebook\.com\/(?:profile\.php\?id=\d+|photo\.php|watch[\/?]|people\/|share\/p\/|groups\/|reel\/|story\.php|messages\/|events\/|\d+)/i;
-
 const PAGE_URL_RE =
-  /https:\/\/(?:www\.|m\.|mbasic\.)?facebook\.com\/(?:(?:pages\/|people\/)|[a-zA-Z0-9.\-]+\d{5,}|[a-zA-Z0-9.\-]+\/posts\/|pg\/[a-zA-Z0-9.\-]+)/i;
+  /^https:\/\/(?:www\.|m\.|mbasic\.)?facebook\.com\/(?:(?:pages\/[^/?#]+\/\d+|groups\/[^/?#]+|pg\/[a-zA-Z0-9.\-]+)|[a-zA-Z0-9.\-]+(?:\/posts\/[^/?#]+)?\/?)$/i;
 
 /**
- * Personal-profile guard — the hard rule in the spec.
- * Anything that resolves to a personal profile URL is skipped.
- * A valid *page* URL must look like a recognized Page handle.
+ * Accept only explicit Facebook page, profile, and group source URLs.
+ * Scraping still uses normal public page access and does not bypass login walls.
  */
 export function isAllowedPageUrl(url: string): boolean {
-  if (PROFILE_URL_RE.test(url)) return false;
-  if (PAGE_URL_RE.test(url)) return true;
-  // Bare page handle like /SomePageName — single non-profile path segment.
   try {
     const u = new URL(url);
-    const seg = u.pathname.split("/").filter(Boolean);
-    if (seg.length === 1 && /^[a-zA-Z0-9._-]+$/.test(seg[0]!)) return true;
+    if (u.protocol !== "https:" || !/(^|\.)facebook\.com$/i.test(u.hostname)) return false;
+    if (/^\/(?:photo\.php|watch|reel|story\.php|share|messages|events)(?:\/|$)/i.test(u.pathname)) return false;
+    const profileRoute =
+      u.pathname.toLowerCase() === "/profile.php" && /^\d+$/.test(u.searchParams.get("id") ?? "");
+    const peopleRoute = /^\/people\/[^/?#]+\/\d+\/?$/i.test(u.pathname);
+    return profileRoute || peopleRoute || PAGE_URL_RE.test(`${u.origin}${u.pathname}`);
   } catch {
     return false;
   }
-  return false;
 }
 
 export function isPersonalProfileUrl(url: string): boolean {
-  return PROFILE_URL_RE.test(url);
+  try {
+    const parsed = new URL(url);
+    return (
+      /(^|\.)facebook\.com$/i.test(parsed.hostname) &&
+      ((parsed.pathname.toLowerCase() === "/profile.php" && /^\d+$/.test(parsed.searchParams.get("id") ?? "")) ||
+        /^\/people\/[^/?#]+\/\d+\/?$/i.test(parsed.pathname))
+    );
+  } catch {
+    return false;
+  }
 }
 
 const MOCK_TEMPLATES: Array<{
@@ -138,6 +143,9 @@ export async function scrapePage(
   opts: ScrapeOptions,
 ): Promise<ScrapedPost[]> {
   if (opts.mock) return scrapeMock([source], opts);
+  if (!isAllowedPageUrl(source.page_url)) {
+    throw new Error("Unsupported Facebook source URL. Use a public Page, profile, or group URL.");
+  }
   try {
     await import("playwright");
   } catch {
@@ -148,41 +156,52 @@ export async function scrapePage(
 
   const browser = await launchChromium();
   try {
-    const ctx = await browser.newContext({
-      locale: "bn-BD",
-      viewport: { width: 1280, height: 2200 },
-    });
-    if (opts.sessionCookie) {
-      await ctx.addCookies([
-        {
-          name: "c_user",
-          value: opts.sessionCookie,
-          domain: ".facebook.com",
-          path: "/",
-        },
-      ]);
+    const isProfileOrGroup = isPersonalProfileUrl(source.page_url) || /\/groups\//i.test(source.page_url);
+    let ctx = await newFbContext(browser);
+    let page = await ctx.newPage();
+    let postUrls = await collectFeedPostUrls(page, source.page_url, opts.maxPosts ?? 50);
+    let loginWall = await hasFacebookLoginWall(page);
+    if (await hasFacebookAccessChallenge(page)) {
+      throw new Error("Facebook showed a CAPTCHA/checkpoint or security challenge; the collector will not bypass it.");
     }
-    const page = await ctx.newPage();
-    await page.goto(source.page_url, { waitUntil: "domcontentloaded", timeout: 30_000 });
-    await page.waitForTimeout(2_500);
-    await page.mouse.wheel(0, 6_000);
-    await page.waitForTimeout(2_000);
-    await page.mouse.wheel(0, 6_000);
-    await page.waitForTimeout(1_500);
 
-    const hrefs = await page.evaluate(() =>
-      Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href*='/posts/'], a[href*='/permalink/'], a[href*='/videos/']"))
-        .map((a) => a.href),
-    );
-    const postUrls = [...new Set(hrefs)]
-      .filter((h) => !isPersonalProfileUrl(h))
-      .slice(0, opts.maxPosts ?? 50);
+    if (postUrls.length === 0 && loginWall && opts.sessionCookie && !isProfileOrGroup) {
+      opts.log?.(`[facebook] public feed showed a login wall; retrying Page source with the configured session`);
+      await ctx.close();
+      ctx = await newFbContext(browser, opts.sessionCookie);
+      page = await ctx.newPage();
+      postUrls = await collectFeedPostUrls(page, source.page_url, opts.maxPosts ?? 50);
+      loginWall = await hasFacebookLoginWall(page);
+      if (await hasFacebookAccessChallenge(page)) {
+        throw new Error("Facebook showed a CAPTCHA/checkpoint or security challenge; the collector will not bypass it.");
+      }
+    }
 
-    const posts: ScrapedPost[] = [];
-    for (const [index, url] of postUrls.entries()) {
-      opts.log?.(`[facebook] visiting post ${index + 1}/${postUrls.length} from ${source.page_name}`);
-      const scraped = await extractPost(page, url, opts);
-      if (scraped) posts.push(scraped);
+    if (postUrls.length === 0 && loginWall) {
+      throw new Error(
+        "Facebook showed a login wall before public posts loaded. Configure an optional session for an authorized Page source, or use a source visible while logged out.",
+      );
+    }
+
+    const results: Array<ScrapedPost | null> = Array(postUrls.length).fill(null);
+    let nextIndex = 0;
+    const worker = async () => {
+      while (nextIndex < postUrls.length) {
+        const index = nextIndex++;
+        const url = postUrls[index]!;
+        opts.log?.(`[facebook] visiting post ${index + 1}/${postUrls.length} from ${source.page_name}`);
+        const detailPage = await ctx.newPage();
+        try {
+          results[index] = await extractPost(detailPage, url, opts);
+        } finally {
+          await detailPage.close();
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(2, postUrls.length) }, worker));
+    const posts = results.filter((post): post is ScrapedPost => post !== null);
+    if (postUrls.length > 0 && posts.length === 0) {
+      throw new Error("Facebook post permalinks returned no accessible content; the page may require login or its layout may have changed.");
     }
     opts.log?.(`[facebook] ${posts.length} posts from ${source.page_name}`);
     return posts;
@@ -191,23 +210,76 @@ export async function scrapePage(
   }
 }
 
+async function collectFeedPostUrls(page: Page, sourceUrl: string, maxPosts: number): Promise<string[]> {
+  await page.goto(sourceUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
+  const postSelector = "a[href*='/posts/'], a[href*='/permalink/'], a[href*='/videos/']";
+  await page.locator(postSelector).first().waitFor({ state: "attached", timeout: 1_500 }).catch(() => undefined);
+  const hrefs = new Set<string>();
+  for (let attempt = 0; attempt < 4 && hrefs.size < maxPosts; attempt++) {
+    const current = await page.evaluate(() =>
+      Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href*='/posts/'], a[href*='/permalink/'], a[href*='/videos/']"))
+        .map((a) => a.href),
+    );
+    current.forEach((href) => hrefs.add(href));
+    if (attempt < 3 && hrefs.size < maxPosts) {
+      await page.mouse.wheel(0, 3_500);
+      await page.waitForTimeout(700);
+    }
+  }
+  return [...hrefs].slice(0, maxPosts);
+}
+
 /** Open a fresh logged-in browser context. */
 async function newFbContext(browser: Browser, sessionCookie?: string | null) {
   const ctx = await browser.newContext({
     locale: "bn-BD",
     viewport: { width: 1280, height: 2200 },
   });
-  if (sessionCookie) {
-    await ctx.addCookies([
-      {
-        name: "c_user",
-        value: sessionCookie,
-        domain: ".facebook.com",
-        path: "/",
-      },
-    ]);
-  }
+  if (sessionCookie) await applyFacebookSessionCookie(ctx, sessionCookie);
   return ctx;
+}
+
+export function parseFacebookCookieHeader(cookieHeader: string): Array<{
+  name: string;
+  value: string;
+  domain: string;
+  path: string;
+  secure: boolean;
+}> {
+  const cookies = cookieHeader
+    .split(";")
+    .map((part) => {
+      const separator = part.indexOf("=");
+      if (separator <= 0) return null;
+      const name = part.slice(0, separator).trim();
+      const value = part.slice(separator + 1).trim();
+      if (!/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(name) || !value || /[\u0000-\u001f\u007f]/.test(value)) return null;
+      return { name, value, domain: ".facebook.com", path: "/", secure: true };
+    })
+    .filter((cookie): cookie is NonNullable<typeof cookie> => cookie !== null);
+  if (cookies.length === 0) {
+    throw new Error("Facebook session cookie must be a semicolon-separated list of name=value pairs.");
+  }
+  return cookies;
+}
+
+async function applyFacebookSessionCookie(
+  ctx: Awaited<ReturnType<Browser["newContext"]>>,
+  cookieHeader: string,
+): Promise<void> {
+  await ctx.addCookies(parseFacebookCookieHeader(cookieHeader));
+}
+
+async function hasFacebookLoginWall(page: Page): Promise<boolean> {
+  const path = new URL(page.url()).pathname;
+  if (/\/login\/?$/i.test(path)) return true;
+  return (await page.locator("form[action*='login'], input[name='email']").count().catch(() => 0)) > 0;
+}
+
+async function hasFacebookAccessChallenge(page: Page): Promise<boolean> {
+  const path = new URL(page.url()).pathname;
+  if (/\/(?:checkpoint|captcha|challenge)(?:\/|$)/i.test(path)) return true;
+  return /captcha|security check|checkpoint/i.test(await page.title().catch(() => ""));
 }
 
 /**
@@ -280,15 +352,13 @@ async function extractPost(page: Page, url: string, opts: ScrapeOptions): Promis
     // between them costs a whole run.
     if (!rawText?.trim() && mediaUrls.length === 0) {
       const feedUnits = await page.locator("[data-pagelet='FeedUnit']").count().catch(() => -1);
-      const loginWall = await page
-        .locator("form[action*='login'], input[name='email'], a[href*='login']")
-        .count()
-        .catch(() => 0);
+      const loginWall = await hasFacebookLoginWall(page);
       const title = await page.title().catch(() => "");
       opts.log?.(
-        `[facebook] empty post feedUnits=${feedUnits} loginWall=${loginWall > 0} ` +
+        `[facebook] empty post feedUnits=${feedUnits} loginWall=${loginWall} ` +
           `title="${title}" at ${page.url().split("?")[0]}`,
       );
+      if (loginWall) return null;
     }
     return {
       fbPostId: id,

@@ -20,7 +20,7 @@ import { makeSlug, rewritePost } from "./rewrite";
 import { captureScreenshot } from "./screenshot";
 import { classifyContent, sourceCategoryCandidates } from "./classify";
 import { uploadRemote } from "./storage";
-import { aiHeroEligible, generateAIHero } from "./ai-image";
+import { aiHeroEligible, generateAIHero, hasAIImageProvider } from "./ai-image";
 import { fetchRssPosts, isFeedPlatform } from "./rss";
 
 /** Shared fetch options for CDN media: some providers 403 on the bare Node
@@ -51,7 +51,6 @@ function mediaFetchInit(timeoutMs = 20_000): RequestInit {
 
 export function sourceSkipReason(
   row: Record<string, unknown>,
-  options: { facebookSessionAvailable?: boolean } = {},
 ): string | null {
   const id = typeof row.id === "string" ? row.id.trim() : "";
   const name = typeof row.page_name === "string" ? row.page_name.trim() : "";
@@ -66,10 +65,6 @@ export function sourceSkipReason(
   if (platform !== "facebook" && platform !== "news" && platform !== "magazine") {
     return `unsupported platform (${platform})`;
   }
-  if (platform === "facebook" && options.facebookSessionAvailable === false) {
-    return "Facebook session cookie is not configured";
-  }
-
   try {
     const url = new URL(pageUrl);
     if (url.protocol !== "http:" && url.protocol !== "https:") return "source URL must use http or https";
@@ -332,11 +327,28 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
   const rewriteTemperature = Math.min(1, Math.max(0, Number(setRow.llm_temperature ?? 0.3)));
   // Fact-gate threshold as a whole percent, defaulting to the historical 90.
   const factGate = Math.min(100, Math.max(0, Number(setRow.fact_gate ?? 90)));
-  // AI fallback hero images: pipeline-side flag (default on) AND a Gemini key.
+  // AI fallback hero images: enabled unless the operator turned them off.
   const appCfg = parseAppConfig(String(setRow.app_config_json ?? ""));
-  const aiHeroEnabled = Boolean(process.env.GOOGLE_API_KEY) && appCfg.ai_hero_images !== false;
+  const aiHeroEnabled = appCfg.ai_hero_images !== false;
+  let aiHeroProviderAvailable = false;
+  if (aiHeroEnabled) {
+    try {
+      aiHeroProviderAvailable = await hasAIImageProvider();
+      if (!aiHeroProviderAvailable) {
+        log("[ai-img] automatic image generation is on, but no active image provider with a key is configured");
+      }
+    } catch (err) {
+      const message = `[ai-img] provider lookup failed: ${(err as Error).message}`;
+      stats.errors.push(message);
+      log(message);
+    }
+  }
 
   const sessionCookie = process.env.FB_SESSION_COOKIE?.trim() || null;
+  const configuredRequestDelay = Number(process.env.SCRAPE_REQUEST_DELAY_MS);
+  const requestDelayMs = Number.isSafeInteger(configuredRequestDelay)
+    ? Math.max(500, Math.min(10_000, configuredRequestDelay))
+    : 1_000;
 
   // Sources
   const srcRes = await client.execute(
@@ -345,7 +357,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
   const eligibleSources: Source[] = [];
   for (const raw of srcRes.rows) {
     const row = raw as Record<string, unknown>;
-    const reason = sourceSkipReason(row, { facebookSessionAvailable: Boolean(sessionCookie) });
+    const reason = sourceSkipReason(row);
     if (reason) {
       stats.sourcesSkipped++;
       const sourceName = typeof row.page_name === "string" && row.page_name.trim() ? row.page_name.trim() : String(row.id ?? "unknown");
@@ -393,11 +405,14 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           log,
         });
       } else {
+        if (!sessionCookie) {
+          log(`[facebook] trying public content without a session cookie · ${source.page_name}`);
+        }
         scraped = await scrapePage(source, {
           sessionCookie,
           maxPosts: opts.maxPosts ?? 50,
           mock: opts.mock,
-          requestDelayMs: 3000,
+          requestDelayMs,
           log,
         });
       }
@@ -617,11 +632,13 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       if (
         media.kind === "none" &&
         aiHeroEnabled &&
+        aiHeroProviderAvailable &&
         aiHeroEligible(source.category) &&
         (sp.rawText ?? "").trim().length >= 20
       ) {
         try {
-          const aiRel = await generateAIHero({ title: source.page_name, summary: sp.rawText ?? "", log });
+          const articleTitle = sp.rawText?.split(/[.!?।\n]/, 1)[0]?.slice(0, 160) || source.page_name;
+          const aiRel = await generateAIHero({ title: articleTitle, summary: sp.rawText ?? "", log });
           if (!aiRel) log("[ai-img] fallback complete — no image");
           if (aiRel) {
             media.kind = "image";
@@ -962,7 +979,13 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
     ],
   });
 
-  log(`\n[done] ${JSON.stringify(stats, null, 2)}`);
+  const durationSeconds = Math.max(0, Math.round((Date.parse(finished) - Date.parse(started)) / 1000));
+  log(
+    `[done] ${finalStatus} · sources=${stats.sources} skipped=${stats.sourcesSkipped} failed=${stats.sourcesFailed} ` +
+      `scraped=${stats.scraped} rewritten=${stats.rewritten} published=${stats.published} ` +
+      `review=${stats.pendingReview} duplicates=${stats.duplicatesBlocked} errors=${stats.errors.length} duration=${durationSeconds}s`,
+  );
+  log(`[done] details: ${JSON.stringify(stats)}`);
   return stats;
 }
 
