@@ -27,6 +27,20 @@ export interface ImageResolverOptions {
   probeTimeoutMs?: number;
 }
 
+/**
+ * True when a provider legitimately runs without an API key.
+ *
+ * `ollama` is a local server (key only when auth is enabled) and
+ * Pollinations' image endpoint is anonymous by design. Treating these as
+ * "key missing" is what made the image chain report "no active provider" even
+ * though a usable free backend was configured.
+ */
+export function providerNeedsKey(row: LLMProviderRow): boolean {
+  if (row.provider_key === "ollama") return false;
+  const url = row.base_url ?? "";
+  return !/gen\.pollinations\.ai|image\.pollinations\.ai/i.test(url);
+}
+
 /** Resolver for image-generation providers (purpose='image'). */
 export class ImageResolver {
   private probed = new Set<string>();
@@ -61,7 +75,7 @@ export class ImageResolver {
     const skipped: string[] = [];
     for (const ap of active) {
       const key = this.resolveKey(ap.row);
-      if (!key && ap.provider.providerKey !== "ollama") {
+      if (!key && providerNeedsKey(ap.row)) {
         skipped.push(`${ap.row.display_name}: no key for ${ap.row.api_key_env_var}`);
         continue;
       }
@@ -118,7 +132,7 @@ export async function listImageProviders(opts: { keyStore?: KeyStore } = {}): Pr
       Boolean(row.api_key?.trim()) ||
       Boolean(opts.keyStore?.(row.api_key_env_var)?.trim()) ||
       Boolean(process.env[row.api_key_env_var]?.trim()) ||
-      row.provider_key === "ollama";
+      !providerNeedsKey(row);
     return {
       id: row.id,
       displayName: row.display_name,
@@ -169,15 +183,21 @@ export async function generateImage(
   const errors: string[] = [];
   for (const ap of candidates) {
     const key = resolver.resolveKey(ap.row);
-    if (!key && ap.row.provider_key !== "ollama") {
+    if (!key && providerNeedsKey(ap.row)) {
       errors.push(`${ap.row.display_name}: key missing (${ap.row.api_key_env_var})`);
       continue;
     }
     try {
       return await ap.provider.generateImage!(opts, signal);
     } catch (err) {
+      // Keep walking the chain on EVERY failure, including `bad_output`.
+      // Breaking early here meant one mis-configured row (e.g. a chat model
+      // saved with purpose=image, whose /images/generations 404s) aborted the
+      // whole chain before the working providers below it were ever tried —
+      // the operator saw "ছবি তৈরি ব্যর্থ" even though a usable provider was
+      // configured one row down.
       errors.push(`${ap.row.display_name}: ${(err as Error).message}`);
-      if (err instanceof ProviderError && err.kind === "bad_output") break;
+      continue;
     }
   }
   throw new ProviderError("network", `ছবি তৈরি ব্যর্থ [${errors.join(" | ")}]`);

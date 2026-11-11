@@ -74,6 +74,28 @@ try {
   assert.match(pollinationsRequests[0]?.authorization ?? "", /^Bearer .+/);
   assert.deepEqual(Buffer.from(pollinationsResult.bytes), png);
 
+  // Classic (keyless) Pollinations host: /prompt/<text>?model=…&width=&height=
+  const classicRequests: Array<{ url: URL; authorization: string | null }> = [];
+  globalThis.fetch = async (input, init) => {
+    classicRequests.push({
+      url: new URL(String(input)),
+      authorization: new Headers(init?.headers).get("authorization") ?? null,
+    });
+    return new Response(png, { headers: { "content-type": "image/jpeg" } });
+  };
+  const classic = new OpenAICompatProvider({
+    row: { ...row, base_url: "https://image.pollinations.ai", model_name: "flux" },
+    key: null,
+    defaultBaseUrl: "",
+  });
+  await classic.generateImage({ prompt: "A train station", size: "1024x576" });
+  assert.equal(classicRequests[0]?.url.hostname, "image.pollinations.ai");
+  assert.match(classicRequests[0]?.url.pathname ?? "", /^\/prompt\/.+/);
+  assert.equal(classicRequests[0]?.url.searchParams.get("model"), "flux");
+  assert.equal(classicRequests[0]?.url.searchParams.get("width"), "1024");
+  assert.equal(classicRequests[0]?.url.searchParams.get("height"), "576");
+  assert.equal(classicRequests[0]?.authorization, null, "keyless host must not send a bearer header");
+
   const togetherRequests: Array<{ url: string; body: Record<string, unknown> }> = [];
   globalThis.fetch = async (input, init) => {
     togetherRequests.push({

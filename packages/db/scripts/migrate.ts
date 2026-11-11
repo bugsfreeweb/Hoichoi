@@ -1,6 +1,3 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { fileURLToPath } from "node:url";
 import {
   applyMigration,
   getClient,
@@ -21,29 +18,26 @@ import {
   ensureLiveEventTables,
 } from "../src/client";
 import { seedDefaults } from "../src/seed";
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-const migrationsDir = path.join(here, "..", "migrations");
+import { listMigrations } from "../src/migrations";
 
 async function main() {
   const client = getClient();
-  const files = fs
-    .readdirSync(migrationsDir)
-    .filter((f) => f.endsWith(".sql"))
-    .sort();
+  // Migrations come from the embedded module (see src/migrations.ts), so this
+  // works from a Vercel build step, a bundled desktop runner, or a checkout
+  // with no `packages/db/migrations` directory on disk.
+  const files = listMigrations();
 
   const vecRows = await client.execute("SELECT name FROM pragma_module_list() WHERE name = 'vec0'");
   const vecSupported = vecRows.rows.length > 0;
 
   console.log(`hoichoi:db · database: ${databaseUrl()}`);
   for (const file of files) {
-    if (file.includes("vec") && !vecSupported) {
-      console.log(`  skipped  ${file} (vec0 module not available on this build)`);
+    if (file.name.includes("vec") && !vecSupported) {
+      console.log(`  skipped  ${file.name}.sql (vec0 module not available on this build)`);
       continue;
     }
-    const sqlText = fs.readFileSync(path.join(migrationsDir, file), "utf-8");
-    const applied = await applyMigration(client, file.replace(/\.sql$/, ""), sqlText);
-    console.log(`  ${applied ? "applied " : "skipped "} ${file}`);
+    const applied = await applyMigration(client, file.name, file.sql);
+    console.log(`  ${applied ? "applied " : "skipped "} ${file.name}.sql`);
   }
   const res = await client.execute("SELECT count(*) AS n FROM _migrations");
   console.log(`hoichoi:db · ${res.rows[0]?.n} migrations recorded`);

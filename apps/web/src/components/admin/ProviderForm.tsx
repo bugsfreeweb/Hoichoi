@@ -148,7 +148,7 @@ export function ProviderForm() {
           <p className="font-bold text-ink">ইমেজ API সেটআপ</p>
           <p>Cloudflare Workers AI (free daily quota): Base URL `https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/ai/run`; model `@cf/black-forest-labs/flux-1-schnell`.</p>
           <p className="mt-1">Together AI: Base URL `https://api.together.ai/v1`; model `black-forest-labs/FLUX.1-schnell` (usage billed).</p>
-          <p className="mt-1">Pollinations: Base URL `https://gen.pollinations.ai`; model `black-forest-labs/flux.1-schnell` (Pollen credits required). Perchance has no documented public image API, so it is not wired as an automatic provider.</p>
+          <p className="mt-1">Pollinations: Base URL `https://image.pollinations.ai`; model `flux` (key-free, ~1 image / 45s per IP) — অথবা কী থাকলে `https://gen.pollinations.ai`. Perchance has no documented public image API, so it is not wired as an automatic provider.</p>
           <p className="mt-1">Cloudflare has a limited free daily allocation; Together and Pollinations are usage-billed. Mark only eligible providers as Free-tier.</p>
         </div>
       )}

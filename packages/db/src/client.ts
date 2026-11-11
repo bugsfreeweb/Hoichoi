@@ -4,6 +4,7 @@ import * as path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { seedDefaults } from "./seed";
 import { CATEGORY_SEED, GENERAL_CATEGORY_SEED, pickCategoryDot } from "./rows";
+import { baseSchemaSql } from "./migrations";
 
 let cached: Client | null = null;
 let cachedUrl: string | null = null;
@@ -738,16 +739,17 @@ let lastSchemaSig: string | null = null;
  * `process.env` currently points at (e.g. the `sync` target client); without
  * it the signature would be computed from the live env and wrongly skip/fire
  * against the local database.
+ *
+ * The base schema comes from `./migrations`, which inlines the SQL. Reading
+ * `001_init.sql` off disk was the reason "add provider" in the hosted admin
+ * died with `ENOENT .../packages/db/migrations/001_init.sql`: a Vercel
+ * function bundle does not contain the monorepo's source files.
  */
 export async function ensureSchema(client: Client, externalUrl?: string): Promise<void> {
   const override = process.env.HOICHOI_MIGRATIONS_DIR;
   const sig = `${externalUrl ?? resolveDatabaseUrl()}::${override ?? ""}`;
   if (lastSchemaSig === sig) return;
-  const resolvedDir = override
-    ? override
-    : path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations");
-  const sqlText = fs.readFileSync(path.join(resolvedDir, "001_init.sql"), "utf-8");
-  await applyMigration(client, "001_init", sqlText);
+  await applyMigration(client, "001_init", baseSchemaSql());
   await ensureBrandingColumns(client);
   await ensureAdSlotColumns(client);
   await ensureAppConfigColumn(client);
@@ -1282,6 +1284,22 @@ export async function ensureProviderMultiKey(client: Client): Promise<void> {
  * Extends the free-first fallback chain on existing databases (seedDefaults only
  * inserts on fresh DBs). INSERT OR IGNORE is idempotent via the provider_key
  * unique index; the manifest repair only touches an obviously-broken custom row.
+ *
+ * Also seeds the IMAGE-purpose chain (`purpose = 'image'`). Without these rows
+ * every image feature was dead on arrival: the manual generator and the
+ * pipeline's automatic AI hero both filter on `purpose = 'image'`, so a
+ * database with the full set of text providers and every API key in
+ * Secrets/GitHub still answered "কোনো সক্রিয় ছবি-প্রোভাইডার নেই".
+ *
+ * Order is free-first:
+ *   1. Google Gemini 2.5 Flash Image (`GOOGLE_API_KEY`, free tier)
+ *   2. Pollinations (`custom`, no key needed) — always-available free fallback
+ *   3. OpenAI GPT Image 1 (`OPENAI_API_KEY`)
+ * The anonymous Pollinations route serves one image per ~45s per IP, so it is
+ * deliberately placed after the keyed free provider; it only kicks in when the
+ * keyed ones are missing or fail.
+ * A provider that fails falls through to the next one, so a missing/revoked key
+ * never blocks the remaining chain.
  */
 export async function ensureRuntimeProviders(client: Client): Promise<void> {
   await client.executeMultiple(`
@@ -1309,8 +1327,30 @@ VALUES
   ('prov-manifest-ai', 'custom', 'Manifest AI',
    'https://app.manifest.build/v1', 'manifest/auto',
    'MANIFEST_API_KEY', 8, 1, 0, 1, 0,
+   strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  ('prov-pollinations-image', 'custom', 'Pollinations (keyless)',
+   'https://image.pollinations.ai', 'flux',
+   'POLLINATIONS_API_KEY', 9, 1, 1, 0, 0,
+   strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  ('prov-google-image', 'google', 'Google Gemini Image',
+   NULL, 'gemini-2.5-flash-image',
+   'GOOGLE_API_KEY', 2, 1, 1, 0, 0,
+   strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  ('prov-openai-image', 'openai', 'OpenAI GPT Image',
+   'https://api.openai.com/v1', 'gpt-image-1',
+   'OPENAI_API_KEY', 3, 1, 0, 0, 0,
    strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 `);
+  // Image rows are seeded with purpose = 'image'. A DB created before the
+  // purpose column existed defaults every row to 'text', and INSERT OR IGNORE
+  // would leave an already-present image row mislabelled, so normalise by id.
+  await client.execute(`
+    UPDATE llm_providers
+      SET purpose = 'image',
+          supports_rewrite = 0,
+          updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+      WHERE id IN ('prov-pollinations-image', 'prov-google-image', 'prov-openai-image')
+  `);
   await client.execute(`
     UPDATE llm_providers
       SET base_url = COALESCE(NULLIF(base_url, ''), 'https://app.manifest.build/v1'),
@@ -1321,6 +1361,7 @@ VALUES
           priority = 8,
           updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
       WHERE provider_key = 'custom'
+        AND purpose = 'text'
         AND model_name LIKE 'manifest%'
   `);
 }

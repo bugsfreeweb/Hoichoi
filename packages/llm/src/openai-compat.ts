@@ -162,8 +162,9 @@ export class OpenAICompatProvider implements LLMProvider {
     if (this.isCloudflareWorkersAi()) {
       return this.generateCloudflareImage(model, prompt, signal);
     }
-    if (this.isPollinations()) {
-      return this.generatePollinationsImage(model, prompt, signal);
+    const pollinations = this.pollinationsFlavor();
+    if (pollinations) {
+      return this.generatePollinationsImage(pollinations, model, prompt, req.size, signal);
     }
     const body: Record<string, unknown> = {
       model,
@@ -187,11 +188,23 @@ export class OpenAICompatProvider implements LLMProvider {
     }
   }
 
-  private isPollinations(): boolean {
+  /**
+   * Which Pollinations endpoint family this base URL points at.
+   *
+   * Pollinations moved from the anonymous `image.pollinations.ai/prompt/<text>`
+   * route to `gen.pollinations.ai/image/<text>`, which now requires a pollen
+   * key (401 without one). Both shapes are still served, so the provider keeps
+   * supporting either — the keyless default in the seed uses the classic host,
+   * and an operator who buys a key can point the same row at `gen`.
+   */
+  private pollinationsFlavor(): "gen" | "classic" | null {
     try {
-      return new URL(this.baseUrl).hostname === "gen.pollinations.ai";
+      const host = new URL(this.baseUrl).hostname;
+      if (host === "gen.pollinations.ai") return "gen";
+      if (host === "image.pollinations.ai") return "classic";
+      return null;
     } catch {
-      return false;
+      return null;
     }
   }
 
@@ -240,13 +253,23 @@ export class OpenAICompatProvider implements LLMProvider {
   }
 
   private async generatePollinationsImage(
+    flavor: "gen" | "classic",
     model: string,
     prompt: string,
+    size?: string,
     signal?: AbortSignal,
   ): Promise<ImageGenResult> {
     const base = this.baseUrl.replace(/\/+$/, "");
-    const url = new URL(`${base}/image/${encodeURIComponent(prompt)}`);
+    const segment = flavor === "classic" ? "prompt" : "image";
+    const url = new URL(`${base}/${segment}/${encodeURIComponent(prompt)}`);
     url.searchParams.set("model", model);
+    // `size` is the OpenAI-style "WxH"; Pollinations takes width/height.
+    const dims = /^(\d{2,5})x(\d{2,5})$/i.exec(size ?? "");
+    if (dims) {
+      url.searchParams.set("width", dims[1]!);
+      url.searchParams.set("height", dims[2]!);
+    }
+    if (flavor === "classic") url.searchParams.set("nologo", "true");
     const res = await fetch(url, { headers: this.headers, signal });
     if (!res.ok) classifyStatus(res.status, await res.text());
     const contentType = res.headers.get("content-type") ?? "";

@@ -3,6 +3,7 @@ import type { LLMProviderRow } from "@hoichoi/shared-types";
 import { buildProvider, type KeyStore } from "./build";
 import type { LLMProvider, ParsedRewrite, RewriteContext } from "./types";
 import { ProviderError } from "./types";
+import { providerNeedsKey } from "./image-resolver";
 
 export type Operation = "rewrite" | "embed" | "image";
 
@@ -139,7 +140,7 @@ export class Resolver {
         }
       }
       const key = this.resolveKey(ap.row);
-      if (!key && ap.provider.providerKey !== "ollama") {
+      if (!key && providerNeedsKey(ap.row)) {
         skipped.push(`${ap.row.display_name}: no key for ${ap.row.api_key_env_var}`);
         continue;
       }
