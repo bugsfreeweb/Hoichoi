@@ -35,7 +35,9 @@ assert.deepEqual(
 
 for (const file of diskFiles) {
   const name = file.replace(/\.sql$/, "");
-  const diskSql = fs.readFileSync(path.join(migrationsDir, file), "utf8");
+  // Compare in LF form: the embedded copy is normalised, and a Windows
+  // checkout of the .sql files carries CRLF (core.autocrlf=true).
+  const diskSql = fs.readFileSync(path.join(migrationsDir, file), "utf8").replace(/\r\n/g, "\n");
   const embedded = EMBEDDED_MIGRATIONS.find((m) => m.name === name);
   assert.ok(embedded, `missing embedded migration: ${name}`);
   assert.equal(

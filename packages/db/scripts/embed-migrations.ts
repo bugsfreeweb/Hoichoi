@@ -36,7 +36,10 @@ const files = fs
   .sort();
 
 const entries = files.map((file) => {
-  const sql = fs.readFileSync(path.join(migrationsDir, file), "utf8");
+  // Normalise to LF before embedding: a Windows checkout (core.autocrlf=true)
+  // gives these files CRLF while Linux/CI has LF, and embedding the local
+  // working-copy ending made the generated module differ between machines.
+  const sql = fs.readFileSync(path.join(migrationsDir, file), "utf8").replace(/\r\n/g, "\n");
   const name = file.replace(/\.sql$/, "");
   return `  {\n    name: ${JSON.stringify(name)},\n    sql: ${JSON.stringify(sql)},\n  },`;
 });
