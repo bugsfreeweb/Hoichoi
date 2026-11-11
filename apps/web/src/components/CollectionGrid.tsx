@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
+import Link from "next/link";
 import type { CategoryMeta, CategorySlug, Post } from "@hoichoi/shared-types";
 import { bnNum } from "@/lib/bn";
 import { PostCard } from "./PostCard";
@@ -11,39 +12,84 @@ export function CollectionGrid({
   posts,
   cats,
   adInfeedHtml = null,
+  activeCategory,
+  categoryCounts,
 }: {
   posts: Post[];
   cats: CategoryMeta[];
   adInfeedHtml?: string | null;
+  /**
+   * Set on a department page. Chips then *navigate* between categories instead
+   * of filtering the page's own list — filtering a single-category list made
+   * every other chip count read ০, which looked like those categories were
+   * empty. On the home page this stays undefined and chips still filter.
+   */
+  activeCategory?: CategorySlug;
+  /** Real per-category totals for the chips (from countWindowPostsByCategory). */
+  categoryCounts?: Record<string, number>;
 }) {
   const all: CategorySlug | "all" = "all";
   const [active, setActive] = useState<CategorySlug | "all">("all");
-  const filtered = active === all ? posts : posts.filter((p) => p.category === active);
-  const count = (c: CategorySlug | "all") =>
-    c === all ? posts.length : posts.filter((p) => p.category === c).length;
+  const navigate = Boolean(activeCategory);
+  const effective = navigate ? activeCategory! : active;
+  const filtered = navigate
+    ? posts
+    : effective === all
+      ? posts
+      : posts.filter((p) => p.category === effective);
+  const count = (c: CategorySlug | "all") => {
+    if (categoryCounts) return c === all
+      ? Object.values(categoryCounts).reduce((a, b) => a + b, 0)
+      : (categoryCounts[c] ?? 0);
+    return c === all ? posts.length : posts.filter((p) => p.category === c).length;
+  };
 
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={() => setActive("all")}
-          className={`rounded-full border px-4 py-1.5 text-[12.5px] font-medium transition-colors ${
-            active === "all" ? "border-ink bg-ink text-paper" : "border-ink/25 text-ink-soft hover:border-ink hover:text-ink"
-          }`}
-        >
-          সব <span className="font-mono-x text-[10px] opacity-70">{bnNum(count("all"))}</span>
-        </button>
-        {cats.map((c) => (
+        {navigate ? (
+          <Link
+            href="/"
+            className="rounded-full border border-ink/25 px-4 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:border-ink hover:text-ink"
+          >
+            সব <span className="font-mono-x text-[10px] opacity-70">{bnNum(count("all"))}</span>
+          </Link>
+        ) : (
           <button
-            key={c.slug}
-            onClick={() => setActive(c.slug)}
+            onClick={() => setActive("all")}
             className={`rounded-full border px-4 py-1.5 text-[12.5px] font-medium transition-colors ${
-              active === c.slug ? "border-ink bg-ink text-paper" : "border-ink/25 text-ink-soft hover:border-ink hover:text-ink"
+              effective === "all" ? "border-ink bg-ink text-paper" : "border-ink/25 text-ink-soft hover:border-ink hover:text-ink"
             }`}
           >
-            {c.displayNameBn} <span className="font-mono-x text-[10px] opacity-70">{bnNum(count(c.slug))}</span>
+            সব <span className="font-mono-x text-[10px] opacity-70">{bnNum(count("all"))}</span>
           </button>
-        ))}
+        )}
+        {cats.map((c) =>
+          navigate ? (
+            <Link
+              key={c.slug}
+              href={`/category/${c.slug}`}
+              aria-current={c.slug === effective ? "page" : undefined}
+              className={`rounded-full border px-4 py-1.5 text-[12.5px] font-medium transition-colors ${
+                c.slug === effective
+                  ? "border-ink bg-ink text-paper"
+                  : "border-ink/25 text-ink-soft hover:border-ink hover:text-ink"
+              }`}
+            >
+              {c.displayNameBn} <span className="font-mono-x text-[10px] opacity-70">{bnNum(count(c.slug))}</span>
+            </Link>
+          ) : (
+            <button
+              key={c.slug}
+              onClick={() => setActive(c.slug)}
+              className={`rounded-full border px-4 py-1.5 text-[12.5px] font-medium transition-colors ${
+                effective === c.slug ? "border-ink bg-ink text-paper" : "border-ink/25 text-ink-soft hover:border-ink hover:text-ink"
+              }`}
+            >
+              {c.displayNameBn} <span className="font-mono-x text-[10px] opacity-70">{bnNum(count(c.slug))}</span>
+            </button>
+          ),
+        )}
         <span className="ml-auto hidden font-mono-x text-[10px] tracking-[0.18em] text-ink-soft/70 uppercase md:block">
           FILTER · AUTO-CATEGORIZED BY LLM
         </span>

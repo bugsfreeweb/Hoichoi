@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -57,6 +58,11 @@ export function LoginForm() {
       <button disabled={busy} className="border-2 border-ink bg-ink px-5 py-2.5 text-[13.5px] font-bold text-paper transition hover:bg-alizarin disabled:opacity-50">
         {busy ? "যাচাই করা হচ্ছে…" : "প্রবেশ করুন →"}
       </button>
+      <p className="text-right">
+        <Link href="/admin/forgot" className="font-mono-x text-[10px] tracking-[0.1em] uppercase underline-offset-4 hover:text-alizarin hover:underline">
+          কোড পাইনি · ইমেইলে কোড চান
+        </Link>
+      </p>
       <p className="text-[11px] leading-relaxed text-ink-soft/80">
         কোডটি Hoichoi Desk অ্যাপের <span className="font-bold">Settings → Admin access</span> থেকে তৈরি হয়; ১০ মিনিটের মধ্যে ব্যবহার
         করতে হবে এবং একবারই চলে।

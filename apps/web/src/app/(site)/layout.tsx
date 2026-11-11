@@ -7,6 +7,7 @@ import TrafficTracker from "@/components/TrafficTracker";
 import { currentUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { countReviewQueues, getSpecialNotice, parseAppConfig, recentPipelineRuns, statsSnapshot } from "@hoichoi/db";
+import { resolveFooterSocials } from "@/lib/socials";
 import { getLive } from "@/lib/mv/live";
 import { isMvMode } from "@/lib/mv/variant";
 import { buildMvData } from "@/lib/mv/live-data";
@@ -37,6 +38,9 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const [settings, specialNotice] = await Promise.all([getSettings(), getSpecialNotice()]);
   const cfg = parseAppConfig(settings.app_config_json);
   const themeDefault = cfg.theme_default ?? "light";
+  // Global footer links, resolved once for every theme (default, mockup,
+  // maintenance) so the admin edits them in exactly one place.
+  const footerSocials = resolveFooterSocials(cfg);
   // Maintenance mode: logged-out visitors get a full-screen notice instead of
   // the news chrome. The admin session bypasses it (cookie read + DB join only
   // happens when maintenance_mode is actually on, keeping the happy path cheap).
@@ -56,6 +60,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         <MaintenanceScreen
           config={cfg.maintenance}
           lastRunIso={runs[0]?.started_at ?? null}
+          socials={footerSocials}
           stats={
             stats && queues
               ? {
@@ -82,7 +87,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
     const mvData = await buildMvData().catch(() => EMPTY_MV_DATA);
     return (
       <MvDataProvider value={mvData}>
-        <MvChrome live={live} accent={settings.accent_color}>
+        <MvChrome live={live} accent={settings.accent_color} socials={footerSocials}>
           <TrafficTracker />
           {children}
         </MvChrome>

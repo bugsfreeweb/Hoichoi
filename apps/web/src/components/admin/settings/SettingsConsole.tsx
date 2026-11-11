@@ -15,10 +15,20 @@ import { VisibilitySection } from "./VisibilitySection";
 import { MaintenanceEditor } from "./MaintenanceEditor";
 import { LiveEventsSettings } from "./LiveEventsSettings";
 import { OperationsSection } from "./OperationsSection";
+import { MailSection } from "./MailSection";
 import { MediaStorageSection } from "./MediaStorageSection";
 import { VariantSwitcher } from "@/components/admin/VariantSwitcher";
 
-type Tab = "site" | "visibility" | "live-events" | "ads" | "design" | "media" | "maintenance" | "operations";
+type Tab =
+  | "site"
+  | "visibility"
+  | "live-events"
+  | "ads"
+  | "design"
+  | "media"
+  | "mail"
+  | "maintenance"
+  | "operations";
 
 const TABS: Array<{ key: Tab; emoji: string; bn: string; en: string }> = [
   { key: "site", emoji: "📰", bn: "সাইট", en: "Site" },
@@ -27,6 +37,7 @@ const TABS: Array<{ key: Tab; emoji: string; bn: string; en: string }> = [
   { key: "ads", emoji: "📣", bn: "বিজ্ঞাপন", en: "Ads" },
   { key: "design", emoji: "🎨", bn: "ডিজাইন", en: "Design" },
   { key: "media", emoji: "🖼️", bn: "মিডিয়া স্টোরেজ", en: "Media Storage" },
+  { key: "mail", emoji: "✉️", bn: "মেইল", en: "Mail" },
   { key: "maintenance", emoji: "🛠️", bn: "রক্ষণাবেক্ষণ", en: "Maintenance" },
   { key: "operations", emoji: "⚙️", bn: "অপারেশন", en: "Operations" },
 ];
@@ -238,6 +249,7 @@ export function SettingsConsole({
               }}
             />
           )}
+          {tab === "mail" && <MailSection />}
           {tab === "maintenance" && <MaintenanceEditor />}
           {tab === "operations" && <OperationsSection initialRuns={initialRuns} inbox={inbox} />}
         </div>

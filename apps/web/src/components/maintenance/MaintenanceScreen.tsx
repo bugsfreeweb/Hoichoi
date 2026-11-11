@@ -1,8 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { MaintenanceSiteConfig } from "@hoichoi/shared-types";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { FooterSocialLink, MaintenanceSiteConfig } from "@hoichoi/shared-types";
 import "./maintenance.css";
+import { AdvertiserLoginLink } from "@/components/AdvertiserLoginLink";
+
+/**
+ * Global footer links (Settings → Footer) are injected by the site layout and
+ * flow to every maintenance theme footer through this context, so editing the
+ * social list once updates maintenance mode too.
+ */
+const GlobalSocialsCtx = createContext<FooterSocialLink[]>([]);
+export function useGlobalFooterSocials() {
+  return useContext(GlobalSocialsCtx);
+}
 
 /**
  * Public maintenance screen — faithful to the `maintenance-page-mockup`
@@ -127,12 +138,14 @@ export function MaintenanceScreen({
   lastRunIso = null,
   preview = false,
   thumbnail = false,
+  socials = [],
 }: {
   config: MaintenanceSiteConfig;
   stats?: MaintenanceStats | null;
   lastRunIso?: string | null;
   preview?: boolean;
   thumbnail?: boolean;
+  socials?: FooterSocialLink[];
 }) {
   const L: L = config.language === "en" ? "en" : "bn";
   const T = STR[L];
@@ -190,12 +203,14 @@ export function MaintenanceScreen({
           lastRunIso={lastRunIso}
           remaining={remaining}
           preview={preview}
+          socials={socials}
         />
       </div>
     );
   }
 
   return (
+    <GlobalSocialsCtx.Provider value={socials}>
     <div
       className={`mc-root mc-theme-root mc-theme-editorial ${thumbnail ? "mc-thumbnail" : ""} ${config.effects.grain ? "mc-grain" : ""}`}
       style={
@@ -447,7 +462,21 @@ export function MaintenanceScreen({
               {tail(config)}
             </p>
             <div className="flex flex-wrap items-center gap-3">
-              {config.socialsEnabled &&
+              {socials.length > 0
+                ? socials.slice(0, 6).map((s, i) => (
+                    <a
+                      key={`${s.url}-${i}`}
+                      href={s.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-8 items-center justify-center rounded-full border px-2.5 font-mono-x text-[9px] font-bold tracking-wide hover:border-current"
+                      style={{ borderColor: "color-mix(in srgb, var(--mc-text) 18%, transparent)" }}
+                      aria-label={s.label || s.icon}
+                    >
+                      {s.label || s.icon}
+                    </a>
+                  ))
+                : config.socialsEnabled &&
                 SOC_LINKS.filter((s) => config.socials[s.key]).map((s) => (
                   <a
                     key={s.key}
@@ -461,6 +490,7 @@ export function MaintenanceScreen({
                     {s.glyph}
                   </a>
                 ))}
+              <AdvertiserLoginLink />
               <a
                 href="/admin"
                 className="rounded-full border font-mono-x text-[9px] tracking-[0.16em] uppercase px-3 py-1.5 hover:border-current"
@@ -474,6 +504,7 @@ export function MaintenanceScreen({
         </footer>
       </div>
     </div>
+    </GlobalSocialsCtx.Provider>
   );
 }
 
@@ -501,6 +532,7 @@ function AlternateMaintenanceTheme({
   lastRunIso,
   remaining,
   preview,
+  socials = [],
 }: {
   config: MaintenanceSiteConfig;
   theme: ActiveMaintenanceTheme;
@@ -508,6 +540,7 @@ function AlternateMaintenanceTheme({
   lastRunIso: string | null;
   remaining: CountdownParts | null;
   preview: boolean;
+  socials?: FooterSocialLink[];
 }) {
   const L: L = config.language === "en" ? "en" : "bn";
   const copy = L === "en" ? config.copyEn : config.copyBn;
@@ -570,6 +603,7 @@ function AlternateMaintenanceTheme({
   ) : null;
 
   return (
+    <GlobalSocialsCtx.Provider value={socials}>
     <main ref={stageRef} className={`mc-theme-stage mc-theme-${theme} ${dark ? "mc-theme-dark" : "mc-theme-light"}`}>
       {config.effects.particles && <ThemeDust />}
       {theme === "neon" && <div aria-hidden className="mc-neon-orb" />}
@@ -734,6 +768,7 @@ function AlternateMaintenanceTheme({
         </>
       )}
     </main>
+    </GlobalSocialsCtx.Provider>
   );
 }
 
@@ -877,6 +912,7 @@ function ThemePipeline({ config, L }: { config: MaintenanceSiteConfig; L: L }) {
 
 function ThemeFooter({ config, L }: { config: MaintenanceSiteConfig; L: L }) {
   const note = L === "en" ? config.footerNoteEn : config.footerNoteBn;
+  const globalSocials = useGlobalFooterSocials();
   return (
     <footer className="mc-theme-footer">
       <span>{note}</span>
@@ -884,7 +920,20 @@ function ThemeFooter({ config, L }: { config: MaintenanceSiteConfig; L: L }) {
         {config.contactEmail && <a href={`mailto:${config.contactEmail}`}>{config.contactEmail}</a>}
         {config.contactPhone && <a href={`tel:${config.contactPhone}`}>{config.contactPhone}</a>}
       </span>
-      {config.socialsEnabled && <span>{SOC_LINKS.filter((link) => config.socials[link.key]).map((link) => <a key={link.key} href={config.socials[link.key]} target="_blank" rel="noopener noreferrer">{link.glyph}</a>)}</span>}
+      {globalSocials.length > 0 ? (
+        <span>
+          {globalSocials.slice(0, 6).map((link, i) => (
+            <a key={`${link.url}-${i}`} href={link.url} target="_blank" rel="noopener noreferrer" title={link.label || link.icon}>
+              {link.label || link.icon}
+            </a>
+          ))}
+        </span>
+      ) : (
+        config.socialsEnabled && (
+          <span>{SOC_LINKS.filter((link) => config.socials[link.key]).map((link) => <a key={link.key} href={config.socials[link.key]} target="_blank" rel="noopener noreferrer">{link.glyph}</a>)}</span>
+        )
+      )}
+      <AdvertiserLoginLink tone="dark" className="mc-footer-advertiser" />
       <a href="/admin">{L === "en" ? "ADMIN" : "অ্যাডমিন"} ↗</a>
     </footer>
   );

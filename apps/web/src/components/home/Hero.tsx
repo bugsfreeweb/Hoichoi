@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import Counter from "@/components/home/counter";
+import HeroPipelineScene from "@/components/home/HeroPipelineScene";
 import { useLiveData } from "./live-data";
 import { timeBn } from "@/lib/bn";
 import { BRAND } from "@/lib/brand";
@@ -177,62 +178,15 @@ export default function Hero({
           </div>
         </div>
 
-        <div className="relative hidden h-[440px] lg:col-span-5 lg:block">
-          <div
-            className="floaty absolute top-2 left-0 w-[300px]"
-            style={{ "--fr": "-3deg", "--fd": "7s" } as CSSProperties}
-          >
-            <div className="tauri-win rounded-xl p-3.5">
-              <p className="flex items-center gap-2 font-mono-x text-[9px] tracking-[0.2em] text-ink/45 uppercase">
-                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#7cc3ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>
-                FEED IN · মিরপুর আপডেট
-              </p>
-              <p className="mt-2 text-[12px] leading-relaxed text-ink/75">
-                জরুরি!! বাচ্চা হারাইছে বিকেলের দিকে। শেয়ার করেন সবাই…
-              </p>
-            </div>
-          </div>
-
-          {featuredImg && (
-            <div
-              className="floaty absolute top-34 right-0 w-[270px]"
-              style={{ "--fr": "2.5deg", "--fd": "8s", "--fdel": "-3s" } as CSSProperties}
-            >
-              <div className="tauri-win overflow-hidden rounded-xl">
-                <div className="flex items-center justify-between border-b border-ink/8 px-3 py-2">
-                  <span className="flex items-center gap-1.5 font-mono-x text-[9px] tracking-[0.18em] text-ink/45 uppercase">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffb454" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="13" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 7l1.5-3h5L16 7"/></svg>
-                    SHOT_0011.PNG
-                  </span>
-                  <span className="font-mono-x text-[9px] text-lime">✓ 1.2s</span>
-                </div>
-                <img
-                  src={featuredImg}
-                  alt=""
-                  className="aspect-[16/10] w-full object-cover grayscale-[0.35] contrast-[1.05]"
-                />
-              </div>
-            </div>
-          )}
-
-          {featuredTitle && (
-            <div
-              className="floaty absolute bottom-0 left-10 w-[300px]"
-              style={{ "--fr": "-1.5deg", "--fd": "9s", "--fdel": "-5s" } as CSSProperties}
-            >
-              <div className="beam rounded-xl">
-                <div className="tauri-win rounded-xl p-4">
-                  <p className="flex items-center gap-1.5 font-mono-x text-[9px] tracking-[0.2em] text-lime uppercase">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>
-                    প্রকাশিত{featuredCategory ? ` · ${featuredCategory}` : ""}
-                  </p>
-                  <p className="mt-2 line-clamp-2 font-serif-bn text-[15px] leading-snug font-bold text-ink">
-                    {featuredTitle}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+        <div className="hf-pipeline-hero relative col-span-1 hidden h-[440px] lg:col-span-5 lg:block">
+          {/* The floating "window" collage was decoration; the right column now
+              shows what the pipeline actually does, with the real counts. */}
+          <HeroPipelineScene
+            collected={collected}
+            published={published}
+            dups={dups}
+            lastRunIso={lastRunIso}
+          />
         </div>
       </div>
 

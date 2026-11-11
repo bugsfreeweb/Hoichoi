@@ -169,6 +169,8 @@ export interface DeskQueueRow {
   body_bn: string | null;
   media_kind: string;
   media_path: string;
+  /** Present from the runner: sorted by this, matching the web admin's list. */
+  updated_at?: string;
 }
 
 /** Collector-seen image URLs offered as one-click options in the desk editor. */
@@ -379,11 +381,39 @@ export async function deskDeleteCategory(env: Record<string, string>, slug: stri
   await deskCall(["categories", "delete", "--slug", slug], env);
 }
 
-export async function deskQueue(env: Record<string, string>, status?: string | null): Promise<DeskQueueRow[]> {
-  const args = ["queue", "list"];
-  if (status) args.push("--status", status);
+export interface DeskQueuePage {
+  rows: DeskQueueRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * One page of the content queue.
+ *
+ * Mirrors the web admin's posts list (`updated_at DESC`, 20 per page) so the two
+ * consoles show the same items in the same order. The old desk call used
+ * `LIMIT 80 ORDER BY created_at DESC`, which is why an edited post could be
+ * first on the web list and absent from the desk.
+ */
+export async function deskQueuePage(
+  env: Record<string, string>,
+  opts: { status?: string | null; page?: number; pageSize?: number } = {},
+): Promise<DeskQueuePage> {
+  const args = ["queue", "list", "--page", String(opts.page ?? 1), "--page-size", String(opts.pageSize ?? 20)];
+  if (opts.status) args.push("--status", opts.status);
   const res = await deskCall(args, env);
-  return (res.rows as DeskQueueRow[]) ?? [];
+  return {
+    rows: (res.rows as DeskQueueRow[]) ?? [],
+    total: Number(res.total ?? 0),
+    page: Number(res.page ?? opts.page ?? 1),
+    pageSize: Number(res.pageSize ?? opts.pageSize ?? 20),
+  };
+}
+
+export async function deskQueue(env: Record<string, string>, status?: string | null): Promise<DeskQueueRow[]> {
+  const res = await deskQueuePage(env, { status, page: 1 });
+  return res.rows;
 }
 
 export async function deskQueueUpdate(

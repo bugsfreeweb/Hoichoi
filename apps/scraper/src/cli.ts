@@ -998,25 +998,56 @@ function deskQueueRow(row: Record<string, unknown>) {
     media_kind: String(row.media_kind ?? "none"),
     media_path: (row.media_path as string) ?? "",
     created_at: String(row.created_at),
+    updated_at: String(row.updated_at ?? row.created_at),
   };
 }
 
-async function listDeskQueue(status?: string) {
+/**
+ * Desk content queue page.
+ *
+ * The desk used to ask for `LIMIT 80 ORDER BY created_at DESC` while the web
+ * admin's posts list pages 20 at a time by `updated_at DESC`. That mismatch is
+ * why the two consoles disagreed about both order and quantity: a post edited
+ * today could sit below 80 newer rows in the desk but be first in the web list.
+ * Same query, same ordering, same page size now.
+ */
+async function listDeskQueue(opts: {
+  status?: string;
+  q?: string;
+  page?: number | string;
+  pageSize?: number | string;
+} = {}) {
   const client = getClient();
-  const cols = "id, slug, title_bn, summary_bn, body_bn, source_name, source_url, category, status, media_kind, media_path, created_at";
-  const res = status
-    ? await client.execute({
-        sql: `SELECT ${cols} FROM posts WHERE status = ? ORDER BY created_at DESC LIMIT 80`,
-        args: [status],
-      })
-    : await client.execute(
-        `SELECT ${cols} FROM posts ORDER BY created_at DESC LIMIT 80`,
-      );
-  return res.rows.map((r) => deskQueueRow(r as Record<string, unknown>));
+  const cols =
+    "id, slug, title_bn, summary_bn, body_bn, source_name, source_url, category, status, media_kind, media_path, created_at, updated_at";
+  const pageSize = Math.min(200, Math.max(5, Number(opts.pageSize) || 20));
+  const page = Math.max(1, Number(opts.page) || 1);
+  const where: string[] = [];
+  const args: (string | number)[] = [];
+  if (opts.status) {
+    where.push("status = ?");
+    args.push(opts.status);
+  }
+  if (opts.q?.trim()) {
+    where.push("(title_bn LIKE ? OR source_name LIKE ? OR slug LIKE ?)");
+    const like = `%${opts.q.trim()}%`;
+    args.push(like, like, like);
+  }
+  const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
+  const totalRes = await client.execute({
+    sql: `SELECT count(*) AS n FROM posts ${whereSql}`,
+    args,
+  });
+  const total = Number((totalRes.rows[0] as { n?: number | string } | undefined)?.n ?? 0);
+  const res = await client.execute({
+    sql: `SELECT ${cols} FROM posts ${whereSql} ORDER BY updated_at DESC LIMIT ? OFFSET ?`,
+    args: [...args, pageSize, (page - 1) * pageSize],
+  });
+  return { rows: res.rows.map((r) => deskQueueRow(r as Record<string, unknown>)), total, page, pageSize };
 }
 
 program
-  .command("sources <action>")
+  .command("sources <action> [sub] [target]")
   .description("desk watchlist: list / add / update / toggle / remove")
   .option("--page-url <url>", "page URL (add/update)")
   .option("--page-name <name>", "page name (add/update)")
@@ -1028,7 +1059,7 @@ program
   .option("--categories <csv>", "comma-separated category slugs (add/update)")
   .option("--id <id>", "source id (update/toggle/remove)")
   .option("--is-active <bool>", "true | false (update)")
-  .action(async (action: string, opts: Record<string, string | undefined>) => {
+  .action(async (action: string, sub: string | undefined, target: string | undefined, opts: Record<string, string | undefined>) => {
     try {
       await ensureSchema(getClient());
       if (action === "list") {
@@ -1068,6 +1099,25 @@ program
         if (!opts.id) throw new Error("--id required");
         await removeDeskSource(opts.id);
         console.log(JSON.stringify({ ok: true }));
+      } else if (action === "errors") {
+        /**
+         * Watchlist → error list.
+         *
+         * The daemon's `dispatchCmd` has always understood
+         * `sources errors list|dismiss|reopen`, but this one-shot commander
+         * path did not, so the desktop app's Watchlist showed
+         * "unknown action: errors" whenever it asked for source health before
+         * the daemon was up. Both paths are now kept in step.
+         */
+        if (!sub || sub === "list") {
+          console.log(JSON.stringify({ ok: true, errors: await listSourceErrors() }, null, 2));
+        } else if (sub === "dismiss" || sub === "reopen") {
+          if (!target) throw new Error(`error id required (sources errors ${sub} <id>)`);
+          await setSourceErrorStatus(target, sub === "dismiss" ? "dismissed" : "open");
+          console.log(JSON.stringify({ ok: true, [sub === "dismiss" ? "dismissed" : "reopened"]: target }));
+        } else {
+          throw new Error(`unknown sources errors action: ${sub}`);
+        }
       } else {
         throw new Error(`unknown action: ${action}`);
       }
@@ -1118,6 +1168,8 @@ program
     "desk content queue: list [--status s] / set <id> <approved|rejected|published> / bulk <target> --ids a,b,c / update <id> --title/--body/--summary/--category/--media / media <id> / images --op <list|add|remove|primary> --post <id> [--url u] [--image id]",
   )
   .option("--status <s>", "filter by post status")
+  .option("--page <n>", "1-based page number (list)")
+  .option("--page-size <n>", "rows per page, default 20 (list)")
   .option("--ids <csv>", "comma-separated post ids (bulk)")
   // `queue update` and `queue media` must be declared here, on the commander
   // command. An earlier revision added them to the raw-argv `case "queue"`
@@ -1133,11 +1185,17 @@ program
   .option("--post <id>", "post id (images)")
   .option("--url <u>", "image URL (images add)")
   .option("--image <id>", "gallery image id (images remove/primary)")
-  .action(async (action: string, id: string | undefined, status: string | undefined, opts: { status?: string; ids?: string; title?: string; body?: string; summary?: string; category?: string; media?: string; op?: string; post?: string; url?: string; image?: string }) => {
+  .action(async (action: string, id: string | undefined, status: string | undefined, opts: { status?: string; page?: string; pageSize?: string; ids?: string; title?: string; body?: string; summary?: string; category?: string; media?: string; op?: string; post?: string; url?: string; image?: string }) => {
     try {
       await ensureSchema(getClient());
       if (action === "list") {
-        console.log(JSON.stringify({ ok: true, rows: await listDeskQueue(opts.status) }, null, 2));
+        console.log(
+          JSON.stringify(
+            { ok: true, ...(await listDeskQueue({ status: opts.status, page: opts.page, pageSize: opts.pageSize })) },
+            null,
+            2,
+          ),
+        );
       } else if (action === "update") {
         if (!id) throw new Error("id required (queue update <id> --title ... --body ... --summary ... --category ... --media ...)");
         const existing = await getPostById(id);
@@ -2004,7 +2062,13 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
       const action = args[1];
       if (action === "list") {
         const { flags } = parseArgs(args.slice(2));
-        console.log(JSON.stringify({ ok: true, rows: await listDeskQueue(flags.status) }, null, 2));
+        console.log(
+          JSON.stringify(
+            { ok: true, ...(await listDeskQueue({ status: flags.status, page: flags.page, pageSize: flags["page-size"] })) },
+            null,
+            2,
+          ),
+        );
       } else if (action === "set") {
         const id = args[2];
         const status = args[3];

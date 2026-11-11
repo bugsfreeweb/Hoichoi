@@ -377,6 +377,57 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 > before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
 > (latest e.g. `012_post_images.sql`).
 
+## Recovery, parity and pipeline honesty (v1.1.23)
+
+**Advertiser entry point + global socials.** `/portal/login` is now reachable
+from the public footer of every theme (`AdvertiserLoginLink`, plus a
+`/portal/signup` link under the about box) instead of being an orphan URL. The
+footer's social links are a single global setting (`footer_socials`) that
+overrides the legacy `maintenance.socials`, and both are threaded through
+`MvChrome`, every `mv/site/Footer` variant and `MaintenanceScreen` — so a change
+in admin Settings shows up on all themes *and* on the maintenance page.
+
+**Password recovery and mail.** New `password_resets` table plus
+`apps/web/src/lib/mail.ts` (Resend, else SMTP, else "unconfigured" with a
+copyable dev link) and `lib/password-reset.ts`. Advertisers get
+`/portal/forgot` → emailed 60-minute single-use link → `/portal/reset`; admins
+sign in with one-time codes, so `/admin/forgot` mails a fresh code instead of a
+password link. Admin → Settings → **মেইল** shows the live transport, sends a real
+test message, issues advertiser reset links and lists recent requests. Reset
+links are claimed with a `used_at IS NULL` guard and end every existing session
+for that principal.
+
+**Content queue parity + honest refresh.** The desk asked the runner for
+`LIMIT 80 ORDER BY created_at DESC` while the web list pages 20 by
+`updated_at DESC`, so the two consoles disagreed on both order and quantity.
+`queue list` now takes `--page/--page-size` and returns `{rows,total,page,pageSize}`
+from the same ordering as the web, and Content Queue has real paging plus a
+refresh button that shows spinner → result (total + elapsed) → error toast.
+
+**`sources errors` exists on both dispatch paths.** The daemon understood
+`sources errors list|dismiss|reopen`, but the commander one-shot path did not,
+which is why Watchlist showed `runner failed: [fatal] unknown action: errors`.
+Both paths are now in step.
+
+**Image generation survives a quota error.** Pinning a provider used to shrink
+the candidate list to that row alone, so a 429 from Gemini (or an OpenAI
+`insufficient_quota`) failed the request even though the next row was healthy —
+and the desktop, which pins nothing, worked with the same accounts. A pinned
+provider is now a *preference*: it is tried first, then the rest of the chain. A
+rate-limit error gets one short retry before failover, and inside CI the
+repository secret wins over a stale `api_key` stored on the provider row (the
+reason the same key worked on the desktop but 429'd in Actions).
+
+**Category pages stop looking empty.** Category chips counted the page's own
+single-category rows, so every other chip read ০. Chips on a department page now
+navigate and show real per-category totals from `countWindowPostsByCategory()`.
+
+**Hero pipeline scene.** The default theme's hero visual column is no longer a
+collage of static "window" cards: `HeroPipelineScene` draws the actual pipeline
+(feed → dedupe → fact-gate → rewrite → publish) as an obsidian SVG conveyor with
+travelling packets and only the real collected/published/duplicate counts.
+Transform/opacity only, and `prefers-reduced-motion` stills it.
+
 ## Real-time dashboards & ad-ops visibility (v1.1.22)
 
 Both consoles render the same `@hoichoi/dash` components, and the live panels now

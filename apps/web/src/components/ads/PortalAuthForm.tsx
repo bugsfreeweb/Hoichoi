@@ -77,6 +77,13 @@ export function PortalAuthForm({ mode }: { mode: "login" | "signup" }) {
       >
         {pending ? "অপেক্ষা করুন…" : signup ? "অ্যাকাউন্ট তৈরি করুন" : "ক্লায়েন্ট পোর্টালে প্রবেশ করুন"}
       </button>
+      {!signup && (
+        <p className="-mt-1 text-right">
+          <Link href="/portal/forgot" className="font-mono-x text-[10px] tracking-[0.1em] text-ink-soft uppercase underline-offset-4 hover:text-alizarin hover:underline">
+            পাসওয়ার্ড ভুলে গেছেন?
+          </Link>
+        </p>
+      )}
       <p className="text-[11.5px] text-ink-soft">
         {signup ? (
           <>আগে থেকেই অ্যাকাউন্ট আছে? <Link href="/portal/login" className="font-bold text-alizarin hover:underline">লগইন করুন</Link></>

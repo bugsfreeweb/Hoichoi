@@ -17,6 +17,8 @@ import {
   Code2,
 } from "lucide-react";
 import { LiveDot } from "@/components/mv/ui/primitives";
+import { AdvertiserLoginLink } from "@/components/AdvertiserLoginLink";
+import type { FooterSocialLink } from "@hoichoi/shared-types";
 import { Marquee, LiveClock } from "@/components/mv/ui/motion";
 import BrandLogo, { type LogoEngine } from "@/components/mv/ui/BrandLogo";
 import { useMvData } from "@/components/mv/ui/mv-data";
@@ -63,13 +65,25 @@ const FOOTER_ENGINE: Record<string, LogoEngine> = {
   compact: "led",
 };
 
-export default function Footer({ variant, engine }: { variant: string; engine?: LogoEngine }) {
+export default function Footer({
+  variant,
+  engine,
+  socials = [],
+}: {
+  variant: string;
+  engine?: LogoEngine;
+  /**
+   * Global footer links from Settings → Footer. Passed in from the server layout
+   * so every mockup theme shows the same list the admin edits.
+   */
+  socials?: FooterSocialLink[];
+}) {
   const logoEngine: LogoEngine = engine ?? FOOTER_ENGINE[variant] ?? "crt";
-  if (variant === "slab") return <Slab engine={logoEngine} />;
-  if (variant === "linkgrid") return <LinkGrid engine={logoEngine} />;
-  if (variant === "terminal") return <TerminalLog engine={logoEngine} />;
-  if (variant === "compact") return <CompactFooter engine={logoEngine} />;
-  return <Mega engine={logoEngine} />;
+  if (variant === "slab") return <Slab engine={logoEngine} socials={socials} />;
+  if (variant === "linkgrid") return <LinkGrid engine={logoEngine} socials={socials} />;
+  if (variant === "terminal") return <TerminalLog engine={logoEngine} socials={socials} />;
+  if (variant === "compact") return <CompactFooter engine={logoEngine} socials={socials} />;
+  return <Mega engine={logoEngine} socials={socials} />;
 }
 
 /* ───────────── shared pieces ───────────── */
@@ -127,7 +141,25 @@ function FooterMail() {
   );
 }
 
-function SocialRow() {
+function SocialRow({ socials = [] }: { socials?: FooterSocialLink[] }) {
+  if (socials.length > 0) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        {socials.map((l, i) => (
+          <a
+            key={`${l.url}-${i}`}
+            href={l.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={l.label || l.url}
+            className="footer-chip rounded-full px-3 py-1.5 font-mono-x text-[10px] tracking-[0.12em] text-mist-300 transition-all hover:-translate-y-0.5 hover:text-mist-100"
+          >
+            {(l.label || l.icon).toUpperCase()}
+          </a>
+        ))}
+      </div>
+    );
+  }
   const items = [
     { Icon: Code2, href: "/admin", label: "রিপোজিটরি" },
     { Icon: Send, href: "/#newsletter", label: "নিউজলেটার" },
@@ -165,13 +197,25 @@ function StatusRow() {
   );
 }
 
-function LegalBar() {
+function LegalBar({ socials = [] }: { socials?: FooterSocialLink[] }) {
   return (
     <div className="footer-rule mt-6 flex flex-col items-start justify-between gap-3 border-t pt-5 md:flex-row md:items-center">
       <p className="text-[12.5px] text-mist-400">
         © {bn(new Date().getFullYear())} হৈচৈ · ফিড থেকে সংগ্রহ, যাচাই শেষে প্রকাশ।
       </p>
       <div className="flex flex-wrap items-center gap-4">
+        {socials.slice(0, 5).map((l, i) => (
+          <a
+            key={`${l.url}-${i}`}
+            href={l.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mono-label text-mist-400 transition-colors hover:text-mist-100"
+          >
+            {l.label || l.icon}
+          </a>
+        ))}
+        <AdvertiserLoginLink tone="dark" />
         <span className="mono-label flex items-center gap-1.5 text-mist-400">
           <MapPin className="h-3 w-3" /> ঢাকা, বাংলাদেশ
         </span>
@@ -182,7 +226,7 @@ function LegalBar() {
 }
 
 /* ───────────── variant 1 · newsroom mega ───────────── */
-function Mega({ engine = "crt" }: { engine?: LogoEngine }) {
+function Mega({ engine = "crt", socials = [] }: { engine?: LogoEngine; socials?: FooterSocialLink[] }) {
   return (
     <footer className="footer-root relative mt-10 overflow-hidden">
       <div aria-hidden className="footer-divider pointer-events-none absolute inset-x-0 top-0 h-px" />
@@ -215,7 +259,7 @@ function Mega({ engine = "crt" }: { engine?: LogoEngine }) {
             </p>
             <p className="mono-label leading-relaxed text-mist-400">{HOME_META.pipelineChain}</p>
             <div className="mt-5">
-              <SocialRow />
+              <SocialRow socials={socials} />
             </div>
           </div>
 
@@ -253,14 +297,14 @@ function Mega({ engine = "crt" }: { engine?: LogoEngine }) {
           </Link>
         </div>
 
-        <LegalBar />
+        <LegalBar socials={socials} />
       </div>
     </footer>
   );
 }
 
 /* ───────────── variant 2 · minimal slab ───────────── */
-function Slab({ engine = "neon" }: { engine?: LogoEngine }) {
+function Slab({ engine = "neon", socials = [] }: { engine?: LogoEngine; socials?: FooterSocialLink[] }) {
   return (
     <footer className="footer-root mt-16">
       <div className="mx-auto max-w-[1100px] px-5 py-14 text-center md:px-8">
@@ -296,7 +340,7 @@ function Slab({ engine = "neon" }: { engine?: LogoEngine }) {
 }
 
 /* ───────────── variant 3 · link grid ───────────── */
-function LinkGrid({ engine = "hologram" }: { engine?: LogoEngine }) {
+function LinkGrid({ engine = "hologram", socials = [] }: { engine?: LogoEngine; socials?: FooterSocialLink[] }) {
   return (
     <footer className="footer-root mt-16">
       <div className="mx-auto max-w-[1320px] px-5 py-14 md:px-8">
@@ -305,7 +349,7 @@ function LinkGrid({ engine = "hologram" }: { engine?: LogoEngine }) {
             <BrandLogo format="full" engine={engine} size={40} />
             <p className="mt-4 text-[13.5px] leading-relaxed text-mist-400">{HOME_META.tagline}</p>
             <div className="mt-5">
-              <SocialRow />
+              <SocialRow socials={socials} />
             </div>
           </div>
 
@@ -334,14 +378,14 @@ function LinkGrid({ engine = "hologram" }: { engine?: LogoEngine }) {
           <FooterMail />
         </div>
 
-        <LegalBar />
+        <LegalBar socials={socials} />
       </div>
     </footer>
   );
 }
 
 /* ───────────── variant 4 · terminal log ───────────── */
-function TerminalLog({ engine = "boot" }: { engine?: LogoEngine }) {
+function TerminalLog({ engine = "boot", socials = [] }: { engine?: LogoEngine; socials?: FooterSocialLink[] }) {
   const { runLog: RUN_LOG } = useMvData();
   return (
     <footer className="footer-root relative mt-16 overflow-hidden">
@@ -411,14 +455,14 @@ function TerminalLog({ engine = "boot" }: { engine?: LogoEngine }) {
           </Marquee>
         </div>
 
-        <LegalBar />
+        <LegalBar socials={socials} />
       </div>
     </footer>
   );
 }
 
 /* ───────────── variant 5 · reader support ───────────── */
-function CompactFooter({ engine = "led" }: { engine?: LogoEngine }) {
+function CompactFooter({ engine = "led", socials = [] }: { engine?: LogoEngine; socials?: FooterSocialLink[] }) {
   return (
     <footer className="footer-root mt-16">
       <div className="mx-auto max-w-[1320px] px-5 py-11 md:px-8">
@@ -439,12 +483,12 @@ function CompactFooter({ engine = "led" }: { engine?: LogoEngine }) {
           </nav>
 
           <div className="flex flex-col items-center gap-3 lg:items-end">
-            <SocialRow />
+            <SocialRow socials={socials} />
             <LiveClock className="mono-label text-mist-400" />
           </div>
         </div>
 
-        <LegalBar />
+        <LegalBar socials={socials} />
       </div>
     </footer>
   );

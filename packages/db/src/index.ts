@@ -792,6 +792,25 @@ export async function windowPosts(
   });
 }
 
+/**
+ * Post counts per category inside the public window.
+ *
+ * The category page used to render `CollectionGrid`, whose chip row counts were
+ * computed from the page's own rows — i.e. one category — so every other chip
+ * read "০" and looked empty. This gives the page real totals for the chips.
+ */
+export async function countWindowPostsByCategory(): Promise<Record<string, number>> {
+  const client = getClient();
+  const res = await client.execute(
+    "SELECT category, count(*) AS n FROM posts_current_window GROUP BY category",
+  );
+  const out: Record<string, number> = {};
+  for (const row of res.rows) {
+    out[String(row.category)] = Number(row.n ?? 0);
+  }
+  return out;
+}
+
 export async function countWindowPosts(category?: CategorySlug): Promise<number> {
   const client = getClient();
   const res = category

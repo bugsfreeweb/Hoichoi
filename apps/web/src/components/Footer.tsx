@@ -4,6 +4,7 @@ import { BRAND } from "@/lib/brand";
 import { SITE_BUILD } from "@/lib/build";
 import { listFooterCategories, getSettings, parseAppConfig } from "@hoichoi/db";
 import { FooterSocials } from "./FooterSocials";
+import { AdvertiserLoginLink } from "./AdvertiserLoginLink";
 import LocalZone from "./LocalZone";
 
 export async function Footer() {
@@ -46,6 +47,13 @@ export async function Footer() {
               {about}
             </p>
             <FooterSocials links={appConfig.footer_socials} />
+            {/* Advertisers had no route into /portal/login from the public site. */}
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <AdvertiserLoginLink />
+              <Link href="/portal/signup" className="font-mono-x text-[10px] tracking-[0.14em] text-ink-soft uppercase underline-offset-4 hover:text-alizarin hover:underline">
+                নতুন বিজ্ঞাপনদাতা? নিবন্ধন
+              </Link>
+            </div>
           </div>
           <div className="md:col-span-4">
             <p className="font-mono-x text-[10px] tracking-[0.24em] text-ink-soft uppercase">

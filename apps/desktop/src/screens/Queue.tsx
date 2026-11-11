@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, RefreshCw, Eye, ExternalLink, CircleCheck, Clock3, Ban, Pencil, Trash2, X, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { POST_STATUS_LABEL, bnTime, toBn } from "../lib/format";
 import { categoryLabel, categoryTint, bySortOrder, type CatMeta } from "../lib/category-style";
-import { deskCategories, deskQueueBulk, deskQueueGenerateImage, deskQueueImagePrompt, deskQueueMediaCandidates, deskQueueRemove, deskQueueSet, deskQueueUpdate, deskImageProviders, deskQueueImages, deskQueueImageAdd, deskQueueImageRemove, deskQueueImagePrimary, openAdmin, isTauri, type DeskCategory, type DeskMediaCandidate, type DeskGalleryImage, type DeskProvider, type DeskQueueRow } from "../lib/tauri";
+import { deskQueuePage, deskCategories, deskQueueBulk, deskQueueGenerateImage, deskQueueImagePrompt, deskQueueMediaCandidates, deskQueueRemove, deskQueueSet, deskQueueUpdate, deskImageProviders, deskQueueImages, deskQueueImageAdd, deskQueueImageRemove, deskQueueImagePrimary, openAdmin, isTauri, type DeskCategory, type DeskMediaCandidate, type DeskGalleryImage, type DeskProvider, type DeskQueueRow } from "../lib/tauri";
 import { getRunEnv } from "../lib/vault";
 import { toast } from "../lib/toast";
 import { SITE_URL } from "../lib/site";
@@ -535,12 +535,21 @@ export default function Queue({
   rows,
   refresh,
   cats,
+  total,
 }: {
   rows: DeskQueueRow[];
   refresh: () => Promise<unknown> | void;
   cats?: DeskCategory[] | null;
+  /** Total rows available on the runner side (not just the loaded page). */
+  total?: number;
 }) {
   const [tab, setTab] = useState<Tab>("all");
+  const [page, setPage] = useState(1);
+  const [pageRows, setPageRows] = useState<DeskQueueRow[]>(rows);
+  const [totalRows, setTotalRows] = useState<number>(total ?? rows.length);
+  const [paging, setPaging] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const PAGE_SIZE = 20;
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<DeskQueueRow | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -549,6 +558,58 @@ export default function Queue({
   const [bulk, setBulk] = useState<"approved" | "rejected" | "published" | "remove" | null>(null);
   const [bulkNote, setBulkNote] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    // App.refresh() always reloads page 1, so snap the view back to it rather
+    // than leaving the table showing page 3 rows under "পৃষ্ঠা ১".
+    setPage(1);
+    setPageRows(rows);
+    setTotalRows((prev) => Math.max(prev, rows.length));
+  }, [rows]);
+
+  /** Fetch another page using the same query the web admin's list uses. */
+  async function goToPage(next: number) {
+    if (paging) return;
+    setPaging(true);
+    const id = toast.busy("সারির পাতা লোড হচ্ছে…", `পৃষ্ঠা ${toBn(next)}`);
+    try {
+      const res = await deskQueuePage(await getRunEnv(), { page: next, pageSize: PAGE_SIZE });
+      setPageRows(res.rows);
+      setTotalRows(res.total);
+      setPage(res.page);
+      setSelected(new Set());
+      toast.ok("পাতা লোড হয়েছে", `${toBn(res.rows.length)}টি আইটেম · মোট ${toBn(res.total)}`);
+    } catch (e) {
+      toast.err("পাতা লোড ব্যর্থ", e instanceof Error ? e.message : String(e));
+    } finally {
+      toast.dismiss(id);
+      setPaging(false);
+    }
+  }
+
+  /** Manual refresh with a visible busy state and a result count. */
+  async function doRefresh() {
+    if (refreshing) return;
+    setRefreshing(true);
+    const id = toast.busy("কনটেন্ট সারি রিফ্রেশ হচ্ছে…", "রানার থেকে সর্বশেষ পোস্ট আনা হচ্ছে");
+    const startedAt = Date.now();
+    try {
+      await refresh();
+      const res = await deskQueuePage(await getRunEnv(), { page: 1, pageSize: PAGE_SIZE });
+      setPageRows(res.rows);
+      setTotalRows(res.total);
+      setPage(1);
+      toast.ok(
+        "সারি রিফ্রেশ হয়েছে",
+        `${toBn(res.total)}টি পোস্ট · ${toBn(Math.max(1, Math.round(Date.now() - startedAt)))}ms`,
+      );
+    } catch (e) {
+      toast.err("রিফ্রেশ ব্যর্থ", e instanceof Error ? e.message : String(e));
+    } finally {
+      toast.dismiss(id);
+      setRefreshing(false);
+    }
+  }
 
   async function removeRow(r: DeskQueueRow) {
     if (!window.confirm(`"${r.title_bn}" পোস্টটি মুছে ফেলবেন? এটি ফেরানো যাবে না।`)) return;
@@ -677,26 +738,26 @@ export default function Queue({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, q, tab, focusIdx, editing]);
+  }, [pageRows, q, tab, focusIdx, editing]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {
-      all: rows.length,
+      all: pageRows.length,
       published: 0,
       pending_review: 0,
       approved: 0,
       duplicate: 0,
     };
-    rows.forEach((r) => {
+    pageRows.forEach((r) => {
       if (r.status === "published") c.published++;
       else if (r.status === "pending_review") c.pending_review++;
       else if (r.status === "approved") c.approved++;
       else if (r.status === "rejected" || r.status === "removed") c.duplicate++;
     });
     return c;
-  }, [rows]);
+  }, [pageRows]);
 
-  const shown = rows.filter((r) => {
+  const shown = pageRows.filter((r) => {
     const bucket =
       r.status === "published"
         ? "published"
@@ -736,11 +797,13 @@ export default function Queue({
             />
           </div>
           <button
-            onClick={() => void refresh()}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/70 hover:border-lime/50 hover:text-lime"
+            onClick={() => void doRefresh()}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/70 disabled:cursor-wait disabled:opacity-60 hover:border-lime/50 hover:text-lime"
             title="রিফ্রেশ"
           >
-            <RefreshCw size={12} />
+            <RefreshCw size={12} className={refreshing ? "animate-spin text-lime" : undefined} />
+            {refreshing ? "রিফ্রেশ হচ্ছে…" : null}
           </button>
         </div>
       </div>
@@ -924,6 +987,25 @@ export default function Queue({
           সব নির্বাচন
         </label>
         <span className="font-mono-x text-[10px] text-white/35">{toBn(selected.size)} নির্বাচিত</span>
+        <span className="font-mono-x text-[10px] text-white/30">
+          মোট {toBn(totalRows)} · পৃষ্ঠা {toBn(page)}/{toBn(Math.max(1, Math.ceil(totalRows / PAGE_SIZE)))}
+        </span>
+        <span className="flex items-center gap-1">
+          <button
+            onClick={() => void goToPage(page - 1)}
+            disabled={paging || page <= 1}
+            className="rounded-md border border-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/60 disabled:opacity-30 hover:border-lime/50 hover:text-lime"
+          >
+            ← আগের
+          </button>
+          <button
+            onClick={() => void goToPage(page + 1)}
+            disabled={paging || page >= Math.ceil(totalRows / PAGE_SIZE)}
+            className="rounded-md border border-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/60 disabled:opacity-30 hover:border-lime/50 hover:text-lime"
+          >
+            পরের →
+          </button>
+        </span>
 
         {bulk && (
           <span className="flex items-center gap-1.5 text-[10.5px] font-semibold text-lime">

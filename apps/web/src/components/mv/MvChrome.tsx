@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Ticker from "@/components/mv/site/Ticker";
 import Navbar from "@/components/mv/site/Navbar";
 import Footer from "@/components/mv/site/Footer";
+import type { FooterSocialLink } from "@hoichoi/shared-types";
 import { MotionFlag, ScrollProgress } from "@/components/mv/ui/motion";
 import ScrollToTop from "@/components/ScrollToTop";
 import { enabledFor, variantFor, type MvLive } from "@/lib/mv/variant";
@@ -21,10 +22,13 @@ export default function MvChrome({
   live,
   children,
   accent,
+  socials = [],
 }: {
   live: MvLive;
   children: ReactNode;
   accent?: string;
+  /** Global footer links from Settings → Footer (one list for every theme). */
+  socials?: FooterSocialLink[];
 }) {
   const brand = DEFAULT_BRAND;
   const accentHex = accent && /^#?[0-9a-f]{6}$/i.test(accent.trim()) ? accent.trim() : brand.accent;
@@ -38,7 +42,7 @@ export default function MvChrome({
       {enabledFor(live, "ticker") ? <Ticker variant={variantFor(live, "ticker")} /> : null}
       {enabledFor(live, "navbar") ? <Navbar variant={variantFor(live, "navbar")} /> : null}
       {children}
-      {enabledFor(live, "footer") ? <Footer variant={variantFor(live, "footer")} /> : null}
+      {enabledFor(live, "footer") ? <Footer variant={variantFor(live, "footer")} socials={socials} /> : null}
       <ScrollToTop />
     </div>
   );

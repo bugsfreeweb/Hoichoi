@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { windowPosts, countWindowPosts } from "@hoichoi/db";
+import { windowPosts, countWindowPosts, countWindowPostsByCategory } from "@hoichoi/db";
 import { findCategory, getCategories } from "@/lib/categories-server";
 import { CollectionGrid } from "@/components/CollectionGrid";
 import { Pagination } from "@/components/Pagination";
@@ -33,11 +33,14 @@ export default async function CategoryPage({
   const sp = await searchParams;
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
   const offset = (page - 1) * PAGE_SIZE;
-  const [cat, cats, posts, total] = await Promise.all([
+  const [cat, cats, posts, total, counts] = await Promise.all([
     findCategory(slug),
     getCategories(),
     windowPosts({ category: slug as CategorySlug, limit: PAGE_SIZE, offset }),
     countWindowPosts(slug as CategorySlug),
+    // Real totals for the chip row. Without this the chips counted the page's
+    // own rows, so every other category showed ০ and looked empty.
+    countWindowPostsByCategory(),
   ]);
   if (!cat) notFound();
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -59,7 +62,7 @@ export default async function CategoryPage({
         <UnifiedAdPlacement slotKey="category_top_leaderboard" variant="leaderboard" />
       </div>
       <div className="mt-10">
-        <CollectionGrid posts={posts} cats={cats} />
+        <CollectionGrid posts={posts} cats={cats} activeCategory={slug as CategorySlug} categoryCounts={counts} />
       </div>
       <Pagination page={page} pageCount={pageCount} base={`/category/${slug}`} />
     </section>

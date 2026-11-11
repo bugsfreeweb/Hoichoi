@@ -1149,6 +1149,9 @@ html[data-theme="light"] .admin-console .border-white\/50 { border-color: rgba(2
 html[data-theme="light"] .admin-console .hover\:bg-white\/15:hover { background-color: rgba(26, 20, 13, 0.15); }
 html[data-theme="light"] .admin-console .hover\:border-white\/40:hover { border-color: rgba(26, 20, 13, 0.4); }
 html[data-theme="light"] .admin-console .text-paper { color: #f3eee1; }
+html[data-theme="light"] .admin-console .bg-ink\/50 { background-color: rgba(26, 20, 13, 0.55); }
+html[data-theme="light"] .admin-console .bg-paper\/95 { background-color: rgba(243, 238, 225, 0.95); }
+html[data-theme="light"] .admin-console .border-ink\/35 { border-color: rgba(26, 20, 13, 0.28); }
 
 /* Ad strip hover used a hardcoded dark fill (#241d12), which left the
    bandline text dark-on-dark once the light theme flipped the band to a light
@@ -1250,4 +1253,56 @@ html[data-theme="light"] .admin-console .text-paper { color: #f3eee1; }
 .ad-ping { animation: adPing 2s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
   .ad-draw, .ad-bar, .ad-ping { animation: none !important; stroke-dasharray: none; }
+}
+
+/* ---------------------------------------------------------------- hero pipeline scene
+   The hero's right column. Warm "night grid" glass so it sits on the hero band
+   in both themes; the scene itself carries the accent colours.
+   ---------------------------------------------------------------------- */
+.hf-pipeline-scene {
+  background:
+    radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--color-bandline) 26%, transparent), transparent 62%),
+    radial-gradient(90% 90% at 100% 100%, color-mix(in srgb, var(--color-lime) 14%, transparent), transparent 60%),
+    color-mix(in srgb, var(--color-band) 88%, #000 12%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--color-paper) 12%, transparent),
+    0 26px 60px -34px rgba(0, 0, 0, 0.65);
+}
+.hf-pipe-glow {
+  background:
+    radial-gradient(42% 40% at 18% 18%, color-mix(in srgb, #22d3ee 16%, transparent), transparent 70%),
+    radial-gradient(46% 44% at 84% 78%, color-mix(in srgb, #34d399 14%, transparent), transparent 72%);
+  animation: hfPipeGlow 12s ease-in-out infinite alternate;
+}
+@keyframes hfPipeGlow {
+  from { opacity: 0.55; transform: translate3d(0, 0, 0) scale(1); }
+  to { opacity: 0.95; transform: translate3d(0, -6px, 0) scale(1.04); }
+}
+.hf-pipe-flow { animation: hfPipeFlow 1.4s linear infinite; }
+@keyframes hfPipeFlow {
+  to { stroke-dashoffset: -22; }
+}
+.hf-pipe-ping {
+  animation: hfPipePing 1.6s ease-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes hfPipePing {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.hf-pipe-dot { animation: hfPipeBlink 1.8s ease-in-out infinite; }
+@keyframes hfPipeBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+.hf-pipe-packet { opacity: 0; animation: hfPipePacket 6s linear infinite; }
+@keyframes hfPipePacket {
+  0% { opacity: 0; }
+  8% { opacity: 0.9; }
+  92% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hf-pipe-glow, .hf-pipe-flow, .hf-pipe-ping, .hf-pipe-dot, .hf-pipe-packet { animation: none !important; }
 }

@@ -7,7 +7,7 @@ import {
   stopPipeline,
   settingsGet,
   deskSources,
-  deskQueue,
+  deskQueuePage,
   deskStats,
   deskProviders,
   deskMediaStorage,
@@ -186,6 +186,8 @@ export default function App() {
   const [logs, setLogs] = useState<string[]>([]);
   const [sources, setSources] = useState<DeskSource[]>([]);
   const [queueRows, setQueueRows] = useState<DeskQueueRow[]>([]);
+  // Total posts on the runner, so the desk shows the same "মোট" as the web list.
+  const [queueTotal, setQueueTotal] = useState(0);
   const [statsData, setStatsData] = useState<DeskStats | null>(null);
   const [radarData, setRadarData] = useState<DeskRadarSnapshot | null>(null);
   const [cats, setCats] = useState<DeskCategory[] | null>(null);
@@ -314,14 +316,15 @@ export default function App() {
       setConfigured(configuredMap);
       const s = await settingsGet(env).catch(() => null);
       if (s && Number(s.pipeline_hours) > 0) setHours(Number(s.pipeline_hours));
-      const [src, rows, stats, radar] = await Promise.all([
+      const [src, queuePage, stats, radar] = await Promise.all([
         deskSources(env),
-        deskQueue(env),
+        deskQueuePage(env, { page: 1 }),
         deskStats(env).catch(() => null),
         deskRadarStats(env).catch(() => null),
       ]);
       setSources(src);
-      setQueueRows(rows);
+      setQueueRows(queuePage.rows);
+      setQueueTotal(queuePage.total);
       setStatsData(stats);
       setRadarData(radar);
       // Category names and dots come from the DB so an admin's rename shows up
@@ -736,7 +739,7 @@ export default function App() {
 
               <section className="pane col" id="pane-queue" hidden={view !== "queue"}>
                 <PaneBoundary name="queue">
-                  <Queue rows={queueRows} refresh={refresh} cats={cats} />
+                  <Queue rows={queueRows} refresh={refresh} cats={cats} total={queueTotal} />
                 </PaneBoundary>
               </section>
 

@@ -85,7 +85,19 @@ try {
     "the chain must continue after a bad_output failure",
   );
   assert.match(calls.at(-1) ?? "", /width=512&height=512|height=512&width=512/);
+  // A *pinned* provider is a preference, not a filter. Pinning the broken row
+  // used to shrink the candidate list to that row alone, so a quota/429 on the
+  // chosen provider failed the request while the next row was healthy — the
+  // exact mismatch between the web editor (pins a row) and the desktop (pins
+  // nothing) reported by operators.
+  const pinned = await generateImage({ prompt: "A calm river", size: "512x512", providerId: "broken-chat-row" });
+  assert.equal(pinned.provider, "working-image-row", "a failing pinned provider must fall through");
+  assert.ok(
+    calls.some((u) => u.includes("example-chat.test")),
+    "the pinned provider should still be tried first",
+  );
   console.log("image-chain: broken provider no longer aborts the fallback chain");
+  console.log("image-chain: failing pinned provider falls through to the rest of the chain");
 } finally {
   globalThis.fetch = originalFetch;
   await client.close();

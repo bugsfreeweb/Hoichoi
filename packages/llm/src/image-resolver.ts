@@ -103,9 +103,20 @@ export class ImageResolver {
     const store = this.opts.keyStore ?? (() => null);
     const fromStore = store(row.id) ?? store(row.provider_key) ?? store(row.api_key_env_var);
     if (fromStore?.trim()) return fromStore.trim();
+    const env = process.env[row.api_key_env_var]?.trim();
+    /**
+     * In CI the repository secret is the authoritative credential.
+     *
+     * A provider row can keep a stale `api_key` from an earlier setup, and the
+     * old precedence (row before env) silently used it — that is why the same
+     * Gemini account worked in the desktop app (vault key) while GitHub Actions
+     * returned 429/quota errors (old DB key). Outside CI the row still wins,
+     * so an operator who intentionally stores a key per provider is unaffected.
+     */
+    const ci = Boolean(process.env.GITHUB_ACTIONS) || process.env.CI === "true";
+    if (ci && env) return env;
     if (row.api_key?.trim()) return row.api_key.trim();
-    const env = process.env[row.api_key_env_var];
-    if (env?.trim()) return env.trim();
+    if (env) return env;
     return null;
   }
 }
@@ -167,15 +178,28 @@ export async function generateImage(
 ): Promise<ImageGenResult> {
   const resolver = new ImageResolver({ keyStore: opts.keyStore });
   const active = await resolver.activeProviders();
-  const candidates = (
-    opts.providerId ? active.filter((ap) => ap.row.id === opts.providerId) : active
-  ).filter((ap) => ap.provider.supportsImage && typeof ap.provider.generateImage === "function");
+  const usable = active.filter(
+    (ap) => ap.provider.supportsImage && typeof ap.provider.generateImage === "function",
+  );
+  /**
+   * A pinned provider is a *preference*, not a hard filter.
+   *
+   * Pinning used to reduce the candidate list to that one row, so a quota error
+   * on the chosen row (Gemini 429, OpenAI "no credits") aborted generation even
+   * though the next row was healthy. The editor then looked broken while the
+   * desktop — which passes no pin — worked with the same accounts. Preferring
+   * the pinned row and then walking the rest fixes that without changing what
+   * happens when the pinned row succeeds.
+   */
+  const preferred = opts.providerId ? usable.filter((ap) => ap.row.id === opts.providerId) : [];
+  const rest = opts.providerId ? usable.filter((ap) => ap.row.id !== opts.providerId) : usable;
+  const candidates = [...preferred, ...rest];
 
   if (candidates.length === 0) {
     throw new ProviderError(
       "bad_output",
       opts.providerId
-        ? "নির্বাচিত প্রোভাইডারটি ছবি তৈরি করতে পারে না বা সক্রিয় নয়।"
+        ? "নির্বাচিত প্রোভাইডারটি ছবি তৈরি করতে পারে না বা সক্রিয় নয়, এবং বিকল্প কোনো প্রোভাইডার নেই।"
         : "কোনো সক্রিয় ছবি-প্রোভাইডার নেই। (purpose = image যোগ করুন)",
     );
   }
@@ -190,6 +214,19 @@ export async function generateImage(
     try {
       return await ap.provider.generateImage!(opts, signal);
     } catch (err) {
+      // A per-minute rate limit is worth one short retry before giving up on the
+      // row: Gemini's free tier answers 429 while the same key works again a few
+      // seconds later, and failing over leaves the nicer model unused.
+      const msg = (err as Error).message ?? "";
+      if (/(^|[^0-9])429([^0-9]|$)|rate.?limit/i.test(msg)) {
+        await new Promise((r) => setTimeout(r, 4_000));
+        try {
+          return await ap.provider.generateImage!(opts, signal);
+        } catch (retryErr) {
+          errors.push(`${ap.row.display_name}: ${(retryErr as Error).message}`);
+          continue;
+        }
+      }
       // Keep walking the chain on EVERY failure, including `bad_output`.
       // Breaking early here meant one mis-configured row (e.g. a chat model
       // saved with purpose=image, whose /images/generations 404s) aborted the
