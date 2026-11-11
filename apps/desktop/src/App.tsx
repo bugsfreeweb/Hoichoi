@@ -181,6 +181,8 @@ export default function App() {
   const [configured, setConfigured] = useState<Partial<Record<CredentialName, boolean>>>({});
   const [running, setRunning] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  // Heartbeat for the dashboard's live panel: the last time a snapshot landed.
+  const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [sources, setSources] = useState<DeskSource[]>([]);
   const [queueRows, setQueueRows] = useState<DeskQueueRow[]>([]);
@@ -333,6 +335,7 @@ export default function App() {
         void notify("হৈচৈ ডেস্ক — অপেক্ষমাণ মন্তব্য", `${toBn(pending)}টি মন্তব্য মডারেশনের অপেক্ষায় আছে।`);
       }
       prevPendingRef.current = pending;
+      setLastRefreshAt(Date.now());
       return { ok: true };
     } catch (err) {
       // Surface the actual runner error so a failed refresh is not mistaken for
@@ -713,6 +716,8 @@ export default function App() {
                   onRun={() => void runNow()}
                   onRefresh={() => void manualRefresh()}
                   refreshing={refreshing}
+                  logs={logs}
+                  lastRefreshAt={lastRefreshAt}
                 />
                 </PaneBoundary>
               </section>

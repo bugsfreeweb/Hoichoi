@@ -11,6 +11,8 @@ type Toast = { id: number; kind: "ok" | "err" | "info"; title: string; body: str
 
 const POLL_MS = 2500;
 const RUN_TIMEOUT_MS = 120_000;
+/** Background snapshot cadence: slow enough to be free, fast enough to feel live. */
+const LIVE_REFRESH_MS = 15_000;
 
 /**
  * Client shell around the shared {@link DashboardView}. The server page does the
@@ -79,6 +81,28 @@ export function AdminDashboard({
       else pushToast("err", "রিফ্রেশ ব্যর্থ", "সার্ভার থেকে স্ন্যাপশট আনা যায়নি — আবার চেষ্টা করুন।");
     }
   }, [refreshing, snapshot, live.range, pushToast]);
+
+  /**
+   * Keep the live panels honest without a manual refresh.
+   *
+   * The console used to update only when someone clicked refresh or started a
+   * run, so "real-time" activity was really "as of page load". This polls the
+   * same snapshot endpoint quietly while the tab is visible, and skips entirely
+   * when hidden or while a manual refresh/run is already in flight.
+   */
+  useEffect(() => {
+    let timer = 0;
+    const tick = async () => {
+      if (document.hidden || stopped.current) {
+        timer = window.setTimeout(tick, LIVE_REFRESH_MS);
+        return;
+      }
+      await snapshot(live.range);
+      timer = window.setTimeout(tick, LIVE_REFRESH_MS);
+    };
+    timer = window.setTimeout(tick, LIVE_REFRESH_MS);
+    return () => window.clearTimeout(timer);
+  }, [snapshot, live.range]);
 
   const latestRunId = useCallback(async (): Promise<string | null> => {
     try {

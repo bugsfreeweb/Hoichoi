@@ -1222,3 +1222,32 @@ html[data-theme="light"] .admin-console .text-paper { color: #f3eee1; }
   .brand-motion--typewriter::after,
   .brand-motion--shimmer::after { animation: none !important; }
 }
+/* ---------------------------------------------------------------- ad charts
+   Draw-in for the client analytics board. The paths start hidden via
+   stroke-dasharray and are revealed by animating the offset once, so the chart
+   "writes itself" on load without any JS or per-frame work.
+   ---------------------------------------------------------------------- */
+@keyframes adDraw {
+  from { stroke-dashoffset: 1200; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes adBar {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes adPing {
+  0%, 100% { opacity: 1; r: 4; }
+  50% { opacity: 0.35; r: 6.5; }
+}
+.ad-draw {
+  stroke-dasharray: 1200;
+  animation: adDraw 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.ad-bar {
+  transform-origin: left center;
+  animation: adBar 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.ad-ping { animation: adPing 2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .ad-draw, .ad-bar, .ad-ping { animation: none !important; stroke-dasharray: none; }
+}

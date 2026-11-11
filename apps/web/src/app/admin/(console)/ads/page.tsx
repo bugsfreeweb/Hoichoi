@@ -1,44 +1,41 @@
-import { listAdSlots, listAdCreatives, listAdBookings, listAdClients } from "@hoichoi/db";
+import { getAdAnalytics, listAdSlots, listAdCreatives, listAdBookings, listAdClients } from "@hoichoi/db";
 import Link from "next/link";
 import { requirePageUser, requiresRole } from "@/lib/auth";
 import { updateAdBookingStatus, updateAdClientStatus } from "./actions";
 import { AdsAdminNavigation } from "@/components/admin/ads/AdsAdminNavigation";
+import { AdsOverviewBoard } from "@/components/admin/ads/AdsOverviewBoard";
+import { PageHeading } from "@/components/admin/ui/PageHeader";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminAdsPage() {
   const user = await requirePageUser();
   const canManageClients = requiresRole(user, "admin");
-  const [slots, creatives, bookings, clients] = await Promise.all([
+  const [slots, creatives, bookings, clients, analytics] = await Promise.all([
     listAdSlots(),
     listAdCreatives(),
     listAdBookings(),
     listAdClients(),
+    getAdAnalytics().catch(() => []),
   ]);
 
   return (
     <div>
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="eyebrow">▚ AD MANAGEMENT · বিজ্ঞাপন ব্যবস্থাপনা</p>
-          <h1 className="mt-2 font-serif-bn text-[32px] font-black text-ink md:text-[40px]">বিজ্ঞাপন</h1>
-          <p className="mt-1 text-[13px] text-ink-soft">বিজ্ঞাপন স্লট, ক্রিয়েটিভ, বুকিং ও অ্যানালিটিক্স পরিচালনা করুন।</p>
-        </div>
-        <Link href="/portal/login" className="border border-ink/20 px-3 py-2 text-[11px] font-bold text-ink hover:border-ink">ক্লায়েন্ট পোর্টাল</Link>
-      </header>
+      <PageHeading
+        emoji="▚"
+        kicker="AD MANAGEMENT · বিজ্ঞাপন ব্যবস্থাপনা"
+        title="বিজ্ঞাপন"
+        description="স্লট দখল, বুকিং আয় ও ডেলিভারি এক নজরে — তারপর ক্রিয়েটিভ ও ক্লায়েন্ট পরিচালনা করুন।"
+        actions={
+          <Link href="/portal/login" className="border border-ink/20 px-3 py-2 text-[11px] font-bold text-ink hover:border-ink">ক্লায়েন্ট পোর্টাল</Link>
+        }
+      />
 
       <AdsAdminNavigation active="" />
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          ["স্লট", slots.length],
-          ["ক্রিয়েটিভ", creatives.length],
-          ["বুকিং", bookings.length],
-          ["ক্লায়েন্ট", clients.length],
-        ].map(([label, value]) => (
-          <div key={label} className="border border-ink/15 bg-card px-4 py-3">
-            <p className="font-mono-x text-[9px] tracking-[0.15em] text-ink-soft uppercase">{label}</p>
-            <p className="mt-1 font-display text-[22px] font-bold text-ink">{value}</p>
+      <div className="mt-6">
+        <AdsOverviewBoard slots={slots} bookings={bookings} analytics={analytics} />
+      </div>
       <section className="mt-10 border border-line bg-paper p-5 md:p-7">
         <p className="eyebrow">▚ AD SLOTS</p>
         <h2 className="mt-1 mb-5 font-serif-bn text-[22px] font-black text-ink">বিজ্ঞাপন স্লটসমূহ</h2>
@@ -64,9 +61,7 @@ export default async function AdminAdsPage() {
           <p className="text-[12.5px] text-ink-soft">কোনো স্লট পাওয়া যায়নি। মাইগ্রেশন চালান।</p>
         )}
       </section>
-          </div>
-        ))}
-      </div>
+
       <section className="mt-10 border border-line bg-paper p-5 md:p-7">
         <p className="eyebrow">▚ CREATIVES</p>
         <h2 className="mt-1 mb-5 font-serif-bn text-[22px] font-black text-ink">ক্রিয়েটিভস</h2>

@@ -1,4 +1,4 @@
-﻿import { useMemo } from "react";
+﻿import { useDeferredValue, useMemo } from "react";
 import { DashboardView, type DashActions } from "@hoichoi/dash";
 import { buildDeskModel, viewForTarget } from "../lib/desk-model";
 import type {
@@ -27,6 +27,8 @@ export default function Dashboard({
   onRun,
   onRefresh,
   refreshing,
+  logs = [],
+  lastRefreshAt = null,
 }: {
   sources: DeskSource[];
   queueRows: DeskQueueRow[];
@@ -39,10 +41,28 @@ export default function Dashboard({
   onRun: () => void;
   onRefresh: () => void;
   refreshing?: boolean;
+  /** Runner log lines — feeds the dashboard's real-time activity panel. */
+  logs?: string[];
+  /** When the parent last refreshed the snapshot (ms epoch). */
+  lastRefreshAt?: number | null;
 }) {
+  const deferredLogs = useDeferredValue(logs);
   const model = useMemo(
-    () => buildDeskModel({ statsData, sources, queueRows, radarData, cats: cats ?? null, running, dbDriver }),
-    [statsData, sources, queueRows, radarData, cats, running, dbDriver],
+    () =>
+      buildDeskModel({
+        statsData,
+        sources,
+        queueRows,
+        radarData,
+        cats: cats ?? null,
+        running,
+        dbDriver,
+        logs: deferredLogs,
+        beatAt: lastRefreshAt,
+      }),
+    // Deferring the log tail keeps a chatty run from rebuilding every chart on
+    // each log line; the model catches up a frame later instead.
+    [statsData, sources, queueRows, radarData, cats, running, dbDriver, deferredLogs, lastRefreshAt],
   );
 
   const actions: DashActions = {

@@ -2,6 +2,7 @@ import type {
   DashActivity,
   DashCategory,
   DashContentRow,
+  DashLiveEvent,
   DashModel,
   DashRun,
   DashSeriesPoint,
@@ -81,12 +82,50 @@ export interface DeskModelInput {
   cats: DeskCategory[] | null;
   running: boolean;
   dbDriver: string;
+  /** Live runner log lines (newest last), used by the real-time panels. */
+  logs?: string[];
+  /** Timestamp of the last snapshot refresh (ms epoch). */
+  beatAt?: number | null;
 }
 
 const DASH_EMPTY: DashSeriesPoint = { collected: 0, published: 0, duplicates: 0 };
 
+
+/**
+ * Turn runner log lines into the dashboard's live feed.
+ *
+ * Body text is kept verbatim — these are the same lines the collector pane
+ * shows, so the dashboard never invents an event the runner did not emit. Lines
+ * that carry a `[hh:mm:ss]` prefix get a real timestamp; the rest are marked as
+ * "just arrived" rather than given a fabricated time.
+ */
+function logEvents(lines: string[]): DashLiveEvent[] {
+  const tail = lines.slice(-40);
+  return tail
+    .map((line): DashLiveEvent | null => {
+      const text = line.trim();
+      if (!text) return null;
+      const at = /^\[(\d{2}:\d{2}:\d{2})\]/.exec(text);
+      let kind: DashLiveEvent["kind"] = "system";
+      if (/fail|error|exit code [1-9]|watchdog|blocked/i.test(text)) kind = "error";
+      else if (/publish|প্রকাশ/i.test(text)) kind = "publish";
+      else if (/approve|অনুমোদ/i.test(text)) kind = "approve";
+      else if (/collect|scrap|crawl|সংগ্রহ|fetch/i.test(text)) kind = "collect";
+      return {
+        // Stable across polls: the id is the line itself, so a refresh that
+        // re-sends the same tail does not replay every entrance animation.
+        id: text,
+        text: text.replace(/^\[[^\]]+\]\s*/, ""),
+        at: at ? `1970-01-01T${at[1]}Z` : null,
+        kind,
+      };
+    })
+    .filter((e): e is DashLiveEvent => e !== null)
+    .reverse();
+}
+
 export function buildDeskModel(input: DeskModelInput): DashModel {
-  const { statsData, sources, queueRows, radarData, cats, running, dbDriver } = input;
+  const { statsData, sources, queueRows, radarData, cats, running, dbDriver, logs, beatAt } = input;
   const st = statsData?.stats;
   const runs = statsData?.runs ?? [];
 
@@ -172,6 +211,11 @@ export function buildDeskModel(input: DeskModelInput): DashModel {
   }));
 
   const model: DashModel = {
+    live: {
+      running,
+      beatAt: beatAt ?? Date.now(),
+      events: logEvents(logs ?? []),
+    },
     generatedAt: new Date().toISOString(),
     range: "all",
     kpis: [

@@ -108,6 +108,28 @@ export interface DashHealth {
   lastRunStatus: string | null;
 }
 
+/**
+ * Real-time feed for the live panels.
+ *
+ * Desktop fills `events` from runner log lines as they arrive; the web admin
+ * fills it from `/api/admin/live-activity`. It is optional so an older host can
+ * keep rendering the dashboard without it.
+ */
+export interface DashLiveEvent {
+  id: string;
+  text: string;
+  at: string | null;
+  kind?: "collect" | "publish" | "approve" | "reject" | "ad" | "system" | "error" | "live";
+  href?: string;
+}
+
+export interface DashLive {
+  running: boolean;
+  events: DashLiveEvent[];
+  /** When the host last received a heartbeat (ms epoch). */
+  beatAt?: number | null;
+}
+
 export interface DashModel {
   generatedAt: string;
   range: DashRange;
@@ -122,6 +144,7 @@ export interface DashModel {
   content: DashContentRow[];
   activity: DashActivity[];
   health: DashHealth;
+  live?: DashLive;
 }
 
 export interface DashActions {

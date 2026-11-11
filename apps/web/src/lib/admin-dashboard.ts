@@ -78,6 +78,18 @@ function pctDelta(values: number[]): number {
   return ((last - prev) / prev) * 100;
 }
 
+
+/** Map an audit line onto the live feed's icon/colour buckets. */
+function kindForText(text: string): NonNullable<DashModel["live"]>["events"][number]["kind"] {
+  if (/fail|error|ব্যর্থ|ত্রুটি/i.test(text)) return "error";
+  if (/publish|প্রকাশ/i.test(text)) return "publish";
+  if (/approve|অনুমোদ/i.test(text)) return "approve";
+  if (/reject|প্রত্যাখ্যান|remove|সরান/i.test(text)) return "reject";
+  if (/collect|scrap|সংগ্রহ/i.test(text)) return "collect";
+  if (/ad |বিজ্ঞাপন/i.test(text)) return "ad";
+  return "system";
+}
+
 export async function buildAdminDashboard(
   range: DashRange = "all",
 ): Promise<{
@@ -265,6 +277,23 @@ export async function buildAdminDashboard(
     content,
     activity: analytics.activity.map((a) => ({ id: a.id, text: a.text, at: a.at, href: a.href })),
     health,
+    /*
+     * The dashboard's live panels need a heartbeat and a feed, not just a
+     * timestamped model. `running` comes from the newest run row (the runner
+     * writes one on start), and the feed is the same audit trail the console
+     * already shows — no synthetic events.
+     */
+    live: {
+      running: runs[0]?.status === "running",
+      beatAt: Date.now(),
+      events: analytics.activity.slice(0, 24).map((a) => ({
+        id: a.id,
+        text: a.text,
+        at: a.at,
+        href: a.href,
+        kind: kindForText(a.text),
+      })),
+    },
   };
 
   return { model, contentTotal: queue.total, traffic, storage };

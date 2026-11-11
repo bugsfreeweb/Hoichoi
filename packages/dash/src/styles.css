@@ -251,6 +251,7 @@ html[data-theme="light"] .hoichoi-dash .hover\:text-white\/90:hover { color: rgb
 html[data-theme="light"] .hoichoi-dash .border-white\/8 { border-color: rgba(15, 23, 42, 0.09); }
 html[data-theme="light"] .hoichoi-dash .border-white\/10 { border-color: rgba(15, 23, 42, 0.11); }
 html[data-theme="light"] .hoichoi-dash .border-white\/12 { border-color: rgba(15, 23, 42, 0.13); }
+html[data-theme="light"] .hoichoi-dash .border-white\/15 { border-color: rgba(15, 23, 42, 0.16); }
 html[data-theme="light"] .hoichoi-dash .border-white\/30 { border-color: rgba(15, 23, 42, 0.3); }
 html[data-theme="light"] .hoichoi-dash .hover\:border-white\/30:hover { border-color: rgba(15, 23, 42, 0.3); }
 html[data-theme="light"] .hoichoi-dash .divide-white\/6 > :not([hidden]) ~ :not([hidden]) {
@@ -262,11 +263,13 @@ html[data-theme="light"] .hoichoi-dash .bg-white\/5 { background-color: rgba(15,
 html[data-theme="light"] .hoichoi-dash .bg-white\/6 { background-color: rgba(15, 23, 42, 0.06); }
 html[data-theme="light"] .hoichoi-dash .bg-white\/30 { background-color: rgba(15, 23, 42, 0.25); }
 html[data-theme="light"] .hoichoi-dash .bg-white\/\[0\.02\] { background-color: rgba(15, 23, 42, 0.025); }
+html[data-theme="light"] .hoichoi-dash .bg-white\/\[0\.025\] { background-color: rgba(15, 23, 42, 0.03); }
 html[data-theme="light"] .hoichoi-dash .bg-white\/\[0\.03\] { background-color: rgba(15, 23, 42, 0.035); }
 html[data-theme="light"] .hoichoi-dash .bg-white\/\[0\.04\] { background-color: rgba(15, 23, 42, 0.045); }
 html[data-theme="light"] .hoichoi-dash .bg-white\/\[0\.06\] { background-color: rgba(15, 23, 42, 0.06); }
 html[data-theme="light"] .hoichoi-dash .hover\:bg-white\/5:hover { background-color: rgba(15, 23, 42, 0.06); }
 html[data-theme="light"] .hoichoi-dash .hover\:bg-white\/\[0\.03\]:hover { background-color: rgba(15, 23, 42, 0.045); }
+html[data-theme="light"] .hoichoi-dash .hover\:bg-white\/\[0\.025\]:hover { background-color: rgba(15, 23, 42, 0.04); }
 html[data-theme="light"] .hoichoi-dash .bg-ink-900\/95 { background-color: rgba(255, 255, 255, 0.97); }
 
 /* ---------- svg presentation attributes (charts) ---------- */
@@ -279,3 +282,40 @@ html[data-theme="light"] .hoichoi-dash [stroke="rgba(255,255,255,0.06)"] { strok
 html[data-theme="light"] .hoichoi-dash [fill="rgba(255,255,255,0.06)"] { fill: rgba(15, 23, 42, 0.08); }
 html[data-theme="light"] .hoichoi-dash [fill="rgba(255,255,255,0.045)"] { fill: rgba(15, 23, 42, 0.05); }
 html[data-theme="light"] .hoichoi-dash [fill="#79839a"] { fill: #475569; }
+
+/* ==========================================================================
+   Real-time layer (packages/dash/src/realtime.tsx)
+   Motion here is data-driven: it only runs while a collector/run is live, so
+   an idle console is still. All loops are transform/opacity only.
+   ========================================================================== */
+
+@keyframes rtRipple {
+  0% { transform: scale(0.42); opacity: 0.85; }
+  70% { opacity: 0.18; }
+  100% { transform: scale(1); opacity: 0; }
+}
+@keyframes rtBreathe {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+@keyframes rtBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+@keyframes rtTravel {
+  from { left: 0%; opacity: 0; }
+  15% { opacity: 1; }
+  to { left: 100%; opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hoichoi-dash .svg-ping,
+  .hoichoi-dash .dash-flow,
+  .hoichoi-dash .blink,
+  .hoichoi-dash .pulse-ring::before,
+  .hoichoi-dash .anim-in,
+  .hoichoi-dash .anim-fade,
+  .hoichoi-dash .anim-pop {
+    animation: none !important;
+  }
+}

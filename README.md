@@ -377,6 +377,28 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 > before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
 > (latest e.g. `012_post_images.sql`).
 
+## Real-time dashboards & ad-ops visibility (v1.1.22)
+
+Both consoles render the same `@hoichoi/dash` components, and the live panels now
+animate from real signals instead of a page-load snapshot:
+
+- `packages/dash/src/realtime.tsx` adds `LivePulse`, `StreamArea`, `PipelineFlow`,
+  `ActivityStream`, `HeatGrid` and `LiveNumber`. Motion only runs while a run is
+  actually in flight (`DashModel.live.running`), so an idle desk is still.
+- Desktop feeds `live` from the `pipeline://log` tail (stable ids per line, so
+  polls never replay entrance animations) plus a `lastRefreshAt` heartbeat.
+  `useDeferredValue` keeps a chatty run from rebuilding every chart per line.
+- Web admin attaches `live` in `buildAdminDashboard` from the real audit trail and
+  polls the snapshot every 15 s while the tab is visible.
+- `ActivityStream` shows relative Bengali timestamps only when a line carries a
+  real time; log lines without one are marked "just arrived" rather than stamped.
+- Ads admin gained `AdsOverviewBoard`: live slot occupancy for 14 days, revenue by
+  slot, delivery impressions/clicks and four clickable KPIs — all from
+  `ad_bookings` / `platform_ad_events`.
+- Client portal analytics was rebuilt as `ClientAnalyticsBoard` with an obsidian
+  dual-scale delivery chart (impressions vs clicks on independent axes, because a
+  shared axis flattened clicks), daily breakdown and the real delivery event log.
+
 ## Ad inventory and console feedback (v1.1.21)
 
 - **16 platform ad slots** are seeded at runtime (`ensureAdSlotInventory`) and by
