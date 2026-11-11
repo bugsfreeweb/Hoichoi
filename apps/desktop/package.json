@@ -1,6 +1,6 @@
 {
   "name": "@hoichoi/desktop",
-  "version": "1.1.19",
+  "version": "1.1.20",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +14,7 @@
   "dependencies": {
     "@hoichoi/dash": "workspace:*",
     "@hoichoi/shared-types": "workspace:*",
-    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-clipboard-manager": "^2.0.0",
     "@tauri-apps/plugin-notification": "^2.0.0",
     "libsodium-wrappers": "^0.7.15",
@@ -23,7 +23,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.0.0",
+    "@tauri-apps/cli": "^2.12.4",
     "@types/libsodium-wrappers": "^0.7.14",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

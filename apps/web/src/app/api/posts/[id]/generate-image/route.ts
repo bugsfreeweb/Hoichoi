@@ -9,7 +9,7 @@ import {
   updatePost,
 } from "@hoichoi/db";
 import { uploadBufferRemote, writeGeneratedMedia } from "@hoichoi/db/storage";
-import { extensionForMime, generateImage, listImageProviders } from "@hoichoi/llm";
+import { buildImageBrief, extensionForMime, generateImage, listImageProviders } from "@hoichoi/llm";
 import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -91,8 +91,29 @@ async function writeLocalMirror(rel: string, bytes: Uint8Array): Promise<void> {
   await fs.promises.writeFile(full, bytes);
 }
 
-const DEFAULT_PROMPT_PREFIX =
-  "Hoichoi (হৈচৈ) editorial hero illustration, modern cinematic Bengali visual language, deep charcoal with restrained red and warm ivory accents, dignified journalism tone. No text, letters, logos, watermarks, recognizable people, or children.";
+/**
+ * Prompt derived from the post itself.
+ *
+ * This used to be one constant style sentence with the headline appended, which
+ * is why every post ended up with the same picture: image models that cannot
+ * read Bangla rendered the style and dropped the subject. The brief is now
+ * content-first (category scene + extracted names/places/figures + headline +
+ * summary + body excerpt), so two different articles produce two different
+ * images.
+ */
+function promptForPost(post: {
+  title_bn?: string | null;
+  summary_bn?: string | null;
+  body_bn?: string | null;
+  category?: string | null;
+}): string {
+  return buildImageBrief({
+    title: post.title_bn ?? "",
+    summary: post.summary_bn ?? "",
+    body: (post.body_bn ?? "").slice(0, 1200),
+    category: post.category ?? "",
+  }).prompt;
+}
 
 function bool(v: unknown): boolean {
   return v === true || v === "true" || v === 1 || v === "1";
@@ -127,8 +148,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       { status: 500 },
     );
   }
-  const subject = [post.title_bn, post.summary_bn].filter(Boolean).join(" — ").slice(0, 500);
-  const suggestedPrompt = subject ? `${DEFAULT_PROMPT_PREFIX}\n\nবিষয়: ${subject}` : DEFAULT_PROMPT_PREFIX;
+  const suggestedPrompt = promptForPost(post);
 
   return NextResponse.json({
     providers,
@@ -180,10 +200,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const useTitle = body ? bool(body.useTitle) : true;
   let prompt = str(body?.prompt);
-  if (!prompt && useTitle) {
-    const subject = [post.title_bn, post.summary_bn].filter(Boolean).join(" — ").slice(0, 500);
-    prompt = subject ? `${DEFAULT_PROMPT_PREFIX}\n\nবিষয়: ${subject}` : DEFAULT_PROMPT_PREFIX;
-  }
+  if (!prompt && useTitle) prompt = promptForPost(post);
   if (!prompt) {
     return NextResponse.json({ error: "প্রম্পট প্রয়োজন (অথবা useTitle পাঠান)" }, { status: 400 });
   }

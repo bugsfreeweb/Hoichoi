@@ -1,3 +1,4 @@
+import { PageHeading } from "@/components/admin/ui/PageHeader";
 import { mapPost, pageRows } from "@hoichoi/db";
 import { ModerationCard } from "@/components/admin/ModerationCard";
 import { Paginator } from "@/components/admin/Paginator";
@@ -39,7 +40,7 @@ export default async function AdminModerationPage({
   // at article queues does not scroll past reader-submitted text to do their job.
   return (
     <div>
-      <PageHeading emoji="⚖️" kicker="DOUBLE-APPROVAL GATE" title="কনটেন্ট মডারেশন" />
+      <PageHeading emoji="⚖️" kicker="DOUBLE-APPROVAL GATE" title="কনটেন্ট মডারেশন" description="AI-উৎপাদিত খসড়া দুই ধাপের অনুমোদনের পর প্রকাশিত হয়। নোট লিখে অনুমোদন, প্রত্যাখ্যান বা প্রকাশ করুন।" />
       <p className="mt-2 text-[12.5px] text-ink-soft">
         প্রকাশের আগে দুই ধাপের যাচাই। পাঠকের মন্তব্য আলাদা কিউতে —{" "}
         <a href="/admin/comments" className="font-bold text-alizarin underline underline-offset-2">
@@ -87,17 +88,6 @@ export default async function AdminModerationPage({
         </section>
       </div>
     </div>
-  );
-}
-
-function PageHeading({ emoji, kicker, title }: { emoji: string; kicker: string; title: string }) {
-  return (
-    <header>
-      <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">
-        {emoji} {kicker}
-      </p>
-      <h1 className="mt-1 font-serif-bn text-[34px] font-black text-ink">{title}</h1>
-    </header>
   );
 }
 

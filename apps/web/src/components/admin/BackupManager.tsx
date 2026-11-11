@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useToast } from "@/components/admin/ui/toast";
 
 type Written = Record<string, number> | null;
 
@@ -9,6 +10,7 @@ export function BackupManager() {
   const [busy, setBusy] = useState<null | "export" | "import" | "reset">(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const toast = useToast();
 
   const resetMsg = () => {
     setMsg(null);
@@ -30,8 +32,10 @@ export function BackupManager() {
       a.click();
       URL.revokeObjectURL(url);
       setMsg("ব্যাকআপ ডাউনলোড হয়েছে (শুধু কনটেন্ট — passwords নেই)।");
+      toast.success("✓ ব্যাকআপ ডাউনলোড হয়েছে", "শুধু কনটেন্ট — passwords নেই");
     } catch (e) {
       setErr(String(e));
+      toast.error("✕ ব্যাকআপ তৈরি ব্যর্থ", String(e));
     } finally {
       setBusy(null);
     }
@@ -56,6 +60,7 @@ export function BackupManager() {
         .map(([t, n]) => `${t}:${n}`)
         .join(" ");
       setMsg(`পুরনো ডেটা REPLACE করে backup থেকে আনা হয়েছে। (${tally})`);
+      toast.success("✓ ব্যাকআপ রিস্টোর হয়েছে", tally || undefined);
       window.location.reload();
     } catch (e) {
       setErr(String(e));
@@ -75,6 +80,7 @@ export function BackupManager() {
       if (!res.ok) throw new Error(`reset failed (${res.status})`);
       const { wiped } = (await res.json()) as { wiped: string[] };
       setMsg(`রিসেট সম্পন্ন — মুছে গেছে: ${wiped.join(", ")}`);
+      toast.success("✓ রিসেট সম্পন্ন", wiped.join(", "));
       window.location.reload();
     } catch (e) {
       setErr(String(e));

@@ -1,3 +1,4 @@
+import { PageHeading } from "@/components/admin/ui/PageHeader";
 import { mapCategory, pageRows } from "@hoichoi/db";
 import { CategoryForm } from "@/components/admin/CategoryForm";
 import { CategoryRow } from "@/components/admin/CategoryRow";
@@ -25,7 +26,7 @@ export default async function AdminCategoriesPage({
 
   return (
     <div>
-      <PageHeading emoji="🗂️" kicker="CATEGORY CONFIG" title="বিভাগ" />
+      <PageHeading emoji="🗂️" kicker="CATEGORY CONFIG" title="বিভাগ" description="সাইটের বিভাগ, ক্রম ও দৃশ্যমানতা চালান — ক্রম বদলালে হোম ও বিভাগ পেজ সঙ্গে সঙ্গে বদলায়।" />
       <div className="mt-6 grid gap-8 lg:grid-cols-[340px_1fr]">
         <div className="border border-ink/20 bg-paper-deep p-5">
           <h3 className="font-sans-bn text-[15px] font-bold text-ink">নতুন বিভাগ যোগ</h3>
@@ -53,13 +54,3 @@ export default async function AdminCategoriesPage({
   );
 }
 
-function PageHeading({ emoji, kicker, title }: { emoji: string; kicker: string; title: string }) {
-  return (
-    <header>
-      <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">
-        {emoji} {kicker}
-      </p>
-      <h1 className="mt-1 font-serif-bn text-[34px] font-black text-ink">{title}</h1>
-    </header>
-  );
-}

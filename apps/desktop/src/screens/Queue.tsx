@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, RefreshCw, Eye, ExternalLink, CircleCheck, Clock3, Ban, Pencil, Trash2, X, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { POST_STATUS_LABEL, bnTime, toBn } from "../lib/format";
 import { categoryLabel, categoryTint, bySortOrder, type CatMeta } from "../lib/category-style";
-import { deskCategories, deskQueueBulk, deskQueueGenerateImage, deskQueueMediaCandidates, deskQueueRemove, deskQueueSet, deskQueueUpdate, deskImageProviders, deskQueueImages, deskQueueImageAdd, deskQueueImageRemove, deskQueueImagePrimary, openAdmin, isTauri, type DeskCategory, type DeskMediaCandidate, type DeskGalleryImage, type DeskProvider, type DeskQueueRow } from "../lib/tauri";
+import { deskCategories, deskQueueBulk, deskQueueGenerateImage, deskQueueImagePrompt, deskQueueMediaCandidates, deskQueueRemove, deskQueueSet, deskQueueUpdate, deskImageProviders, deskQueueImages, deskQueueImageAdd, deskQueueImageRemove, deskQueueImagePrimary, openAdmin, isTauri, type DeskCategory, type DeskMediaCandidate, type DeskGalleryImage, type DeskProvider, type DeskQueueRow } from "../lib/tauri";
 import { getRunEnv } from "../lib/vault";
 import { toast } from "../lib/toast";
 import { SITE_URL } from "../lib/site";
@@ -33,13 +33,6 @@ const STATUS_STYLE: Record<string, { bg: string; tx: string; icon: typeof Circle
   removed: { bg: "bg-white/8", tx: "text-white/50", icon: Ban, bn: "সরানো হয়েছে" },
 };
 
-function suggestedImagePrompt(row: DeskQueueRow): string {
-  const subject = [row.title_bn, row.summary_bn].filter(Boolean).join(" — ").slice(0, 500);
-  return subject
-    ? `Editorial news illustration, clean modern flat style with soft natural light, dignified print-journalism tone, no text, no logos, no watermarks.\n\nবিষয়: ${subject}`
-    : "Editorial news illustration, clean modern flat style with soft natural light, dignified print-journalism tone, no text, no logos, no watermarks.";
-}
-
 function EditModal({
   row,
   onClose,
@@ -67,7 +60,11 @@ function EditModal({
   // Manual AI image generation (used when the pipeline produced no image).
   const [genProviders, setGenProviders] = useState<DeskProvider[]>([]);
   const [genProvider, setGenProvider] = useState("");
-  const [genPrompt, setGenPrompt] = useState(() => suggestedImagePrompt(row));
+  // The prompt is derived from this post by the runner (`media prompt`), so it
+  // is loaded async below instead of being a generic placeholder that produced
+  // the same picture for every article.
+  const [genPrompt, setGenPrompt] = useState("");
+  const [genSuggested, setGenSuggested] = useState("");
   const [genRatio, setGenRatio] = useState("16:9");
   const [genBusy, setGenBusy] = useState(false);
   const [genMsg, setGenMsg] = useState<string | null>(null);
@@ -130,6 +127,27 @@ function EditModal({
       live = false;
     };
   }, []);
+
+  // Content-derived prompt for this post (headline + summary + body + category).
+  // Filled into the textarea so the operator sees what will actually be drawn
+  // and can edit it; an empty textarea asks the runner to use the same prompt.
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      try {
+        const env = await getRunEnv();
+        const r = await deskQueueImagePrompt(env, row.id);
+        if (!live) return;
+        setGenSuggested(r.prompt);
+        setGenPrompt((cur) => (cur.trim() === "" ? r.prompt : cur));
+      } catch {
+        /* the runner still builds the prompt when the textarea stays empty */
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [row.id]);
 
   // Extra (gallery) images mirrored by the collector plus anything added here.
   useEffect(() => {
@@ -430,12 +448,37 @@ function EditModal({
               </p>
             ) : null}
             <textarea
-              rows={2}
+              rows={3}
               className={`${field} mt-2`}
               value={genPrompt}
-              placeholder="প্রম্পট (খালি = শিরোনাম/সারাংশ থেকে স্বয়ংক্রিয়)"
+              placeholder="প্রম্পট (খালি = শিরোনাম/সারাংশ/বডি থেকে স্বয়ংক্রিয়)"
               onChange={(e) => setGenPrompt(e.target.value)}
             />
+            {genSuggested !== "" && (
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <span className="text-[9.5px] text-white/30">
+                  এই পোস্ট থেকে তৈরি প্রম্পট — চাইলে সম্পাদনা করুন
+                </span>
+                {genPrompt.trim() !== genSuggested.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => setGenPrompt(genSuggested)}
+                    className="rounded border border-white/15 px-1.5 py-0.5 text-[9.5px] font-bold text-white/70 hover:border-lime/60 hover:text-lime"
+                  >
+                    ↺ প্রস্তাবিত প্রম্পট
+                  </button>
+                )}
+                {genPrompt.trim() !== "" && (
+                  <button
+                    type="button"
+                    onClick={() => setGenPrompt("")}
+                    className="rounded border border-white/15 px-1.5 py-0.5 text-[9.5px] font-bold text-white/70 hover:border-lime/60 hover:text-lime"
+                  >
+                    স্বয়ংক্রিয় করুন
+                  </button>
+                )}
+              </div>
+            )}
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <select className={`${field} mt-0 flex-1`} value={genProvider} onChange={(e) => setGenProvider(e.target.value)}>
                 <option value="">স্বয়ংক্রিয় (ফ্রি আগে)</option>
@@ -731,6 +774,7 @@ export default function Queue({
                   onChange={(e) => setSelected(e.target.checked ? new Set(shown.map((r) => r.id)) : new Set())}
                 />
               </th>
+              <th className="w-14 px-2 py-3 font-medium">ছবি</th>
               <th className="px-5 py-3 font-medium"># আইটেম</th>
               <th className="px-3 py-3 font-medium">সোর্স</th>
               <th className="px-3 py-3 font-medium">সংগ্রহ</th>
@@ -742,7 +786,7 @@ export default function Queue({
           <tbody className="grid-pop divide-y divide-white/6">
             {shown.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-14 text-center text-[12.5px] text-white/35">
+                <td colSpan={7} className="px-5 py-14 text-center text-[12.5px] text-white/35">
                   কোনো আইটেম মিললো না — ফিল্টার বদলে দেখুন।
                 </td>
               </tr>
@@ -766,6 +810,33 @@ export default function Queue({
                         })
                       }
                     />
+                  </td>
+                  <td className="px-2 py-3.5">
+                    {/*
+                      Thumbnail column: the desk used to be text-only, so an
+                      operator could not tell whether a post actually had an
+                      image without opening the editor. Missing media gets a
+                      muted placeholder instead of a broken <img>.
+                    */}
+                    {r.media_path?.trim() ? (
+                      <img
+                        src={deskMediaSrc(r.media_path.trim())}
+                        alt=""
+                        loading="lazy"
+                        className="h-9 w-11 rounded border border-white/12 object-cover"
+                        onError={(e) => {
+                          const img = e.currentTarget;
+                          img.style.visibility = "hidden";
+                        }}
+                      />
+                    ) : (
+                      <span
+                        className="flex h-9 w-11 items-center justify-center rounded border border-dashed border-white/15 text-[9px] text-white/25"
+                        title="কোনো ছবি নেই"
+                      >
+                        নেই
+                      </span>
+                    )}
                   </td>
                   <td className="max-w-[340px] px-5 py-3.5">
                     <div className="flex items-center gap-3">

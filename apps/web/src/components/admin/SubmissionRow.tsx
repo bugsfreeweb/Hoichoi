@@ -1,25 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
+import { useAdminAction } from "@/lib/admin-api";
 import type { SubmittedPage } from "@hoichoi/shared-types";
 import { ExternalLink } from "./ExternalLink";
 
 export function SubmissionRow({ sub }: { sub: SubmittedPage }) {
   const [busy, setBusy] = useState<null | "accept" | "reject">(null);
   const [category, setCategory] = useState<string>(sub.category ?? "missing-children");
+  const run = useAdminAction();
 
   async function decide(decision: "accept" | "reject") {
     setBusy(decision);
-    try {
-      await fetch(`/api/submissions/${sub.id}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ decision, category }),
-      });
-      window.location.reload();
-    } finally {
-      setBusy(null);
-    }
+    const data = await run({
+      path: `/api/submissions/${sub.id}`,
+      init: { method: "POST", body: JSON.stringify({ decision, category }) },
+      busy: decision === "accept" ? "সাবমিশন গ্রহণ করা হচ্ছে…" : "সাবমিশন বাতিল করা হচ্ছে…",
+      success: decision === "accept" ? "✓ সাবমিশন গ্রহণ করা হয়েছে" : "✓ সাবমিশন বাতিল",
+      detail: decision === "accept" ? () => `বিভাগ: ${category}` : undefined,
+    });
+    setBusy(null);
+    if (data) setTimeout(() => window.location.reload(), 500);
   }
 
   const open = sub.status === "new" || sub.status === "reviewing";
@@ -50,10 +52,18 @@ export function SubmissionRow({ sub }: { sub: SubmittedPage }) {
             <option value="missing-children">নিখোঁজ শিশু</option>
           </select>
           <button onClick={() => decide("accept")} disabled={busy !== null} className="border-2 border-ink bg-cat-teal px-4 py-1.5 text-[12px] font-bold text-ink disabled:opacity-50">
-            সোর্স হিসেবে গ্রহণ
+            {busy !== null ? (
+              <span className="inline-flex items-center gap-1.5"><Loader2 size={12} className="animate-spin" /> চলছে…</span>
+            ) : (
+              "সোর্স হিসেবে গ্রহণ"
+            )}
           </button>
           <button onClick={() => decide("reject")} disabled={busy !== null} className="border-2 border-ink bg-alizarin px-4 py-1.5 text-[12px] font-bold text-ink disabled:opacity-50">
-            প্রত্যাখ্যান
+            {busy !== null ? (
+              <span className="inline-flex items-center gap-1.5"><Loader2 size={12} className="animate-spin" /> চলছে…</span>
+            ) : (
+              "প্রত্যাখ্যান"
+            )}
           </button>
         </div>
       )}

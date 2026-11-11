@@ -638,7 +638,12 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       ) {
         try {
           const articleTitle = sp.rawText?.split(/[.!?।\n]/, 1)[0]?.slice(0, 160) || source.page_name;
-          const aiRel = await generateAIHero({ title: articleTitle, summary: sp.rawText ?? "", log });
+          const aiRel = await generateAIHero({
+            title: articleTitle,
+            summary: sp.rawText ?? "",
+            category: source.category,
+            log,
+          });
           if (!aiRel) log("[ai-img] fallback complete — no image");
           if (aiRel) {
             media.kind = "image";

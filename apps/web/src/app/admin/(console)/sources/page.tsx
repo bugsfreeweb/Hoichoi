@@ -1,3 +1,4 @@
+import { PageHeading } from "@/components/admin/ui/PageHeader";
 import { mapSource, getSourceCategories, listCategories, pageRows } from "@hoichoi/db";
 import type { Source } from "@hoichoi/shared-types";
 import { SourceForm } from "@/components/admin/SourceForm";
@@ -38,7 +39,7 @@ export default async function AdminSourcesPage({
 
   return (
     <div>
-      <PageHeading emoji="📡" kicker="SOURCE DIRECTORY" title="সোর্স" />
+      <PageHeading emoji="📡" kicker="SOURCE DIRECTORY" title="সোর্স" description="যেসব পাবলিক পেজ/গ্রুপ থেকে খবর আনা হবে তার তালিকা, বিভাগ ও সক্রিয়তা — এখানেই নিয়ন্ত্রণ।" />
       <div className="mt-6 grid gap-8 lg:grid-cols-[320px_1fr]">
         <div className="border border-ink/20 bg-paper-deep p-5">
           <h3 className="font-sans-bn text-[15px] font-bold text-ink">নতুন সোর্স যোগ</h3>
@@ -70,13 +71,3 @@ export default async function AdminSourcesPage({
   );
 }
 
-function PageHeading({ emoji, kicker, title }: { emoji: string; kicker: string; title: string }) {
-  return (
-    <header>
-      <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">
-        {emoji} {kicker}
-      </p>
-      <h1 className="mt-1 font-serif-bn text-[34px] font-black text-ink">{title}</h1>
-    </header>
-  );
-}

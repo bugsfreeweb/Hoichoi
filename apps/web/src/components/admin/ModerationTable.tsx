@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { CommentWithPost } from "@hoichoi/shared-types";
+import { useAdminAction } from "@/lib/admin-api";
 
 type Tab = "all" | "pending" | "approved" | "blocked";
 
@@ -55,31 +56,33 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
 
   const shown = list.filter((r) => tab === "all" || r.status === tab);
 
+  const run = useAdminAction();
+
+  /**
+   * The list used to be mutated optimistically even when the request failed, so
+   * a 403 looked like a successful approval until the next reload. Now the row
+   * only changes when the server confirms it, and every outcome is announced.
+   */
   const act = async (id: string, action: "approve" | "block" | "delete") => {
     setBusy(id);
-    try {
-      if (action === "delete") {
-        await fetch("/api/comments", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id }),
-        });
-        setList((ls) => ls.filter((r) => r.id !== id));
-      } else {
-        await fetch("/api/comments", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, action }),
-        });
-        setList((ls) =>
-          ls.map((r) =>
-            r.id === id ? { ...r, status: action === "approve" ? "approved" : "blocked" } : r,
-          ),
-        );
-      }
-    } finally {
-      setBusy(null);
-    }
+    const labels = {
+      approve: { busy: "মন্তব্য অনুমোদন করা হচ্ছে…", success: "✓ মন্তব্য অনুমোদিত" },
+      block: { busy: "মন্তব্য ব্লক করা হচ্ছে…", success: "✓ মন্তব্য ব্লকড" },
+      delete: { busy: "মন্তব্য মুছে ফেলা হচ্ছে…", success: "✓ মন্তব্য মুছে ফেলা হয়েছে" },
+    }[action];
+    const data = await run({
+      path: "/api/comments",
+      init: {
+        method: action === "delete" ? "DELETE" : "PATCH",
+        body: JSON.stringify(action === "delete" ? { id } : { id, action }),
+      },
+      busy: labels.busy,
+      success: labels.success,
+    });
+    setBusy(null);
+    if (!data) return;
+    if (action === "delete") setList((ls) => ls.filter((r) => r.id !== id));
+    else setList((ls) => ls.map((r) => (r.id === id ? { ...r, status: action === "approve" ? "approved" : "blocked" } : r)));
   };  return (
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-panel">
       <div className="flex flex-wrap items-center gap-3 border-b border-white/8 px-5 py-4">

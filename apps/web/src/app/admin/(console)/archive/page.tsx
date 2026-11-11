@@ -1,3 +1,4 @@
+import { PageHeading } from "@/components/admin/ui/PageHeader";
 import { countUnusablePosts, listArchivedPostsPage } from "@hoichoi/db";
 import { ArchivedRow } from "@/components/admin/ArchivedRow";
 import { PurgeButton } from "@/components/admin/PurgeButton";
@@ -23,7 +24,7 @@ export default async function AdminArchivePage({
 
   return (
     <div>
-      <PageHeading emoji="📁" kicker="RETENTION WINDOW" title="আর্কাইভ" />
+      <PageHeading emoji="📁" kicker="RETENTION WINDOW" title="আর্কাইভ" description="প্রকাশিত পোস্ট কত দিন পর আর্কাইভে যাবে তা ঠিক করুন, এবং আর্কাইভ থেকে ফেরান বা স্থায়ীভাবে মুছুন।" />
       <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-ink-soft">
         ৭ দিনের পাবলিক জানালা শেষে পোস্ট এখানে চলে আসে। লিগ্যাল-হোল্ড বা সক্রিয় নিখোঁজ মামলা ব্যতিক্রম। {retention} দিন পর
         স্থায়ীভাবে মুছে ফেলা হয়। একটি নির্দিষ্ট পোস্ট আগেই মুছতে চাইলে প্রতিটি সারির
@@ -51,13 +52,3 @@ export default async function AdminArchivePage({
   );
 }
 
-function PageHeading({ emoji, kicker, title }: { emoji: string; kicker: string; title: string }) {
-  return (
-    <header>
-      <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">
-        {emoji} {kicker}
-      </p>
-      <h1 className="mt-1 font-serif-bn text-[34px] font-black text-ink">{title}</h1>
-    </header>
-  );
-}

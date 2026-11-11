@@ -1,3 +1,4 @@
+import { PageHeading } from "@/components/admin/ui/PageHeader";
 import { getPostById, mapRemovalRequest, pageRows } from "@hoichoi/db";
 import { RemovalRow } from "@/components/admin/RemovalRow";
 import { Paginator } from "@/components/admin/Paginator";
@@ -47,7 +48,7 @@ export default async function AdminRemovalsPage({
 
   return (
     <div>
-      <PageHeading emoji="⚠️" kicker="CONTENT TAKEDOWN REQUESTS" title="রিমুভাল রিকোয়েস্ট" />
+      <PageHeading emoji="⚠️" kicker="CONTENT TAKEDOWN REQUESTS" title="রিমুভাল রিকোয়েস্ট" description="পাঠক বা কর্তৃপক্ষের সরানোর অনুরোধ — যাচাই করে পোস্ট রাখুন বা সরিয়ে দিন। প্রতিটি সিদ্ধান্ত লগ হয়।" />
       <div className="mt-6 grid gap-10">
         <section>
           <QueueTitle count={open.total} label="খোলা" />
@@ -85,17 +86,6 @@ export default async function AdminRemovalsPage({
         </section>
       </div>
     </div>
-  );
-}
-
-function PageHeading({ emoji, kicker, title }: { emoji: string; kicker: string; title: string }) {
-  return (
-    <header>
-      <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">
-        {emoji} {kicker}
-      </p>
-      <h1 className="mt-1 font-serif-bn text-[34px] font-black text-ink">{title}</h1>
-    </header>
   );
 }
 

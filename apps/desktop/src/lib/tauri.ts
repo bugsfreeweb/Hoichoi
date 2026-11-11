@@ -508,6 +508,29 @@ export async function deskQueueGenerateImage(
 }
 
 /** Image-purpose providers (for the manual generator's picker). */
+export interface DeskImagePrompt {
+  prompt: string;
+  subject: string;
+  scene: string;
+  cues: string[];
+}
+
+/**
+ * The content-derived image prompt for a post, built by the runner from the
+ * headline, summary, body and category. The editor shows it so the operator can
+ * see (and tweak) what will actually be drawn instead of an opaque default.
+ */
+export async function deskQueueImagePrompt(env: Record<string, string>, id: string): Promise<DeskImagePrompt> {
+  const res = await deskCall(["media", "prompt", "--id", id], env);
+  return {
+    prompt: typeof res.prompt === "string" ? res.prompt : "",
+    subject: typeof res.subject === "string" ? res.subject : "",
+    scene: typeof res.scene === "string" ? res.scene : "",
+    cues: Array.isArray(res.cues) ? (res.cues as string[]) : [],
+  };
+}
+
+/** Image-purpose providers (for the manual generator's picker). */
 export async function deskImageProviders(env: Record<string, string>): Promise<DeskProvider[]> {
   const all = await deskProviders(env);
   return all.filter((p) => (p.purpose ?? "text") === "image" && p.is_active);

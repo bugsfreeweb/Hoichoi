@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Source, SourcePlatform } from "@hoichoi/shared-types";
 import { normalizePlatform } from "@hoichoi/shared-types";
 import { ExternalLink } from "./ExternalLink";
+import { useToast } from "@/components/admin/ui/toast";
 
 type CategoryOption = { slug: string; label: string };
 
@@ -37,6 +38,7 @@ export function SourceRow({
   const [active, setActive] = useState(source.is_active);
   const [verified, setVerified] = useState(source.is_verified);
   const [busy, setBusy] = useState(false);
+  const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{
@@ -63,11 +65,24 @@ export function SourceRow({
         headers: { "content-type": "application/json" },
         body: JSON.stringify(next),
       });
-      if (res.ok) {
-        if (typeof next.is_active === "boolean") setActive(next.is_active);
-        if (typeof next.is_verified === "boolean") setVerified(next.is_verified);
-        router.refresh();
+      if (!res.ok) {
+        // This used to update nothing and say nothing on a 401/403, so the
+        // toggle looked like it worked until the page was reloaded.
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        const msg = res.status === 401 || res.status === 403 ? "অনুমতি নেই — admin/editor প্রয়োজন।" : (data?.error ?? `HTTP ${res.status}`);
+        setErr(msg);
+        toast.error("✕ সোর্স হালনাগাদ ব্যর্থ", msg);
+        return;
       }
+      if (typeof next.is_active === "boolean") setActive(next.is_active);
+      if (typeof next.is_verified === "boolean") setVerified(next.is_verified);
+      toast.success(
+        typeof next.is_active === "boolean"
+          ? next.is_active ? "✓ সোর্স সক্রিয়" : "✓ সোর্স নিষ্ক্রিয়"
+          : next.is_verified ? "✓ সোর্স যাচাইকৃত" : "✓ যাচাইকরণ তুলে নেওয়া হয়েছে",
+        source.page_name,
+      );
+      router.refresh();
     } finally {
       setBusy(false);
     }
@@ -104,9 +119,12 @@ export function SourceRow({
       }
       if (!res.ok) throw new Error(data.error ?? "failed");
       setEditing(false);
+      toast.success("✓ সোর্স সংরক্ষিত", source.page_name);
       router.refresh();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "সংরক্ষণ ব্যর্থ।");
+      const msg = e instanceof Error ? e.message : "সংরক্ষণ ব্যর্থ।";
+      setErr(msg);
+      toast.error("✕ সংরক্ষণ ব্যর্থ", msg);
     } finally {
       setBusy(false);
     }
@@ -122,15 +140,19 @@ export function SourceRow({
       });
       if (res.status === 401 || res.status === 403) {
         setErr("অনুমতি নেই — কেবল admin ডিলিট করতে পারবে।");
+        toast.error("✕ মোছা ব্যর্থ", "অনুমতি নেই — কেবল admin ডিলিট করতে পারবে।");
         return;
       }
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
         throw new Error(data?.error ?? "delete failed");
       }
+      toast.success("✓ সোর্স মুছে ফেলা হয়েছে", source.page_name);
       router.refresh();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "মোছা যায়নি।");
+      const msg = e instanceof Error ? e.message : "মোছা যায়নি।";
+      setErr(msg);
+      toast.error("✕ মোছা ব্যর্থ", msg);
     } finally {
       setBusy(false);
     }

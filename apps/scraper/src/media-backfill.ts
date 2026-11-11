@@ -260,6 +260,7 @@ interface PostNeedingAIHero {
   category: string | null;
   title_bn: string | null;
   summary_bn: string | null;
+  body_bn: string | null;
 }
 
 /**
@@ -287,7 +288,7 @@ export async function aiFillMissingHeroes(opts: {
   const limit = Math.max(1, Math.min(500, opts.limit ?? 200));
   const res = await client.execute({
     sql: `
-      SELECT p.id, p.raw_post_id, p.category, p.title_bn, p.summary_bn
+      SELECT p.id, p.raw_post_id, p.category, p.title_bn, p.summary_bn, p.body_bn
       FROM posts p
       JOIN raw_posts r ON r.id = p.raw_post_id
       WHERE (p.media_path IS NULL OR p.media_path = '')
@@ -317,6 +318,8 @@ export async function aiFillMissingHeroes(opts: {
     const ok = await generateAIHero({
       title: row.title_bn ?? `post ${row.id.slice(0, 8)}`,
       summary: row.summary_bn ?? "",
+      body: row.body_bn ?? "",
+      category: row.category,
       log,
     });
     if (!ok) {

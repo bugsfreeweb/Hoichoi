@@ -1,3 +1,4 @@
+import { PageHeading as AdminPageHeading } from "@/components/admin/ui/PageHeader";
 import Link from "next/link";
 import { mapPost, pageRows } from "@hoichoi/db";
 import type { Post, PostStatus } from "@hoichoi/shared-types";
@@ -57,13 +58,12 @@ export default async function AdminPostsPage({
 
 function PageHeading() {
   return (
-    <header>
-      <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">✏️ CONTENT MANAGER</p>
-      <h1 className="mt-1 font-serif-bn text-[34px] font-black text-ink">পোস্ট এডিটর</h1>
-      <p className="mt-1 text-[12.5px] text-ink-soft">
-        যেকোনো পোস্টের শিরোনাম, বিবরণ, সারাংশ, ক্যাটাগরি, কেস-স্ট্যাটাস ও প্রকাশের তারিখ-সময় বদলান; দেখান-লুকান; বা মুছে ফেলুন। প্রতিটি কাজ লগ-এ রেকর্ড হয়।
-      </p>
-    </header>
+    <AdminPageHeading
+      emoji="✏️"
+      kicker="CONTENT MANAGER"
+      title="পোস্ট এডিটর"
+      description="যেকোনো পোস্টের শিরোনাম, বিবরণ, সারাংশ, ক্যাটাগরি, কেস-স্ট্যাটাস ও প্রকাশের তারিখ-সময় বদলান; দেখান-লুকান; বা মুছে ফেলুন। প্রতিটি কাজ লগ-এ রেকর্ড হয়।"
+    />
   );
 }
 

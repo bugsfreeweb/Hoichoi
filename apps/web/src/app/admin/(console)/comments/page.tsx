@@ -1,3 +1,4 @@
+import { PageHeading } from "@/components/admin/ui/PageHeader";
 import { getAllComments } from "@hoichoi/db";
 import { ModerationTable } from "@/components/admin/ModerationTable";
 
@@ -13,7 +14,7 @@ export default async function AdminCommentsPage() {
   const comments = await getAllComments(600).catch(() => []);
   return (
     <div>
-      <PageHeading emoji="💬" kicker="PUBLIC COMMENTS · QUEUE → LIVE" title="মন্তব্য মডারেশন" />
+      <PageHeading emoji="💬" kicker="PUBLIC COMMENTS · QUEUE → LIVE" title="মন্তব্য মডারেশন" description="পাঠকের মন্তব্য অনুমোদন, ব্লক বা মুছে ফেলুন। শুধু অনুমোদিত মন্তব্য পাবলিক পেজে দেখায়।" />
       <p className="mt-2 max-w-2xl text-[12.5px] text-ink-soft">
         পাবলিক মন্তব্যগুলো অনুমোদন ছাড়া সাইটে দেখা যায় না। অপেক্ষমান মন্তব্যগুলো
         «অপেক্ষমান» ট্যাবে — যেগুলো মডারেট করবেন তা অনুমোদন করুন, স্প্যাম/আপত্তিকর ব্লক করুন।
@@ -25,13 +26,3 @@ export default async function AdminCommentsPage() {
   );
 }
 
-function PageHeading({ emoji, kicker, title }: { emoji: string; kicker: string; title: string }) {
-  return (
-    <header>
-      <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">
-        {emoji} {kicker}
-      </p>
-      <h1 className="mt-1 font-serif-bn text-[34px] font-black text-ink">{title}</h1>
-    </header>
-  );
-}

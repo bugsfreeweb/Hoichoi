@@ -63,7 +63,7 @@ export function PostGallery({
           {primarySrc ? (
             primaryKind === "video" ? (
               // eslint-disable-next-line jsx-a11y/media-has-caption
-              <video src={primarySrc} controls muted playsInline className="photo-grade aspect-[16/8.4] w-full object-cover" />
+              <video src={primarySrc} controls muted playsInline className="photo-grade max-h-[75vh] w-full bg-black object-contain" />
             ) : (
               <button
                 type="button"
@@ -72,14 +72,21 @@ export function PostGallery({
                 aria-label="ছবিটি বড় করে দেখুন"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={primarySrc} alt={title} className="photo-grade aspect-[16/8.4] w-full object-cover" />
+                {/*
+                  The hero used to be forced into a 16:8.4 crop. That cut the
+                  top and bottom off vertical/news photos and made correct
+                  images look "wrong". The original aspect ratio is now kept,
+                  capped by viewport height so a tall image cannot push the
+                  article off screen.
+                */}
+                <img src={primarySrc} alt={title} className="photo-grade mx-auto max-h-[75vh] w-auto max-w-full bg-paper-deep object-contain" />
                 <span className="pointer-events-none absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full bg-night/70 px-3 py-1.5 font-mono-x text-[9.5px] tracking-[0.16em] text-white uppercase opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
                   ⛶ বড় করুন
                 </span>
               </button>
             )
           ) : (
-            <div className="aspect-[16/8.4] w-full bg-paper-deep">
+            <div className="flex min-h-[240px] w-full items-center justify-center bg-paper-deep">
               <div className="flex h-full items-center justify-center px-6">
                 <p className="text-center font-serif-bn text-[15px] font-bold leading-relaxed text-ink/40">{fallbackText}</p>
               </div>
@@ -102,11 +109,11 @@ export function PostGallery({
                   key={`${src}-${i}`}
                   type="button"
                   onClick={() => openAt(src)}
-                  className="group relative aspect-square cursor-zoom-in overflow-hidden border-[1.5px] border-ink/20 transition-colors hover:border-ink"
+                  className="group relative aspect-[4/3] cursor-zoom-in overflow-hidden border-[1.5px] border-ink/20 bg-paper-deep transition-colors hover:border-ink"
                   aria-label={`ছবি ${i + 1} বড় করে দেখুন`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={src} alt={`${title} — ছবি ${i + 1}`} className="photo-grade h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  <img src={src} alt={`${title} — ছবি ${i + 1}`} className="photo-grade h-full w-full object-contain transition-transform duration-500 group-hover:scale-105" />
                 </button>
               ))}
             </div>

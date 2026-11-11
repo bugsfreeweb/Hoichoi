@@ -1,6 +1,7 @@
 import { listNoticesPaged } from "@hoichoi/db";
 import { AdminNotices } from "@/components/admin/AdminNotices";
 import { Paginator } from "@/components/admin/Paginator";
+import { PageHeading } from "@/components/admin/ui/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,12 @@ export default async function AdminNoticesPage({
 
   return (
     <div>
+      <PageHeading
+        emoji="📣"
+        kicker="SITE NOTICE BOARD"
+        title="নোটিশ"
+        description="সাইটের উপরে দেখানো ঘোষণা, সতর্কতা ও বিজ্ঞপ্তি — কোনটি কখন থেকে কখন পর্যন্ত দেখাবে তা ঠিক করুন।"
+      />
       <AdminNotices notices={result.rows} />
       <Paginator
         page={result.page}

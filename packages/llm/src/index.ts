@@ -7,3 +7,4 @@ export { AnthropicProvider } from "./anthropic";
 export * from "./prompts";
 export * from "./image-util";
 export * from "./image-resolver";
+export * from "./image-prompt";

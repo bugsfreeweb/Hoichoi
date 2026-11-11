@@ -1,29 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
+import { useAdminAction } from "@/lib/admin-api";
 import type { RemovalRequest } from "@hoichoi/shared-types";
 import Link from "next/link";
 
 export function RemovalRow({ req, post }: { req: RemovalRequest; post?: { slug: string; title: string } }) {
   const [busy, setBusy] = useState<null | "review" | "remove">(null);
   const open = req.status === "open";
-
-  function refresh() {
-    window.location.reload();
-  }
+  const run = useAdminAction();
 
   async function decide(status: "reviewed" | "actioned", actionOnPost: "none" | "remove") {
     setBusy(actionOnPost === "remove" ? "remove" : "review");
-    try {
-      await fetch(`/api/removal-requests/${req.id}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ status, actionOnPost }),
-      });
-      refresh();
-    } finally {
-      setBusy(null);
-    }
+    const removing = actionOnPost === "remove";
+    const data = await run({
+      path: `/api/removal-requests/${req.id}`,
+      init: { method: "POST", body: JSON.stringify({ status, actionOnPost }) },
+      busy: removing ? "পোস্ট সরানো হচ্ছে…" : "রিমুভাল রিকোয়েস্ট বন্ধ হচ্ছে…",
+      success: removing ? "✓ পোস্ট সরানো হয়েছে" : "✓ রিকোয়েস্ট সম্পন্ন হিসেবে চিহ্নিত",
+    });
+    setBusy(null);
+    if (data) setTimeout(() => window.location.reload(), 500);
   }
 
   return (
@@ -49,10 +47,18 @@ export function RemovalRow({ req, post }: { req: RemovalRequest; post?: { slug: 
       {open && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button onClick={() => decide("reviewed", "none")} disabled={busy !== null} className="border-2 border-ink bg-cat-teal px-4 py-1.5 text-[12px] font-bold text-ink disabled:opacity-50">
-            রিভিউড (রাখুন)
+            {busy !== null ? (
+              <span className="inline-flex items-center gap-1.5"><Loader2 size={12} className="animate-spin" /> চলছে…</span>
+            ) : (
+              "রিভিউড (রাখুন)"
+            )}
           </button>
           <button onClick={() => decide("actioned", "remove")} disabled={busy !== null} className="border-2 border-ink bg-alizarin px-4 py-1.5 text-[12px] font-bold text-ink disabled:opacity-50">
-            পোস্ট সরান (remove)
+            {busy !== null ? (
+              <span className="inline-flex items-center gap-1.5"><Loader2 size={12} className="animate-spin" /> চলছে…</span>
+            ) : (
+              "পোস্ট সরান (remove)"
+            )}
           </button>
         </div>
       )}

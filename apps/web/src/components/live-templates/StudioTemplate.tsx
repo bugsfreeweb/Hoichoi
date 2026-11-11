@@ -68,7 +68,7 @@ export default function StudioTemplate() {
             ))}
           </div>
           <div className="ml-auto flex items-center gap-4">
-            <ViewerCount tone="light" className="text-[12px]" />
+            <ViewerCount className="text-[12px]" />
             <StudioClock />
           </div>
         </div>
@@ -107,7 +107,13 @@ export default function StudioTemplate() {
             </div>
           </div>
 
-          <aside className="flex flex-col rounded-xl border border-ink/10 bg-panel p-4 lg:col-span-4">
+          {/*
+            bg-panel is the fixed dark "console" surface: under the light theme it
+            stayed #10141b while its text used the dark --color-ink, so the live
+            chat panel read as an unreadable dark block. The live studio follows
+            the page theme, so the card uses theme-aware paper tokens instead.
+          */}
+          <aside className="flex flex-col rounded-xl border border-ink/15 bg-paper-deep/60 p-4 lg:col-span-4">
             <div className="mb-1 flex items-center justify-between">
               <p className="font-mono-x text-[10px] tracking-[0.22em] text-ink-soft uppercase">লাইভ চ্যাট</p>
               <LiveBadge status={ev.status} size="sm" />

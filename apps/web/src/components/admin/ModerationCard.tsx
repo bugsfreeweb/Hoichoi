@@ -1,25 +1,44 @@
 "use client";
 
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
+import { useAdminAction } from "@/lib/admin-api";
 import type { Post } from "@hoichoi/shared-types";
 import Link from "next/link";
 
 export function ModerationCard({ post, queue }: { post: Post; queue: "pending" | "approved" }) {
   const [busy, setBusy] = useState<null | string>(null);
   const [note, setNote] = useState("");
+  const run = useAdminAction();
 
+  /**
+   * The old version ignored the response and reloaded unconditionally, so a
+   * rejected approval (403, missing approver note, DB error) looked identical to
+   * a successful one. Now every outcome is reported, with the server's message.
+   */
   async function act(action: "approve" | "publish" | "reject") {
     setBusy(action);
-    try {
-      await fetch(`/api/moderation/${post.id}`, {
+    const labels = {
+      approve: { busy: "অনুমোদন দেওয়া হচ্ছে…", success: "✓ অনুমোদন সম্পন্ন" },
+      publish: { busy: "প্রকাশ করা হচ্ছে…", success: "✓ পোস্ট প্রকাশিত" },
+      reject: { busy: "প্রত্যাখ্যান করা হচ্ছে…", success: "✓ প্রত্যাখ্যান সম্পন্ন" },
+    }[action];
+    const data = await run({
+      path: `/api/moderation/${post.id}`,
+      init: {
         method: "POST",
-        headers: { "content-type": "application/json" },
         body: JSON.stringify({ action, note: note || undefined }),
-      });
-      window.location.reload();
-    } finally {
-      setBusy(null);
-    }
+      },
+      busy: labels.busy,
+      success: labels.success,
+      detail: (d) => {
+        const r = d as { status?: string; approverRequired?: boolean } | null;
+        if (r?.approverRequired) return "দ্বিতীয় অনুমোদন প্রয়োজন — approver স্বাক্ষর ছাড়া প্রকাশ হবে না।";
+        return r?.status ? `বর্তমান অবস্থা: ${r.status}` : undefined;
+      },
+    });
+    setBusy(null);
+    if (data) setTimeout(() => window.location.reload(), 600);
   }
 
   return (
@@ -69,7 +88,13 @@ function ActionBtn({ label, busy, onClick, color }: { label: string; busy: boole
       disabled={busy}
       className={`border-2 border-ink ${bg} px-4 py-1.5 text-[12px] font-bold text-ink transition hover:brightness-95 disabled:opacity-50`}
     >
-      {busy ? "…" : label}
+      {busy ? (
+        <span className="inline-flex items-center gap-1.5">
+          <Loader2 size={12} className="animate-spin" /> চলছে…
+        </span>
+      ) : (
+        label
+      )}
     </button>
   );
 }

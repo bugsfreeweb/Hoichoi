@@ -1,3 +1,4 @@
+export * from "./provider-catalog";
 /**
  * Shared domain types for হৈচৈ (Hoichoi).
  * These map 1:1 to the Turso/libSQL schema (see packages/db/migrations/).

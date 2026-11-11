@@ -1,3 +1,4 @@
+import { PageHeading } from "@/components/admin/ui/PageHeader";
 import { getSettings } from "@/lib/settings";
 import { listLiveEvents, listPipelineRunsPage, maintenanceInboxSnapshot, listSections, getSiteVariant } from "@hoichoi/db";
 import { SettingsConsole } from "@/components/admin/settings/SettingsConsole";
@@ -24,7 +25,7 @@ export default async function AdminSettingsPage({
   ]);
   return (
     <div>
-      <PageHeading emoji="⚙️" kicker="OPERATIONS" title="সেটিংস" />
+      <PageHeading emoji="⚙️" kicker="OPERATIONS" title="সেটিংস" description="সাইটের পরিচয়, প্রকাশনা, মিডিয়া স্টোরেজ, রক্ষণাবেক্ষণ ও ব্যাকআপ — সব অপারেশনাল নিয়ন্ত্রণ।" />
       <SettingsConsole
         initial={settings}
         initialRuns={recent?.rows ?? []}
@@ -38,13 +39,3 @@ export default async function AdminSettingsPage({
   );
 }
 
-function PageHeading({ emoji, kicker, title }: { emoji: string; kicker: string; title: string }) {
-  return (
-    <header>
-      <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">
-        {emoji} {kicker}
-      </p>
-      <h1 className="mt-1 font-serif-bn text-[34px] font-black text-ink">{title}</h1>
-    </header>
-  );
-}

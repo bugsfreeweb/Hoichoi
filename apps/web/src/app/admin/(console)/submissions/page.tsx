@@ -1,3 +1,4 @@
+import { PageHeading } from "@/components/admin/ui/PageHeader";
 import { mapSubmittedPage, pageRows } from "@hoichoi/db";
 import { SubmissionRow } from "@/components/admin/SubmissionRow";
 import { Paginator } from "@/components/admin/Paginator";
@@ -37,7 +38,7 @@ export default async function AdminSubmissionsPage({
 
   return (
     <div>
-      <PageHeading emoji="💡" kicker="PUBLIC SUGGESTIONS" title="সাবমিশন" />
+      <PageHeading emoji="💡" kicker="PUBLIC SUGGESTIONS" title="সাবমিশন" description="পাঠকের পাঠানো পেজ প্রস্তাব — যাচাই করে সোর্স হিসেবে গ্রহণ করুন বা প্রত্যাখ্যান করুন।" />
       <div className="mt-6 grid gap-10">
         <section>
           <QueueTitle count={open.total} label="নতুন সাবমিশন" />
@@ -75,17 +76,6 @@ export default async function AdminSubmissionsPage({
         </section>
       </div>
     </div>
-  );
-}
-
-function PageHeading({ emoji, kicker, title }: { emoji: string; kicker: string; title: string }) {
-  return (
-    <header>
-      <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">
-        {emoji} {kicker}
-      </p>
-      <h1 className="mt-1 font-serif-bn text-[34px] font-black text-ink">{title}</h1>
-    </header>
   );
 }
 

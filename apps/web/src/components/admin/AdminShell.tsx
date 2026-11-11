@@ -9,6 +9,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/admin/NotificationBell";
 import { QueueCountsProvider, useQueueCounts, useQueueCountsPolling } from "@/components/admin/queue-counts";
 import { SITE_BUILD } from "@/lib/build";
+import { ToastProvider } from "@/components/admin/ui/toast";
+import { SystemStatusBar } from "@/components/admin/ui/SystemStatusBar";
 
 function toBn(v: number): string {
   return String(v).replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)] ?? d);
@@ -104,7 +106,11 @@ export function AdminShell({ user, children }: { user: AdminUser; children: Reac
 
   return (
     <QueueCountsProvider value={counts}>
-      <AdminChrome user={user}>{children}</AdminChrome>
+      {/* Every console action reports through these toasts, so a busy request
+          and a failed one never look the same as a click that did nothing. */}
+      <ToastProvider>
+        <AdminChrome user={user}>{children}</AdminChrome>
+      </ToastProvider>
     </QueueCountsProvider>
   );
 }
@@ -215,6 +221,8 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
             </form>
           </div>
         </div>
+        {/* Live dependency health, polled every 30s — see SystemStatusBar. */}
+        <SystemStatusBar />
       </header>
 
       {/*

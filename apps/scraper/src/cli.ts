@@ -8,7 +8,7 @@ import { runArchivePass } from "./archive";
 import { cleanupMedia, storageRegistryCount } from "./storage";
 import { backfillMissingMedia, recoverOrphanedMedia, syncExistingMediaToWeb, aiFillMissingHeroes, generateManualImage } from "./media-backfill";
 import { isVideoUrl } from "./media";
-import { newResolver } from "@hoichoi/llm";
+import { buildImageBrief, newResolver } from "@hoichoi/llm";
 import {
   getClient,
   ensureSchema,
@@ -549,6 +549,36 @@ media
       process.exitCode = 1;
     }
   });
+media
+  .command("prompt")
+  .description("print the content-derived image prompt for one post (default used by `media generate`)")
+  .requiredOption("--id <postId>", "post id")
+  .option("--raw", "print the prompt as plain text instead of JSON")
+  .action(async (opts: { id: string; raw?: boolean }) => {
+    try {
+      await ensureSchema(getClient());
+      const row = (
+        await getClient().execute({
+          sql: "SELECT title_bn, summary_bn, body_bn, category FROM posts WHERE id = ?",
+          args: [opts.id],
+        })
+      ).rows[0] as
+        | { title_bn?: string; summary_bn?: string; body_bn?: string; category?: string }
+        | undefined;
+      if (!row) throw new Error(`post not found: ${opts.id}`);
+      const brief = buildImageBrief({
+        title: row.title_bn ?? "",
+        summary: row.summary_bn ?? "",
+        body: (row.body_bn ?? "").slice(0, 1200),
+        category: row.category ?? "",
+      });
+      console.log(opts.raw ? brief.prompt : JSON.stringify({ ok: true, ...brief }, null, 2));
+    } catch (err) {
+      console.error(JSON.stringify({ ok: false, error: (err as Error).message }));
+      process.exitCode = 1;
+    }
+  });
+
 media
   .command("generate")
   .description("manually generate an image for one post (any image-purpose provider) and attach it")

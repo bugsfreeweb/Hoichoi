@@ -3,11 +3,21 @@
 import { useState } from "react";
 import type { LLMProviderRow } from "@hoichoi/shared-types";
 import { useRouter } from "next/navigation";
+import { metaFor, purposeLabelBn, looksLikeImageModel } from "@/lib/provider-catalog";
 
 const fieldBase =
   "mt-1 w-full border border-ink/30 bg-paper px-2.5 py-1.5 text-[12px] focus:outline-none focus:border-ink";
 
-export function ProviderRow({ provider, index }: { provider: LLMProviderRow; index: number }) {
+export function ProviderRow({
+  provider,
+  index,
+  envKeyPresent,
+}: {
+  provider: LLMProviderRow;
+  index: number;
+  /** True when the row's env var exists on the server (value is never exposed). */
+  envKeyPresent?: boolean;
+}) {
   const router = useRouter();
   const [active, setActive] = useState(provider.is_active);
   const [busy, setBusy] = useState(false);
@@ -26,6 +36,12 @@ export function ProviderRow({ provider, index }: { provider: LLMProviderRow; ind
     supports_embeddings: provider.supports_embeddings,
     purpose: provider.purpose,
   });
+
+  const meta = metaFor(provider.provider_key);
+  const hasKey = Boolean(provider.api_key) || Boolean(envKeyPresent);
+  const isImage = provider.purpose === "image";
+  const modelFitsPurpose = isImage ? looksLikeImageModel(provider.model_name) : !looksLikeImageModel(provider.model_name);
+  const canImage = meta.kinds.includes("image");
 
   async function toggle() {
     setBusy(true);
@@ -94,8 +110,11 @@ export function ProviderRow({ provider, index }: { provider: LLMProviderRow; ind
   if (editing) {
     return (
       <div className="grid gap-3 border border-ink/30 bg-paper-deep px-4 py-3">
-        <p className="font-mono-x text-[10px] uppercase tracking-[0.2em] text-ink-soft">
+        <p className="flex flex-wrap items-center gap-2 font-mono-x text-[10px] uppercase tracking-[0.2em] text-ink-soft">
           {provider.provider_key} · ID {provider.id.slice(0, 8)}
+          <span className="rounded-full bg-ink/10 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-ink">
+            বর্তমানে: {purposeLabelBn(provider.purpose)}
+          </span>
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
           <label>
@@ -127,10 +146,10 @@ export function ProviderRow({ provider, index }: { provider: LLMProviderRow; ind
             <input type="number" className={fieldBase} value={form.priority} onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })} />
           </label>
           <label>
-            <span className="text-[10px] uppercase tracking-wide text-ink-soft">Purpose</span>
+            <span className="text-[10px] uppercase tracking-wide text-ink-soft">কী কাজে (purpose)</span>
             <select className={fieldBase} value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value as "text" | "image" })}>
-              <option value="text">text</option>
-              <option value="image">image</option>
+              <option value="text">✍️ লেখা (text)</option>
+              <option value="image">🎨 ছবি (image)</option>
             </select>
           </label>
           <div className="flex flex-wrap items-end gap-2">
@@ -170,23 +189,45 @@ export function ProviderRow({ provider, index }: { provider: LLMProviderRow; ind
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border border-ink/20 bg-paper-deep px-4 py-3">
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <span className="font-grotesk text-lg font-bold text-ink-soft">{String(index).padStart(2, "0")}</span>
-        <div>
-          <p className="flex items-center gap-2 text-[13.5px] font-bold text-ink">
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-2 text-[13.5px] font-bold text-ink">
             {provider.display_name}
+            {/* The purpose is the thing operators kept getting wrong, so it is a
+                loud badge instead of a faint grey tag. */}
+            <span
+              className={`rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide ${
+                isImage ? "bg-alizarin/15 text-alizarin" : "bg-cat-blue/10 text-cat-blue"
+              }`}
+            >
+              {isImage ? "🎨 ছবি" : "✍️ লেখা"}
+            </span>
             {provider.is_free_tier && (
               <span className="rounded-full bg-lime px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-ink">FREE</span>
             )}
+            {provider.purpose && provider.provider_key && !canImage && isImage && (
+              <span className="rounded-full bg-amberx/20 px-2 py-0.5 text-[9.5px] font-bold text-ink">⚠ এই প্রোভাইডার ছবি পারে না</span>
+            )}
           </p>
           <p className="font-mono-x text-[11px] text-ink-soft">
-            {provider.provider_key} · {provider.model_name} · prio {provider.priority}
+            {provider.provider_key} · {provider.model_name} · অগ্রাধিকার {provider.priority}
           </p>
-          <p className="font-mono-x text-[10px] text-ink-soft/70">
-            key: <span className={provider.api_key ? "text-cat-teal" : "text-ink-soft/50"}>{provider.api_key ? "DB override" : `env · ${provider.api_key_env_var}`}</span>
-            {provider.purpose && (
-              <span className="ml-1 rounded-full bg-ink/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-ink-soft">
-                {provider.purpose}
+          <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10.5px]">
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-bold ${
+                hasKey ? "bg-cat-teal/15 text-cat-teal" : "bg-alizarin/15 text-alizarin"
+              }`}
+              title={provider.api_key ? "কী ডেটাবেসে সংরক্ষিত" : `এনভায়রনমেন্ট: ${provider.api_key_env_var}`}
+            >
+              {hasKey ? "✓ কী আছে" : "✗ কী নেই"}
+            </span>
+            <span className="font-mono-x text-ink-soft/70">
+              {provider.api_key ? "DB-তে সংরক্ষিত" : `env · ${provider.api_key_env_var}`}
+            </span>
+            {!modelFitsPurpose && (
+              <span className="text-amberx" title="Purpose-এর সঙ্গে মডেলের ধরন মিলছে না">
+                ⚠ মডেলের ধরন মিলছে না
               </span>
             )}
           </p>

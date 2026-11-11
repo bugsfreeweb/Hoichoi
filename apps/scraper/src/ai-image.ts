@@ -14,7 +14,7 @@
  * no text, no logos, no identifiable people and no children.
  */
 import { randomMediaName, processImage } from "./media";
-import { generateImage, listImageProviders } from "@hoichoi/llm";
+import { buildImageBrief, generateImage, listImageProviders } from "@hoichoi/llm";
 
 /** Categories where an AI rendering of the subject would be inappropriate. */
 const SENSITIVE_AI_CATEGORIES = new Set(["child-sexual-abuse", "missing-children", "extramarital-crime"]);
@@ -26,15 +26,15 @@ export function aiHeroEligible(category: string | null | undefined): boolean {
 }
 
 /** Editorial prompt shared by configured image-generation providers. */
-export function aiHeroPrompt(title: string, summary: string): string {
-  const subject = [title, summary].filter(Boolean).join(" ").replace(/\s+/g, " ").slice(0, 1200) || "a Bangla news report";
+export function aiHeroPrompt(title: string, summary: string, body?: string, category?: string | null): string {
+  // Content-first prompt: the scene is derived from the article (category +
+  // extracted people/places/numbers) instead of a fixed style sentence, so two
+  // different articles no longer render as the same picture.
+  const brief = buildImageBrief({ title, summary, body, category });
   return [
-    "You are the art director for Hoichoi (হৈচৈ), a Bangla editorial brand.",
-    "Create ONE editorial hero illustration for the article below.",
+    brief.prompt,
     "Hard rules: no text, no words, no letters, no numbers, no captions, no logos, no watermarks anywhere in the image.",
-    "Style: modern cinematic editorial illustration, deep charcoal with restrained red and warm ivory accents, dignified journalism tone; no graphic or disturbing imagery.",
     "People, if any, must be abstract, shown from behind or at a distance, and NEVER recognizable; never depict children.",
-    `Article: ${subject}`,
   ].join("\n");
 }
 
@@ -52,12 +52,14 @@ export async function hasAIImageProvider(): Promise<boolean> {
 export async function generateAIHero(opts: {
   title: string;
   summary: string;
+  body?: string;
+  category?: string | null;
   log?: (msg: string) => void;
 }): Promise<string | null> {
   const log = opts.log ?? (() => undefined);
   try {
     const result = await generateImage(
-      { prompt: aiHeroPrompt(opts.title, opts.summary), aspectRatio: "16:9", count: 1 },
+      { prompt: aiHeroPrompt(opts.title, opts.summary, opts.body, opts.category), aspectRatio: "16:9", count: 1 },
       AbortSignal.timeout(60_000),
     );
     const rel = randomMediaName("img", "webp");

@@ -9,21 +9,9 @@ import {
   type DeskProvider,
   type DeskProviderModel,
 } from "../lib/tauri";
+import { PROVIDER_META, metaFor, looksLikeImageModel, purposeLabelBn, type ProviderPurpose } from "@hoichoi/shared-types";
 import { getRunEnv } from "../lib/vault";
 import { autoPush } from "../lib/autosync";
-
-const KEYS: Array<{ v: string; label: string }> = [
-  { v: "google", label: "Google Gemini" },
-  { v: "groq", label: "Groq" },
-  { v: "openrouter", label: "OpenRouter" },
-  { v: "ollama", label: "Ollama (local)" },
-  { v: "anthropic", label: "Anthropic" },
-  { v: "openai", label: "OpenAI" },
-  { v: "mistral", label: "Mistral" },
-  { v: "github", label: "GitHub Copilot" },
-  { v: "github-models", label: "GitHub Models (free)" },
-  { v: "custom", label: "Custom" },
-];
 
 interface Form {
   id: string;
@@ -68,6 +56,36 @@ export default function DeskProviderManager() {
   const flash = (type: "ok" | "err", text: string) => {
     setMsg({ type, text });
     setTimeout(() => setMsg(null), 4000);
+  };
+
+  /** Switching work type retargets provider + model so the row can do the job. */
+  const pickPurpose = (next: ProviderPurpose) => {
+    const meta = metaFor(form.providerKey);
+    if (!meta.kinds.includes(next)) {
+      const fallback = PROVIDER_META.find((p) => p.kinds.includes(next));
+      if (fallback) {
+        setForm((f) => ({
+          ...f,
+          purpose: next,
+          providerKey: fallback.key,
+          modelName: fallback.models[next][0] ?? "",
+          baseUrl: fallback.baseUrl,
+          free: fallback.freeTier,
+        }));
+        return;
+      }
+    }
+    setForm((f) => ({ ...f, purpose: next, modelName: meta.models[next][0] ?? "", baseUrl: meta.baseUrl, free: meta.freeTier }));
+  };
+
+  const pickProvider = (key: string) => {
+    const meta = metaFor(key);
+    setForm((f) => {
+      const purpose = meta.kinds.includes(f.purpose) ? f.purpose : (meta.kinds[0] ?? "text");
+      return { ...f, providerKey: key, purpose, modelName: meta.models[purpose][0] ?? "", baseUrl: meta.baseUrl, free: meta.freeTier };
+    });
+    setModels(null);
+    setFetchError("");
   };
 
   const refresh = useCallback(async () => {
@@ -200,9 +218,10 @@ export default function DeskProviderManager() {
         <Bot size={14} className="text-lime" /> AI প্রোভাইডার · free-tier-first resolver
       </p>
       <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
-        রিরাইট + এমবেডিং ইঞ্জিনের fallback চেইন। ফ্রি টিয়ার সবার আগে চেষ্টা হয়, তারপর priority ক্রমে।
-        চাবি ডিফল্টে API ভল্ট/env-এ থাকে; "DB override" কী দিলে সেটি প্রাধান্য পায়। GitHub Models
-        ফ্রি tier-এর জন্য Copilot টোকেনই যথেষ্ট।
+        প্রতিটি প্রোভাইডার দুটি আলাদা কাজ করে — <b className="text-white">✍️ লেখা</b> আর{" "}
+        <b className="text-white">🎨 ছবি</b>. Google/OpenAI-এর একই কী দিয়ে দুটোই হয়, শুধু ছবির জন্য আলাদা
+        image মডেল বেছে নিতে হয়। ফ্রি টিয়ার আগে চেষ্টা হয়, তারপর priority ক্রমে। কী ডিফল্টে ভল্ট/env
+        থেকে পড়া হয়; ডেটাবেসে আলাদা কী দিলে সেটি প্রাধান্য পায় — তাই খালি রাখাই ভালো।
       </p>
 
       {msg && (
@@ -234,29 +253,74 @@ export default function DeskProviderManager() {
             </button>
           </div>
 
+          {/* 1 - purpose first: this is the choice operators kept getting wrong. */}
+          <div>
+            <p className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">১ · কী কাজে ব্যবহার হবে?</p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {([
+                { v: "text" as const, emoji: "✍️", t: "লেখা (Text)", d: "সংবাদ লেখা, সারাংশ, অনুবাদ" },
+                { v: "image" as const, emoji: "🎨", t: "ছবি (Image)", d: "পোস্টের AI হিরো ছবি" },
+              ]).map((c) => (
+                <button
+                  key={c.v}
+                  type="button"
+                  onClick={() => pickPurpose(c.v)}
+                  aria-pressed={form.purpose === c.v}
+                  className={`rounded-lg border p-2.5 text-left transition ${
+                    form.purpose === c.v ? "border-lime bg-lime/12" : "border-white/12 hover:border-white/30"
+                  }`}
+                >
+                  <p className="text-[12px] font-bold text-white">
+                    {c.emoji} {c.t}
+                    {form.purpose === c.v && <span className="ml-2 font-mono-x text-[9px] text-lime">নির্বাচিত</span>}
+                  </p>
+                  <p className="mt-0.5 text-[10.5px] text-white/50">{c.d}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
             <label className="block">
-              <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">প্রোভাইডার</span>
+              <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">২ · প্রোভাইডার</span>
               <select
                 className="field mt-1 w-full"
                 value={form.providerKey}
-                onChange={(e) => setForm({ ...form, providerKey: e.target.value })}
+                onChange={(e) => pickProvider(e.target.value)}
                 disabled={Boolean(editingId)}
               >
-                {KEYS.map((k) => (
-                  <option key={k.v} value={k.v}>
+                {PROVIDER_META.map((k) => (
+                  <option key={k.key} value={k.key} disabled={!k.kinds.includes(form.purpose)}>
                     {k.label}
+                    {k.kinds.includes(form.purpose) ? "" : " — এই কাজের জন্য নয়"}
                   </option>
                 ))}
               </select>
+              <span className="mt-1 block text-[10px] leading-snug text-white/40">{metaFor(form.providerKey).noteBn}</span>
             </label>
-            <label className="block">
-              <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">মডেল নাম</span>
+            <label className="block sm:col-span-2">
+              <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                ৩ · মডেল {form.purpose === "image" ? "(ছবি আঁকা মডেল)" : "(লেখার মডেল)"}
+              </span>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {(metaFor(form.providerKey).models[form.purpose] ?? []).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, modelName: m }))}
+                    className={`rounded-full border px-2.5 py-1 font-mono-x text-[10px] transition ${
+                      form.modelName === m ? "border-lime bg-lime text-night" : "border-white/15 text-white/70 hover:border-white/40"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
               <input
                 className="field mt-1 w-full"
                 value={form.modelName}
                 onChange={(e) => setForm({ ...form, modelName: e.target.value })}
-                placeholder="gpt-4o-mini"
+                placeholder={form.purpose === "image" ? "gemini-2.5-flash-image" : "gpt-4o-mini"}
               />
             </label>
             <label className="block">
@@ -278,7 +342,9 @@ export default function DeskProviderManager() {
               />
             </label>
             <label className="block">
-              <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">Env var</span>
+              <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                ৪ · Env var (কী কোথা থেকে পড়বে)
+              </span>
               <input
                 className="field mt-1 w-full font-mono text-[10.5px]"
                 value={form.envVar}
@@ -293,7 +359,7 @@ export default function DeskProviderManager() {
                 className="field mt-1 w-full font-mono text-[10.5px]"
                 value={form.apiKey}
                 onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
-                placeholder="খালি = vault/env"
+                placeholder="খালি = vault/env (সুপারিশকৃত)"
               />
             </label>
             <label className="block">
@@ -321,17 +387,9 @@ export default function DeskProviderManager() {
               />
               Embeddings সমর্থন
             </label>
-            <label className="block">
-              <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">Purpose</span>
-              <select
-                className="field mt-1 w-full"
-                value={form.purpose}
-                onChange={(e) => setForm({ ...form, purpose: e.target.value as "text" | "image" })}
-              >
-                <option value="text">Text (rewrite/content)</option>
-                <option value="image">Image (AI generation)</option>
-              </select>
-            </label>
+            <div className="flex items-center gap-2 rounded-lg border border-white/12 px-2.5 py-2 text-[10.5px] text-white/55">
+              কাজ: <b className="text-white">{purposeLabelBn(form.purpose)}</b>
+            </div>
           </div>
           {form.providerKey === "custom" && form.purpose === "image" && (
             <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-[11px] leading-relaxed text-white/65">
@@ -388,14 +446,24 @@ export default function DeskProviderManager() {
                 #{String(p.priority).padStart(2, "0")}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-2 text-[13.5px] font-bold text-white">
+                <p className="flex flex-wrap items-center gap-2 text-[13.5px] font-bold text-white">
                   {p.display_name}
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                      p.purpose === "image" ? "bg-alizarin/20 text-alizarin" : "bg-sky-300/15 text-sky-300"
+                    }`}
+                  >
+                    {p.purpose === "image" ? "🎨 ছবি" : "✍️ লেখা"}
+                  </span>
                   {p.is_free_tier && (
                     <span className="rounded-full bg-lime px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-night">FREE</span>
                   )}
                 </p>
                 <p className="font-mono-x text-[10px] text-white/40">
                   {p.provider_key} · {p.model_name}
+                  {p.purpose === "image" && !looksLikeImageModel(p.model_name) && (
+                    <span className="ml-1.5 text-amberx">⚠ মডেলটি ছবি আঁকার নয়</span>
+                  )}
                 </p>
                 <p className="font-mono-x text-[10px] text-white/35">
                   key:{" "}

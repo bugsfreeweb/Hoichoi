@@ -18,7 +18,7 @@ export function PostFigure({
   const src = mediaUrl(post);
   return (
     <div className="relative overflow-hidden border-[1.5px] border-ink">
-      <div className={`${ratio} overflow-hidden bg-paper-deep`}>
+      <div className={`${ratio} flex items-center justify-center overflow-hidden bg-paper-deep`}>
         {src ? (
           post.media_kind === "video" ? (
             <video
@@ -30,7 +30,9 @@ export function PostFigure({
             />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={src} alt={alt || post.title_bn} className="photo-grade h-full w-full object-cover" />
+            // object-contain keeps the source framing; a fixed-ratio box was
+            // cropping the top/bottom of original photos.
+            <img src={src} alt={alt || post.title_bn} className="photo-grade h-full w-full object-contain" />
           )
         ) : (
           <div className="flex h-full items-center justify-center px-6">
