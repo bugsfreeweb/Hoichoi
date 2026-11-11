@@ -66,7 +66,12 @@ export default function ArticleGrid({
         key={active}
         className="grid-pop mt-10 grid gap-x-8 gap-y-14 sm:grid-cols-2 xl:grid-cols-3"
       >
-        {shown.map((a, i) => (
+        {shown.map((a, i) => {
+          // Rotate the in-feed keys so the mockup's first and second feed
+          // placements are bookable separately, falling back to the original
+          // home_infeed key for any further slot position.
+          const adSlot = Math.floor(i / 4) === 0 ? "home_feed_1" : Math.floor(i / 4) === 1 ? "home_feed_2" : "home_infeed";
+          return (
           <Fragment key={a.id}>
             <div className="grid-pop" style={{ animationDelay: `${(i % 6) * 60}ms` }}>
               <ArticleCard post={a} index={i} categories={categories} />
@@ -74,11 +79,12 @@ export default function ArticleGrid({
             {ads && i !== shown.length - 1 && (i + 1) % 4 === 0 && (
               <div className="mt-10">
                 {(adDeliveryMode === "both" || adDeliveryMode === "house") && <AdSlot variant="infeed" html={adInfeedHtml} />}
-                {(adDeliveryMode === "both" || adDeliveryMode === "platform") && <PlatformAdSlot slotKey="home_infeed" />}
+                {(adDeliveryMode === "both" || adDeliveryMode === "platform") && <PlatformAdSlot slotKey={adSlot} />}
               </div>
             )}
           </Fragment>
-        ))}
+          );
+        })}
         {shown.length === 0 && (
           <p className="col-span-full py-16 text-center text-ink-soft">
             এই বিভাগে এখনও কোনো আইটেম নেই — পরের সিঙ্কে দেখুন।

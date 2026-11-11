@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Fragment } from "react";
 import { notFound } from "next/navigation";
 import { getPublicPostBySlug, relatedPosts, getPostComments, getPostCommentCount, parseAppConfig, listPostImages } from "@hoichoi/db";
 import { getCategories, findCategory } from "@/lib/categories-server";
@@ -15,6 +16,7 @@ import { PostCard } from "@/components/PostCard";
 import { PostGallery } from "@/components/PostGallery";
 import { CommentsSection } from "@/components/CommentsSection";
 import { UnifiedAdPlacement } from "@/components/ads/UnifiedAdPlacement";
+import { PlatformAdSlot } from "@/components/ads/PlatformAdSlot";
 import { FbPost } from "@/components/FbPost";
 import { getSettings } from "@/lib/settings";
 import { getLive } from "@/lib/mv/live";
@@ -302,6 +304,15 @@ function PostContent({
                   </blockquote>,
                 );
               }
+              // The mockup's in-article unit sits inside the prose, not after
+              // it, so it is injected here after the fourth paragraph.
+              if (i === 3 && cfg.show_ads) {
+                out.push(
+                  <div key="inarticle-ad" className="my-8">
+                    <PlatformAdSlot slotKey="post_inarticle" />
+                  </div>,
+                );
+              }
               out.push(
                 <p
                   key={i}
@@ -372,6 +383,9 @@ function PostContent({
             </div>
           )}
 
+          {/* ad · endcap — last unit before the comments turn the page */}
+          {cfg.show_ads && <PlatformAdSlot slotKey="post_endcap" />}
+
           {/* source attribution */}
           <div className="mt-10 border-t border-ink/15 pt-6">
             <p className="font-mono-x text-[10px] tracking-[0.24em] text-ink-soft uppercase">─── সূত্র ───</p>
@@ -431,6 +445,13 @@ function PostContent({
               </ul>
             </div>
 
+            {/* ad · sticky half-page — only while the reader is in the aside */}
+            {cfg.show_ads && (
+              <div className="hidden lg:block">
+                <PlatformAdSlot slotKey="post_sidebar_sticky" />
+              </div>
+            )}
+
             {/* ad · rectangle */}
             {cfg.show_ads && <UnifiedAdPlacement slotKey="article_rect" variant="rect" html={settings.ad_rect_html} />}
 
@@ -487,8 +508,15 @@ function PostContent({
             </Link>
           </div>
           <div className="mt-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {related.map((a) => (
-              <PostCard key={a.id} post={a} cats={cats} />
+            {related.map((a, i) => (
+              <Fragment key={a.id}>
+                <PostCard post={a} cats={cats} />
+                {cfg.show_ads && i === 1 && (
+                  <div className="sm:col-span-2 lg:col-span-3">
+                    <PlatformAdSlot slotKey="post_related_infeed" />
+                  </div>
+                )}
+              </Fragment>
             ))}
           </div>
         </section>

@@ -5,6 +5,7 @@ import type { CategoryMeta, CategorySlug, Post } from "@hoichoi/shared-types";
 import { bnNum } from "@/lib/bn";
 import { PostCard } from "./PostCard";
 import { AdSlot } from "./AdSlot";
+import { PlatformAdSlot } from "@/components/ads/PlatformAdSlot";
 
 export function CollectionGrid({
   posts,
@@ -53,6 +54,7 @@ export function CollectionGrid({
           <Fragment key={post.id}>
             <PostCard post={post} cats={cats} />
             {(i + 1) % 4 === 0 && <AdSlot key={`ad-${post.id}`} variant="infeed" html={adInfeedHtml} />}
+            {(i + 1) % 6 === 0 && <PlatformAdSlot key={`ad-platform-${post.id}`} slotKey="category_infeed" />}
           </Fragment>
         ))}
       </div>

@@ -22,10 +22,33 @@ function destinationUrl(value: unknown): string | null {
   }
 }
 
-export function PlatformAdSlot({ slotKey }: { slotKey: string }) {
+/**
+ * `layout` picks the wrapper:
+ * - `inline` (default) — normal in-page unit, bordered and spaced.
+ * - `anchor` — the mobile anchor unit: pinned to the bottom of small screens
+ *   only, dismissible, and remembered for the session so a reader who closes it
+ *   is not asked again on the next article.
+ */
+export function PlatformAdSlot({
+  slotKey,
+  layout = "inline",
+}: {
+  slotKey: string;
+  layout?: "inline" | "anchor";
+}) {
   const [ad, setAd] = useState<PlatformAd | null>(null);
+  const [closed, setClosed] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const impressionSent = useRef(false);
+
+  useEffect(() => {
+    if (layout !== "anchor") return;
+    try {
+      if (window.sessionStorage.getItem(`ad-anchor:${slotKey}`) === "closed") setClosed(true);
+    } catch {
+      /* storage can be blocked; the anchor simply stays visible */
+    }
+  }, [layout, slotKey]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -66,7 +89,7 @@ export function PlatformAdSlot({ slotKey }: { slotKey: string }) {
     return () => observer.disconnect();
   }, [ad]);
 
-  if (!ad) return null;
+  if (!ad || closed) return null;
   const headline = typeof ad.data.headline === "string" && ad.data.headline.trim()
     ? ad.data.headline
     : ad.name;
@@ -76,6 +99,49 @@ export function PlatformAdSlot({ slotKey }: { slotKey: string }) {
   if (!destination) {
     console.error("[platform-ads] active creative has an invalid destination", { slotKey, creative: ad.name });
     return null;
+  }
+
+  if (layout === "anchor") {
+    return (
+      <div
+        ref={root}
+        aria-label="স্পনসরকৃত বিজ্ঞাপন"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-ink/20 bg-paper/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      >
+        <button
+          type="button"
+          aria-label="বিজ্ঞাপন বন্ধ করুন"
+          onClick={() => {
+            setClosed(true);
+            try {
+              window.sessionStorage.setItem(`ad-anchor:${slotKey}`, "closed");
+            } catch {
+              /* ignore */
+            }
+          }}
+          className="absolute -top-3 right-2 z-10 grid h-6 w-6 place-items-center rounded-full border border-ink/25 bg-paper text-[12px] leading-none text-ink"
+        >
+          ×
+        </button>
+        <div className="flex items-center justify-center py-1">
+          <AdCreativePreview
+            name={ad.name}
+            headline={headline}
+            body=""
+            cta={cta}
+            templateId={ad.templateId}
+            palette={ad.palette}
+            href={destination}
+            onClick={() => {
+              void sendEvent(ad, "click");
+            }}
+          />
+        </div>
+        <span className="pointer-events-none absolute left-2 top-1 font-mono-x text-[8px] tracking-[0.2em] text-ink-soft/70 uppercase">
+          AD
+        </span>
+      </div>
+    );
   }
 
   return (

@@ -14,6 +14,7 @@ import { EMPTY_MV_DATA } from "@/lib/mv/data";
 import MvChrome from "@/components/mv/MvChrome";
 import { MvDataProvider } from "@/components/mv/ui/mv-data";
 import ScrollToTop from "@/components/ScrollToTop";
+import { PlatformAdSlot } from "@/components/ads/PlatformAdSlot";
 import type { Metadata } from "next";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -100,7 +101,15 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <BreakingTicker />
       <NoticeBanner notice={specialNotice} />
       {children}
+      {/* ad · global footer strip — one booking, every page */}
+      {cfg.show_ads && (
+        <div className="mx-auto max-w-[1400px] px-4 md:px-8">
+          <PlatformAdSlot slotKey="global_footer_strip" />
+        </div>
+      )}
       {cfg.show_footer && <Footer />}
+      {/* ad · mobile anchor — dismissed for the session once closed */}
+      {cfg.show_ads && <PlatformAdSlot slotKey="global_mobile_anchor" layout="anchor" />}
       <ScrollToTop />
     </div>
   );

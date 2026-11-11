@@ -374,6 +374,68 @@ export async function ensureAdSlotColumns(client: Client): Promise<void> {
   }
 }
 
+/**
+ * Platform ad-slot inventory.
+ *
+ * Every key here is rendered somewhere on the public site. A rendered key with
+ * no `ad_slots` row cannot be booked, priced or reported on, so the row has to
+ * exist even on a deployment that skipped the migration step. Seeded at runtime
+ * for the same reason the image providers are: the placement must never be a
+ * dead end. `INSERT OR IGNORE` keeps operator edits (rate, enabled, mode).
+ *
+ * New keys default to `delivery_mode='platform'` — a projection of the
+ * ad-management mockup's inventory that only renders a real booking, never an
+ * empty house box on every article.
+ */
+const AD_SLOT_INVENTORY: Array<[key: string, name: string, description: string, rate: number, mode: string]> = [
+  ["home_leaderboard", "হোমপেজ ব্যানার", "হোমপেজের প্রধান কনটেন্টের আগে platform-sponsored banner.", 3000, "both"],
+  ["home_strip", "হোমপেজ স্ট্রিপ", "হোমপেজের কনটেন্ট ফিডে platform-sponsored strip.", 1800, "both"],
+  ["article_leaderboard", "আর্টিকেল ব্যানার", "আর্টিকেল কনটেন্টের আগে platform-sponsored banner.", 2500, "both"],
+  ["article_rect", "আর্টিকেল সাইডকার্ড", "আর্টিকেল পৃষ্ঠার অতিরিক্ত platform-sponsored card.", 1500, "both"],
+  ["home_infeed", "হোমপেজ ইন-ফিড", "হোমপেজের সংবাদ গ্রিডে পর্যায়ক্রমিক HTML/Google অথবা platform ad placement.", 1600, "both"],
+  ["home_lead_sponsor", "হোম লিড স্পনসর", "হোমপেজের প্রধান সংবাদের ঠিক নিচে নেটিভ স্পনসর সারি।", 3200, "platform"],
+  ["home_feed_1", "হোম ফিড · প্রথম", "হোমপেজের সাম্প্রতিক গ্রিডে প্রথম ইন-ফিড বিজ্ঞাপন।", 2000, "platform"],
+  ["home_feed_2", "হোম ফিড · দ্বিতীয়", "হোমপেজের সাম্প্রতিক গ্রিডে দ্বিতীয় ইন-ফিড বিজ্ঞাপন।", 1800, "platform"],
+  ["post_inarticle", "আর্টিকেল ইন-বডি", "প্রতিবেদনের অনুচ্ছেদের মাঝে ইন-বডি ইউনিট।", 2600, "platform"],
+  ["post_endcap", "আর্টিকেল এন্ডক্যাপ", "প্রতিবেদন শেষে, মন্তব্যের আগে বিলবোর্ড ইউনিট।", 2400, "platform"],
+  ["post_related_infeed", "সম্পর্কিত · ইন-ফিড", "“একই বিভাগে আরও” গ্রিডের ভেতরে ইন-ফিড ইউনিট।", 1400, "platform"],
+  ["post_sidebar_sticky", "আর্টিকেল স্টিকি সাইড", "আর্টিকেল সাইডবারে স্ক্রলজুড়ে থাকা হাফ-পেজ ইউনিট।", 2600, "platform"],
+  ["category_top_leaderboard", "বিভাগ · টপ ব্যানার", "বিভাগ পেজের শিরোনামের নিচে লিডারবোর্ড।", 1800, "platform"],
+  ["category_infeed", "বিভাগ · ইন-ফিড", "বিভাগ পেজের গ্রিডে ইন-ফিড ইউনিট।", 1500, "platform"],
+  ["global_footer_strip", "গ্লোবাল ফুটার স্ট্রিপ", "প্রতিটি পেজের ফুটারের উপরে ব্র্যান্ডেড স্ট্রিপ।", 800, "platform"],
+  ["global_mobile_anchor", "মোবাইল অ্যাঙ্কর", "মোবাইলে নিচে আটকে থাকা ইউনিট (শুধু ছোট স্ক্রিনে)।", 1200, "platform"],
+];
+
+export async function ensureAdSlotInventory(client: Client): Promise<void> {
+  await client.executeMultiple(`
+CREATE TABLE IF NOT EXISTS ad_slots (
+  slot_key TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  day_rate_bdt INTEGER NOT NULL DEFAULT 1000,
+  house_html_enabled INTEGER NOT NULL DEFAULT 1,
+  delivery_mode TEXT NOT NULL DEFAULT 'both',
+  updated_at TEXT NOT NULL
+);
+  `);
+  const info = await client.execute("PRAGMA table_info(ad_slots)");
+  const cols = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));
+  if (!cols.has("delivery_mode")) {
+    await client.execute("ALTER TABLE ad_slots ADD COLUMN delivery_mode TEXT NOT NULL DEFAULT 'both'");
+  }
+  const now = nowIso();
+  for (const [key, name, description, rate, mode] of AD_SLOT_INVENTORY) {
+    const args: Array<string | number> = [key, name, description, rate, mode, now];
+    await client.execute({
+      sql: `INSERT OR IGNORE INTO ad_slots
+              (slot_key, name, description, enabled, day_rate_bdt, house_html_enabled, delivery_mode, updated_at)
+            VALUES (?, ?, ?, 1, ?, 0, ?, ?)`,
+      args,
+    });
+  }
+}
+
 /** settings.app_config_json — web-app visibility knobs (quiet JSON blob). */
 export async function ensureAppConfigColumn(client: Client): Promise<void> {
   const info = await client.execute("PRAGMA table_info(settings)");
@@ -752,6 +814,7 @@ export async function ensureSchema(client: Client, externalUrl?: string): Promis
   await applyMigration(client, "001_init", baseSchemaSql());
   await ensureBrandingColumns(client);
   await ensureAdSlotColumns(client);
+  await ensureAdSlotInventory(client);
   await ensureAppConfigColumn(client);
   await ensureNoticesTable(client);
   await ensureCommentsTable(client);

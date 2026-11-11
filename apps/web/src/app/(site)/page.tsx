@@ -290,6 +290,13 @@ export default async function HomePage({
         </section>
       )}
 
+      {/* ad · lead-sponsor — native row directly under the lead story */}
+      {cfg.show_ads && (
+        <div className="mx-auto max-w-[1400px] px-4 pt-4 md:px-8">
+          <UnifiedAdPlacement slotKey="home_lead_sponsor" variant="leaderboard" />
+        </div>
+      )}
+
       {cfg.show_rewrite_engine && (
       <section className="bg-band text-bandline">
         <div className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">

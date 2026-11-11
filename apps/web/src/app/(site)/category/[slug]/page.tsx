@@ -4,6 +4,7 @@ import { windowPosts, countWindowPosts } from "@hoichoi/db";
 import { findCategory, getCategories } from "@/lib/categories-server";
 import { CollectionGrid } from "@/components/CollectionGrid";
 import { Pagination } from "@/components/Pagination";
+import { UnifiedAdPlacement } from "@/components/ads/UnifiedAdPlacement";
 import type { CategorySlug } from "@hoichoi/shared-types";
 
 export const dynamic = "force-dynamic";
@@ -53,6 +54,9 @@ export default async function CategoryPage({
         <p className="mt-4 font-mono-x text-[10.5px] tracking-[0.18em] text-ink-soft uppercase">
           CURRENT WINDOW · {total} পোস্ট
         </p>
+      </div>
+      <div className="mt-6">
+        <UnifiedAdPlacement slotKey="category_top_leaderboard" variant="leaderboard" />
       </div>
       <div className="mt-10">
         <CollectionGrid posts={posts} cats={cats} />

@@ -377,6 +377,26 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 > before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
 > (latest e.g. `012_post_images.sql`).
 
+## Ad inventory and console feedback (v1.1.21)
+
+- **16 platform ad slots** are seeded at runtime (`ensureAdSlotInventory`) and by
+  migration `021_ad_slot_inventory_expansion.sql`: home (leaderboard, lead
+  sponsor, two in-feed), article (leaderboard, in-article, endcap, sidebar sticky,
+  sidebar card, related in-feed), category (top leaderboard, in-feed) and global
+  chrome (footer strip, mobile anchor). New keys are `delivery_mode='platform'`,
+  so they only render a real booking; flip a slot to `both` in
+  `/admin/ads/slots` to bring back the house placeholder. `ad-slot-inventory.test.ts`
+  fails if a rendered slot key has no row in either the seed or the runtime path.
+- **Every console action reports what happened.** `ToastProvider` +
+  `useAdminAction()` wrap the fetches in moderation, removals, reports,
+  submissions, sources and backup/reset, so a 401/403/500 shows the server's
+  message instead of a silent page reload.
+- **Service strip** (`/api/admin/system-status` + `SystemStatusBar`) polls the DB,
+  text/image providers, pipeline runner and media storage every 30 seconds and
+  toasts when one goes down or recovers.
+- **Images are not cropped** on articles: `PostGallery`/`PostFigure` keep the
+  original framing (`object-contain`, capped at `75vh`).
+
 ## Desktop and media operations (v1.1.18)
 
 - **Collector and categories:** the desktop collector uses the same bundled runner
