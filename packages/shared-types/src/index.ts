@@ -165,6 +165,9 @@ export interface RawPost {
   raw_meta: Record<string, unknown> | null;
 }
 
+/** Provenance of a post's primary image. */
+export type MediaOrigin = "collector" | "ai" | "admin" | "external";
+
 export interface Post {
   id: string;
   raw_post_id: string | null;
@@ -175,6 +178,12 @@ export interface Post {
   summary_bn: string | null;
   media_path: string | null;
   media_kind: MediaKind;
+  /**
+   * Where the primary image came from: `collector` (mirrored from the source
+   * post), `ai` (generated), `admin` (uploaded by an operator) or `external`
+   * (a remote URL). Null on legacy rows — callers fall back to a path heuristic.
+   */
+  media_origin?: MediaOrigin | null;
   source_url: string;
   source_name: string;
   slug: string;
@@ -301,6 +310,9 @@ export interface ReaderReportWithPost extends ReaderReport {
   postTitle: string | null;
   postSlug: string | null;
   postCategory: string | null;
+  /** Parent post picture, so the queue shows what was reported. */
+  postMediaPath?: string | null;
+  postMediaKind?: MediaKind | null;
 }
 
 export type AdminRole = "admin" | "editor" | "moderator";
@@ -1191,6 +1203,16 @@ export interface SiteAppConfig {  /** Masthead "newsroom in numbers" hero sectio
    * therefore applied to the h1 element itself and never nests.
    */
   hero_headline_motion: HeroHeadlineMotion;
+  /**
+   * Visual template of the hero's "how a story is collected" scene.
+   *
+   * The scene is data-driven (real source platform, real counts, real featured
+   * post), so a template only changes the *arrangement*: rail, orbit, stack,
+   * timeline, conveyor, radar, mosaic, glass, terminal, deck, isometric or
+   * blueprint. Pickable from web admin → সেটিংস → ভিজিবিলিটি and from the
+   * desktop desk; both write the same key.
+   */
+  hero_scene_style: HeroSceneStyle;
 }
 
 export type LiveThemeKey = "stage" | "broadsheet" | "scoreboard" | "timeline" | "compact" | "studio";
@@ -1214,6 +1236,36 @@ export interface HeroEffects {
   tauri_win: boolean;
   ping: boolean;
 }
+
+/** Visual templates for the home-page hero scene. */
+export type HeroSceneStyle =
+  | "rail"
+  | "orbit"
+  | "stack"
+  | "timeline"
+  | "conveyor"
+  | "radar"
+  | "mosaic"
+  | "glass"
+  | "terminal"
+  | "deck"
+  | "isometric"
+  | "blueprint";
+
+export const HERO_SCENE_STYLES: Array<{ key: HeroSceneStyle; bn: string; en: string }> = [
+  { key: "rail", bn: "অ্যাঙ্গেলড রেল", en: "Angled rail" },
+  { key: "orbit", bn: "অরবিট রিং", en: "Orbit ring" },
+  { key: "stack", bn: "কার্ড স্ট্যাক", en: "Card stack" },
+  { key: "timeline", bn: "টাইমলাইন", en: "Timeline" },
+  { key: "conveyor", bn: "কনভেয়ার বেল্ট", en: "Conveyor belt" },
+  { key: "radar", bn: "রাডার স্ক্যান", en: "Radar sweep" },
+  { key: "mosaic", bn: "মোজাইক গ্রিড", en: "Mosaic grid" },
+  { key: "glass", bn: "গ্লাস প্যানেল", en: "Glass panels" },
+  { key: "terminal", bn: "লাইভ টার্মিনাল", en: "Live terminal" },
+  { key: "deck", bn: "কার্ড ডেক", en: "Card deck" },
+  { key: "isometric", bn: "আইসোমেট্রিক", en: "Isometric plates" },
+  { key: "blueprint", bn: "ব্লুপ্রিন্ট", en: "Blueprint wireframe" },
+];
 
 /** Masthead / brand-name motion. `none` keeps the static wordmark. */
 export type BrandAnimation = "none" | "fade" | "typewriter" | "shimmer" | "slide";
@@ -1293,6 +1345,7 @@ export const DEFAULT_APP_CONFIG: SiteAppConfig = {
     ping: true,
   },
   hero_headline_motion: "sheen",
+  hero_scene_style: "rail",
 };
 
 /** Tone of an announcement. `alert` is the most urgent (used by the special
@@ -1583,4 +1636,8 @@ export interface Comment {
 export interface CommentWithPost extends Comment {
   postTitle: string | null;
   postCategory: string | null;
+  /** The parent post's picture, so the comment queue can show what it is about. */
+  postMediaPath?: string | null;
+  postMediaKind?: MediaKind | null;
+  postSlug?: string | null;
 }

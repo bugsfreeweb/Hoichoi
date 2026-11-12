@@ -3,11 +3,11 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import Counter from "@/components/home/counter";
-import HeroPipelineScene, { type HeroSceneFeature } from "@/components/home/HeroPipelineScene";
+import { HeroScene, type HeroSceneFeature } from "@hoichoi/dash";
 import { useLiveData } from "./live-data";
 import { timeBn } from "@/lib/bn";
 import { BRAND } from "@/lib/brand";
-import type { BrandAnimation, HeroHeadlineMotion } from "@hoichoi/shared-types";
+import type { BrandAnimation, HeroHeadlineMotion, HeroSceneStyle } from "@hoichoi/shared-types";
 
 const PHRASES = [
   "শহর ফিডে যা বলে, আমরা তা যাচাই করে লিখি।",
@@ -29,6 +29,7 @@ export default function Hero({
   logoUrl,
   brandAnimation = "none",
   headlineMotion = "sheen",
+  sceneStyle = "rail",
   sceneFeature = null,
   heroEffects = { drift: true, floaty: true, beam: true, headline_grad: true, kin_mask: true, tauri_win: true, ping: true },
 }: {
@@ -55,6 +56,8 @@ export default function Hero({
   /** Hero headline motion style (admin → Settings → সাইট). */
   headlineMotion?: HeroHeadlineMotion;
   /** Real data for the hero scene (source → dedupe → published card). */
+  /** Visual template of the collection scene (admin picker writes it). */
+  sceneStyle?: HeroSceneStyle;
   sceneFeature?: HeroSceneFeature | null;
 }) {
   const [idx, setIdx] = useState(0);
@@ -195,11 +198,9 @@ export default function Hero({
         <div className="hf-pipeline-hero relative col-span-1 hidden h-[440px] lg:col-span-5 lg:block">
           {/* The floating "window" collage was decoration; the right column now
               shows what the pipeline actually does, with the real counts. */}
-          <HeroPipelineScene
-            collected={collected}
-            published={published}
-            dups={dups}
-            lastRunIso={lastRunIso}
+          <HeroScene
+            style={sceneStyle}
+            stats={{ collected, published, dups, lastRunIso }}
             feature={sceneFeature}
           />
         </div>

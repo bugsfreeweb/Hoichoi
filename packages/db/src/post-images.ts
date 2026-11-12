@@ -114,14 +114,18 @@ export async function replaceCollectorImages(
 export async function setPrimaryPostImage(postId: string, imageId: string): Promise<string | null> {
   const client = getClient();
   const res = await client.execute({
-    sql: "SELECT path FROM post_images WHERE id = ? AND post_id = ?",
+    sql: "SELECT path, source FROM post_images WHERE id = ? AND post_id = ?",
     args: [imageId, postId],
   });
-  const path = (res.rows[0] as unknown as { path: string } | undefined)?.path ?? null;
+  const row = res.rows[0] as unknown as { path: string; source?: string } | undefined;
+  const path = row?.path ?? null;
   if (!path) return null;
+  // Carry the gallery row's provenance onto the post so the content manager
+  // badge stays truthful after a promotion.
+  const origin = row?.source === "admin" ? "admin" : row?.source === "ai" ? "ai" : "collector";
   await client.execute({
-    sql: "UPDATE posts SET media_path = ?, media_kind = 'image', updated_at = ? WHERE id = ?",
-    args: [path, nowIso(), postId],
+    sql: "UPDATE posts SET media_path = ?, media_kind = 'image', media_origin = ?, updated_at = ? WHERE id = ?",
+    args: [path, origin, nowIso(), postId],
   });
   return path;
 }

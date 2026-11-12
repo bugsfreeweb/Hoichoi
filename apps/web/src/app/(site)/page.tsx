@@ -84,6 +84,7 @@ export default async function HomePage({
         brandAnimation={cfg.brand_animation}
         heroEffects={cfg.hero_effects}
         headlineMotion={cfg.hero_headline_motion}
+        sceneStyle={cfg.hero_scene_style}
         sceneFeature={
           featured
             ? {

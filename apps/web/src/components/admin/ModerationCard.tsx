@@ -5,6 +5,8 @@ import { Loader2 } from "lucide-react";
 import { useAdminAction } from "@/lib/admin-api";
 import type { Post } from "@hoichoi/shared-types";
 import Link from "next/link";
+import { AdminThumb, OriginBadge } from "./AdminThumb";
+import { QuickImageButton } from "./QuickImageButton";
 
 export function ModerationCard({ post, queue }: { post: Post; queue: "pending" | "approved" }) {
   const [busy, setBusy] = useState<null | string>(null);
@@ -58,7 +60,16 @@ export function ModerationCard({ post, queue }: { post: Post; queue: "pending" |
           {post.category === "child-sexual-abuse" ? " · 🔒 double" : ""}
         </span>
       </div>
-      <p className="mt-3 line-clamp-3 text-[13.5px] leading-relaxed text-ink-soft">{post.body_bn}</p>
+      <div className="mt-3 flex flex-wrap items-start gap-3">
+        <AdminThumb post={post} />
+        <p className="min-w-[200px] flex-1 line-clamp-3 text-[13.5px] leading-relaxed text-ink-soft">
+          {post.summary_bn ?? post.body_bn}
+        </p>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <OriginBadge post={post} />
+        <QuickImageButton postId={post.id} hasImage={Boolean(post.media_path)} compact />
+      </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <textarea
           rows={1}

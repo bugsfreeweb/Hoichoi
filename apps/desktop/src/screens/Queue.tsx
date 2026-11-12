@@ -6,11 +6,8 @@ import { deskQueuePage, deskCategories, deskQueueBulk, deskQueueGenerateImage, d
 import { getRunEnv } from "../lib/vault";
 import { toast } from "../lib/toast";
 import { SITE_URL } from "../lib/site";
+import { DeskThumb } from "../components/DeskThumb";
 
-/** Same resolution rule as mediaUrl() in the web app, for the editor preview. */
-function deskMediaSrc(p: string): string {
-  return /^https?:\/\//i.test(p) ? p : `/uploads/${p.replace(/\\/g, "/")}`;
-}
 
 type Tab = "all" | "published" | "pending_review" | "approved" | "duplicate";
 
@@ -312,9 +309,8 @@ function EditModal({
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">ছবি</p>
           <div className="mt-2 flex gap-3">
             {media.trim() !== "" && (
-              <img
-                src={deskMediaSrc(media.trim())}
-                alt=""
+              <DeskThumb
+                path={media.trim()}
                 className="h-24 w-auto max-w-[160px] shrink-0 rounded-lg border border-white/10 object-cover"
               />
             )}
@@ -378,10 +374,8 @@ function EditModal({
               <div className="mt-2 grid grid-cols-4 gap-2">
                 {gallery.map((g) => (
                   <div key={g.id} className="min-w-0">
-                    <img
-                      src={deskMediaSrc(g.path)}
-                      alt=""
-                      loading="lazy"
+                    <DeskThumb
+                      path={g.path}
                       className="h-16 w-full rounded-md border border-white/15 object-cover"
                     />
                     <div className="mt-1 flex gap-1">
@@ -536,12 +530,18 @@ export default function Queue({
   refresh,
   cats,
   total,
+  loading = false,
+  loadError = null,
 }: {
   rows: DeskQueueRow[];
   refresh: () => Promise<unknown> | void;
   cats?: DeskCategory[] | null;
   /** Total rows available on the runner side (not just the loaded page). */
   total?: number;
+  /** True until the first bootstrap answers - an empty queue is not yet a fact. */
+  loading?: boolean;
+  /** Bootstrap failure, shown instead of an empty table. */
+  loadError?: string | null;
 }) {
   const [tab, setTab] = useState<Tab>("all");
   const [page, setPage] = useState(1);
@@ -551,6 +551,28 @@ export default function Queue({
   const [refreshing, setRefreshing] = useState(false);
   const PAGE_SIZE = 20;
   const [q, setQ] = useState("");
+  /**
+   * Card / list switch, remembered between launches.
+   *
+   * The table is the tool for clearing a backlog; the cards are the tool for
+   * judging a post — thumbnail, category and status in one glance, the way the
+   * collector saw it. Both act on the same rows and the same selection.
+   */
+  const [layout, setLayout] = useState<"list" | "card">(() => {
+    try {
+      return localStorage.getItem("hc-queue-layout") === "card" ? "card" : "list";
+    } catch {
+      return "list";
+    }
+  });
+  const setLayoutPersisted = (next: "list" | "card") => {
+    setLayout(next);
+    try {
+      localStorage.setItem("hc-queue-layout", next);
+    } catch {
+      /* ignore */
+    }
+  };
   const [editing, setEditing] = useState<DeskQueueRow | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -787,6 +809,21 @@ export default function Queue({
           CONTENT QUEUE · AUTO-FEED
         </span>
         <div className="ml-auto flex items-center gap-2">
+          <div className="flex overflow-hidden rounded-lg border border-white/10">
+            {(["card", "list"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setLayoutPersisted(v)}
+                aria-pressed={layout === v}
+                className={`px-2.5 py-1.5 text-[10.5px] font-bold transition-colors ${
+                  layout === v ? "bg-white text-night" : "text-white/50 hover:bg-white/8"
+                }`}
+              >
+                {v === "card" ? "কার্ড" : "লিস্ট"}
+              </button>
+            ))}
+          </div>
           <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5">
             <Search size={12} className="text-white/40" />
             <input
@@ -825,6 +862,122 @@ export default function Queue({
         ))}
       </div>
 
+      {loadError && !loading && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-rose-500/10 px-5 py-2.5">
+          <p className="min-w-0 flex-1 text-[11.5px] font-semibold text-rose-300">
+            ✕ কনটেন্ট সারি লোড হয়নি — রানার উত্তর দেয়নি। {loadError}
+          </p>
+          <button
+            onClick={() => void doRefresh()}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 rounded-lg border border-white/15 px-2.5 py-1 text-[10.5px] font-bold text-white/70 disabled:opacity-50"
+          >
+            <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} /> আবার চেষ্টা
+          </button>
+        </div>
+      )}
+
+      {loading && (
+        <div className="scroll-slim flex-1 overflow-auto px-5 py-4">
+          <p className="mb-3 flex items-center gap-2 font-mono-x text-[10px] tracking-[0.18em] text-white/30 uppercase">
+            <RefreshCw size={11} className="animate-spin" /> ডেটাবেস থেকে আইটেম পড়া হচ্ছে…
+          </p>
+          <div className="space-y-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-3">
+                <span className="h-9 w-11 shrink-0 animate-pulse rounded bg-white/10" />
+                <span className="min-w-0 flex-1 space-y-1.5">
+                  <span className="block h-2.5 w-1/3 animate-pulse rounded bg-white/10" />
+                  <span className="block h-2 w-1/5 animate-pulse rounded bg-white/8" />
+                </span>
+                <span className="h-2 w-16 animate-pulse rounded bg-white/10" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!loading && layout === "card" && (
+        <div className="scroll-slim flex-1 overflow-auto px-4 py-4">
+          {shown.length === 0 && (
+            <p className="py-14 text-center text-[12.5px] text-white/35">কোনো আইটেম মিললো না — ফিল্টার বদলে দেখুন।</p>
+          )}
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {shown.map((r) => {
+              const s = STATUS_STYLE[r.status] ?? STATUS_STYLE.pending_review;
+              const Icon = s.icon;
+              return (
+                <div
+                  key={r.id}
+                  className="flex flex-col overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-colors hover:border-white/25"
+                >
+                  <div className="relative aspect-[16/9] border-b border-white/8 bg-white/[0.04]">
+                    <DeskThumb path={r.media_path} className="h-full w-full object-cover" emptyLabel="ছবি নেই" />
+                    <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-night/80 px-2 py-0.5 text-[9.5px] font-semibold backdrop-blur-sm">
+                      <Icon size={10} className={s.tx} />
+                      <span className={s.tx}>{POST_STATUS_LABEL[r.status] ?? s.bn}</span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      className="absolute top-2 right-2 accent-lime"
+                      checked={selected.has(r.id)}
+                      onChange={() =>
+                        setSelected((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(r.id)) next.delete(r.id);
+                          else next.add(r.id);
+                          return next;
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="flex-1 px-3 pt-2.5">
+                    <p className="line-clamp-2 text-[12.5px] font-semibold leading-snug text-white/90">{r.title_bn}</p>
+                    <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-white/45">
+                      {r.summary_bn ?? ""}
+                    </p>
+                    <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-white/10 px-2 py-0.5 text-[9.5px] text-white/55">
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: categoryTint(r.category, cats) }} />
+                      {categoryLabel(r.category, cats)}
+                      <span className="text-white/30">· {r.source_name}</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-1.5 px-3 py-2">
+                    <span className="font-mono-x text-[9.5px] text-white/30">{bnTime(r.created_at)}</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setEditing(r)}
+                        disabled={busyId !== null}
+                        className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/70 hover:border-lime/60 hover:text-lime disabled:opacity-40"
+                        title="সম্পাদনা"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        onClick={() => view(r)}
+                        className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/70 hover:border-amberx/60 hover:text-amberx"
+                        title="মূল পোস্ট"
+                      >
+                        <ExternalLink size={12} />
+                      </button>
+                      <button
+                        onClick={() => void removeRow(r)}
+                        disabled={busyId !== null}
+                        className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/70 hover:border-rose-400/70 hover:text-rose-300 disabled:opacity-40"
+                        title="মুছুন"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {!loading && layout === "list" && (
       <div className="scroll-slim flex-1 overflow-auto">
         <table className="w-full min-w-[860px] text-left">
           <thead>
@@ -881,25 +1034,10 @@ export default function Queue({
                       image without opening the editor. Missing media gets a
                       muted placeholder instead of a broken <img>.
                     */}
-                    {r.media_path?.trim() ? (
-                      <img
-                        src={deskMediaSrc(r.media_path.trim())}
-                        alt=""
-                        loading="lazy"
-                        className="h-9 w-11 rounded border border-white/12 object-cover"
-                        onError={(e) => {
-                          const img = e.currentTarget;
-                          img.style.visibility = "hidden";
-                        }}
-                      />
-                    ) : (
-                      <span
-                        className="flex h-9 w-11 items-center justify-center rounded border border-dashed border-white/15 text-[9px] text-white/25"
-                        title="কোনো ছবি নেই"
-                      >
-                        নেই
-                      </span>
-                    )}
+                    <DeskThumb
+                      path={r.media_path}
+                      className="h-9 w-11 rounded border border-white/12 object-cover"
+                    />
                   </td>
                   <td className="max-w-[340px] px-5 py-3.5">
                     <div className="flex items-center gap-3">
@@ -975,6 +1113,7 @@ export default function Queue({
           </tbody>
         </table>
       </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 border-t border-white/8 px-5 py-2">
         <label className="flex items-center gap-1.5 text-[10.5px] font-semibold text-white/45">

@@ -317,7 +317,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   if (attach) {
     try {
-      await updatePost(id, { media_path: applied });
+      await updatePost(id, { media_path: applied, media_origin: "ai" });
     } catch (err) {
       return NextResponse.json({ error: (err as Error).message }, { status: 400 });
     }

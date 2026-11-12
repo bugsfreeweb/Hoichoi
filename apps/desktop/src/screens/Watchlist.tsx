@@ -30,9 +30,15 @@ function fbUrl(fbId: string): string {
 export default function Watchlist({
   sources,
   refresh,
+  loading = false,
+  loadError = null,
 }: {
   sources: DeskSource[];
   refresh: () => Promise<unknown> | void;
+  /** True until the first bootstrap answers - the source list is unknown, not empty. */
+  loading?: boolean;
+  /** Bootstrap failure. Without this the pane showed "no sources" for a dead runner. */
+  loadError?: string | null;
 }) {
   const [q, setQ] = useState("");
   const [kind, setKind] = useState<"all" | "page" | "group">("all");
@@ -47,6 +53,32 @@ export default function Watchlist({
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [categories, setCategories] = useState<Array<{ slug: string; displayNameBn: string; displayNameEn: string }>>([]);
+  /** Card / list switch, remembered between launches (same key style as the queue). */
+  const [layout, setLayout] = useState<"list" | "card">(() => {
+    try {
+      return localStorage.getItem("hc-watchlist-layout") === "card" ? "card" : "list";
+    } catch {
+      return "list";
+    }
+  });
+  const setLayoutPersisted = (next: "list" | "card") => {
+    setLayout(next);
+    try {
+      localStorage.setItem("hc-watchlist-layout", next);
+    } catch {
+      /* ignore */
+    }
+  };
+  const [retrying, setRetrying] = useState(false);
+  const retry = async () => {
+    setRetrying(true);
+    try {
+      await refresh();
+      await loadErrors();
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -194,6 +226,23 @@ export default function Watchlist({
               className="w-40 bg-transparent text-[12px] text-[var(--ds-t1)] outline-none placeholder:text-[var(--ds-t5)]"
             />
           </div>
+          <div className="flex overflow-hidden rounded-lg border border-[var(--ds-bd-2)]">
+            {(["card", "list"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setLayoutPersisted(v)}
+                aria-pressed={layout === v}
+                className={`px-2.5 py-1.5 text-[10.5px] font-bold transition-colors ${
+                  layout === v
+                    ? "bg-[var(--ds-active)] text-[var(--ds-active-tx)]"
+                    : "text-[var(--ds-t4)] hover:bg-[var(--ds-kb8)]"
+                }`}
+              >
+                {v === "card" ? "কার্ড" : "লিস্ট"}
+              </button>
+            ))}
+          </div>
           {(["all", "page", "group"] as const).map((k) => (
             <button
               key={k}
@@ -219,6 +268,21 @@ export default function Watchlist({
       {err && (
         <div className="border-b border-[var(--ds-bd)] bg-[var(--ds-rose-soft)] px-5 py-2 text-[11.5px] font-semibold text-[var(--ds-rose)]">
           ✕ {err}
+        </div>
+      )}
+
+      {loadError && !loading && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--ds-bd)] bg-[var(--ds-rose-soft)] px-5 py-2.5">
+          <p className="min-w-0 flex-1 text-[11.5px] font-semibold text-[var(--ds-rose)]">
+            ✕ ওয়াচলিস্ট লোড হয়নি — রানার উত্তর দেয়নি। {loadError}
+          </p>
+          <button
+            onClick={() => void retry()}
+            disabled={retrying}
+            className="flex items-center gap-1.5 rounded-lg border border-[var(--ds-bd-2)] px-2.5 py-1 text-[10.5px] font-bold text-[var(--ds-t2)] disabled:opacity-50"
+          >
+            <RefreshCw size={11} className={retrying ? "animate-spin" : ""} /> আবার চেষ্টা
+          </button>
         </div>
       )}
 
@@ -343,6 +407,131 @@ export default function Watchlist({
         </div>
       )}
 
+      {loading && (
+        <div className="scroll-slim flex-1 overflow-auto px-5 py-4">
+          <p className="mb-3 flex items-center gap-2 font-mono-x text-[10px] tracking-[0.18em] text-[var(--ds-t5)] uppercase">
+            <RefreshCw size={11} className="animate-spin" /> ডেটাবেস থেকে সোর্স পড়া হচ্ছে…
+          </p>
+          <div className="space-y-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 rounded-lg border border-[var(--ds-bd-2)] bg-[var(--ds-kb)] px-3 py-3"
+              >
+                <span className="h-9 w-9 shrink-0 rounded-full bg-[var(--ds-kb10)]" />
+                <span className="min-w-0 flex-1 space-y-1.5">
+                  <span className="block h-2.5 w-1/3 rounded bg-[var(--ds-kb10)]" />
+                  <span className="block h-2 w-1/5 rounded bg-[var(--ds-kb8)]" />
+                </span>
+                <span className="h-2 w-16 rounded bg-[var(--ds-kb10)]" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!loading && layout === "card" && (
+        <div className="scroll-slim flex-1 overflow-auto px-4 py-4">
+          {shown.length === 0 && (
+            <p className="py-14 text-center text-[12.5px] text-[var(--ds-t5)]">
+              কোনো সোর্স মিললো না — ফিল্টার বদলান বা নতুন সোর্স যোগ করুন।
+            </p>
+          )}
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {shown.map((s) => {
+              const isError = s.health === 0;
+              const st = isError ? "error" : s.is_active ? "watching" : "paused";
+              const slugs = [...new Set(s.categories.length ? s.categories : s.category ? [s.category] : [])];
+              const catName = (slug: string) =>
+                categories.find((c) => c.slug === slug)?.displayNameBn ?? slug;
+              return (
+                <div
+                  key={s.id}
+                  className="flex flex-col rounded-xl border border-[var(--ds-bd-2)] bg-[var(--ds-kb)] p-3 transition-colors hover:border-[var(--ds-bd)]"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--ds-acc-soft)] font-serif-bn text-[14px] font-black text-[var(--ds-acc)]">
+                      {s.page_name.trim().charAt(0) || "?"}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-semibold text-[var(--ds-t1)]">{s.page_name}</p>
+                      <p className="truncate font-mono-x text-[10px] text-[var(--ds-t5)]">
+                        {s.fb_id ?? s.page_url}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-semibold ${
+                        st === "error"
+                          ? "bg-[var(--ds-rose-soft)] text-[var(--ds-rose)]"
+                          : st === "watching"
+                            ? "bg-[var(--ds-acc-soft)] text-[var(--ds-acc)]"
+                            : "bg-[var(--ds-kb10)] text-[var(--ds-t4)]"
+                      }`}
+                    >
+                      {STATUS_BN[st]}
+                    </span>
+                  </div>
+
+                  {slugs.length > 0 && (
+                    <div className="mt-2 flex flex-wrap items-center gap-1">
+                      {slugs.map((slug) => (
+                        <span
+                          key={slug}
+                          className="rounded-full border border-[var(--ds-bd-2)] px-1.5 py-0.5 font-mono-x text-[8.5px] text-[var(--ds-t4)]"
+                        >
+                          {catName(slug)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="h-1 flex-1 overflow-hidden rounded-full bg-[var(--ds-kb10)]">
+                      <span
+                        className={`block h-full ${
+                          s.health > 80
+                            ? "bg-[var(--ds-acc)]"
+                            : s.health > 50
+                              ? "bg-[var(--ds-amber)]"
+                              : "bg-[var(--ds-rose)]"
+                        }`}
+                        style={{ width: `${Math.max(0, Math.min(100, s.health))}%` }}
+                      />
+                    </span>
+                    <span className="font-mono-x text-[9.5px] text-[var(--ds-t4)]">হেলথ {toBn(s.health)}</span>
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <p className="font-mono-x text-[9.5px] text-[var(--ds-t5)]">
+                      আজ {toBn(s.posts_today)} · শেষ চেক {agoBn(s.last_scraped_at)}
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => void toggle(s)}
+                        disabled={busy === s.id || isError}
+                        className="flex h-6 w-6 items-center justify-center rounded-md border border-[var(--ds-bd-2)] text-[var(--ds-t3)] hover:text-[var(--ds-t1)] disabled:opacity-40"
+                        title={st === "watching" ? "বিরতি" : "চালু"}
+                      >
+                        {st === "watching" ? <Pause size={10} /> : <Play size={10} />}
+                      </button>
+                      <button
+                        onClick={() => void remove(s)}
+                        disabled={busy === s.id}
+                        className="flex h-6 w-6 items-center justify-center rounded-md border border-[var(--ds-bd-2)] text-[var(--ds-t3)] hover:border-[var(--ds-rose-bd)] hover:text-[var(--ds-rose)] disabled:opacity-40"
+                        title="মুছে ফেলুন"
+                      >
+                        <Trash2 size={10} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {!loading && layout === "list" && (
       <div className="scroll-slim flex-1 overflow-auto">
         <table className="w-full min-w-[860px] text-left">
           <thead>
@@ -463,6 +652,7 @@ export default function Watchlist({
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

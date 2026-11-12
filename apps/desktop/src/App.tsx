@@ -175,6 +175,16 @@ export default function App() {
   const [configured, setConfigured] = useState<Partial<Record<CredentialName, boolean>>>({});
   const [running, setRunning] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  /*
+   * Boot state for the panes that are fed by `refresh()`.
+   *
+   * The watchlist and the queue rendered their empty state from the first paint,
+   * before the runner had answered, so a slow or failed bootstrap looked exactly
+   * like "you have no sources". Panes now get `loading` and `loadError` and can
+   * show a skeleton or the real error instead.
+   */
+  const [booted, setBooted] = useState(false);
+  const [bootError, setBootError] = useState<string | null>(null);
   // Heartbeat for the dashboard's live panel: the last time a snapshot landed.
   const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
@@ -328,11 +338,16 @@ export default function App() {
       }
       prevPendingRef.current = pending;
       setLastRefreshAt(Date.now());
+      setBooted(true);
+      setBootError(null);
       return { ok: true };
     } catch (err) {
       // Surface the actual runner error so a failed refresh is not mistaken for
       // a healthy but empty desk.
-      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+      const message = err instanceof Error ? err.message : String(err);
+      setBooted(true);
+      setBootError(message);
+      return { ok: false, error: message };
     }
   }, []);
 
@@ -722,13 +737,25 @@ export default function App() {
 
               <section className="pane col" id="pane-watchlist" hidden={view !== "watchlist"}>
                 <PaneBoundary name="watchlist">
-                  <Watchlist sources={sources} refresh={refresh} />
+                  <Watchlist
+                    sources={sources}
+                    refresh={refresh}
+                    loading={!booted}
+                    loadError={bootError}
+                  />
                 </PaneBoundary>
               </section>
 
               <section className="pane col" id="pane-queue" hidden={view !== "queue"}>
                 <PaneBoundary name="queue">
-                  <Queue rows={queueRows} refresh={refresh} cats={cats} total={queueTotal} />
+                  <Queue
+                    rows={queueRows}
+                    refresh={refresh}
+                    cats={cats}
+                    total={queueTotal}
+                    loading={!booted}
+                    loadError={bootError}
+                  />
                 </PaneBoundary>
               </section>
 

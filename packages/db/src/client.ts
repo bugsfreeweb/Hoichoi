@@ -1273,6 +1273,23 @@ export async function ensureProviderPurposeColumn(client: Client): Promise<void>
  *  guard. The resolver persists last ok/error timestamps here so a dead
  *  provider (retired model, bad key) is skipped on the next run instead of
  *  burning the whole fallback chain. Idempotent. */
+/**
+ * Adds `posts.media_origin` on databases created before migration 023, and
+ * backfills it by path shape so the content manager can label every existing
+ * image (external URL vs. mirrored from the source).
+ */
+export async function ensurePostMediaOriginColumn(client: Client): Promise<void> {
+  const info = await client.execute("PRAGMA table_info(posts)");
+  const existing = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));
+  if (!existing.has("media_origin")) {
+    await client.execute("ALTER TABLE posts ADD COLUMN media_origin TEXT");
+    await client.execute("UPDATE posts SET media_origin = 'external' WHERE media_path LIKE 'http%'");
+    await client.execute(
+      "UPDATE posts SET media_origin = 'collector' WHERE media_path IS NOT NULL AND media_origin IS NULL",
+    );
+  }
+}
+
 export async function ensureProviderHealthColumns(client: Client): Promise<void> {
   const info = await client.execute("PRAGMA table_info(llm_providers)");
   const existing = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));

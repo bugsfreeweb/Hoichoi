@@ -24,6 +24,7 @@ pub fn run() {
             commands::sync_db,
             commands::admin_codes,
             commands::desk_call,
+            commands::media_bytes,
             vault::vault_set,
             vault::vault_get,
             vault::vault_delete,

@@ -78,6 +78,7 @@ export function mapPost(row: Record<string, unknown>): Post {
     summary_bn: (row.summary_bn as string | null) ?? null,
     media_path: (row.media_path as string | null) ?? null,
     media_kind: (row.media_kind as MediaKind) ?? "none",
+    media_origin: (row.media_origin as Post["media_origin"]) ?? null,
     source_url: String(row.source_url),
     source_name: String(row.source_name),
     slug: String(row.slug),

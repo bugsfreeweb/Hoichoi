@@ -38,6 +38,7 @@ import type {
   CommentStatus,
   CommentWithPost,
   CurrentWindowPost,
+  MediaKind,
   Notice,
   NoticeTone,
   Post,
@@ -185,6 +186,24 @@ export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
         ];
         if (typeof v === "string" && allowed.includes(v)) {
           merged.hero_headline_motion = v as SiteAppConfig["hero_headline_motion"];
+        }
+      } else if (k === "hero_scene_style") {
+        const allowed = [
+          "rail",
+          "orbit",
+          "stack",
+          "timeline",
+          "conveyor",
+          "radar",
+          "mosaic",
+          "glass",
+          "terminal",
+          "deck",
+          "isometric",
+          "blueprint",
+        ];
+        if (typeof v === "string" && allowed.includes(v)) {
+          merged.hero_scene_style = v as SiteAppConfig["hero_scene_style"];
         }
       } else if (k === "hero_effects") {
         if (v && typeof v === "object") {
@@ -1960,6 +1979,8 @@ export interface PostUpdateFields {
   media_path?: string | null;
   /** Inferred from media_path when omitted. */
   media_kind?: "image" | "video" | "none";
+  /** Provenance of the new image (see `Post.media_origin`). */
+  media_origin?: "collector" | "ai" | "admin" | "external" | null;
 }
 
 /**
@@ -2057,6 +2078,19 @@ export async function updatePost(id: string, fields: PostUpdateFields): Promise<
     // skip the post forever.
     sets.push("media_path = ?", "media_kind = ?");
     args.push(normalized, normalized ? kind : "none");
+    // Provenance is what the content manager badge reads. Clearing the image
+    // clears the origin too, so a re-attached image can never inherit the old
+    // "AI generated" label.
+    const origin =
+      typeof fields.media_origin === "string" && fields.media_origin
+        ? fields.media_origin
+        : normalized
+          ? normalized.startsWith("http")
+            ? "external"
+            : "admin"
+          : null;
+    sets.push("media_origin = ?");
+    args.push(origin);
   }
 
   if (sets.length === 0) return;
@@ -2145,7 +2179,7 @@ export async function voteComment(
 export async function getAllComments(limit = 400): Promise<CommentWithPost[]> {
   const client = getClient();
   const res = await client.execute({
-    sql: `SELECT c.*, p.title_bn AS postTitle, p.category AS postCategory
+    sql: `SELECT c.*, p.title_bn AS postTitle, p.category AS postCategory, p.media_path AS postMediaPath, p.media_kind AS postMediaKind, p.slug AS postSlug
           FROM comments c LEFT JOIN posts p ON p.id = c.post_id
           ORDER BY c.created_at DESC LIMIT ?`,
     args: [limit],
@@ -2156,6 +2190,9 @@ export async function getAllComments(limit = 400): Promise<CommentWithPost[]> {
       ...mapComment(row),
       postTitle: (row.postTitle as string | null) ?? null,
       postCategory: (row.postCategory as string | null) ?? null,
+      postMediaPath: (row.postMediaPath as string | null) ?? null,
+      postMediaKind: (row.postMediaKind as MediaKind | null) ?? null,
+      postSlug: (row.postSlug as string | null) ?? null,
     };
   });
 }

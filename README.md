@@ -377,6 +377,44 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 > before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
 > (latest e.g. `012_post_images.sql`).
 
+## Pictures, provenance and card/list queues (v1.1.25)
+
+**The desktop can finally show post images.** A Tauri window has no web server
+behind it, so every DB-stored picture (`2025-01-01/img_ab12.jpg` → `/uploads/…`)
+resolved to a 404 and the content screens looked image-less even for posts the
+collector had mirrored. A new Rust command `media_bytes` reads the file from the
+media roots (app-data, `HOICHOI_MEDIA_ROOT`, `<repo>/media`, `<repo>/data/media`,
+`%APPDATA%/com.hoichoi.desk/media`) and returns raw bytes over IPC; the frontend
+(`apps/desktop/src/lib/media.ts`, `components/DeskThumb.tsx`) caches a blob URL per
+path. Remote URLs still pass straight through, and a missing file renders a
+labelled placeholder instead of a broken image.
+
+**Every queue shows what a post actually is.** `posts.media_origin`
+(migration `023`) records where a picture came from — collector mirror, AI,
+admin upload or an external link — and the admin console now renders it as a
+badge (`মূল উৎস` / `AI তৈরি` / `অ্যাডমিন আপলোড` / `বাইরের লিংক` / `ছবি নেই`).
+Legacy rows without the column are inferred from the path shape (`http(s)://` →
+external, otherwise collector), which is what the migration backfills too.
+
+**Card and list views everywhere.** Content manager, content moderation, comment
+moderation, removal requests and reader reports all gained a `?view=card` switch
+(`components/admin/ui/ViewToggle.tsx`): cards lead with the picture, the headline,
+the summary and the provenance badge; the list keeps the dense row the desk already
+scanned. Queue actions are identical in both. The choice is a URL parameter, so a
+refresh or a shared link keeps it.
+
+**One-click AI image from the list.** `QuickImageButton` posts to
+`/api/posts/[id]/generate-image` with `useTitle`, reports the real provider and
+path (or "queued for GitHub Actions"), and refreshes the list — no need to open the
+editor for a queue of twenty.
+
+**The desktop queue and watchlist say what is happening.** Both panes now receive
+`loading` / `loadError` from the bootstrap: a slow or failed runner shows a
+skeleton or the real error with a retry button instead of an authoritative "no
+sources" / "no items". Both also have card and list views (`localStorage`-remembered),
+and the queue's card shows the thumbnail, category, source, status and the same
+edit/open/delete actions as the table.
+
 ## Editorial fidelity, consent and provider truth (v1.1.24)
 
 **The hero finally shows how content is collected.** The right column of the home

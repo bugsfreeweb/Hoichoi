@@ -230,7 +230,7 @@ export async function backfillMissingMedia(opts: {
         await processImage(buf, rel, { maxWidthPx: MAX_WIDTH_PX });
         mirrorMediaFile(rel);
         await client.execute({
-          sql: "UPDATE posts SET media_path = ?, media_kind = 'image', updated_at = ? WHERE id = ?",
+          sql: "UPDATE posts SET media_path = ?, media_kind = 'image', media_origin = 'collector', updated_at = ? WHERE id = ?",
           args: [rel, nowIso(), row.id],
         });
         await client.execute({
@@ -334,7 +334,7 @@ export async function aiFillMissingHeroes(opts: {
       log(`[ai-fill] ${row.id.slice(0, 8)} -> ${ok}`);
     }
     await client.execute({
-      sql: "UPDATE posts SET media_path = ?, media_kind = 'image', updated_at = ? WHERE id = ?",
+      sql: "UPDATE posts SET media_path = ?, media_kind = 'image', media_origin = 'ai', updated_at = ? WHERE id = ?",
       args: [ok, nowIso(), row.id],
     });
     await client.execute({
@@ -444,7 +444,7 @@ export async function recoverOrphanedMedia(opts: {
     mirrorMediaFile(rel);
     for (const t of targets) {
       await client.execute({
-        sql: "UPDATE posts SET media_path = ?, media_kind = 'image', updated_at = ? WHERE id = ?",
+        sql: "UPDATE posts SET media_path = ?, media_kind = 'image', media_origin = 'collector', updated_at = ? WHERE id = ?",
         args: [rel, nowIso(), t.id],
       });
     }
@@ -527,7 +527,7 @@ export async function generateManualImage(opts: {
 
   const attach = opts.attach !== false;
   if (attach) {
-    await updatePost(opts.postId, { media_path: applied });
+    await updatePost(opts.postId, { media_path: applied, media_origin: "ai" });
   }
   return {
     media_path: applied,

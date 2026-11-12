@@ -1,6 +1,8 @@
 import { PageHeading } from "@/components/admin/ui/PageHeader";
 import { mapPost, pageRows } from "@hoichoi/db";
 import { ModerationCard } from "@/components/admin/ModerationCard";
+import { ModerationListRow } from "@/components/admin/ModerationListRow";
+import { ViewToggle, viewFromSearch } from "@/components/admin/ui/ViewToggle";
 import { Paginator } from "@/components/admin/Paginator";
 
 export const dynamic = "force-dynamic";
@@ -10,9 +12,16 @@ const PAGE_SIZE = 20;
 export default async function AdminModerationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pendingPage?: string; approvedPage?: string }>;
+  searchParams: Promise<{ pendingPage?: string; approvedPage?: string; view?: string }>;
 }) {
-  const { pendingPage: pendingParam, approvedPage: approvedParam } = await searchParams;
+  const sp = await searchParams;
+  const { pendingPage: pendingParam, approvedPage: approvedParam } = sp;
+  const view = viewFromSearch(sp);
+  const extra = {
+    ...(pendingParam ? { pendingPage: pendingParam } : {}),
+    ...(approvedParam ? { approvedPage: approvedParam } : {}),
+    ...(view === "card" ? { view: "card" } : {}),
+  };
 
   // The review queues now page. Rendering every pending_review post at once meant
   // a backlog of any size loaded in full, and there was no indication that more
@@ -48,14 +57,26 @@ export default async function AdminModerationPage({
         </a>
         .
       </p>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[12px] text-ink-soft">
+          কার্ডে ছবি ও সারাংশ দেখে দ্রুত সিদ্ধান্ত নিন; লিস্টে এক লাইনে বড় ব্যাকলগ স্ক্যান করুন।
+        </p>
+        <ViewToggle labelBn="দেখার ধরন" />
+      </div>
       <div className="mt-6 grid gap-10">
         <section>
           <QueueTitle color="amberx" count={pending.total} label="অনুমোদনের অপেক্ষায়" />
           <div className="mt-3 space-y-3">
             {pending.rows.length === 0 && <Empty msg="অনুমোদনের অপেক্ষায় কোনো পোস্ট নেই। চমৎকার!" />}
-            {pending.rows.map((p) => (
-              <ModerationCard key={p.id} post={p} queue="pending" />
-            ))}
+            {view === "card" ? (
+              pending.rows.map((p) => <ModerationCard key={p.id} post={p} queue="pending" />)
+            ) : (
+              <div className="divide-y divide-ink/10 border border-ink/20">
+                {pending.rows.map((p) => (
+                  <ModerationListRow key={p.id} post={p} queue="pending" />
+                ))}
+              </div>
+            )}
           </div>
           <Paginator
             page={pending.page}
@@ -63,7 +84,7 @@ export default async function AdminModerationPage({
             total={pending.total}
             basePath="/admin/moderation"
             paramName="pendingPage"
-            extraParams={approvedParam ? { approvedPage: approvedParam } : {}}
+            extraParams={extra}
           />
         </section>
         <section>
@@ -73,9 +94,15 @@ export default async function AdminModerationPage({
           </p>
           <div className="mt-3 space-y-3">
             {approved.rows.length === 0 && <Empty msg="কোনো পোস্ট নেই।" />}
-            {approved.rows.map((p) => (
-              <ModerationCard key={p.id} post={p} queue="approved" />
-            ))}
+            {view === "card" ? (
+              approved.rows.map((p) => <ModerationCard key={p.id} post={p} queue="approved" />)
+            ) : (
+              <div className="divide-y divide-ink/10 border border-ink/20">
+                {approved.rows.map((p) => (
+                  <ModerationListRow key={p.id} post={p} queue="approved" />
+                ))}
+              </div>
+            )}
           </div>
           <Paginator
             page={approved.page}
@@ -83,7 +110,7 @@ export default async function AdminModerationPage({
             total={approved.total}
             basePath="/admin/moderation"
             paramName="approvedPage"
-            extraParams={pendingParam ? { pendingPage: pendingParam } : {}}
+            extraParams={extra}
           />
         </section>
       </div>

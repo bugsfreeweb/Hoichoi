@@ -61,6 +61,8 @@ import DeskProviderManager from "../components/DeskProviderManager";
 import DeskNoticeManager from "../components/DeskNoticeManager";
 import MediaStoragePanel from "../components/MediaStoragePanel";
 import { SITE_URL } from "../lib/site";
+import { DEFAULT_APP_CONFIG, HERO_SCENE_STYLES, type SiteAppConfig } from "@hoichoi/shared-types";
+import { HeroScene } from "@hoichoi/dash";
 
 const TABS = [
   { id: "pref", icon: Sliders, label: "প্রেফারেন্স" },
@@ -134,59 +136,19 @@ const VIS_ITEMS: Array<{ key: keyof SiteAppConfig; label: string; hint: string }
   { key: "ai_hero_images", label: "AI Fallback Image", hint: "মিডিয়া ছাড়া পোস্টে AI হিরো ছবি (Gemini)" },
 ];
 
-interface SiteAppConfig {
-  show_hero: boolean;
-  show_live_graph: boolean;
-  show_categories: boolean;
-  show_ads: boolean;
-  show_rewrite_engine: boolean;
-  show_footer: boolean;
-  maintenance_mode: boolean;
-  ai_hero_images: boolean;
-  theme_default: "light" | "dark";
-  surge_threshold: number;
-  home_post_count: number;
-  detail_similar_count: number;
-  comments_show_count: number;
-  default_post_image: string;
-  brand_animation: string;
-  hero_effects: {
-    drift: boolean;
-    floaty: boolean;
-    beam: boolean;
-    headline_grad: boolean;
-    kin_mask: boolean;
-    tauri_win: boolean;
-    ping: boolean;
-  };
-}
+/**
+ * Desktop default view of `app_config_json`.
+ *
+ * Built from the SHARED `DEFAULT_APP_CONFIG` instead of a local partial copy.
+ * The old local interface listed only a dozen keys, so saving visibility from
+ * the desktop rewrote the row with those keys alone and silently deleted
+ * `live_events`, `footer_socials`, `hero_headline_motion`, `hero_scene_style`
+ * and the maintenance copy the web admin had set.
+ */
+const VIS_DEFAULTS: SiteAppConfig = { ...DEFAULT_APP_CONFIG, theme_default: "dark" };
 
-const VIS_DEFAULTS: SiteAppConfig = {
-  show_hero: true,
-  show_live_graph: true,
-  show_categories: true,
-  show_ads: true,
-  show_rewrite_engine: true,
-  show_footer: true,
-  maintenance_mode: false,
-  ai_hero_images: true,
-  theme_default: "dark",
-  surge_threshold: 12,
-  home_post_count: 12,
-  detail_similar_count: 3,
-  comments_show_count: 10,
-  default_post_image: "",
-  brand_animation: "none",
-  hero_effects: {
-    drift: true,
-    floaty: true,
-    beam: true,
-    headline_grad: true,
-    kin_mask: true,
-    tauri_win: true,
-    ping: true,
-  },
-};
+/** Sample numbers for the template previews only (never a real post). */
+const SCENE_PREVIEW_STATS = { collected: 148, published: 96, dups: 52, lastRunIso: null };
 
 const BRAND_ANIMATIONS = [
   { value: "none", label: "নেই (স্থির)" },
@@ -473,7 +435,12 @@ export default function Settings({
       if (raw) {
         try {
           const parsed = JSON.parse(raw as string) as Partial<SiteAppConfig>;
-          setVis({ ...VIS_DEFAULTS, ...parsed, hero_effects: { ...VIS_DEFAULTS.hero_effects, ...(parsed.hero_effects ?? {}) } });
+          setVis({
+            ...DEFAULT_APP_CONFIG,
+            ...parsed,
+            hero_effects: { ...DEFAULT_APP_CONFIG.hero_effects, ...(parsed.hero_effects ?? {}) },
+            live_events: { ...DEFAULT_APP_CONFIG.live_events, ...(parsed.live_events ?? {}) },
+          });
         } catch {
           setVis(VIS_DEFAULTS);
         }
@@ -1345,6 +1312,45 @@ export default function Settings({
                   />
                 </button>
               </label>
+              {/* Hero scene template — same list and same component the web
+                  admin renders, so the two consoles can never disagree. */}
+              <div className="mt-4 border-t border-white/10 pt-3">
+                <p className="text-[11.5px] font-bold text-white">হিরো সিন টেমপ্লেট</p>
+                <p className="mt-1 text-[10.5px] leading-relaxed text-white/40">
+                  হোম পেজের ডান কলামে সংগ্রহ-প্রক্রিয়ার দৃশ্য কোন লেআউটে দেখাবে। সব টেমপ্লেট আসল
+                  ডেটাই দেখায় (উৎস, সংগ্রহ/ডুপ্লিকেট/প্রকাশিত সংখ্যা) — শুধু সাজানো আলাদা।
+                </p>
+                <div className="mt-2 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                  {HERO_SCENE_STYLES.map((st) => {
+                    const active = vis.hero_scene_style === st.key;
+                    return (
+                      <button
+                        key={st.key}
+                        type="button"
+                        onClick={() => setVis({ ...vis, hero_scene_style: st.key })}
+                        aria-pressed={active}
+                        className={`overflow-hidden rounded-lg border text-left transition-colors ${
+                          active ? "border-lime" : "border-white/12 hover:border-white/35"
+                        }`}
+                      >
+                        <div className="relative h-[74px] overflow-hidden">
+                          <div
+                            className="absolute top-0 left-0 origin-top-left"
+                            style={{ width: "250%", height: "300%", transform: "scale(0.4)" }}
+                          >
+                            <HeroScene style={st.key} stats={SCENE_PREVIEW_STATS} feature={null} preview />
+                          </div>
+                        </div>
+                        <div className={`flex items-center justify-between gap-1 px-2 py-1 ${active ? "bg-lime/10" : ""}`}>
+                          <span className={`text-[10.5px] font-bold ${active ? "text-lime" : "text-white/80"}`}>{st.bn}</span>
+                          {active && <span className="text-[10px] text-lime">✓</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="mt-3 flex flex-wrap items-end gap-3">
                 <label className="block">
                   <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">ডিফল্ট থিম</span>
@@ -1412,7 +1418,7 @@ export default function Settings({
                   <select
                     className="field mt-1 w-44"
                     value={vis.brand_animation}
-                    onChange={(e) => setVis({ ...vis, brand_animation: e.target.value })}
+                    onChange={(e) => setVis({ ...vis, brand_animation: e.target.value as SiteAppConfig["brand_animation"] })}
                   >
                     {BRAND_ANIMATIONS.map((b) => (
                       <option key={b.value} value={b.value}>

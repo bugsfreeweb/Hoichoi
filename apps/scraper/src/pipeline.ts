@@ -517,7 +517,12 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       // STEP 2: media handling (best-effort, never fatal). Tries every candidate
       // URL scraped from the post — the video first for a video post, then any
       // photos — so a failed video or 403'd image falls through to the next one.
-      const media: { kind: "image" | "video" | "none"; path: string | null } = { kind: "none", path: null };
+      const media: {
+        kind: "image" | "video" | "none";
+        path: string | null;
+        /** Provenance written to `posts.media_origin` (see migration 023). */
+        origin?: "collector" | "ai";
+      } = { kind: "none", path: null };
       // Record why each candidate was rejected. Without this a post with
       // media that quietly fails to mirror arrives at the text check with no
       // picture and no explanation, and is reported as if it never had one.
@@ -620,6 +625,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         if (collected.length > 0) {
           media.kind = collected[0]!.kind;
           media.path = collected[0]!.path;
+          media.origin = "collector";
         }
       } catch (err) {
         log(`[media] skip: ${(err as Error).message}`);
@@ -648,6 +654,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           if (aiRel) {
             media.kind = "image";
             media.path = aiRel;
+            media.origin = "ai";
             let pub: string | null = null;
             try {
               pub = await uploadRemote(aiRel);
@@ -728,15 +735,15 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           sql: `
             INSERT INTO posts (
               id, raw_post_id, source_id, category, title_bn, body_bn, summary_bn,
-              media_path, media_kind, source_url, source_name, slug, status,
+              media_path, media_kind, media_origin, source_url, source_name, slug, status,
               safety_flags, embedding, case_status, original_author_name,
               published_at, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
           args: [
             photoPostId, rawId, source.id, source.category,
             `${source.page_name} — ছবি পোস্ট`, "", "",
-            media.path, media.kind,
+            media.path, media.kind, media.kind === "none" ? null : (media as { origin?: string }).origin ?? "collector",
             sp.fbPostUrl, source.page_name, slug, "pending_review",
             "[]", null, null,
             sp.authorName ?? null, null, now, now,
@@ -819,15 +826,15 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
             sql: `
               INSERT INTO posts (
                 id, raw_post_id, source_id, category, title_bn, body_bn, summary_bn,
-                media_path, media_kind, source_url, source_name, slug, status,
+                media_path, media_kind, media_origin, source_url, source_name, slug, status,
                 safety_flags, embedding, case_status, original_author_name,
                 published_at, created_at, updated_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `,
             args: [
               confusedPostId, rawId, source.id, source.category,
               "ক্যাটাগরি নির্ধারণ করা হয়নি", sp.rawText, "",
-              media.path, media.kind,
+              media.path, media.kind, media.kind === "none" ? null : (media as { origin?: string }).origin ?? "collector",
               sp.fbPostUrl, source.page_name, slug, "pending_review",
               "[]", null, null,
               sp.authorName ?? null, null, now, now,
@@ -905,7 +912,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
             args: [
               newPostId, rawId, source.id, postCategory,
               outcome.rewritten.title_bn, outcome.rewritten.body_bn, outcome.rewritten.summary_bn,
-              media.path, media.kind,
+              media.path, media.kind, media.kind === "none" ? null : (media as { origin?: string }).origin ?? "collector",
               sp.fbPostUrl, source.page_name, slug, status,
               JSON.stringify(outcome.flags), embeddingJson, outcome.rewritten.case_status ?? null,
               sp.authorName ?? null, status === "published" ? now : null, now, now,

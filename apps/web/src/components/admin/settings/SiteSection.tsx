@@ -2,7 +2,8 @@
 
 import { Field, Section, TextArea, TextInput, NumberInput } from "./ui";
 import { useSettings } from "./state";
-import { HERO_HEADLINE_MOTIONS, type BrandAnimation, type FooterSocialLink } from "@hoichoi/shared-types";
+import { HERO_HEADLINE_MOTIONS, HERO_SCENE_STYLES, type BrandAnimation, type FooterSocialLink } from "@hoichoi/shared-types";
+import { HeroScene } from "@hoichoi/dash";
 
 const SOCIAL_ICONS = [
   "facebook",
@@ -93,6 +94,12 @@ function SocialLinksEditor() {
     </Section>
   );
 }
+
+/**
+ * Sample numbers for the template previews only. They are deliberately NOT fed
+ * from a real post: the picker should show the layout, not pretend to be live.
+ */
+const PREVIEW_STATS = { collected: 148, published: 96, dups: 52, lastRunIso: null };
 
 export function SiteSection() {
   const { identity, setIdentity, cfg, setCfg } = useSettings();
@@ -215,6 +222,54 @@ export function SiteSection() {
           <span className="ml-auto text-[11px] text-ink-soft">
             গ্রেডিয়েন্ট হেডলাইন বন্ধ থাকলে এই মোশনগুলো শুধু অবস্থান/আলো নাড়ায়, রং বদলায় না।
           </span>
+        </div>
+      </Section>
+
+      <Section
+        kicker="Hero scene template"
+        title="হিরো সিন টেমপ্লেট"
+        hint="হোম পেজের ডান কলামে “কনটেন্ট কীভাবে সংগ্রহ হয়” দৃশ্যের লেআউট। সব টেমপ্লেট একই আসল ডেটা (উৎস প্ল্যাটফর্ম, সংগ্রহ/ডুপ্লিকেট/প্রকাশিত সংখ্যা) দেখায় — শুধু সাজানো আলাদা। ডেস্কটপ অ্যাপেও একই পছন্দ আছে।"
+      >
+        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          {HERO_SCENE_STYLES.map((st) => {
+            const active = cfg.hero_scene_style === st.key;
+            return (
+              <button
+                key={st.key}
+                type="button"
+                onClick={() => setCfg((c) => ({ ...c, hero_scene_style: st.key }))}
+                aria-pressed={active}
+                className={`group overflow-hidden border text-left transition-colors ${
+                  active ? "border-alizarin" : "border-ink/20 hover:border-ink/50"
+                }`}
+              >
+                {/* Scaled-down real scene, so the picker shows the actual layout. */}
+                <div className="relative h-[124px] overflow-hidden bg-ink/[0.04]">
+                  <div
+                    className="absolute top-0 left-0 origin-top-left"
+                    style={{ width: "200%", height: "220%", transform: "scale(0.5)" }}
+                  >
+                    <HeroScene style={st.key} stats={PREVIEW_STATS} feature={null} preview />
+                  </div>
+                </div>
+                <div className={`flex items-baseline justify-between gap-2 px-2.5 py-1.5 ${active ? "bg-alizarin/[0.06]" : ""}`}>
+                  <span className={`text-[11.5px] font-bold ${active ? "text-alizarin" : "text-ink"}`}>{st.bn}</span>
+                  <span className="font-mono-x text-[9px] tracking-[0.1em] text-ink-soft uppercase">
+                    {active ? "✓ " : ""}
+                    {st.en}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-3 border-t border-ink/10 pt-3">
+          <p className="mb-2 font-mono-x text-[9.5px] tracking-[0.16em] text-ink-soft uppercase">
+            পূর্ণ প্রিভিউ · {HERO_SCENE_STYLES.find((x) => x.key === cfg.hero_scene_style)?.bn ?? " rail"}
+          </p>
+          <div className="h-[320px] max-w-[520px]">
+            <HeroScene style={cfg.hero_scene_style} stats={PREVIEW_STATS} feature={null} preview />
+          </div>
         </div>
       </Section>
 

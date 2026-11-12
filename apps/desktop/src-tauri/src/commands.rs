@@ -910,3 +910,59 @@ pub async fn desk_call(
     let strs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
     runner_call(&app, &strs, &env.unwrap_or_default())
 }
+
+/// Serve a locally-stored media file to the webview.
+///
+/// The desk renderer cannot load `/uploads/…`: there is no web server behind a
+/// Tauri window, so every relative picture resolved to a 404 and the content
+/// screens looked image-less even when the collector had mirrored the file. The
+/// web app solves this with Next's static handler — here the bytes come over IPC
+/// as a raw response and the frontend turns them into a blob URL.
+///
+/// `rel` is the DB-stored path (`2025-01-01/img_ab12.jpg`). Absolute http(s)
+/// URLs never come here (the frontend passes those straight to the `<img>`), and
+/// traversal outside the media roots is refused.
+#[tauri::command]
+pub async fn media_bytes(app: AppHandle, rel: String) -> Result<tauri::ipc::Response, String> {
+    let clean = rel.replace("\\", "/");
+    if clean.starts_with("http://") || clean.starts_with("https://") {
+        return Err("remote url".into());
+    }
+    let rel_path = PathBuf::from(clean.trim_start_matches('/'));
+
+    let mut roots: Vec<PathBuf> = Vec::new();
+    if let Ok(dir) = app.path().app_data_dir() {
+        roots.push(media_root_dir(&dir));
+    }
+    if let Ok(custom) = std::env::var("HOICHOI_MEDIA_ROOT") {
+        if !custom.is_empty() {
+            roots.push(PathBuf::from(custom));
+        }
+    }
+    // Packaged builds write through the runner with an app-data media root, and
+    // old releases used data/media — keep both readable.
+    roots.push(repo_root_dir().join("media"));
+    roots.push(repo_root_dir().join("data").join("media"));
+    if let Ok(appdata) = std::env::var("APPDATA") {
+        roots.push(PathBuf::from(appdata).join("com.hoichoi.desk").join("media"));
+    }
+
+    for root in roots {
+        let root_abs = match root.canonicalize() {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+        let candidate = root_abs.join(&rel_path);
+        let resolved = match candidate.canonicalize() {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+        if !resolved.starts_with(&root_abs) || !resolved.is_file() {
+            continue;
+        }
+        let bytes = std::fs::read(&resolved).map_err(|e| e.to_string())?;
+        return Ok(tauri::ipc::Response::new(bytes));
+    }
+
+    Err(format!("media not found: {rel}"))
+}

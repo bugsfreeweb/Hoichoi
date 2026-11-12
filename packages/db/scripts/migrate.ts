@@ -7,6 +7,7 @@ import {
   ensureCommentsTable,
   ensureNoStaticCategoryChecks,
   ensureCategoryDotColumn,
+  ensurePostMediaOriginColumn,
   ensureProviderApiKeyColumn,
   ensureProviderPurposeColumn,
   ensureProviderMultiKey,
@@ -51,6 +52,8 @@ const seeded = await seedDefaults(client, nowIso());
   console.log("hoichoi:db — category dot column ensured");
   await ensureNoStaticCategoryChecks(client);
   console.log("hoichoi:db — static category CHECKs removed (dynamic categories enabled)");
+  await ensurePostMediaOriginColumn(client);
+  console.log("hoichoi:db — post media origin ensured");
   await ensureProviderApiKeyColumn(client);
   await ensureProviderPurposeColumn(client);
   await ensureProviderMultiKey(client);

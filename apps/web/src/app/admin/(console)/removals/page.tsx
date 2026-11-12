@@ -1,7 +1,10 @@
 import { PageHeading } from "@/components/admin/ui/PageHeader";
 import { getPostById, mapRemovalRequest, pageRows } from "@hoichoi/db";
-import { RemovalRow } from "@/components/admin/RemovalRow";
+import { RemovalRow, type RemovalPostRef } from "@/components/admin/RemovalRow";
 import { Paginator } from "@/components/admin/Paginator";
+import { ViewToggle, viewFromSearch } from "@/components/admin/ui/ViewToggle";
+import { mediaUrl } from "@/lib/media";
+import type { MediaKind } from "@hoichoi/shared-types";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +13,16 @@ const PAGE_SIZE = 20;
 export default async function AdminRemovalsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ openPage?: string; donePage?: string }>;
+  searchParams: Promise<{ openPage?: string; donePage?: string; view?: string }>;
 }) {
-  const { openPage: openParam, donePage: doneParam } = await searchParams;
+  const sp = await searchParams;
+  const { openPage: openParam, donePage: doneParam } = sp;
+  const view = viewFromSearch(sp);
+  const extra = {
+    ...(openParam ? { openPage: openParam } : {}),
+    ...(doneParam ? { donePage: doneParam } : {}),
+    ...(view === "card" ? { view: "card" } : {}),
+  };
 
   // The two queues page separately. This page used to read every row of
   // removal_requests, split it in JS, and render all of it, so an open request
@@ -39,23 +49,33 @@ export default async function AdminRemovalsPage({
 
   // Resolve post titles for the rows actually on screen. Resolving them for the
   // whole table meant one getPostById per historical request.
-  const posts = new Map<string, { slug: string; title: string }>();
+  const posts = new Map<string, RemovalPostRef>();
   for (const r of [...open.rows, ...done.rows]) {
     if (posts.has(r.post_id)) continue;
     const p = await getPostById(r.post_id);
-    if (p) posts.set(r.post_id, { slug: p.slug, title: p.title_bn });
+    if (p)
+      posts.set(r.post_id, {
+        slug: p.slug,
+        title: p.title_bn,
+        mediaPath: mediaUrl(p),
+        mediaKind: (p.media_kind ?? "image") as MediaKind,
+      });
   }
 
   return (
     <div>
       <PageHeading emoji="⚠️" kicker="CONTENT TAKEDOWN REQUESTS" title="রিমুভাল রিকোয়েস্ট" description="পাঠক বা কর্তৃপক্ষের সরানোর অনুরোধ — যাচাই করে পোস্ট রাখুন বা সরিয়ে দিন। প্রতিটি সিদ্ধান্ত লগ হয়।" />
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[12px] text-ink-soft">প্রতিটি অনুরোধে পোস্টের ছবি ও কারণ দেখে সিদ্ধান্ত নিন।</p>
+        <ViewToggle labelBn="দেখার ধরন" />
+      </div>
       <div className="mt-6 grid gap-10">
         <section>
           <QueueTitle count={open.total} label="খোলা" />
-          <div className="mt-3 space-y-3">
+          <div className={view === "card" ? "mt-3 space-y-3" : "mt-3 divide-y divide-ink/10 border border-ink/20"}>
             {open.rows.length === 0 && <Empty />}
             {open.rows.map((r) => (
-              <RemovalRow key={r.id} req={r} post={posts.get(r.post_id)} />
+              <RemovalRow key={r.id} req={r} post={posts.get(r.post_id)} compact={view === "list"} />
             ))}
           </div>
           <Paginator
@@ -64,15 +84,15 @@ export default async function AdminRemovalsPage({
             total={open.total}
             basePath="/admin/removals"
             paramName="openPage"
-            extraParams={doneParam ? { donePage: doneParam } : {}}
+            extraParams={extra}
           />
         </section>
         <section>
           <QueueTitle count={done.total} label="প্রসেসড" />
-          <div className="mt-3 space-y-3">
+          <div className={view === "card" ? "mt-3 space-y-3" : "mt-3 divide-y divide-ink/10 border border-ink/20"}>
             {done.rows.length === 0 && <Empty />}
             {done.rows.map((r) => (
-              <RemovalRow key={r.id} req={r} post={posts.get(r.post_id)} />
+              <RemovalRow key={r.id} req={r} post={posts.get(r.post_id)} compact={view === "list"} />
             ))}
           </div>
           <Paginator
@@ -81,7 +101,7 @@ export default async function AdminRemovalsPage({
             total={done.total}
             basePath="/admin/removals"
             paramName="donePage"
-            extraParams={openParam ? { openPage: openParam } : {}}
+            extraParams={extra}
           />
         </section>
       </div>
