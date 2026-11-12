@@ -269,7 +269,16 @@ export class OpenAICompatProvider implements LLMProvider {
       url.searchParams.set("width", dims[1]!);
       url.searchParams.set("height", dims[2]!);
     }
-    if (flavor === "classic") url.searchParams.set("nologo", "true");
+    /**
+     * `nologo` is only honoured when a referrer is present, which is why the
+     * corner watermark survived even though the flag was already being sent.
+     * `enhance=false` also stops Pollinations from rewriting the prompt, which
+     * was pushing the picture away from the article.
+     */
+    url.searchParams.set("nologo", "true");
+    url.searchParams.set("enhance", "false");
+    url.searchParams.set("safe", "false");
+    url.searchParams.set("referrer", "hoichoifeed.vercel.app");
     const res = await fetch(url, { headers: this.headers, signal });
     if (!res.ok) classifyStatus(res.status, await res.text());
     const contentType = res.headers.get("content-type") ?? "";

@@ -3,11 +3,11 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import Counter from "@/components/home/counter";
-import HeroPipelineScene from "@/components/home/HeroPipelineScene";
+import HeroPipelineScene, { type HeroSceneFeature } from "@/components/home/HeroPipelineScene";
 import { useLiveData } from "./live-data";
 import { timeBn } from "@/lib/bn";
 import { BRAND } from "@/lib/brand";
-import type { BrandAnimation } from "@hoichoi/shared-types";
+import type { BrandAnimation, HeroHeadlineMotion } from "@hoichoi/shared-types";
 
 const PHRASES = [
   "শহর ফিডে যা বলে, আমরা তা যাচাই করে লিখি।",
@@ -28,6 +28,8 @@ export default function Hero({
   siteName,
   logoUrl,
   brandAnimation = "none",
+  headlineMotion = "sheen",
+  sceneFeature = null,
   heroEffects = { drift: true, floaty: true, beam: true, headline_grad: true, kin_mask: true, tauri_win: true, ping: true },
 }: {
   heroEffects?: {
@@ -50,6 +52,10 @@ export default function Hero({
   siteName?: string;
   logoUrl?: string | null;
   brandAnimation?: BrandAnimation;
+  /** Hero headline motion style (admin → Settings → সাইট). */
+  headlineMotion?: HeroHeadlineMotion;
+  /** Real data for the hero scene (source → dedupe → published card). */
+  sceneFeature?: HeroSceneFeature | null;
 }) {
   const [idx, setIdx] = useState(0);
   useEffect(() => {
@@ -100,11 +106,19 @@ export default function Hero({
               <img src={logoUrl} alt={name} className="max-h-24 w-auto object-contain md:max-h-32" />
             </span>
           ) : (
-            <h1 className={`${heroEffects.headline_grad ? "headline-grad " : ""}mt-6 font-serif-bn text-[76px] leading-[0.92] font-black tracking-tight md:text-[120px]`}>
-              <span className={`inline-flex items-baseline${animCls}`}>
-                {name}
-                <span className="text-alizarin">!</span>
-              </span>
+            /*
+              Headline motion is a class on the <h1> itself, never a span inside
+              it: `.headline-grad` paints its gradient with `background-clip:
+              text`, and a nested animated span used to create its own layer with
+              no gradient — which is why changing the masthead animation made the
+              hero headline change colour or disappear. `headline_motion` is a
+              separate setting with its own 13 styles.
+            */
+            <h1
+              className={`${heroEffects.headline_grad ? "headline-grad " : ""}hlfx hlfx--${headlineMotion} mt-6 font-serif-bn text-[76px] leading-[0.92] font-black tracking-tight md:text-[120px]`}
+            >
+              {name}
+              <span className="text-alizarin">!</span>
             </h1>
           )}
 
@@ -186,6 +200,7 @@ export default function Hero({
             published={published}
             dups={dups}
             lastRunIso={lastRunIso}
+            feature={sceneFeature}
           />
         </div>
       </div>

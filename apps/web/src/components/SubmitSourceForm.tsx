@@ -19,6 +19,9 @@ export function SubmitSourceForm() {
     notes: "",
   });
   const [status, setStatus] = useState<null | "ok" | "err" | "sending">(null);
+  // Terms/privacy acceptance is recorded with the submission (standard practice
+  // for a form that becomes public content).
+  const [accepted, setAccepted] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [categories, setCategories] = useState(FALLBACK_CATEGORIES);
 
@@ -56,6 +59,11 @@ export function SubmitSourceForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!accepted) {
+      setErrorMsg("শর্তাবলি ও কুকি নীতিতে সম্মতি না দিলে প্রস্তাব জমা দেওয়া যাবে না।");
+      setStatus("err");
+      return;
+    }
     if (typeof window !== "undefined" && !recentSubmissionAllowed()) {
       setErrorMsg("এক মিনিটে একবারের বেশি প্রস্তাব গ্রহণ করা হয় না।");
       setStatus("err");
@@ -131,6 +139,32 @@ export function SubmitSourceForm() {
           value={form.notes}
           onChange={(e) => setForm({ ...form, notes: e.target.value })}
         />
+      </label>
+
+      <label className="flex items-start gap-2 sm:col-span-2 text-[12px] leading-relaxed text-ink-soft">
+        <input
+          type="checkbox"
+          checked={accepted}
+          onChange={(e) => setAccepted(e.target.checked)}
+          className="mt-0.5 h-3.5 w-3.5 shrink-0"
+          required
+        />
+        <span>
+          আমি{" "}
+          <a href="/terms" target="_blank" className="font-bold text-alizarin hover:underline">
+            ব্যবহারের শর্তাবলি
+          </a>
+          ,{" "}
+          <a href="/privacy" target="_blank" className="font-bold text-alizarin hover:underline">
+            গোপনীয়তা নীতি
+          </a>{" "}
+          ও{" "}
+          <a href="/cookies" target="_blank" className="font-bold text-alizarin hover:underline">
+            কুকি নীতি
+          </a>{" "}
+          পড়েছি এবং সম্মত আছি। জমা দেওয়া তথ্য (পেজ লিংক, নাম, ইমেইল) শুধু যাচাইয়ের জন্য
+          ব্যবহৃত হবে।
+        </span>
       </label>
 
       {status === "ok" && (

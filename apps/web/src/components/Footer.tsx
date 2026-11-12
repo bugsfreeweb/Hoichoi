@@ -24,6 +24,7 @@ export async function Footer() {
     { href: "/about", label: "সম্পর্কে" },
     { href: "/privacy", label: "গোপনীয়তা" },
     { href: "/terms", label: "শর্তাবলি" },
+    { href: "/cookies", label: "কুকি নীতি" },
     { href: "/dmca", label: "DMCA" },
     { href: "/contact", label: "যোগাযোগ" },
   ];

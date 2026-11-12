@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Check, Megaphone, RotateCw, TrendingUp } from "lucide-react";
+import { Check, Loader2, Megaphone, RotateCw, TrendingUp } from "lucide-react";
 import { settingsGet, settingsSet } from "../lib/tauri";
 import { getRunEnv } from "../lib/vault";
 import { toBn } from "../lib/format";
+import { toast } from "../lib/toast";
 
 const SLOTS: { key: string; label: string; hint: string; placeholder: string }[] = [
   {
@@ -38,6 +39,7 @@ const SLOTS: { key: string; label: string; hint: string; placeholder: string }[]
 export default function Ads({ refreshBrand }: { refreshBrand?: () => Promise<unknown> | void }) {
   const [slots, setSlots] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState<"save" | "reset" | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -68,31 +70,50 @@ export default function Ads({ refreshBrand }: { refreshBrand?: () => Promise<unk
     setSlots((prev) => ({ ...prev, [f.key]: "" }));
   };
 
-  const save = async () => {
+  /**
+   * Progress → result feedback. The old save button flipped a flag for 1.8s with
+   * no spinner and no failure notice, which is the "buttons don't work" report.
+   */
+  const save = async (mode: "save" | "reset" = "save") => {
     setErr(null);
+    setBusy(mode);
+    const started = Date.now();
+    const id = toast.busy(
+      mode === "reset" ? "ডিফল্টে ফেরানো হচ্ছে…" : "অ্যাড সেটিংস সংরক্ষণ হচ্ছে…",
+      mode === "reset" ? "সব স্লট খালি করে DB-তে লেখা হচ্ছে" : "PLACEMENTS · LIVE DB",
+    );
     try {
       const fields: Record<string, string> = {};
       for (const f of SLOTS) {
         const v = (slots[f.key] ?? "").trim();
         if (v !== "") fields[f.key] = v;
       }
-      if (Object.keys(fields).length === 0) {
+      if (Object.keys(fields).length === 0 && mode !== "reset") {
         setErr("কমপক্ষে একটি স্লটে অ্যাড কোড দিন, অথবা সব বন্ধ রাখতে ডিফল্টে ফিরুন।");
+        toast.err("সংরক্ষণ হয়নি", "কমপক্ষে একটি স্লট পূরণ করুন");
         return;
       }
       await settingsSet(await getRunEnv(), fields);
       setSaved(true);
       setTimeout(() => setSaved(false), 1800);
       if (refreshBrand) await refreshBrand();
+      toast.ok(
+        mode === "reset" ? "ডিফল্টে ফিরেছে" : "অ্যাড সেটিংস সংরক্ষিত",
+        `${toBn(Object.keys(fields).length)}টি স্লট · ${toBn(Date.now() - started)}ms`,
+      );
     } catch (e) {
       setErr(String(e));
+      toast.err("সংরক্ষণ ব্যর্থ", e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+      toast.dismiss(id);
     }
   };
 
   const resetAll = async () => {
     setErr(null);
     setSlots({});
-    await save();
+    await save("reset");
   };
 
   return (
@@ -111,18 +132,21 @@ export default function Ads({ refreshBrand }: { refreshBrand?: () => Promise<unk
           <div className="ml-auto flex items-center gap-2">
             <button
               onClick={() => void resetAll()}
-              className="flex items-center gap-1.5 rounded-lg border border-white/12 px-3 py-2 text-[11px] font-semibold text-white/70 hover:border-white/30 hover:text-white"
+              disabled={busy !== null}
+              className="flex items-center gap-1.5 rounded-lg border border-white/12 px-3 py-2 text-[11px] font-semibold text-white/70 hover:border-white/30 hover:text-white disabled:opacity-40"
             >
-              <RotateCw size={12} /> ডিফল্টে ফিরুন
+              {busy === "reset" ? <Loader2 size={12} className="animate-spin" /> : <RotateCw size={12} />}
+              {busy === "reset" ? "ফেরানো হচ্ছে…" : "ডিফল্টে ফিরুন"}
             </button>
             <button
               onClick={() => void save()}
-              className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[11px] font-bold ${
+              disabled={busy !== null}
+              className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[11px] font-bold disabled:opacity-50 ${
                 saved ? "bg-lime/20 text-lime" : "bg-lime text-night hover:brightness-110"
               }`}
             >
-              <Check size={12} />
-              {saved ? "সংরক্ষিত ✓" : "সংরক্ষণ করুন"}
+              {busy === "save" ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+              {busy === "save" ? "সংরক্ষণ হচ্ছে…" : saved ? "সংরক্ষিত ✓" : "সংরক্ষণ করুন"}
             </button>
           </div>
         </div>

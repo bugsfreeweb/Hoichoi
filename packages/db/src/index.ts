@@ -167,6 +167,25 @@ export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
         if (typeof v === "string" && allowed.includes(v)) {
           merged.brand_animation = v as SiteAppConfig["brand_animation"];
         }
+      } else if (k === "hero_headline_motion") {
+        const allowed = [
+          "none",
+          "sheen",
+          "aurora",
+          "metal",
+          "liquid",
+          "cascade",
+          "reveal",
+          "glow",
+          "neon",
+          "skew",
+          "inkwash",
+          "spotlight",
+          "typewriter",
+        ];
+        if (typeof v === "string" && allowed.includes(v)) {
+          merged.hero_headline_motion = v as SiteAppConfig["hero_headline_motion"];
+        }
       } else if (k === "hero_effects") {
         if (v && typeof v === "object") {
           const he = v as Partial<HeroEffects>;

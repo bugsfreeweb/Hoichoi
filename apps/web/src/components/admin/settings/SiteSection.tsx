@@ -2,7 +2,7 @@
 
 import { Field, Section, TextArea, TextInput, NumberInput } from "./ui";
 import { useSettings } from "./state";
-import type { BrandAnimation, FooterSocialLink } from "@hoichoi/shared-types";
+import { HERO_HEADLINE_MOTIONS, type BrandAnimation, type FooterSocialLink } from "@hoichoi/shared-types";
 
 const SOCIAL_ICONS = [
   "facebook",
@@ -169,6 +169,53 @@ export function SiteSection() {
             </p>
           </div>
         ) : null}
+      </Section>
+
+      <Section
+        kicker="Hero headline motion"
+        title="হিরো হেডলাইন অ্যানিমেশন"
+        hint="হোম পেজের বড় হেডলাইনে কোন মোশন স্টাইল চলবে। এটি ম্যাস্টহেডের লোগো অ্যানিমেশন থেকে আলাদা — একটি বদলালে অন্যটি বদলাবে না।"
+      >
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {HERO_HEADLINE_MOTIONS.map((m) => {
+            const active = cfg.hero_headline_motion === m.key;
+            return (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() =>
+                  setCfg((c) => ({ ...c, hero_headline_motion: m.key }))
+                }
+                aria-pressed={active}
+                className={`group relative overflow-hidden border px-3 py-2 text-left transition-colors ${
+                  active ? "border-alizarin bg-alizarin/[0.06]" : "border-ink/20 bg-ink/[0.02] hover:border-ink/50"
+                }`}
+              >
+                <span className={`headline-grad hl-preview hlfx hlfx--${m.key} block font-serif-bn text-[22px] leading-none font-black`}>
+                  হৈচৈ!
+                </span>
+                <span className="mt-1 flex items-baseline justify-between gap-2">
+                  <span className={`text-[11.5px] font-bold ${active ? "text-alizarin" : "text-ink"}`}>{m.bn}</span>
+                  <span className="font-mono-x text-[9px] tracking-[0.12em] text-ink-soft uppercase">{m.en}</span>
+                </span>
+                {active && (
+                  <span className="absolute top-1.5 right-1.5 font-mono-x text-[9px] font-bold text-alizarin">✓</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-ink/10 pt-3">
+          <span className="font-mono-x text-[9.5px] tracking-[0.16em] text-ink-soft uppercase">প্রিভিউ</span>
+          <span
+            className={`${cfg.hero_effects.headline_grad ? "headline-grad " : ""}hl-preview hlfx hlfx--${cfg.hero_headline_motion} font-serif-bn text-[40px] leading-none font-black text-ink`}
+          >
+            হৈচৈ<span className="text-alizarin">!</span>
+          </span>
+          <span className="ml-auto text-[11px] text-ink-soft">
+            গ্রেডিয়েন্ট হেডলাইন বন্ধ থাকলে এই মোশনগুলো শুধু অবস্থান/আলো নাড়ায়, রং বদলায় না।
+          </span>
+        </div>
       </Section>
 
       <Section

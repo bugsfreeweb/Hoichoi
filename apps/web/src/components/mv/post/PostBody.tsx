@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Badge, Btn, Heatmap, LiveDot, SectionHead, SectionShell, Sparkline } from "@/components/mv/ui/primitives";
 import PostImage from "@/components/mv/ui/PostImage";
+import { sourcePhraseBn } from "@/lib/source-meta";
 import { CountUp, Reveal, Stagger, StaggerItem } from "@/components/mv/ui/motion";
 import { EngagementAreaChart, EngagementPie, RetentionBar, SentimentRadar, ChartCard } from "@/components/mv/charts";
 import type { PostRecord } from "@/lib/mv/posts";
@@ -164,8 +165,8 @@ function StickyToc({ post, density }: { post: PostRecord; density: "compact" | "
           </Reveal>
           <div className="mt-10 border-t border-white/8 pt-6">
             <p className="text-[14px] leading-relaxed text-mist-400">
-              এই প্রতিবেদনটি ফেসবুকের উন্মুক্ত পোস্ট অবলম্বনে সংবাদ শৈলীতে পুনর্লিখিত; মূল পোস্টের স্ক্রিনশট আর্কাইভে
-              সংরক্ষিত আছে।
+              এই প্রতিবেদনটি {sourcePhraseBn({ source_url: post.sourceUrl, source_name: post.source })}
+              অবলম্বনে সংবাদ শৈলীতে পুনর্লিখিত; মূল পোস্টের স্ক্রিনশট আর্কাইভে সংরক্ষিত আছে।
             </p>
           </div>
         </div>
@@ -196,8 +197,8 @@ function Longform({ post, density }: { post: PostRecord; density: "compact" | "c
               সম্পাদকীয় নোট
             </p>
             <p className="text-[15px] leading-relaxed text-mist-300">
-              এই প্রতিবেদনটি ফেসবুকের উন্মুক্ত পোস্ট অবলম্বনে সংবাদ শৈলীতে পুনর্লিখিত। মূল পোস্টের স্ক্রিনশট আর্কাইভে
-              সংরক্ষিত আছে এবং কনটেন্ট হ্যাশ <span className="font-mono text-mist-100">{post.hash}</span> দিয়ে যাচাই করা যায়।
+              এই প্রতিবেদনটি {sourcePhraseBn({ source_url: post.sourceUrl, source_name: post.source })}
+              অবলম্বনে সংবাদ শৈলীতে পুনর্লিখিত। মূল পোস্টের স্ক্রিনশট আর্কাইভে সংরক্ষিত আছে এবং কনটেন্ট হ্যাশ <span className="font-mono text-mist-100">{post.hash}</span> দিয়ে যাচাই করা যায়।
             </p>
           </div>
         </Reveal>

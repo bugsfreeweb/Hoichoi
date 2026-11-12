@@ -555,14 +555,14 @@ html[data-theme="light"] .admin-footer {
   padding: 16px 20px;
   background-image: linear-gradient(
     112deg,
-    #f3eee1 0%,
-    rgba(243, 238, 225, 0.74) 16%,
-    #c8f65d 31%,
-    #ffb454 41%,
-    #fa8b9b 49%,
-    #c8f65d 57%,
-    rgba(243, 238, 225, 0.74) 68%,
-    #f3eee1 84%
+    var(--hl-a, #f3eee1) 0%,
+    var(--hl-b, rgba(243, 238, 225, 0.74)) 16%,
+    var(--hl-c, #c8f65d) 31%,
+    var(--hl-d, #ffb454) 41%,
+    var(--hl-e, #fa8b9b) 49%,
+    var(--hl-c, #c8f65d) 57%,
+    var(--hl-b, rgba(243, 238, 225, 0.74)) 68%,
+    var(--hl-a, #f3eee1) 84%
   );
   background-size: 300% 100%;
   background-position: 60% 0;
@@ -994,19 +994,19 @@ html[data-theme="light"] .panel,
   --color-lime: #4a7009;
   --color-amberx: #9a4208;
 }
+/* Light theme swaps only the gradient *stops*. Setting `background-image` here
+   would out-specify the individual `.hlfx--*` variants (0,2,0 beats 0,1,0) and
+   silently disable hero headline motion in light mode. */
 html[data-theme="light"] .headline-grad,
 [data-preview-theme="light"] .headline-grad {
-  background-image: linear-gradient(
-    112deg,
-    #1a140d 0%,
-    rgba(26, 20, 13, 0.74) 16%,
-    #4a7009 31%,
-    #9a4208 41%,
-    #d2202c 49%,
-    #4a7009 57%,
-    rgba(26, 20, 13, 0.74) 68%,
-    #1a140d 84%
-  );
+  --hl-a: #1a140d;
+  --hl-b: rgba(26, 20, 13, 0.74);
+  --hl-c: #4a7009;
+  --hl-d: #9a4208;
+  --hl-e: #d2202c;
+  /* A white specular band would wash out a light background, so the light
+     theme glints with a warm mid-tone instead. */
+  --hl-hi: #7b5a22;
 }
 /* Tauri windows sitting on the flipped light night-grid get the darker
    light-palette accents instead of the bright dark-island lime/amber. */
@@ -1255,54 +1255,122 @@ html[data-theme="light"] .admin-console .border-ink\/35 { border-color: rgba(26,
   .ad-draw, .ad-bar, .ad-ping { animation: none !important; stroke-dasharray: none; }
 }
 
-/* ---------------------------------------------------------------- hero pipeline scene
-   The hero's right column. Warm "night grid" glass so it sits on the hero band
-   in both themes; the scene itself carries the accent colours.
-   ---------------------------------------------------------------------- */
-.hf-pipeline-scene {
+/* ------------------------------------------------------------- media frame
+   Ambient backdrop for editorial images: the same picture, blurred and slightly
+   scaled, fills the frame so a portrait photo never leaves dead bars, while the
+   crisp copy on top is never cropped (`object-contain`). */
+.mf { background: color-mix(in srgb, var(--color-ink) 88%, #000); }
+.mf-ambient {
+  position: absolute;
+  inset: -6%;
+  opacity: 0.55;
+  filter: blur(18px);
+  transform: scale(1.06);
+  pointer-events: none;
+}
+.mf-tint {
+  position: absolute;
+  inset: 0;
   background:
-    radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--color-bandline) 26%, transparent), transparent 62%),
-    radial-gradient(90% 90% at 100% 100%, color-mix(in srgb, var(--color-lime) 14%, transparent), transparent 60%),
-    color-mix(in srgb, var(--color-band) 88%, #000 12%);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--color-paper) 12%, transparent),
-    0 26px 60px -34px rgba(0, 0, 0, 0.65);
+    radial-gradient(120% 120% at 50% 0%, transparent 30%, color-mix(in srgb, #000 46%, transparent) 100%),
+    linear-gradient(180deg, transparent 55%, color-mix(in srgb, #000 34%, transparent) 100%);
+  pointer-events: none;
 }
-.hf-pipe-glow {
+html[data-theme="light"] .mf-tint,
+[data-preview-theme="light"] .mf-tint {
   background:
-    radial-gradient(42% 40% at 18% 18%, color-mix(in srgb, #22d3ee 16%, transparent), transparent 70%),
-    radial-gradient(46% 44% at 84% 78%, color-mix(in srgb, #34d399 14%, transparent), transparent 72%);
-  animation: hfPipeGlow 12s ease-in-out infinite alternate;
-}
-@keyframes hfPipeGlow {
-  from { opacity: 0.55; transform: translate3d(0, 0, 0) scale(1); }
-  to { opacity: 0.95; transform: translate3d(0, -6px, 0) scale(1.04); }
-}
-.hf-pipe-flow { animation: hfPipeFlow 1.4s linear infinite; }
-@keyframes hfPipeFlow {
-  to { stroke-dashoffset: -22; }
-}
-.hf-pipe-ping {
-  animation: hfPipePing 1.6s ease-out infinite;
-  transform-box: fill-box;
-  transform-origin: center;
-}
-@keyframes hfPipePing {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
-}
-.hf-pipe-dot { animation: hfPipeBlink 1.8s ease-in-out infinite; }
-@keyframes hfPipeBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.25; }
-}
-.hf-pipe-packet { opacity: 0; animation: hfPipePacket 6s linear infinite; }
-@keyframes hfPipePacket {
-  0% { opacity: 0; }
-  8% { opacity: 0.9; }
-  92% { opacity: 0.9; }
-  100% { opacity: 0; }
+    radial-gradient(120% 120% at 50% 0%, transparent 42%, color-mix(in srgb, #fff 30%, transparent) 100%);
 }
 @media (prefers-reduced-motion: reduce) {
-  .hf-pipe-glow, .hf-pipe-flow, .hf-pipe-ping, .hf-pipe-dot, .hf-pipe-packet { animation: none !important; }
+  .mf-ambient { filter: blur(14px); }
 }
+
+/* ---------------------------------------------------------------- hero scene
+   The hero's right column: a three-stage "how a story is collected" stack —
+   source screenshot → duplicate cross-check → published card. Cards are tilted
+   on alternating axes so the column reads as an angled system diagram rather
+   than three plain boxes.
+   ---------------------------------------------------------------------- */
+.hf-scene {
+  background:
+    radial-gradient(110% 90% at 0% 0%, color-mix(in srgb, var(--color-bandline) 22%, transparent), transparent 60%),
+    radial-gradient(90% 90% at 100% 100%, color-mix(in srgb, var(--color-lime) 12%, transparent), transparent 58%),
+    color-mix(in srgb, var(--color-band) 90%, #000 10%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--color-paper) 10%, transparent),
+    0 24px 56px -32px rgba(0, 0, 0, 0.6);
+}
+.hf-scene-glow {
+  background:
+    radial-gradient(40% 34% at 16% 14%, color-mix(in srgb, #22d3ee 14%, transparent), transparent 72%),
+    radial-gradient(44% 40% at 86% 82%, color-mix(in srgb, #34d399 12%, transparent), transparent 74%);
+  animation: hfSceneGlow 13s ease-in-out infinite alternate;
+}
+@keyframes hfSceneGlow {
+  from { opacity: 0.5; transform: translate3d(0, 0, 0); }
+  to { opacity: 0.9; transform: translate3d(0, -5px, 0); }
+}
+.hf-scene-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--color-bandline) 9%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-bandline) 9%, transparent) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(120% 100% at 50% 40%, #000 30%, transparent 88%);
+  opacity: 0.7;
+}
+.hf-scene-flow { animation: hfSceneFlow 2.2s linear infinite; }
+@keyframes hfSceneFlow {
+  to { stroke-dashoffset: -8.8; }
+}
+.hf-scene-dot { animation: hfSceneBlink 1.9s ease-in-out infinite; }
+@keyframes hfSceneBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.22; }
+}
+
+.hf-card {
+  position: relative;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--color-bandline) 16%, transparent);
+  background: color-mix(in srgb, var(--color-band) 78%, #fff 4%);
+  padding: 7px 8px;
+  box-shadow: 0 10px 24px -18px rgba(0, 0, 0, 0.8);
+  transform-style: preserve-3d;
+  transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1), border-color 500ms ease, box-shadow 500ms ease;
+}
+.hf-card-tilt-l { transform: rotate(-1.1deg) translateX(2px); }
+.hf-card-tilt-r { transform: rotate(1.2deg) translateX(-2px); }
+.hf-card-hot {
+  border-color: color-mix(in srgb, var(--color-lime) 55%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-lime) 28%, transparent),
+    0 14px 30px -18px rgba(0, 0, 0, 0.85);
+}
+.hf-card-hot.hf-card-tilt-l { transform: rotate(-0.4deg) translateX(4px) scale(1.012); }
+.hf-card-hot.hf-card-tilt-r { transform: rotate(0.5deg) translateX(-4px) scale(1.012); }
+
+.hf-scan-bar { animation: hfScanBar 1.6s ease-in-out infinite; }
+@keyframes hfScanBar {
+  0%, 100% { transform: scaleY(0.55); opacity: 0.45; }
+  50% { transform: scaleY(1.15); opacity: 0.9; }
+}
+.hf-scan-beam {
+  position: absolute;
+  inset-block: 0;
+  width: 34%;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-lime) 42%, transparent), transparent);
+  animation: hfScanBeam 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes hfScanBeam {
+  0% { transform: translateX(-110%); }
+  55%, 100% { transform: translateX(300%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hf-scene-glow, .hf-scene-flow, .hf-scene-dot, .hf-scan-bar, .hf-scan-beam { animation: none !important; }
+  .hf-card, .hf-card-hot { transform: none !important; }
+}
+
+/* Admin swatches for the headline-motion picker: the production rule adds
+   padding for the hero's optical alignment, which is wrong inside a small card. */
+.hl-preview.headline-grad { padding: 0; }

@@ -215,6 +215,15 @@ function LegalBar({ socials = [] }: { socials?: FooterSocialLink[] }) {
             {l.label || l.icon}
           </a>
         ))}
+        <a href="/terms" className="mono-label text-mist-400 transition-colors hover:text-mist-100">
+          শর্তাবলি
+        </a>
+        <a href="/cookies" className="mono-label text-mist-400 transition-colors hover:text-mist-100">
+          কুকি নীতি
+        </a>
+        <a href="/privacy" className="mono-label text-mist-400 transition-colors hover:text-mist-100">
+          গোপনীয়তা
+        </a>
         <AdvertiserLoginLink tone="dark" />
         <span className="mono-label flex items-center gap-1.5 text-mist-400">
           <MapPin className="h-3 w-3" /> ঢাকা, বাংলাদেশ

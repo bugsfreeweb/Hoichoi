@@ -115,7 +115,10 @@ export interface ImageBrief {
 
 /** One flat prompt string that varies with the article and leads with content. */
 export function buildImageBrief(input: ImageBriefInput): ImageBrief {
-  const title = input.title?.trim() ?? "";
+  // Titles are clamped: an unbounded headline (some sources paste the whole
+  // caption) pushed the prompt past the model's limit and the tail — style,
+  // negative rules, brand palette — was silently dropped.
+  const title = (input.title?.trim() ?? "").slice(0, 180);
   const summary = input.summary?.trim() ?? "";
   const body = input.body?.trim() ?? "";
   const text = [title, summary, body, ...(input.tags ?? [])].filter(Boolean).join(" ");
@@ -135,7 +138,7 @@ export function buildImageBrief(input: ImageBriefInput): ImageBrief {
     `Illustration of ${sceneLine}.`,
     cueLine,
     subjectLine,
-    "Style tail: cinematic editorial illustration for a Bangla news site, muted charcoal palette with warm ivory light and one restrained red accent, shallow depth of field, dignified journalism tone.",
+    "Style tail: cinematic editorial illustration for Hoichoi, a Bangla news desk — muted charcoal palette with warm ivory light and one restrained red accent, shallow depth of field, dignified journalism tone.",
   ].filter((line) => line.length > 0).join("\n");
 
   return {

@@ -17,7 +17,8 @@ import { PostGallery } from "@/components/PostGallery";
 import { CommentsSection } from "@/components/CommentsSection";
 import { UnifiedAdPlacement } from "@/components/ads/UnifiedAdPlacement";
 import { PlatformAdSlot } from "@/components/ads/PlatformAdSlot";
-import { FbPost } from "@/components/FbPost";
+import { SourceArchive } from "@/components/FbPost";
+import { sourceBadge, sourcePhraseBn } from "@/lib/source-meta";
 import { getSettings } from "@/lib/settings";
 import { getLive } from "@/lib/mv/live";
 import { isMvMode } from "@/lib/mv/variant";
@@ -262,7 +263,7 @@ function PostContent({
           </span>
           <span className="flex items-center gap-1.5 font-mono-x text-[10px] tracking-[0.14em] uppercase">
             <svg xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
-            SOURCE · FB ARCHIVE
+            {sourceBadge(post!, "image")}
           </span>
         </div>
       </header>
@@ -354,7 +355,7 @@ function PostContent({
 
           <div className="flex items-center gap-2 border border-ink/25 bg-ink/5 dark:bg-paper-deep/60 px-4 py-3 text-[11.5px] text-ink-soft">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-alizarin"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1 1 0 0 1 1.52 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
-            এই প্রতিবেদনটি ফেসবুকের উন্মুক্ত পোস্ট অবলম্বনে সংবাদ শৈলীতে
+            এই প্রতিবেদনটি {sourcePhraseBn(post!)} অবলম্বনে সংবাদ শৈলীতে
             পুনর্লিখিত; মূল পোস্টের স্ক্রিনশট আর্কাইভে সংরক্ষিত আছে।
           </div>
 
@@ -391,7 +392,7 @@ function PostContent({
             <p className="font-mono-x text-[10px] tracking-[0.24em] text-ink-soft uppercase">─── সূত্র ───</p>
             <p className="mt-3 text-[13px] text-ink">
               <span className="font-bold">লেখক:</span> <span className="font-serif-bn">{post!.original_author_name ?? "—"} </span>
-              <span className="text-ink-soft">(মূল ফেসবুক পোস্টের লেখক)</span>
+              <span className="text-ink-soft">(মূল পোস্টের লেখক)</span>
               <span className="mx-2">·</span>
               <span className="font-bold">সূত্র:</span> <span className="font-serif-bn">{post!.source_name}</span> · {minutes} মিনিট পড়া
             </p>
@@ -417,9 +418,10 @@ function PostContent({
         {/* sidebar */}
         <aside className="lg:col-span-5">
           <div className="space-y-8 lg:sticky lg:top-20">
-            <FbPost
+            <SourceArchive
               author={post!.original_author_name ?? post!.source_name}
               sourceName={post!.source_name}
+              sourceUrl={post!.source_url}
               text={fbText}
               time={bnTime(post!.created_at)}
               hash={hash}

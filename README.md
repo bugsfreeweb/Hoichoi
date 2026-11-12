@@ -377,6 +377,69 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 > before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
 > (latest e.g. `012_post_images.sql`).
 
+## Editorial fidelity, consent and provider truth (v1.1.24)
+
+**The hero finally shows how content is collected.** The right column of the home
+hero is now `HeroPipelineScene`: three tilted "angled" cards on a dashed rail —
+① the *original source* (platform glyph derived from the real `source_url`, the
+real featured photo, skeleton text lines of the captured post), ② the SIMHASH
+dedupe gate with a scanning beam and a `✓ NEW` / `dup%` verdict, ③ the published
+Hoichoi card with the real rewritten title, summary, photo and category. The
+footer counters are real collected/dups/published numbers, not decoration.
+
+**Hero headline motion no longer breaks the headline.** The old code nested a
+`brand-motion` span *inside* the `.headline-grad` `<h1>`, which destroyed
+`background-clip: text` — so changing the masthead animation blanked the hero
+headline. The motion class now lives on the `<h1>` itself (`hlfx hlfx--<motion>`)
+and there are **13** pickable styles (none, sheen, aurora, metal, liquid,
+cascade, reveal, glow, neon, skew, inkwash, spotlight, typewriter) with live
+swatches in Admin → Settings → সাইট. Gradient stops are CSS vars
+(`--hl-a…--hl-e`), so the light theme overrides colours only and every motion
+still runs.
+
+**Images are framed, not cropped and not floating.** New `MediaFrame` paints the
+same file twice: a blurred, colour-matched ambient copy fills the box (no dead
+bars) with a crisp `object-contain` copy on top (nothing cropped). Cards use
+`fit="cover"` with a 16:10 ratio, the article hero caps at `76vh`.
+
+**The archive tells the truth about the source.** `lib/source-meta.ts` derives the
+platform (Facebook / X / YouTube / Instagram / RSS news / other) from
+`source_url` + `source_name`. The detail-page archive, "at a glance" panel and
+"original source link" all use it, and the fabricated engagement counts are gone.
+
+**Wrong categories are much rarer.** Classifier scoring is now weight-based: longer
+(=`more specific`) terms count more, and any keyword listed by **more than one**
+candidate category counts half, so a generic word like "পুলিশ" or "ঢাকা" can no
+longer re-file a post on its own. Confidence is the winner's share of the top two
+candidates (what the fact-gate slider actually means). Regression tests cover the
+ambiguity discount.
+
+**AI images follow the article, and every provider is testable.** The pipeline,
+CLI and web editor all build their prompt from the same `buildImageBrief`; the
+brief's negative prompt is now always sent, and titles are clamped to 180 chars
+so the style/negative tail is never truncated. Admin → Provider rows for image
+providers gained a **টেস্ট** button (`/api/providers/test`) that runs *that row
+only* (`strict: true`, no fallback) and shows provider, model, mime, size, elapsed
+ms and a thumbnail — or the real error.
+
+**Why every image had a Pollinations watermark.** The keyless Pollinations host
+was reaching the front of the chain whenever a paid row hiccuped. It is now
+ordered **last**, always, and never ahead of a provider that has a key. Its
+`nologo` flag is honoured only with a referrer, so `referrer` is now sent too
+(plus `enhance=false`, which was rewriting — and drifting — the prompt).
+
+**Cookie & terms consent, done the standard way.** New `/cookies` policy page,
+`lib/consent.ts` (versioned, `hc_consent` cookie + localStorage), a
+`ConsentBanner` with "সব গ্রহণ" / "শুধু প্রয়োজনীয়", and the first-party
+`/api/track` beacon now **only** fires after measurement consent. The submit form
+requires an explicit terms/privacy/cookie checkbox. Footer (both chrome variants)
+links all three documents.
+
+**Desktop:** collector radar gained an obsidian instrument bed (micro-rings,
+crosshair, 60 rim ticks) with real queue-derived blips; a single `desk bootstrap`
+spawn replaces 6+ runner calls on refresh; Ads/Settings save buttons show
+spinner → result toast with elapsed ms.
+
 ## Recovery, parity and pipeline honesty (v1.1.23)
 
 **Advertiser entry point + global socials.** `/portal/login` is now reachable

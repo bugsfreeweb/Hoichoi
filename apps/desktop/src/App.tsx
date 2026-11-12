@@ -5,16 +5,10 @@ import {
   isTauri,
   startPipeline,
   stopPipeline,
-  settingsGet,
-  deskSources,
-  deskQueuePage,
-  deskStats,
-  deskProviders,
+  deskBootstrap,
   deskMediaStorage,
   deskMediaCleanup,
   deskBackupAuto,
-  deskRadarStats,
-  deskCategories,
   type DeskCategory,
   type DeskQueueRow,
   type DeskSource,
@@ -299,39 +293,34 @@ export default function App() {
   const refresh = useCallback(async (): Promise<{ ok: boolean; error?: string }> => {
     try {
       const env = await getRunEnv();
-      // Merge DB provider key overrides into the vault "configured" map so
-      // keys stored via the provider panel (mistral/openai/manifest/copilot…)
-      // still surface as filled in the vault UI.
+      /*
+        ONE runner spawn for the whole screen.
+
+        This used to be six-plus separate `desk_*` calls, each of which started
+        its own `node.exe`. That is why the desk took several seconds to show
+        content on every refresh — the wait was process cold starts, not the
+        database. `deskBootstrap` reads settings, sources, queue, stats, radar,
+        categories and providers together in a single process.
+      */
+      const boot = await deskBootstrap(env, { page: 1 });
       const configuredMap = await listConfigured();
-      try {
-        const provs = await deskProviders(env);
-        for (const p of provs) {
-          if (p.api_key && p.api_key_env_var) {
-            configuredMap[p.api_key_env_var as CredentialName] = true;
-          }
+      for (const p of boot.providers ?? []) {
+        if (p.api_key && p.api_key_env_var) {
+          configuredMap[p.api_key_env_var as CredentialName] = true;
         }
-      } catch {
-        /* provider list is optional */
       }
       setConfigured(configuredMap);
-      const s = await settingsGet(env).catch(() => null);
+
+      const s = boot.settings;
       if (s && Number(s.pipeline_hours) > 0) setHours(Number(s.pipeline_hours));
-      const [src, queuePage, stats, radar] = await Promise.all([
-        deskSources(env),
-        deskQueuePage(env, { page: 1 }),
-        deskStats(env).catch(() => null),
-        deskRadarStats(env).catch(() => null),
-      ]);
-      setSources(src);
-      setQueueRows(queuePage.rows);
-      setQueueTotal(queuePage.total);
-      setStatsData(stats);
-      setRadarData(radar);
-      // Category names and dots come from the DB so an admin's rename shows up
-      // in the desk. Failing to load them only costs the local fallback labels.
-      const catList = await deskCategories(env).catch(() => null);
-      setCats(catList);
-      const pending = stats?.stats?.pendingReview ?? 0;
+
+      setSources(boot.sources ?? []);
+      setQueueRows(boot.queue?.rows ?? []);
+      setQueueTotal(boot.queue?.total ?? 0);
+      setStatsData(boot.stats ?? null);
+      setRadarData(boot.radar ?? null);
+      setCats(boot.categories ?? null);
+      const pending = boot.stats?.stats?.pendingReview ?? 0;
       setPendingCount(pending);
       void deskWin().then((w) => w?.setBadgeCount?.(pending));
       if (pending > prevPendingRef.current && (document.hidden || winMinimizedRef.current)) {

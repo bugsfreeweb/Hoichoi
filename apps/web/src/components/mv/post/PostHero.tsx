@@ -25,6 +25,7 @@ import PostImage from "@/components/mv/ui/PostImage";
 import { imageCaption } from "@/lib/mv/images";
 import { CountUp, Reveal, Scramble } from "@/components/mv/ui/motion";
 import type { PostRecord } from "@/lib/mv/posts";
+import { sourcePlatformBn } from "@/lib/source-meta";
 import { bn, bnCompact, bnDate, bnTime, timeAgo } from "@/lib/mv/format";
 
 /** Inline brand glyph (lucide no longer ships brand icons). */
@@ -400,7 +401,7 @@ function TrustMeter({ post }: { post: PostRecord }) {
 /* ── variant 2 · fact card ───────────────────────────── */
 function FactCard({ post }: { post: PostRecord }) {
   const cards = [
-    { k: "সূত্র", v: post.source, sub: "ফেসবুক পেজ", Icon: Link2, color: "#56c8ff" },
+    { k: "সূত্র", v: post.source, sub: sourcePlatformBn({ source_url: post.sourceUrl, source_name: post.source }), Icon: Link2, color: "#56c8ff" },
     { k: "লেখক", v: post.author, sub: "মূল পোস্ট", Icon: UserRound, color: "#a78bfa" },
     { k: "কনটেন্ট হ্যাশ", v: post.hash, sub: "SHA-256 · SimHash পাস", Icon: Hash, color: "#4ade80" },
     { k: "LLM কনফিডেন্স", v: `${bn(post.factScore)}%`, sub: "থ্রেশহোল্ড ০.৯০", Icon: Sparkles, color: "#f5a524" },

@@ -1139,3 +1139,39 @@ html[data-theme="light"] .titlebar {
     transform: translateY(0) scale(1);
   }
 }
+/* ---- collector radar: obsidian blips -------------------------------------
+   Each blip is a real queue row. A fresh contact gets one bright ping; the
+   older ones breathe slowly so the scope never looks frozen but also never
+   strobes. Transform/opacity only. */
+.radar-blip {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: radarBlipBreathe 3.4s ease-in-out infinite;
+}
+@keyframes radarBlipBreathe {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+.radar-blip-fresh {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: radarBlipLand 1.6s cubic-bezier(0.16, 1, 0.3, 1) 1 both, radarBlipBreathe 2.6s ease-in-out 1.6s infinite;
+}
+@keyframes radarBlipLand {
+  0% { transform: scale(0.1); opacity: 0; }
+  55% { transform: scale(1.9); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.radar-blip-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: radarBlipRing 2.8s ease-out infinite;
+}
+@keyframes radarBlipRing {
+  0% { transform: scale(0.4); opacity: 0.75; }
+  70% { transform: scale(2.6); opacity: 0; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .radar-blip, .radar-blip-fresh, .radar-blip-ring { animation: none !important; }
+}

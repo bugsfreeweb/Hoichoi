@@ -81,6 +81,31 @@ export function classifyContent(
   const scores = new Map<string, number>();
   const hits = new Map<string, string[]>();
 
+  /**
+   * Weight each keyword by how specific it is, and discount keywords that
+   * several categories share.
+   *
+   * The old scorer gave every hit a flat 4 and let a single hit win. Generic
+   * words ("পুলিশ", "ঢাকা", "অভিযোগ") appear in many category lists, so one of
+   * them was enough to re-file a post under the wrong department — the "wrong
+   * category on some contents" report. Now:
+   *   - longer terms weigh more (2 for a 2-letter term up to 5),
+   *   - a term listed by more than one candidate category counts half, so it
+   *     cannot decide on its own.
+   */
+  const weightOf = (term: string) => Math.min(5, 1 + Math.ceil(term.length / 3));
+  const termOwners = new Map<string, number>();
+  for (const slug of candidates) {
+    for (const t of keywords[slug] ?? []) {
+      const term = typeof t === "string" ? t.trim() : "";
+      if (term) termOwners.set(term, (termOwners.get(term) ?? 0) + 1);
+    }
+  }
+  const weightFor = (term: string) => {
+    const w = weightOf(term);
+    return (termOwners.get(term) ?? 1) > 1 ? w / 2 : w;
+  };
+
   for (const slug of candidates) {
     const terms = keywords[slug] ?? [];
     let score = 0;
@@ -89,7 +114,7 @@ export function classifyContent(
       const term = typeof t === "string" ? t.trim() : "";
       if (!term) continue;
       if (new RegExp(word(escapeRegExp(term)), "i").test(norm)) {
-        score += 4;
+        score += weightFor(term);
         match.push(term);
       }
     }
@@ -103,18 +128,29 @@ export function classifyContent(
   const ranked = [...scores.entries()].sort((a, b) => b[1] - a[1]);
   const [best, bestScore] = ranked[0]!;
   const [, secondScore] = ranked[1] ?? [best, 0];
-  const total = [...scores.values()].reduce((a, b) => a + b, 0);
+  const bestHits = hits.get(best) ?? [];
 
   // Skip the source category entirely (we're only here to FIX a bad default),
   // unless the content strongly clears it too.
   if (best === sourceCategory) return { slug: null, confidence: 0, matches: [] };
 
-  const confident = bestScore >= 4 && bestScore - secondScore > 1; // >= 2 margin
-  if (!confident) return { slug: null, confidence: 0, matches: [] };
+  /**
+   * Confidence is the best score's share of the top two candidates, which is
+   * what the fact-gate slider (0-100) is really asking: "how clearly does this
+   * beat the runner-up?" Using the total of *all* categories made a 5-category
+   * match look like 20% confidence even when it dominated.
+   */
+  const confidence = Math.round((bestScore / Math.max(1, bestScore + secondScore)) * 100);
+
+  // One strong (category-unique, reasonably long) term, or a couple of hits.
+  const decisive = bestScore >= 3;
+  const clearsRunnerUp = bestScore - secondScore >= 2 || confidence >= 60;
+  if (!decisive || !clearsRunnerUp) return { slug: null, confidence: 0, matches: [] };
+
   return {
     slug: best as CategorySlug,
-    confidence: Math.round((bestScore / total) * 100),
-    matches: hits.get(best) ?? [],
+    confidence,
+    matches: bestHits,
   };
 }
 

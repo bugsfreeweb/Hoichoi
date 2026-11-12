@@ -18,6 +18,7 @@ import {
   LayoutDashboard,
   Cloud,
   RefreshCw,
+  Loader2,
 } from "lucide-react";
 import {
   getCredential,
@@ -324,46 +325,55 @@ export default function Settings({
     });
   };
 
+  /**
+   * Shared save wrapper.
+   *
+   * Every save button used to fire-and-forget: no spinner, no toast, and a slow
+   * `settings_set` looked like a dead button. `saving` drives the spinner and
+   * the disabled state, and the result is announced with a toast (or an error
+   * toast carrying the real runner message).
+   */
+  const [saving, setSaving] = useState<string | null>(null);
+  const saveWith = async (key: string, label: string, patch: Record<string, string | number>, done: string) => {
+    if (saving) return;
+    setSaving(key);
+    const id = toast.busy(`${label} সংরক্ষণ হচ্ছে…`, "রানারে লেখা হচ্ছে");
+    try {
+      await settingsSet(await getRunEnv(), patch);
+      show(done);
+      setErr(null);
+      toast.ok(`${label} সংরক্ষিত`, done);
+      await loadBrand();
+      await autoPush();
+    } catch (e) {
+      fail(e);
+      toast.err(`${label} সংরক্ষণ ব্যর্থ`, e instanceof Error ? e.message : String(e));
+    } finally {
+      toast.dismiss(id);
+      setSaving(null);
+    }
+  };
+
   const saveCron = async () => {
     const m = prefs.cron.match(/^(?:0|\*)\s+\*\/(\d{1,2})\s+\*\s+\*\s+\*$/);
     if (!m) {
       fail("cron ফরম্যাট হবে: 0 */N * * * — যেখানে N ঘণ্টার ব্যবধান (যেমন */8)");
+      toast.err("cron ফরম্যাট ভুল", "0 */N * * * — যেমন */8");
       return;
     }
-    try {
-      await settingsSet(await getRunEnv(), { pipeline_hours: Number(m[1]) });
-      show(`শিডিউল সংরক্ষিত — pipeline_hours = ${m[1]} (${prefs.cron})`);
-      setErr(null);
-      await loadBrand();
-      await autoPush();
-    } catch (e) {
-      fail(e);
-    }
+    await saveWith(
+      "cron",
+      "শিডিউল",
+      { pipeline_hours: Number(m[1]) },
+      `শিডিউল সংরক্ষিত — pipeline_hours = ${m[1]} (${prefs.cron})`,
+    );
   };
 
-  const saveTemp = async () => {
-    try {
-      await settingsSet(await getRunEnv(), { llm_temperature: prefs.temp });
-      show(`রিরাইট তাপমাত্রা সংরক্ষিত — ${prefs.temp.toFixed(2)}`);
-      setErr(null);
-      await loadBrand();
-      await autoPush();
-    } catch (e) {
-      fail(e);
-    }
-  };
+  const saveTemp = () =>
+    saveWith("temp", "তাপমাত্রা", { llm_temperature: prefs.temp }, `রিরাইট তাপমাত্রা সংরক্ষিত — ${prefs.temp.toFixed(2)}`);
 
-  const saveGate = async () => {
-    try {
-      await settingsSet(await getRunEnv(), { fact_gate: prefs.gate });
-      show(`ফ্যাক্ট-গেট থ্রেশহোল্ড সংরক্ষিত — ${prefs.gate}%`);
-      setErr(null);
-      await loadBrand();
-      await autoPush();
-    } catch (e) {
-      fail(e);
-    }
-  };
+  const saveGate = () =>
+    saveWith("gate", "ফ্যাক্ট-গেট", { fact_gate: prefs.gate }, `ফ্যাক্ট-গেট থ্রেশহোল্ড সংরক্ষিত — ${prefs.gate}%`);
 
   const show = (m: string) => {
     setMsg(m);
@@ -928,9 +938,11 @@ export default function Settings({
                 />
                 <button
                   onClick={() => void saveCron()}
-                  className="mt-2 flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 text-[11px] font-bold text-night hover:brightness-110"
+                  disabled={saving !== null}
+                  className="mt-2 flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 text-[11px] font-bold text-night hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
                 >
-                  pipeline_hours আপডেট
+                  {saving === "cron" ? <Loader2 size={12} className="animate-spin" /> : null}
+                  {saving === "cron" ? "সংরক্ষণ হচ্ছে…" : "pipeline_hours আপডেট"}
                 </button>
                 <p className="mt-2 text-[11.5px] text-white/40">
                   প্রতি দুই ঘণ্টায় স্বয়ংক্রিয় রান। খালি রাখলে শুধু ম্যানুয়াল।
@@ -967,9 +979,11 @@ export default function Settings({
                 />
                 <button
                   onClick={() => void saveTemp()}
-                  className="mt-2 flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 text-[11px] font-bold text-night hover:brightness-110"
+                  disabled={saving !== null}
+                  className="mt-2 flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 text-[11px] font-bold text-night hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
                 >
-                  তাপমাত্রা সংরক্ষিত করুন
+                  {saving === "temp" ? <Loader2 size={12} className="animate-spin" /> : null}
+                  {saving === "temp" ? "সংরক্ষণ হচ্ছে…" : "তাপমাত্রা সংরক্ষিত করুন"}
                 </button>
                 <p className="mt-2 text-[11.5px] text-white/40">
                   LLM-এর স্যাম্পলিং তাপমাত্রা। এটি সেভ করলে ওয়েব অ্যাডমিন ও নির্ধারিত
@@ -1000,9 +1014,11 @@ export default function Settings({
                 </p>
                 <button
                   onClick={() => void saveGate()}
-                  className="mt-3 flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 text-[11px] font-bold text-night hover:brightness-110"
+                  disabled={saving !== null}
+                  className="mt-3 flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 text-[11px] font-bold text-night hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
                 >
-                  থ্রেশহোল্ড সংরক্ষিত করুন
+                  {saving === "gate" ? <Loader2 size={12} className="animate-spin" /> : null}
+                  {saving === "gate" ? "সংরক্ষণ হচ্ছে…" : "থ্রেশহোল্ড সংরক্ষিত করুন"}
                 </button>
               </section>
 

@@ -1179,6 +1179,18 @@ export interface SiteAppConfig {  /** Masthead "newsroom in numbers" hero sectio
   brand_animation: BrandAnimation;
   /** Decorative effect toggles for the home-page hero. */
   hero_effects: HeroEffects;
+  /**
+   * Motion style of the home-page hero headline itself.
+   *
+   * Separate from `brand_animation` on purpose: the masthead wordmark and the
+   * giant hero headline live in different stacking contexts. Because
+   * `.headline-grad` paints its gradient with `background-clip: text` on the h1,
+   * a motion span *nested inside* it (the old `brand-motion--shimmer::after`
+   * overlay) created a new layer with no gradient — so picking a masthead
+   * animation made the hero headline change colour or vanish. Headline motion is
+   * therefore applied to the h1 element itself and never nests.
+   */
+  hero_headline_motion: HeroHeadlineMotion;
 }
 
 export type LiveThemeKey = "stage" | "broadsheet" | "scoreboard" | "timeline" | "compact" | "studio";
@@ -1205,6 +1217,42 @@ export interface HeroEffects {
 
 /** Masthead / brand-name motion. `none` keeps the static wordmark. */
 export type BrandAnimation = "none" | "fade" | "typewriter" | "shimmer" | "slide";
+
+/**
+ * Hero headline motion styles. Each one is a pure CSS layer effect on the h1
+ * (transform / opacity / background-position / drop-shadow / clip-path), so it
+ * composes with the gradient text instead of replacing it.
+ */
+export type HeroHeadlineMotion =
+  | "none"
+  | "sheen"
+  | "aurora"
+  | "metal"
+  | "liquid"
+  | "cascade"
+  | "reveal"
+  | "glow"
+  | "neon"
+  | "skew"
+  | "inkwash"
+  | "spotlight"
+  | "typewriter";
+
+export const HERO_HEADLINE_MOTIONS: Array<{ key: HeroHeadlineMotion; bn: string; en: string }> = [
+  { key: "none", bn: "স্ট্যাটিক", en: "Static" },
+  { key: "sheen", bn: "শিন সুইপ", en: "Gradient sheen" },
+  { key: "aurora", bn: "অরোরা", en: "Aurora" },
+  { key: "metal", bn: "মেটালিক", en: "Metal sweep" },
+  { key: "liquid", bn: "লিকুইড ফিল", en: "Liquid fill" },
+  { key: "cascade", bn: "লেটার ক্যাসকেড", en: "Letter cascade" },
+  { key: "reveal", bn: "মাস্ক রিভিল", en: "Mask reveal" },
+  { key: "glow", bn: "গ্লো পালস", en: "Glow pulse" },
+  { key: "neon", bn: "নিয়ন ফ্লিকার", en: "Neon flicker" },
+  { key: "skew", bn: "স্কিউ রাইজ", en: "Skew rise" },
+  { key: "inkwash", bn: "ইঙ্ক ওয়াশ", en: "Ink wash" },
+  { key: "spotlight", bn: "স্পটলাইট", en: "Spotlight" },
+  { key: "typewriter", bn: "টাইপরাইটার", en: "Typewriter" },
+];
 
 /** App-config defaults (shared by the DB, the web admin and the desktop). */
 export const DEFAULT_APP_CONFIG: SiteAppConfig = {
@@ -1244,6 +1292,7 @@ export const DEFAULT_APP_CONFIG: SiteAppConfig = {
     tauri_win: true,
     ping: true,
   },
+  hero_headline_motion: "sheen",
 };
 
 /** Tone of an announcement. `alert` is the most urgent (used by the special

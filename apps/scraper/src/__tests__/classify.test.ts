@@ -113,4 +113,31 @@ assert.equal(
   "the admin keyword list supplies the signal for a custom category",
 );
 
+/**
+ * A keyword shared by several categories must not decide on its own — generic
+ * words used to be able to move a post into the wrong department.
+ */
+assert.equal(
+  classifyContent("আজকের খবর", ["a", "b"] as never, "src" as never, { a: ["খবর"], b: ["খবর"] }).slug,
+  null,
+  "a keyword shared by two categories must not win",
+);
+assert.equal(
+  classifyContent("একটি অনন্য দীর্ঘ শব্দ", ["a", "b"] as never, "src" as never, {
+    a: ["অনন্য দীর্ঘ শব্দ"],
+    b: ["খবর"],
+  }).slug,
+  "a",
+  "a unique specific term still reclassifies",
+);
+/** Shared hits plus a category-unique term: the unique one wins the margin. */
+assert.equal(
+  classifyContent("খবরসহ অনন্য দীর্ঘ শব্দ", ["a", "b"] as never, "src" as never, {
+    a: ["খবর", "অনন্য দীর্ঘ শব্দ"],
+    b: ["খবর"],
+  }).slug,
+  "a",
+  "the unique term must outweigh a shared one",
+);
+
 console.log("[test] classification checks passed");

@@ -381,6 +381,32 @@ export async function deskDeleteCategory(env: Record<string, string>, slug: stri
   await deskCall(["categories", "delete", "--slug", slug], env);
 }
 
+export interface DeskBootstrap {
+  settings: Record<string, unknown>;
+  sources: DeskSource[];
+  queue: DeskQueuePage;
+  stats: { stats: DeskStats["stats"]; runs: DeskStats["runs"] } | null;
+  radar: DeskRadarSnapshot | null;
+  categories: DeskCategory[];
+  providers: DeskProvider[];
+}
+
+/**
+ * One runner spawn for the whole desk screen.
+ *
+ * `refresh()` used to fire six-plus separate runner invocations (each a fresh
+ * `node.exe`), which is what made content loading feel slow. This returns the
+ * same data from a single process.
+ */
+export async function deskBootstrap(
+  env: Record<string, string>,
+  opts: { page?: number; pageSize?: number } = {},
+): Promise<DeskBootstrap> {
+  const args = ["desk", "bootstrap", "--page", String(opts.page ?? 1), "--page-size", String(opts.pageSize ?? 20)];
+  const res = await deskCall(args, env);
+  return res as unknown as DeskBootstrap;
+}
+
 export interface DeskQueuePage {
   rows: DeskQueueRow[];
   total: number;

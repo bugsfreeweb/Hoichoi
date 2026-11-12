@@ -164,6 +164,43 @@ export default function CollectorRadar({ data, latestQueue, running }: Props) {
   const hiddenCount = visible.filter((v) => !v).length;
   const latest = latestQueue?.[0];
 
+  /**
+   * Real contacts on the scope.
+   *
+   * Each of the most recent desk rows is plotted at its category's bearing, at
+   * a radius set by age (newest closest to the hub). They are *not* decorative:
+   * if the queue is empty there are no blips. A blip keeps a stable key so the
+   * entrance animation plays once per new item instead of every re-render.
+   */
+  const blips = useMemo(() => {
+    const tail = (latestQueue ?? []).slice(0, 14);
+    if (tail.length === 0 || N === 0) return [];
+    const ages = tail.map((r) => new Date(r.created_at).getTime()).filter((t) => Number.isFinite(t));
+    const newest = ages.length ? Math.max(...ages) : 0;
+    const oldest = ages.length ? Math.min(...ages) : 0;
+    const span = Math.max(1, newest - oldest);
+    return tail.flatMap((row, idx) => {
+      const ci = cats.findIndex((c) => c.slug === row.category);
+      if (ci < 0) return [];
+      const t = new Date(row.created_at).getTime();
+      const age = Number.isFinite(t) ? (newest - t) / span : idx / tail.length;
+      const r = HUB + 26 + age * (MAX_R - HUB - 48);
+      // Deterministic jitter inside the wedge so overlapping posts stay visible.
+      const jitter = ((idx * 37) % 11) - 5;
+      const p = polarToCartesian(CX, CY, r, ci * SPAN + jitter);
+      return [
+        {
+          key: row.id,
+          x: p.x,
+          y: p.y,
+          color: cats[ci].dot,
+          fresh: idx === 0,
+          delay: Math.min(1.2, idx * 0.08),
+        },
+      ];
+    });
+  }, [latestQueue, cats, N, SPAN]);
+
   const labelR = N <= 6 ? MAX_R + 62 : N <= 8 ? MAX_R + 56 : MAX_R + 48;
   const bandIn = N <= 8 ? MAX_R + 20 : MAX_R + 16;
   const labelSize = N <= 6 ? 15 : N <= 8 ? 12.5 : 10.5;
@@ -326,7 +363,41 @@ export default function CollectorRadar({ data, latestQueue, running }: Props) {
             </radialGradient>
           </defs>
 
+          {/* — obsidian instrument bed: dotted micro-rings, crosshair, rim ticks — */}
+          {[0.18, 0.34, 0.52, 0.7, 0.88].map((f) => (
+            <circle
+              key={`micro-${f}`}
+              cx={CX}
+              cy={CY}
+              r={HUB + (MAX_R - HUB) * f}
+              fill="none"
+              stroke="var(--ds-sky)"
+              strokeOpacity={0.07}
+              strokeWidth={1}
+              strokeDasharray="1 7"
+            />
+          ))}
+          <line x1={CX - MAX_R} y1={CY} x2={CX + MAX_R} y2={CY} stroke="var(--ds-sky)" strokeOpacity={0.08} strokeDasharray="2 6" />
+          <line x1={CX} y1={CY - MAX_R} x2={CX} y2={CY + MAX_R} stroke="var(--ds-sky)" strokeOpacity={0.08} strokeDasharray="2 6" />
+          {Array.from({ length: 60 }, (_, i) => i * 6).map((deg) => {
+            const major = deg % 30 === 0;
+            const a = polarToCartesian(CX, CY, MAX_R + 2, deg);
+            const b = polarToCartesian(CX, CY, MAX_R + (major ? 11 : 5), deg);
+            return (
+              <line
+                key={`tick-${deg}`}
+                x1={a.x}
+                y1={a.y}
+                x2={b.x}
+                y2={b.y}
+                stroke={major ? "var(--ds-sky)" : "var(--ds-bd-2)"}
+                strokeOpacity={major ? 0.45 : 0.5}
+                strokeWidth={major ? 1.4 : 0.8}
+              />
+            );
+          })}
           <circle cx={CX} cy={CY} r={MAX_R} fill="url(#collectorHubGlow)" stroke="var(--ds-bd-2)" strokeWidth={1.2} />
+          <circle cx={CX} cy={CY} r={MAX_R + 13} fill="none" stroke="var(--ds-sky)" strokeOpacity={0.16} strokeWidth={0.8} />
 
           {/* Category bands + labels */}
           {cats.map((cat, i) => {
@@ -434,6 +505,23 @@ export default function CollectorRadar({ data, latestQueue, running }: Props) {
               </g>
             );
           })}
+
+          {/* Real contacts — one blip per recent queue row */}
+          {blips.map((b) => (
+            <g key={b.key} className="pointer-events-none">
+              <circle cx={b.x} cy={b.y} r={b.fresh ? 4.6 : 3.2} fill={b.color} fillOpacity={0.95} className={b.fresh ? "radar-blip-fresh" : "radar-blip"} style={{ animationDelay: `${b.delay}s` }} />
+              <circle
+                cx={b.x}
+                cy={b.y}
+                r={b.fresh ? 7 : 5}
+                fill="none"
+                stroke={b.color}
+                strokeOpacity={0.55}
+                className="radar-blip-ring"
+                style={{ animationDelay: `${b.delay}s` }}
+              />
+            </g>
+          ))}
 
           {/* Sweep */}
           {sweepEnabled && (

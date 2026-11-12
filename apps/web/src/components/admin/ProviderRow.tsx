@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { LLMProviderRow } from "@hoichoi/shared-types";
 import { useRouter } from "next/navigation";
 import { metaFor, purposeLabelBn, looksLikeImageModel } from "@/lib/provider-catalog";
+import { toBn } from "@/lib/format";
 
 const fieldBase =
   "mt-1 w-full border border-ink/30 bg-paper px-2.5 py-1.5 text-[12px] focus:outline-none focus:border-ink";
@@ -23,6 +24,8 @@ export function ProviderRow({
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testRes, setTestRes] = useState<{ ok: boolean; text: string; preview?: string } | null>(null);
   const [form, setForm] = useState({
     display_name: provider.display_name,
     model_name: provider.model_name,
@@ -89,6 +92,46 @@ export function ProviderRow({
       setErr(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setBusy(false);
+    }
+  }
+
+  /**
+   * Run THIS row only (no chain fallback) so its real error is visible.
+   * Without this, a broken Gemini row silently fell through to the keyless
+   * Pollinations host and the only symptom was a watermark on every image.
+   */
+  async function testProvider() {
+    setTesting(true);
+    setTestRes(null);
+    const started = Date.now();
+    try {
+      const res = await fetch("/api/providers/test", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: provider.id }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        model?: string;
+        contentType?: string;
+        bytes?: number;
+        ms?: number;
+        preview?: string;
+      };
+      if (data.ok) {
+        setTestRes({
+          ok: true,
+          text: `✓ ${data.model ?? provider.model_name} · ${data.contentType} · ${Math.round((data.bytes ?? 0) / 1024)}KB · ${toBn(data.ms ?? Date.now() - started)}ms`,
+          preview: data.preview,
+        });
+      } else {
+        setTestRes({ ok: false, text: data.error ?? "ব্যর্থ (কারণ পাওয়া যায়নি)" });
+      }
+    } catch (e) {
+      setTestRes({ ok: false, text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -188,7 +231,8 @@ export function ProviderRow({
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border border-ink/20 bg-paper-deep px-4 py-3">
+    <div className="border border-ink/20 bg-paper-deep">
+    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
       <div className="flex items-start gap-3">
         <span className="font-grotesk text-lg font-bold text-ink-soft">{String(index).padStart(2, "0")}</span>
         <div className="min-w-0">
@@ -240,6 +284,17 @@ export function ProviderRow({
         {provider.supports_rewrite && (
           <span className="font-mono-x text-[10.5px] text-ink-soft/70">rewrite</span>
         )}
+        {isImage && (
+          <button
+            type="button"
+            onClick={() => void testProvider()}
+            disabled={busy || testing}
+            title="শুধু এই প্রোভাইডার দিয়ে একটি ছবি বানিয়ে দেখুন"
+            className="border border-ink/30 px-2.5 py-1 text-[11px] hover:border-ink disabled:opacity-40"
+          >
+            {testing ? "টেস্ট হচ্ছে…" : "টেস্ট"}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setEditing(true)}
@@ -257,6 +312,23 @@ export function ProviderRow({
           {active ? "Active" : "Paused"}
         </button>
       </div>
+    </div>
+    {testRes && (
+      <div
+        className={`flex flex-wrap items-center gap-3 border-t px-4 py-2 text-[11.5px] ${
+          testRes.ok ? "border-cat-teal/30 bg-cat-teal/[0.06] text-ink" : "border-alizarin/40 bg-alizarin/[0.06] text-ink"
+        }`}
+      >
+        {testRes.preview && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={testRes.preview} alt="টেস্ট ছবি" className="h-14 w-24 border border-ink/20 object-cover" />
+        )}
+        <span className="min-w-0 flex-1 font-mono-x text-[11px] break-words">{testRes.text}</span>
+        <button type="button" onClick={() => setTestRes(null)} className="text-[11px] text-ink-soft hover:text-ink">
+          ✕
+        </button>
+      </div>
+    )}
     </div>
   );
 }

@@ -58,8 +58,21 @@ export async function generateAIHero(opts: {
 }): Promise<string | null> {
   const log = opts.log ?? (() => undefined);
   try {
+    const brief = buildImageBrief({
+      title: opts.title,
+      summary: opts.summary,
+      body: opts.body,
+      category: opts.category,
+    });
     const result = await generateImage(
-      { prompt: aiHeroPrompt(opts.title, opts.summary, opts.body, opts.category), aspectRatio: "16:9", count: 1 },
+      {
+        prompt: aiHeroPrompt(opts.title, opts.summary, opts.body, opts.category),
+        // The negative prompt is part of the brief; dropping it is why a few
+        // renders still came back with lettering or a watermark.
+        negativePrompt: brief.negative,
+        aspectRatio: "16:9",
+        count: 1,
+      },
       AbortSignal.timeout(60_000),
     );
     const rel = randomMediaName("img", "webp");

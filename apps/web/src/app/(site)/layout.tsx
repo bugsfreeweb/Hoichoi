@@ -15,6 +15,7 @@ import { EMPTY_MV_DATA } from "@/lib/mv/data";
 import MvChrome from "@/components/mv/MvChrome";
 import { MvDataProvider } from "@/components/mv/ui/mv-data";
 import ScrollToTop from "@/components/ScrollToTop";
+import ConsentBanner from "@/components/ConsentBanner";
 import { PlatformAdSlot } from "@/components/ads/PlatformAdSlot";
 import type { Metadata } from "next";
 
@@ -90,6 +91,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         <MvChrome live={live} accent={settings.accent_color} socials={footerSocials}>
           <TrafficTracker />
           {children}
+          <ConsentBanner />
         </MvChrome>
       </MvDataProvider>
     );
@@ -116,6 +118,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       {/* ad · mobile anchor — dismissed for the session once closed */}
       {cfg.show_ads && <PlatformAdSlot slotKey="global_mobile_anchor" layout="anchor" />}
       <ScrollToTop />
+      <ConsentBanner />
     </div>
   );
 }

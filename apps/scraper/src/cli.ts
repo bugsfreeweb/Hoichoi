@@ -606,13 +606,24 @@ media
       await ensureSchema(getClient());
       const client = getClient();
       const row = (
-        await client.execute({ sql: "SELECT title_bn, summary_bn FROM posts WHERE id = ?", args: [opts.id] })
-      ).rows[0] as { title_bn?: string; summary_bn?: string } | undefined;
+        await client.execute({
+          sql: "SELECT title_bn, summary_bn, body_bn, category FROM posts WHERE id = ?",
+          args: [opts.id],
+        })
+      ).rows[0] as
+        | { title_bn?: string; summary_bn?: string; body_bn?: string; category?: string }
+        | undefined;
       if (!row) throw new Error(`post not found: ${opts.id}`);
-      const subject = [row.title_bn, row.summary_bn].filter(Boolean).join(" — ").slice(0, 500);
-      const prompt =
-        opts.prompt?.trim() ||
-        `Editorial news illustration, clean modern flat style with soft natural light, dignified print-journalism tone, no text, no logos, no watermarks.\n\nবিষয়: ${subject}`;
+      // Content-first brief (category scene + extracted cues), the same builder
+      // the pipeline uses. The old generic "বিষয়: …" fallback made models
+      // ignore the subject and render the same stock illustration every time.
+      const brief = buildImageBrief({
+        title: row.title_bn ?? "",
+        summary: row.summary_bn ?? "",
+        body: (row.body_bn ?? "").slice(0, 1200),
+        category: row.category ?? "",
+      });
+      const prompt = opts.prompt?.trim() || brief.prompt;
       const result = await generateManualImage({
         postId: opts.id,
         prompt,
@@ -621,7 +632,7 @@ media
         aspectRatio: opts.ratio,
         style: opts.style,
         quality: opts.quality,
-        negativePrompt: opts.negative,
+        negativePrompt: opts.negative ?? brief.negative,
         attach: opts.attach !== false,
         log: (m) => console.error(m),
       });
@@ -1045,6 +1056,53 @@ async function listDeskQueue(opts: {
   });
   return { rows: res.rows.map((r) => deskQueueRow(r as Record<string, unknown>)), total, page, pageSize };
 }
+
+/**
+ * Everything the desk needs for one screen, in ONE runner process.
+ *
+ * The desktop used to refresh by spawning six separate runner invocations
+ * (settings, sources, queue, stats, radar, categories — plus providers). Each
+ * spawn costs a `node.exe` cold start, so a refresh took seconds and the UI
+ * looked frozen between them. This bundles the same reads into a single call.
+ */
+async function deskBootstrap(opts: { page?: number | string; pageSize?: number | string } = {}) {
+  await ensureSchema(getClient());
+  const [settingsRow, sources, queue, stats, runs, radar, categories, providers] = await Promise.all([
+    getSettings(),
+    listDeskSources(),
+    listDeskQueue({ page: opts.page, pageSize: opts.pageSize }),
+    statsSnapshot(),
+    recentPipelineRuns(8),
+    radarSnapshot(),
+    listCategories(),
+    listProviderRows(),
+  ]);
+  return {
+    settings: settingsRow,
+    sources,
+    queue,
+    stats: { stats, runs },
+    radar,
+    categories,
+    providers,
+  };
+}
+
+program
+  .command("desk")
+  .description("desk app: one-shot bootstrap bundle (settings, sources, queue, stats, radar, categories, providers)")
+  .argument("<action>", "bootstrap")
+  .option("--page <n>", "queue page (1-based)")
+  .option("--page-size <n>", "queue rows per page")
+  .action(async (action: string, opts: { page?: string; pageSize?: string }) => {
+    try {
+      if (action !== "bootstrap") throw new Error(`unknown desk action: ${action}`);
+      console.log(JSON.stringify({ ok: true, ...(await deskBootstrap(opts)) }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
 
 program
   .command("sources <action> [sub] [target]")
@@ -2204,6 +2262,13 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
       } else {
         throw new Error(`unknown action: ${action}`);
       }
+      return;
+    }
+    case "desk": {
+      const action = args[1];
+      if (action !== "bootstrap") throw new Error(`unknown desk action: ${String(action)}`);
+      const { flags } = parseArgs(args.slice(2));
+      console.log(JSON.stringify({ ok: true, ...(await deskBootstrap({ page: flags.page, pageSize: flags["page-size"] })) }, null, 2));
       return;
     }
     case "providers": {

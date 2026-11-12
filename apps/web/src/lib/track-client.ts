@@ -25,7 +25,24 @@ export function slugFromPath(path: string): string | null {
   return m && m[1] ? decodeURIComponent(m[1]) : null;
 }
 
+/**
+ * Measurement is opt-in: nothing is sent until the reader picks "সব গ্রহণ" in
+ * the consent banner (see `lib/consent.ts`). The site stays fully usable
+ * otherwise, this just returns.
+ */
+function measurementAllowed(): boolean {
+  try {
+    const raw = localStorage.getItem("hc-consent");
+    if (!raw) return false;
+    const rec = JSON.parse(raw) as { level?: string; version?: number };
+    return rec.level === "all" && rec.version === 1;
+  } catch {
+    return false;
+  }
+}
+
 function send(payload: Record<string, unknown>): void {
+  if (!measurementAllowed()) return;
   try {
     void fetch("/api/track", {
       method: "POST",

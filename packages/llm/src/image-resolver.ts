@@ -158,8 +158,15 @@ export async function listImageProviders(opts: { keyStore?: KeyStore } = {}): Pr
 }
 
 export interface GenerateImageOptions extends ImageGenRequest {
-  /** Force one provider row instead of walking the chain. */
+  /** Prefer one provider row; the rest of the chain still backs it up. */
   providerId?: string;
+  /**
+   * Diagnose a single provider: no fallback, no retry-on-429. Used by the
+   * admin "test this provider" action so the operator sees that row's real
+   * error (bad key, wrong model, quota) instead of a masked success from the
+   * next row down the chain.
+   */
+  strict?: boolean;
   keyStore?: KeyStore;
 }
 
@@ -191,9 +198,18 @@ export async function generateImage(
    * the pinned row and then walking the rest fixes that without changing what
    * happens when the pinned row succeeds.
    */
-  const preferred = opts.providerId ? usable.filter((ap) => ap.row.id === opts.providerId) : [];
-  const rest = opts.providerId ? usable.filter((ap) => ap.row.id !== opts.providerId) : usable;
-  const candidates = [...preferred, ...rest];
+  /**
+   * The anonymous Pollinations host stamps a logo in the corner of every image
+   * and is keyless, so it won by default whenever a paid provider hiccuped —
+   * that is why *every* generated image carried the same watermark. It stays in
+   * the chain as a safety net but always runs last, and never before a provider
+   * the operator actually configured with a key.
+   */
+  const isWatermarked = (ap: (typeof usable)[number]) => providerNeedsKey(ap.row) === false && /pollinations/i.test(ap.row.base_url ?? "");
+  const ordered = [...usable.filter((ap) => !isWatermarked(ap)), ...usable.filter(isWatermarked)];
+  const preferred = opts.providerId ? ordered.filter((ap) => ap.row.id === opts.providerId) : [];
+  const rest = opts.providerId && !opts.strict ? ordered.filter((ap) => ap.row.id !== opts.providerId) : ordered;
+  const candidates = opts.providerId ? [...preferred, ...(opts.strict ? [] : rest)] : ordered;
 
   if (candidates.length === 0) {
     throw new ProviderError(
@@ -218,7 +234,7 @@ export async function generateImage(
       // row: Gemini's free tier answers 429 while the same key works again a few
       // seconds later, and failing over leaves the nicer model unused.
       const msg = (err as Error).message ?? "";
-      if (/(^|[^0-9])429([^0-9]|$)|rate.?limit/i.test(msg)) {
+      if (!opts.strict && /(^|[^0-9])429([^0-9]|$)|rate.?limit/i.test(msg)) {
         await new Promise((r) => setTimeout(r, 4_000));
         try {
           return await ap.provider.generateImage!(opts, signal);

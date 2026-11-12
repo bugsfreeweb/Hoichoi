@@ -83,6 +83,19 @@ export default async function HomePage({
         logoUrl={settings.logo_url}
         brandAnimation={cfg.brand_animation}
         heroEffects={cfg.hero_effects}
+        headlineMotion={cfg.hero_headline_motion}
+        sceneFeature={
+          featured
+            ? {
+                image: mediaUrl(featured),
+                title: featured.title_bn,
+                summary: featured.summary_bn,
+                sourceName: featured.source_name,
+                sourceUrl: featured.source_url,
+                category: categoryLabel(featured.category, catRows),
+              }
+            : null
+        }
       />
       )}
 

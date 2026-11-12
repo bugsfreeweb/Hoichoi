@@ -9,7 +9,7 @@ import {
   updatePost,
 } from "@hoichoi/db";
 import { uploadBufferRemote, writeGeneratedMedia } from "@hoichoi/db/storage";
-import { buildImageBrief, extensionForMime, generateImage, listImageProviders } from "@hoichoi/llm";
+import { buildImageBrief, EDITORIAL_IMAGE_NEGATIVE, extensionForMime, generateImage, listImageProviders } from "@hoichoi/llm";
 import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -212,7 +212,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     aspectRatio: str(body?.aspectRatio),
     style: str(body?.style),
     quality: str(body?.quality),
-    negativePrompt: str(body?.negativePrompt),
+    // Always send the editorial negative prompt unless the operator typed one:
+    // without it some providers still render lettering or a corner watermark.
+    negativePrompt: str(body?.negativePrompt) || EDITORIAL_IMAGE_NEGATIVE,
   };
   const attach = body ? bool(body.attach) || body.attach === undefined : true;
 

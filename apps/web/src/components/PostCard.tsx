@@ -9,7 +9,10 @@ export function PostCard({ post, cats }: { post: Post; cats: CategoryMeta[] }) {
     <Link className="group flex h-full flex-col" href={`/post/${post.slug}`}>
       <div className="relative">
         {post.media_path && post.media_kind !== "none" ? (
-          <PostFigure post={post} />
+          // Cards are thumbnails: fill the frame (`cover`) instead of leaving
+          // the picture floating inside letterbox bars, which is what read as
+          // "wrong size / ugly" in the related-posts and category grids.
+          <PostFigure post={post} ratio="aspect-[16/10]" cover />
         ) : (
           <div className="relative overflow-hidden border-[1.5px] border-ink">
             <div className="aspect-[16/8.2] overflow-hidden bg-paper-deep">

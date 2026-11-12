@@ -1,20 +1,32 @@
-/* Faux "Facebook screenshot" card — the archived original post the desktop
-   collector captured before rewriting. Matches mockup/src/components/fb-post.tsx
-   using inline SVGs (web app avoids lucide-react). */
+import { sourceVisual, sourcePhraseBn } from "@/lib/source-meta";
 
-export function FbPost({
+/**
+ * Archived original post card.
+ *
+ * This used to be a faux **Facebook** screenshot for every article — complete
+ * with a blue `f` avatar and invented engagement counts ("২.১ হাজার",
+ * "৪৮৬ কমেন্ট") — even when the content came from an RSS/YouTube/X source.
+ * It now adapts to the real platform and shows only real data: the platform,
+ * the source name, the collection time and the captured text. Fabricated
+ * reaction numbers are gone.
+ */
+export function SourceArchive({
   author,
   sourceName,
   text,
   time,
   hash,
+  sourceUrl,
 }: {
   author: string;
   sourceName: string;
   text: string;
   time: string;
   hash: string;
+  /** Drives platform detection + the archive badge wording. */
+  sourceUrl?: string | null;
 }) {
+  const v = sourceVisual({ source_url: sourceUrl, source_name: sourceName });
   return (
     <div className="relative overflow-hidden rounded-xl border border-ink/25 bg-white text-[#1c1e21]">
       {/* screenshot archive ribbon */}
@@ -30,50 +42,38 @@ export function FbPost({
         {/* header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-fb to-[#0a4fab] font-sans text-[13px] font-bold text-white">
-              f
+            <div
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br font-sans text-[13px] font-bold text-white ${v.ring}`}
+              aria-hidden
+            >
+              {v.glyph}
             </div>
-            <div>
-              <p className="text-[13px] leading-tight font-semibold">
-                {author} <span className="font-normal opacity-60">· ফলো করুন</span>
+            <div className="min-w-0">
+              <p className="truncate text-[13px] leading-tight font-semibold">
+                {author} <span className="font-normal opacity-60">· মূল পোস্ট</span>
               </p>
               <p className="mt-0.5 flex items-center gap-1 text-[11px] opacity-55">
                 {time} ·{" "}
                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-                <span className="font-sans">{sourceName}</span>
+                <span className="truncate font-sans">{sourceName}</span>
               </p>
             </div>
           </div>
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-40"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+          <span
+            className="shrink-0 rounded-full px-2 py-0.5 font-mono-x text-[9px] font-bold tracking-[0.14em] uppercase"
+            style={{ background: `${v.tint}1a`, color: v.tint }}
+          >
+            {v.labelBn}
+          </span>
         </div>
 
         {/* raw text */}
         <p className="mt-3 text-[13.5px] leading-relaxed whitespace-pre-line">{text}</p>
 
-        {/* reactions */}
-        <div className="mt-3 flex items-center justify-between border-t border-black/10 pt-2.5 text-[11px] opacity-65">
-          <span className="flex items-center gap-1.5">
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-fb">
-              <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="#fff" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
-            </span>
-            ২.১ হাজার
-          </span>
-          <span>৪৮৬ কমেন্ট · ১৯৩ শেয়ার</span>
-        </div>
-
-        <div className="mt-1.5 flex items-center justify-between border-t border-black/10 pt-2 text-[11.5px] font-medium opacity-75">
-          <span className="flex items-center gap-1.5">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
-            লাইক
-          </span>
-          <span className="flex items-center gap-1.5">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            কমেন্ট
-          </span>
-          <span className="flex items-center gap-1.5">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.59 13.51 6.83 3.98"/><path d="m15.41 6.51-6.82 3.98"/></svg>
-            শেয়ার
-          </span>
+        {/* provenance — real values only, no invented engagement counts */}
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-black/10 pt-2.5 font-mono-x text-[10px] tracking-[0.12em] uppercase opacity-60">
+          <span>{sourcePhraseBn({ source_url: sourceUrl, source_name: sourceName })}</span>
+          <span className="truncate">{sourceName}</span>
         </div>
       </div>
     </div>

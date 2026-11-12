@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { MediaFrame } from "./MediaFrame";
 
 /**
  * Article media viewer. The primary image keeps its exact production layout
@@ -71,15 +72,14 @@ export function PostGallery({
                 className="group relative block w-full cursor-zoom-in"
                 aria-label="ছবিটি বড় করে দেখুন"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 {/*
-                  The hero used to be forced into a 16:8.4 crop. That cut the
-                  top and bottom off vertical/news photos and made correct
-                  images look "wrong". The original aspect ratio is now kept,
-                  capped by viewport height so a tall image cannot push the
-                  article off screen.
+                  The hero keeps its original aspect (max 76vh tall) and is
+                  drawn inside MediaFrame, which paints a blurred copy of the
+                  same picture behind it. Without that backdrop, a portrait or
+                  an unusually wide photo left large dead bars inside a
+                  full-width frame and looked broken.
                 */}
-                <img src={primarySrc} alt={title} className="photo-grade mx-auto max-h-[75vh] w-auto max-w-full bg-paper-deep object-contain" />
+                <MediaFrame src={primarySrc} alt={title} heightClass="max-h-[76vh] min-h-[240px]" priority />
                 <span className="pointer-events-none absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full bg-night/70 px-3 py-1.5 font-mono-x text-[9.5px] tracking-[0.16em] text-white uppercase opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
                   ⛶ বড় করুন
                 </span>
@@ -112,8 +112,13 @@ export function PostGallery({
                   className="group relative aspect-[4/3] cursor-zoom-in overflow-hidden border-[1.5px] border-ink/20 bg-paper-deep transition-colors hover:border-ink"
                   aria-label={`ছবি ${i + 1} বড় করে দেখুন`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={src} alt={`${title} — ছবি ${i + 1}`} className="photo-grade h-full w-full object-contain transition-transform duration-500 group-hover:scale-105" />
+                  <MediaFrame
+                    src={src}
+                    alt={`${title} — ছবি ${i + 1}`}
+                    heightClass="h-full w-full"
+                    fit="cover"
+                    className="transition-transform duration-500 group-hover:scale-105"
+                  />
                 </button>
               ))}
             </div>
