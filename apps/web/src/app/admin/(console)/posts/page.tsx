@@ -131,8 +131,12 @@ function PostCard({ post }: { post: Post }) {
           <span className="absolute top-2 left-2">
             <StatusPill status={post.status} />
           </span>
-          <span className="absolute top-2 right-2">
-            <OriginBadge post={post} className="bg-paper/90 backdrop-blur-sm" />
+          {/* Solid strip behind the badge: a translucent utility had no
+              light-theme override (the console audits for that), and an alpha
+              background on the badge itself would lose to the category tint it
+              already carries. */}
+          <span className="absolute top-2 right-2 bg-paper px-1 py-1">
+            <OriginBadge post={post} />
           </span>
         </div>
         <div className="px-3 pt-2.5">
