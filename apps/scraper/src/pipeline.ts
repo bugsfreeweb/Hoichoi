@@ -904,10 +904,10 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
             sql: `
               INSERT INTO posts (
                 id, raw_post_id, source_id, category, title_bn, body_bn, summary_bn,
-                media_path, media_kind, source_url, source_name, slug, status,
+                media_path, media_kind, media_origin, source_url, source_name, slug, status,
                 safety_flags, embedding, case_status, original_author_name,
                 published_at, created_at, updated_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `,
             args: [
               newPostId, rawId, source.id, postCategory,

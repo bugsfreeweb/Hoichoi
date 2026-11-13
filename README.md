@@ -414,6 +414,16 @@ parser now lives in `lib/view.ts` (server-safe), the toggle imports it, and all
 five queues were verified with a real session (200, both views, plus the post
 editor).
 
+**Nothing was publishing.** The publish `INSERT INTO posts` declared 20 columns
+with 20 placeholders but bound 21 values — `media_origin` had been added to the
+argument list and not to the column list. libsql rejects the statement with
+`Number of arguments mismatch: expected 20, got 21`, the error is caught per
+post as one dim `[rewrite] …` line, and the run still reported success. Every
+crawl since 023 quietly published nothing. Fixed, and
+`apps/scraper/src/__tests__/pipeline-post-insert.test.ts` now parses the three
+post inserts and fails if columns ≠ placeholders ≠ bound arguments — the same
+check was verified against the broken source.
+
 **Template picker tiles.** Previews have a shared 4:3 shape and a compressed
 variant of each template, so no tile clips its own artwork and the twelve read
 as one set.
