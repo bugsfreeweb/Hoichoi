@@ -52,8 +52,3 @@ export function ViewToggle({ labelBn }: { labelBn?: string }) {
     </div>
   );
 }
-
-/** Read the current view from Next's searchParams object (server side). */
-export function viewFromSearch(sp: Record<string, string | string[] | undefined>): "card" | "list" {
-  return sp.view === "card" ? "card" : "list";
-}

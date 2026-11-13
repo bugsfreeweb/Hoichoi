@@ -2,7 +2,8 @@ import { PageHeading } from "@/components/admin/ui/PageHeader";
 import { mapPost, pageRows } from "@hoichoi/db";
 import { ModerationCard } from "@/components/admin/ModerationCard";
 import { ModerationListRow } from "@/components/admin/ModerationListRow";
-import { ViewToggle, viewFromSearch } from "@/components/admin/ui/ViewToggle";
+import { ViewToggle } from "@/components/admin/ui/ViewToggle";
+import { viewFromSearch } from "@/lib/view";
 import { Paginator } from "@/components/admin/Paginator";
 
 export const dynamic = "force-dynamic";

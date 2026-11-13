@@ -106,20 +106,84 @@ function usePhase(count: number, ms = 2600): number {
 
 const STAGE_BN = ["সংগ্রহ", "যাচাই", "প্রকাশ"];
 
-/** Shared header: what the panel is + when it last ran. */
+/**
+ * Shared header: what the panel is, in the newsroom's own words, plus when the
+ * pipeline last ran. The kicker/wording follows the design language of the
+ * editorial mockups (`FROM NOISE TO NEWS.`), while the badge stays factual: it
+ * shows the real last-run clock or STANDBY, never a decorative "live".
+ */
 function SceneHead({ stats, compact }: { stats: HeroSceneStats; compact?: boolean }) {
   const lastRun = sceneClock(stats.lastRunIso);
   return (
     <div className="hf-head">
-      <div>
-        <p className="hf-kicker">COLLECT → REWRITE → PUBLISH</p>
-        {!compact && <p className="hf-title">সংগ্রহ থেকে প্রকাশ</p>}
+      <div className="min-w-0">
+        <p className="hf-kicker">FROM NOISE TO NEWS.</p>
+        <p className="hf-sub">{compact ? "সংগ্রহ → যাচাই → প্রকাশ" : "শব্দ থেকে সংবাদ — কীভাবে তৈরি হয়"}</p>
       </div>
       <span className={`hf-badge ${lastRun ? "hf-badge--live" : ""}`}>
         <i className="hf-dot" />
         {lastRun ? `শেষ ${lastRun}` : "STANDBY"}
       </span>
     </div>
+  );
+}
+
+/* ---------------------------------------------------------------- stages */
+
+/** The six real pipeline stations, in the order the runner executes them. */
+const STAGES: Array<{ en: string; bn: string }> = [
+  { en: "FEED", bn: "ফিড" },
+  { en: "SHOT", bn: "স্ক্রিনশট" },
+  { en: "HASH", bn: "হ্যাশ" },
+  { en: "LLM", bn: "পুনর্লিখন" },
+  { en: "GIT", bn: "সংরক্ষণ" },
+  { en: "DEPLOY", bn: "প্রকাশ" },
+];
+
+/**
+ * Which stations have already produced something, derived only from counters we
+ * actually have. Nothing here is a timer pretending to be activity:
+ *
+ *   01 FEED   — posts were seen this window      (collected > 0)
+ *   02 SHOT   — a scan implies the capture step  (collected > 0)
+ *   03 HASH   — dedupe ran                       (collected > 0)
+ *   04 LLM    — a draft was rewritten            (published + dups > 0)
+ *   05 GIT    — a post was stored/published      (published > 0)
+ *   06 DEPLOY — the last run finished            (published > 0 && lastRunIso)
+ *
+ * The cursor sits on the first station that has not produced anything, so it
+ * reads as "where the pipeline is" instead of a looping animation.
+ */
+export function sceneStages(stats: HeroSceneStats): { done: boolean[]; active: number } {
+  const done = [
+    stats.collected > 0,
+    stats.collected > 0,
+    stats.collected > 0,
+    stats.published + stats.dups > 0,
+    stats.published > 0,
+    stats.published > 0 && Boolean(stats.lastRunIso),
+  ];
+  const firstOpen = done.findIndex((d) => !d);
+  return { done, active: firstOpen === -1 ? done.length - 1 : firstOpen };
+}
+
+function SceneStages({ stats }: { stats: HeroSceneStats }) {
+  const { done, active } = sceneStages(stats);
+  const running = Boolean(stats.lastRunIso) && done.some(Boolean) && done.some((d) => !d);
+  return (
+    <ol className={`hf-stages${running ? " is-running" : ""}`} aria-label="পাইপলাইনের ধাপ">
+      {STAGES.map((st, i) => (
+        <li
+          key={st.en}
+          className={`hf-stage${done[i] ? " is-done" : ""}${i === active ? " is-active" : ""}`}
+        >
+          <span className="hf-stage-n">{bn(String(i + 1).padStart(2, "0"))}</span>
+          <span className="hf-stage-en">{st.en}</span>
+          <span className="hf-stage-bn">{st.bn}</span>
+          {i < STAGES.length - 1 && <i className="hf-stage-arrow" aria-hidden />}
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -167,10 +231,19 @@ function SourceThumb({ feature, platform }: { feature?: HeroSceneFeature | null;
 
 /* ---------------------------------------------------------------- scenes */
 
-/** 01 · angled rail — three tilted cards on a dashed rail. */
+/**
+ * 01 · rail — the signature composition.
+ *
+ * Mirrors the editorial "process" illustration: a tilted source card feeds a
+ * dashed connector into a verification stamp, and the published story card
+ * overlaps the source. Every element is data: the real platform, the real
+ * counters, the real headline and photo. The three stations light in sequence —
+ * collect, verify, publish — exactly the order the runner uses.
+ */
 function RailScene({ stats, feature }: HeroSceneProps & { feature?: HeroSceneFeature | null }) {
   const phase = usePhase(3);
   const platform = scenePlatform(feature?.sourceUrl ?? "", feature?.sourceName ?? "");
+  const dedupePct = stats.collected > 0 ? Math.round((stats.dups / stats.collected) * 100) : 0;
   return (
     <>
       <SceneHead stats={stats} />
@@ -178,36 +251,56 @@ function RailScene({ stats, feature }: HeroSceneProps & { feature?: HeroSceneFea
         <svg className="hf-rail-line" viewBox="0 0 10 100" preserveAspectRatio="none" aria-hidden>
           <line x1="5" y1="0" x2="5" y2="100" />
         </svg>
-        <div className={`hf-card hf-card--l ${phase === 0 ? "is-hot" : ""}`}>
+
+        <div className={`hf-card hf-card--l hf-in${phase === 0 ? " is-hot" : ""}`}>
           <div className="hf-card-top">
             <span className="hf-glyph" style={{ background: platform.tone }}>
               {platform.glyph}
             </span>
-            <span className="hf-mini">{platform.labelBn}</span>
-            <span className="hf-chip">১৪:০২</span>
+            <span className="hf-mini">{platform.labelBn} · সোর্স</span>
+            <span className="hf-chip">FEED IN</span>
           </div>
+          <p className="hf-rail-excerpt">
+            {feature?.summary ?? "সংগ্রাহক পাবলিক পোস্ট থেকে বিষয়বস্তু তুলে আনছে…"}
+          </p>
+          <div className="hf-rail-rule" />
+          <p className="hf-mini">{bn(stats.collected)}টি পোস্ট এই উইন্ডোতে</p>
+        </div>
+
+        <div className="hf-rail-mid">
+          <span className={`hf-stamp${phase === 1 ? " is-hot" : ""}`}>
+            <span className="hf-stamp-shield">✓</span>
+            <span>
+              <b>HASH VERIFIED</b>
+              <em>
+                {bn(dedupePct)}% ডুপ্লিকেট বাদ · {bn(stats.dups)}টি
+              </em>
+            </span>
+          </span>
+          <svg className="hf-connector" viewBox="0 0 120 24" aria-hidden>
+            <path d="M2 20 C 34 20, 44 4, 74 4 H 112" className="hf-connector-path" />
+            <circle cx="74" cy="4" r="2.6" className="hf-connector-node" />
+          </svg>
+        </div>
+
+        <div className={`hf-card hf-card--r hf-out${phase === 2 ? " is-hot" : ""}`}>
           <SourceThumb feature={feature} platform={platform} />
-          <SkeletonLines n={2} />
-        </div>
-        <div className={`hf-card hf-card--r hf-gate ${phase === 1 ? "is-hot" : ""}`}>
-          <div className="hf-card-top">
-            <span className="hf-mini">ডুপ্লিকেট যাচাই</span>
-            <span className="hf-chip hf-chip--ok">✓ নতুন</span>
-          </div>
-          <div className="hf-gate-body">
-            <i className="hf-scan" aria-hidden />
-            <p className="hf-gate-label">SIMHASH · {bn(Math.max(0, Math.min(99, Math.round((stats.dups / Math.max(1, stats.collected)) * 100))))}%</p>
-          </div>
-        </div>
-        <div className={`hf-card hf-card--l hf-pub ${phase === 2 ? "is-hot" : ""}`}>
-          <div className="hf-card-top">
-            <span className="hf-mini hf-mini--brand">হৈচৈ</span>
-            <span className="hf-chip">{feature?.category ? bn(feature.category.length) : "—"}</span>
+          <div className="hf-card-top hf-card-top--tight">
+            <i className="hf-live-dot" aria-hidden />
+            <span className="hf-mini">প্রকাশের জন্য প্রস্তুত</span>
+            <span className="hf-chip hf-chip--ok">✓ প্রস্তুত</span>
           </div>
           <p className="hf-pub-title">{feature?.title ?? "প্রকাশের অপেক্ষায়…"}</p>
-          <SkeletonLines n={1} />
+          <div className="hf-rail-rule" />
+          <div className="hf-rail-foot">
+            <span className="hf-mini">
+              STORY_00{bn(Math.min(9, Math.max(1, stats.published)))} · EDITORIAL
+            </span>
+            <span className="hf-rail-cat">{feature?.category ?? "—"}</span>
+          </div>
         </div>
       </div>
+      <SceneStages stats={stats} />
       <SceneFoot stats={stats} />
     </>
   );
@@ -245,6 +338,7 @@ function OrbitScene({ stats, feature }: HeroSceneProps) {
         ))}
       </div>
       <p className="hf-caption">{feature?.title ?? "নতুন গল্প খোঁজা হচ্ছে…"}</p>
+      <SceneStages stats={stats} />
       <SceneFoot stats={stats} />
     </>
   );
@@ -275,6 +369,7 @@ function StackScene({ stats, feature }: HeroSceneProps) {
           )}
         </div>
       </div>
+      <SceneStages stats={stats} />
       <SceneFoot stats={stats} />
     </>
   );
@@ -307,6 +402,7 @@ function TimelineScene({ stats, feature }: HeroSceneProps) {
           </li>
         ))}
       </ol>
+      <SceneStages stats={stats} />
       <SceneFoot stats={stats} />
     </>
   );
@@ -330,6 +426,7 @@ function ConveyorScene({ stats }: HeroSceneProps) {
         </div>
         <div className="hf-belt-teeth" aria-hidden />
       </div>
+      <SceneStages stats={stats} />
       <SceneFoot stats={stats} />
     </>
   );
@@ -367,6 +464,7 @@ function RadarScene({ stats }: HeroSceneProps) {
           {bn(stats.collected)} · স্ক্যান
         </span>
       </div>
+      <SceneStages stats={stats} />
       <SceneFoot stats={stats} />
     </>
   );
@@ -393,6 +491,7 @@ function MosaicScene({ stats, feature }: HeroSceneProps) {
           </div>
         ))}
       </div>
+      <SceneStages stats={stats} />
       <SceneFoot stats={stats} />
     </>
   );
@@ -420,6 +519,7 @@ function GlassScene({ stats, feature }: HeroSceneProps) {
           <SkeletonLines n={1} />
         </div>
       </div>
+      <SceneStages stats={stats} />
       <SceneFoot stats={stats} />
     </>
   );
@@ -447,6 +547,7 @@ function TerminalScene({ stats, feature }: HeroSceneProps) {
         ))}
         <span className="hf-term-caret" aria-hidden />
       </div>
+      <SceneStages stats={stats} />
       <SceneFoot stats={stats} />
     </>
   );
@@ -474,6 +575,8 @@ function DeckScene({ stats, feature }: HeroSceneProps) {
           </div>
         ))}
       </div>
+      <SceneStages stats={stats} />
+      <SceneFoot stats={stats} />
     </>
   );
 }
@@ -501,6 +604,7 @@ function IsometricScene({ stats, feature }: HeroSceneProps) {
           <img src={feature.image} alt="" className="hf-iso-img" loading="lazy" />
         ) : null}
       </div>
+      <SceneStages stats={stats} />
       <SceneFoot stats={stats} />
     </>
   );
@@ -533,6 +637,7 @@ function BlueprintScene({ stats, feature }: HeroSceneProps) {
         </p>
       </div>
       <p className="hf-caption">{feature?.title ?? "নতুন গল্প খোঁজা হচ্ছে…"}</p>
+      <SceneStages stats={stats} />
       <SceneFoot stats={stats} />
     </>
   );
@@ -571,8 +676,16 @@ export function HeroScene({ style, stats, feature, preview }: HeroSceneProps) {
       style={sceneStyle}
       data-scene={key}
     >
+      {/* Obsidian chrome: amber-free, single specular sweep, hairline ticks in
+          the corners. Purely decorative, so it is aria-hidden and switches off
+          under prefers-reduced-motion. */}
       <div className="hf-glow" aria-hidden />
       <div className="hf-grid" aria-hidden />
+      <div className="hf-sheen" aria-hidden />
+      <i className="hf-tick hf-tick--tl" aria-hidden />
+      <i className="hf-tick hf-tick--tr" aria-hidden />
+      <i className="hf-tick hf-tick--bl" aria-hidden />
+      <i className="hf-tick hf-tick--br" aria-hidden />
       <div className="hf-body">
         <Render style={key} stats={stats} feature={feature} preview={preview} />
       </div>

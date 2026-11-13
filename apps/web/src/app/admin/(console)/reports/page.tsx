@@ -2,7 +2,8 @@ import { mapReport, pageRows } from "@hoichoi/db";
 import type { ReaderReportWithPost } from "@hoichoi/shared-types";
 import { Paginator } from "@/components/admin/Paginator";
 import { ReportRow } from "@/components/admin/ReportRow";
-import { ViewToggle, viewFromSearch } from "@/components/admin/ui/ViewToggle";
+import { ViewToggle } from "@/components/admin/ui/ViewToggle";
+import { viewFromSearch } from "@/lib/view";
 
 export const dynamic = "force-dynamic";
 

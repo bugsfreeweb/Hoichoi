@@ -377,6 +377,47 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 > before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
 > (latest e.g. `012_post_images.sql`).
 
+## Obsidian hero scene + queue fixes (v1.1.26)
+
+**The hero panel is now an instrument, not a decoration.** It follows the
+newsroom's own process illustration: a header (`FROM NOISE TO NEWS.`), a tilted
+source card fed by a dashed connector into a `HASH VERIFIED` stamp, and the
+published story card overlapping it — then a six-station strip
+(`FEED · SHOT · HASH · LLM · GIT · DEPLOY`) along the bottom, which every one of
+the twelve templates now shares.
+
+**Stage state is derived, never invented.** `sceneStages()` marks a station as
+done only from counters we actually have (`collected > 0` ⇒ feed/shot/hash,
+`published + dups > 0` ⇒ llm, `published > 0` ⇒ git, `published > 0 &&
+lastRunIso` ⇒ deploy), and the cursor sits on the first station that has not
+produced anything. The pulse only runs while some stations are done and others
+are not — an idle console stays still.
+
+**Readability was a bug, not a taste question.** The panel is deliberately
+obsidian in *both* themes, but the light-theme block used to remap `--hf-fg`
+to dark ink while leaving the dark background — dark-on-dark. It now changes
+only the outer edge. Muted tokens were raised to 0.88/0.70 alpha (above 4.5:1
+against `#0b0e13`), the grain overlay was moved *under* the content, and the
+templates were re-shot at 1440px in both themes until the labels measured
+legible.
+
+**Observability of the material.** Cards are glass (hairline border + inner
+highlight + deep offset shadow), the panel gets one slow specular sweep
+(`.hf-sheen`) and hairline corner ticks; all of it is transform/opacity and
+switches off under `prefers-reduced-motion`.
+
+**Admin queues actually opened.** `viewFromSearch()` lived in
+`ViewToggle.tsx`, a `"use client"` module, and the queue pages called it from a
+server component — Next throws *"Attempted to call … from the server but … is on
+the client"*, which took down posts, moderation, removals and reports. The
+parser now lives in `lib/view.ts` (server-safe), the toggle imports it, and all
+five queues were verified with a real session (200, both views, plus the post
+editor).
+
+**Template picker tiles.** Previews have a shared 4:3 shape and a compressed
+variant of each template, so no tile clips its own artwork and the twelve read
+as one set.
+
 ## Pictures, provenance and card/list queues (v1.1.25)
 
 **The desktop can finally show post images.** A Tauri window has no web server

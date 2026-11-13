@@ -330,8 +330,10 @@ html[data-theme="light"] .hoichoi-dash [fill="#79839a"] { fill: #475569; }
   --hf-bg: #14181f;
   --hf-bg2: #0e1218;
   --hf-fg: #eef0f2;
-  --hf-fg-soft: rgba(238, 240, 242, 0.6);
-  --hf-fg-dim: rgba(238, 240, 242, 0.38);
+  /* Readability first: measured against #0b0e13 these two sit above 4.5:1 and
+     3:1 respectively, so muted text is quiet but never hidden. */
+  --hf-fg-soft: rgba(240, 243, 246, 0.88);
+  --hf-fg-dim: rgba(240, 243, 246, 0.7);
   --hf-line: rgba(238, 240, 242, 0.12);
   --hf-line-strong: rgba(238, 240, 242, 0.24);
   --hf-card: rgba(255, 255, 255, 0.05);
@@ -365,7 +367,7 @@ html[data-theme="light"] .hoichoi-dash [fill="#79839a"] { fill: #475569; }
   background-size: 26px 26px;
   mask-image: radial-gradient(120% 100% at 50% 40%, #000 30%, transparent 88%);
 }
-.hf-body { position: relative; display: flex; flex-direction: column; height: 100%; padding: 14px; gap: 12px; }
+.hf-body { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100%; padding: 14px; gap: 12px; }
 .hf-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .hf-kicker { font-family: "JetBrains Mono", monospace; font-size: 9px; letter-spacing: .22em; text-transform: uppercase; color: var(--hf-fg-dim); }
 .hf-title { margin-top: 3px; font-weight: 800; color: var(--hf-fg); font-size: 15px; }
@@ -377,7 +379,7 @@ html[data-theme="light"] .hoichoi-dash [fill="#79839a"] { fill: #475569; }
 .hf-badge--live { border-color: color-mix(in srgb, var(--hf-ok) 55%, transparent); background: color-mix(in srgb, var(--hf-ok) 12%, transparent); color: var(--hf-ok); }
 .hf-dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; animation: hfBlink 1.9s ease-in-out infinite; }
 @keyframes hfBlink { 0%,100% { opacity: 1; } 50% { opacity: .22; } }
-.hf-foot { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: auto; font-size: 10px; color: var(--hf-fg-soft); }
+.hf-foot { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; font-size: 10px; color: var(--hf-fg-soft); }
 .hf-foot span { display: inline-flex; gap: 6px; align-items: center; }
 .hf-foot b { font-family: "JetBrains Mono", monospace; color: var(--hf-fg); }
 .hf-foot em { font-style: normal; color: var(--hf-fg-dim); }
@@ -541,29 +543,365 @@ html[data-theme="light"] .hoichoi-dash [fill="#79839a"] { fill: #475569; }
 .hf-bp-count { position: absolute; bottom: 6%; left: 0; right: 0; text-align: center; font-family: "JetBrains Mono", monospace; font-size: 10px; color: var(--hf-ok); }
 
 /* preview inside the admin picker: keep proportions by scaling the whole panel */
-.hf-scene--preview { border-radius: 10px; pointer-events: none; }
+.hf-scene--preview {
+  border-radius: 10px;
+  pointer-events: none;
+  /* One shared shape for every template, so the picker grid reads as a set of
+     equal swatches instead of twelve rectangles of random height. */
+  aspect-ratio: 4 / 3;
+}
 .hf-scene--preview .hf-glow { animation: none; }
 
-/* light theme: swap the palette, keep contrast. The rest of the cascade is
-   untouched because the vars live on .hf-scene, not on .bg-band/.panel. */
+/* Light theme: the panel is deliberately OBSIDIAN in both themes — it is an
+   instrument readout, not page content. Earlier this block flipped the palette
+   to dark ink on a light background, which produced dark-on-dark type when only
+   *some* of the vars were remapped. It now changes nothing but the outer edge so
+   the dark panel sits on a light page without a hard black frame. */
 [data-theme="light"] .hf-scene,
 [data-preview-theme="light"] .hf-scene {
-  --hf-bg: #fbf7ec;
-  --hf-bg2: #f1ead8;
-  --hf-fg: #201a10;
-  --hf-fg-soft: rgba(32, 26, 16, 0.66);
-  --hf-fg-dim: rgba(32, 26, 16, 0.42);
-  --hf-line: rgba(32, 26, 16, 0.12);
-  --hf-line-strong: rgba(32, 26, 16, 0.24);
-  --hf-card: rgba(255, 255, 255, 0.55);
-  --hf-accent: #0b7c8c;
-  --hf-ok: #4a7009;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 24px 56px -34px rgba(60,40,10,.45);
-  border-color: rgba(32, 26, 16, 0.2);
+  border-color: rgba(10, 12, 16, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 26px 60px -38px rgba(10, 12, 16, 0.5);
 }
 @media (prefers-reduced-motion: reduce) {
   .hf-scene .hf-glow, .hf-scene .hf-scan, .hf-scene .hf-orbit-rotor, .hf-scene .hf-radar-sweep,
   .hf-scene .hf-packet, .hf-scene .hf-belt-teeth, .hf-scene .hf-dot, .hf-scene .hf-radar-blip,
   .hf-scene .hf-bp-arrow, .hf-scene .hf-bp-node, .hf-scene .hf-term-caret { animation: none !important; }
   .hf-scene .hf-card, .hf-scene .hf-stack-card, .hf-scene .hf-deck-card, .hf-scene .hf-plate { transition: none; }
+}
+
+/* ============================================================ hero scene · v2
+   Obsidian upgrade.
+
+   The panel now follows the newsroom's process illustration (source card →
+   verification stamp → published card, then a six-station pipeline). This block
+   adds the material: a near-black glass surface with one specular sweep, hairline
+   corner ticks, and per-stage state. Motion stays transform/opacity only and is
+   disabled under prefers-reduced-motion.
+   ============================================================================ */
+
+/* --- material ------------------------------------------------------------- */
+.hf-scene {
+  --hf-ink: #070a0e;
+  --hf-ink-2: #0d1117;
+  --hf-glass: rgba(255, 255, 255, 0.045);
+  --hf-glass-2: rgba(255, 255, 255, 0.075);
+  --hf-hair: rgba(255, 255, 255, 0.07);
+  border-radius: 18px;
+  border-color: rgba(255, 255, 255, 0.09);
+  background:
+    radial-gradient(120% 80% at 12% -10%, color-mix(in srgb, var(--hf-accent) 18%, transparent), transparent 58%),
+    radial-gradient(90% 70% at 100% 108%, color-mix(in srgb, var(--hf-ok) 12%, transparent), transparent 56%),
+    linear-gradient(168deg, var(--hf-ink-2), var(--hf-ink) 62%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 30px 70px -40px rgba(0, 0, 0, 0.9);
+}
+.hf-scene::after {
+  /* Fine grain: keeps large dark areas from looking like flat plastic. Kept
+     UNDER the content (z-index 0 vs .hf-body 1) so it never veils small type. */
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.07;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.55) 0.5px, transparent 0.6px);
+  background-size: 3px 3px;
+  mask-image: radial-gradient(120% 100% at 50% 0%, #000 20%, transparent 85%);
+}
+.hf-sheen {
+  position: absolute;
+  inset: -40% -60%;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 38%,
+    color-mix(in srgb, var(--hf-accent) 10%, transparent) 46%,
+    rgba(255, 255, 255, 0.07) 50%,
+    color-mix(in srgb, var(--hf-accent) 8%, transparent) 54%,
+    transparent 62%
+  );
+  transform: translate3d(-30%, 0, 0) rotate(2deg);
+  animation: hfSheen 14s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes hfSheen {
+  0%, 62% { transform: translate3d(-55%, 0, 0) rotate(2deg); }
+  100% { transform: translate3d(55%, 0, 0) rotate(2deg); }
+}
+.hf-tick {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  pointer-events: none;
+  border-color: rgba(255, 255, 255, 0.22);
+  border-style: solid;
+  border-width: 0;
+}
+.hf-tick--tl { top: 9px; left: 9px; border-top-width: 1px; border-left-width: 1px; }
+.hf-tick--tr { top: 9px; right: 9px; border-top-width: 1px; border-right-width: 1px; }
+.hf-tick--bl { bottom: 9px; left: 9px; border-bottom-width: 1px; border-left-width: 1px; }
+.hf-tick--br { bottom: 9px; right: 9px; border-bottom-width: 1px; border-right-width: 1px; }
+
+.hf-head { padding-bottom: 8px; border-bottom: 1px solid var(--hf-hair); }
+.hf-sub { margin-top: 2px; font-size: 11px; font-weight: 600; color: var(--hf-fg-soft); }
+
+/* Glass cards: hairline, inner highlight, deep offset shadow (no flat grey). */
+.hf-card {
+  background:
+    linear-gradient(180deg, var(--hf-glass-2), var(--hf-glass)),
+    color-mix(in srgb, var(--hf-ink) 55%, transparent);
+  border-color: var(--hf-hair);
+  backdrop-filter: blur(6px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 34px -24px rgba(0, 0, 0, 0.95);
+}
+.is-hot {
+  border-color: color-mix(in srgb, var(--hf-ok) 55%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 0 1px color-mix(in srgb, var(--hf-ok) 22%, transparent),
+    0 22px 44px -26px rgba(0, 0, 0, 1);
+}
+
+/* --- signature rail ------------------------------------------------------- */
+.hf-rail { gap: 10px; }
+.hf-in { border-color: rgba(255, 255, 255, 0.1); }
+.hf-rail-excerpt {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--hf-fg-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.hf-rail-rule { height: 1px; margin: 7px 0 6px; background: var(--hf-hair); }
+.hf-out .hf-thumb {
+  height: 96px;
+  object-fit: cover;
+  /* Faces sit low in most source photos; anchoring the window near the bottom
+     keeps them in frame instead of cropping foreheads/chins. */
+  object-position: center 50%;
+}
+.hf-out { padding: 10px; }
+.hf-out .hf-pub-title { padding-right: 6px; }
+.hf-rail-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.hf-rail-cat {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hf-fg-dim);
+}
+.hf-card-top--tight { margin: 7px 0 5px; }
+.hf-live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--hf-ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hf-ok) 18%, transparent);
+  flex: none;
+}
+
+.hf-rail-mid {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 28px;
+  min-height: 34px;
+}
+.hf-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px 6px 7px;
+  border: 1px dashed color-mix(in srgb, var(--hf-ok) 45%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--hf-ok) 8%, transparent);
+  transform: rotate(-1.6deg);
+  transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1), border-color 400ms ease;
+}
+.hf-stamp.is-hot { transform: rotate(0deg) scale(1.03); border-color: color-mix(in srgb, var(--hf-ok) 75%, transparent); }
+.hf-stamp-shield {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--hf-ok) 22%, transparent);
+  color: var(--hf-ok);
+  font-size: 9px;
+  font-weight: 800;
+  flex: none;
+}
+.hf-stamp b {
+  display: block;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  color: var(--hf-ok);
+}
+.hf-stamp em {
+  display: block;
+  font-style: normal;
+  font-size: 9px;
+  color: var(--hf-fg-dim);
+}
+.hf-connector { flex: 1; height: 22px; min-width: 40px; }
+.hf-connector-path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--hf-ok) 40%, transparent);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 4;
+  stroke-linecap: round;
+}
+.hf-connector-node { fill: color-mix(in srgb, var(--hf-ok) 70%, transparent); }
+
+/* --- six-station pipeline ------------------------------------------------- */
+.hf-stages {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-top: auto;
+  padding: 8px 0 6px;
+  border-top: 1px solid var(--hf-hair);
+  list-style: none;
+}
+.hf-stage {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-right: 12px;
+  opacity: 0.7;
+  transition: opacity 400ms ease;
+}
+.hf-stage.is-done { opacity: 0.92; }
+.hf-stage.is-active { opacity: 1; }
+.hf-stage-n {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: var(--hf-fg-dim);
+}
+.hf-stage-en {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--hf-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hf-stage-bn {
+  font-size: 9px;
+  color: var(--hf-fg-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hf-stage.is-done .hf-stage-n { color: color-mix(in srgb, var(--hf-ok) 70%, var(--hf-fg-dim)); }
+.hf-stage.is-done .hf-stage-en { color: var(--hf-fg); }
+.hf-stage.is-active .hf-stage-n,
+.hf-stage.is-active .hf-stage-en { color: var(--hf-ok); }
+.hf-stage.is-active .hf-stage-bn { color: color-mix(in srgb, var(--hf-ok) 70%, var(--hf-fg-dim)); }
+.hf-stage.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  width: 60%;
+  height: 1.5px;
+  background: linear-gradient(90deg, var(--hf-ok), transparent);
+  border-radius: 999px;
+}
+.hf-stage-arrow {
+  position: absolute;
+  top: 7px;
+  right: 3px;
+  width: 5px;
+  height: 5px;
+  border-top: 1px solid var(--hf-fg-dim);
+  border-right: 1px solid var(--hf-fg-dim);
+  transform: rotate(45deg);
+  opacity: 0.7;
+}
+/* A single travelling pip: only while the pipeline has work in flight. */
+.hf-stages.is-running .hf-stage.is-active .hf-stage-n { animation: hfStagePulse 2.4s ease-in-out infinite; }
+@keyframes hfStagePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* Compact preview grid: the same markup at a smaller scale, not a crop. The
+   panel now carries a six-station strip, so the tile trims what repeats (the
+   counter footer) instead of letting the bottom of a template fall off. */
+.hf-scene--preview::after { display: none; }
+.hf-scene--preview .hf-sheen { animation: none; opacity: 0.35; }
+.hf-scene--preview .hf-stage-bn { display: none; }
+.hf-scene--preview .hf-foot { display: none; }
+.hf-scene--preview .hf-body { padding: 10px; gap: 8px; }
+.hf-scene--preview .hf-sub { display: none; }
+.hf-scene--preview .hf-head { padding-bottom: 5px; }
+.hf-scene--preview .hf-thumb { height: 34px; }
+.hf-scene--preview .hf-out .hf-thumb { height: 56px; }
+.hf-scene--preview .hf-out { padding: 7px; }
+.hf-scene--preview .hf-rail-excerpt { -webkit-line-clamp: 2; font-size: 10px; }
+.hf-scene--preview .hf-rail { gap: 6px; }
+.hf-scene--preview .hf-rail-mid { min-height: 22px; padding-left: 18px; }
+.hf-scene--preview .hf-stamp { padding: 3px 6px 3px 4px; }
+.hf-scene--preview .hf-stamp em { display: none; }
+.hf-scene--preview .hf-pub-title { font-size: 10.5px; -webkit-line-clamp: 2; }
+.hf-scene--preview .hf-stages { padding: 5px 0 3px; }
+.hf-scene--preview .hf-stage-en { font-size: 7.5px; letter-spacing: 0.04em; }
+.hf-scene--preview .hf-stage-n { font-size: 7px; }
+/* Glass: the three panes are offset in depth, which pushed the third one past
+   the tile edge. Tighter gaps/offsets keep the whole stack inside the preview. */
+.hf-scene--preview .hf-glass { gap: 5px; padding-top: 0; }
+.hf-scene--preview .hf-pane { padding: 6px; border-radius: 9px; }
+.hf-scene--preview .hf-pane--2 { transform: translateY(-2px); }
+.hf-scene--preview .hf-pane--3 { transform: translateY(-4px); }
+.hf-scene--preview .hf-pane-big { font-size: 14px; }
+.hf-scene--preview .hf-bp-svg { max-height: 58px; }
+.hf-scene--preview .hf-bp-count { font-size: 10px; }
+/* Circular scenes are sized off the tile height; without a cap the ring ran
+   past the bottom edge of the swatch. */
+.hf-scene--preview .hf-orbit { min-height: 0; height: 132px; flex: none; }
+.hf-scene--preview .hf-orbit-svg { inset: 0; width: 100%; height: 100%; }
+.hf-scene--preview .hf-radar { min-height: 0; }
+.hf-scene--preview .hf-radar-svg { max-height: 118px; }
+.hf-scene--preview .hf-stack { min-height: 150px; }
+.hf-scene--preview .hf-stack-card {
+  padding: 7px;
+  /* The stack reads as cards only if the fill is visible; at preview scale the
+     default 4.5% white disappeared into the grid. */
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  min-height: 34px;
+}
+
+/* Light theme: obsidian panel stays obsidian (that is the design), but the
+   page around it is light, so the outer shadow and border soften. */
+[data-theme="light"] .hf-scene,
+[data-preview-theme="light"] .hf-scene {
+  border-color: rgba(10, 12, 16, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 26px 60px -38px rgba(10, 12, 16, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hf-sheen,
+  .hf-stages.is-running .hf-stage.is-active .hf-stage-n { animation: none !important; }
+  .hf-stamp,
+  .hf-card { transition: none; }
 }

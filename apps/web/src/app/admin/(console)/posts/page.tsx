@@ -1,5 +1,6 @@
 import { PageHeading as AdminPageHeading } from "@/components/admin/ui/PageHeader";
-import { ViewToggle, viewFromSearch } from "@/components/admin/ui/ViewToggle";
+import { ViewToggle } from "@/components/admin/ui/ViewToggle";
+import { viewFromSearch } from "@/lib/view";
 import Link from "next/link";
 import { mapPost, pageRows } from "@hoichoi/db";
 import type { Post, PostStatus } from "@hoichoi/shared-types";

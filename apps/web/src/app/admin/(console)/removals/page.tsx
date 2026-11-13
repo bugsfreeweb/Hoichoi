@@ -2,7 +2,8 @@ import { PageHeading } from "@/components/admin/ui/PageHeader";
 import { getPostById, mapRemovalRequest, pageRows } from "@hoichoi/db";
 import { RemovalRow, type RemovalPostRef } from "@/components/admin/RemovalRow";
 import { Paginator } from "@/components/admin/Paginator";
-import { ViewToggle, viewFromSearch } from "@/components/admin/ui/ViewToggle";
+import { ViewToggle } from "@/components/admin/ui/ViewToggle";
+import { viewFromSearch } from "@/lib/view";
 import { mediaUrl } from "@/lib/media";
 import type { MediaKind } from "@hoichoi/shared-types";
 
