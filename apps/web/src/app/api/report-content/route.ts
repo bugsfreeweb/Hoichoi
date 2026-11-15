@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient, getPostBySlug, nowIso } from "@hoichoi/db";
+import { limitRequest, LIMITS } from "@/lib/rate-limit";
 
 /** পাবলিক কনটেন্ট রিপোর্ট → removal_requests কিউ। */
 export async function POST(req: NextRequest) {
+  const limited = await limitRequest(req, LIMITS.report);
+  if (limited) return limited;
   const body = (await req.json().catch(() => null)) as {
     slug?: string;
     reason?: string;

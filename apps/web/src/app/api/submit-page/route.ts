@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient, nowIso } from "@hoichoi/db";
 import type { CategorySlug } from "@hoichoi/shared-types";
+import { limitRequest, LIMITS } from "@/lib/rate-limit";
 
 const PROFILE_RE =
   /\/profile\.php|\/photo\.php|personal\.[a-z]+\.com|ref=bookmarks$/i;
 
 export async function POST(req: NextRequest) {
+  const limited = await limitRequest(req, LIMITS.submission);
+  if (limited) return limited;
   const body = (await req.json().catch(() => null)) as {
     pageUrl?: string;
     pageName?: string;

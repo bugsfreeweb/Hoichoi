@@ -9,6 +9,7 @@ export * from "./media";
 export * from "./media-storage";
 export * from "./transfer";
 export * from "./admin-auth";
+export * from "./rate-limit";
 export * from "./source-errors";
 export * from "./media-objects";
 export * from "./post-images";

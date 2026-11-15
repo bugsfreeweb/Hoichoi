@@ -11,6 +11,7 @@ import {
 } from "@hoichoi/db";
 import { requireApiRole } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
+import { limitRequest, LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,8 @@ export async function GET(req: NextRequest) {
  * `website` is a honeypot: any value means an automated bot → silently dropped.
  */
 export async function POST(req: Request) {
+  const limited = await limitRequest(req, LIMITS.comment);
+  if (limited) return limited;
   let payload: unknown;
   try {
     payload = await req.json();

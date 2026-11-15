@@ -1,10 +1,13 @@
 import { recordAdDeliveryEvent } from "@hoichoi/db";
 import { NextRequest, NextResponse } from "next/server";
+import { limitRequest, LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
+  const limited = await limitRequest(request, LIMITS.adEvent);
+  if (limited) return limited;
   if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
     return NextResponse.json({ error: "JSON content type is required." }, { status: 415 });
   }

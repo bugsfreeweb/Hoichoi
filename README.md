@@ -685,6 +685,28 @@ Two rules keep that model safe, and both are regression-tested in
 Set `ADMIN_ALLOWED_EMAILS` in every environment, including production. With the
 allow-list empty, only accounts that already exist in `admin_users` can sign in.
 
+### Abuse limits
+
+Public write endpoints are throttled by a shared counter table
+(`025_rate_limits.sql`, `packages/db/src/rate-limit.ts`, `apps/web/src/lib/rate-limit.ts`):
+
+| Endpoint | Budget |
+| --- | --- |
+| `POST /api/auth/login` | 10 / 10 min per address, **and** 5 / 10 min per email |
+| `POST /api/comments` | 8 / 10 min |
+| `POST /api/report-content` | 5 / hour |
+| `POST /api/submit-page` | 3 / hour |
+| `POST /api/polls/[id]` (vote) | 12 / min |
+| `POST /api/track` | 120 / min |
+| `POST /api/platform-ads/event` | 120 / min |
+
+Exceeding a budget returns `429` with `retry-after` and a bilingual message. The
+window is fixed, the increment and the read are one SQL statement
+(`ON CONFLICT … RETURNING count`) so concurrent lambdas cannot lose a hit, and
+bucket keys are hashed — the table never stores a raw IP or email. The limiter
+fails **open** on a database error: a broken counter must not take the site down,
+and every guarded endpoint still validates input.
+
 ### Session lifetime and devices
 
 A session is **not** permanent. It dies 30 days after it was created, whatever

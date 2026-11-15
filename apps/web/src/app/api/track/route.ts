@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordAdEvent, recordPageView, postIdForSlug } from "@hoichoi/db";
+import { limitRequest, LIMITS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +30,8 @@ function clientIp(req: NextRequest): string {
 }
 
 export async function POST(req: NextRequest) {
+  const limited = await limitRequest(req, LIMITS.track);
+  if (limited) return limited;
   try {
     const ua = req.headers.get("user-agent") ?? "";
     if (/bot|crawl|spider|preview|headless/i.test(ua)) {

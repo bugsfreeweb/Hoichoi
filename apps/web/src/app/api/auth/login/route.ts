@@ -3,6 +3,7 @@ import { getClient, consumeAdminLoginCode, logAdminLogin } from "@hoichoi/db";
 import { createSession, getUserByEmail } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 import { randomBytes, randomUUID } from "node:crypto";
+import { limitRequest, LIMITS } from "@/lib/rate-limit";
 
 /**
  * এক-বার ব্যবহারযোগ্য কোড দিয়ে অ্যাডমিন সাইন-ইন।
@@ -34,10 +35,15 @@ async function adminCount(): Promise<number> {
 }
 
 export async function POST(req: NextRequest) {
+  const ipLimited = await limitRequest(req, LIMITS.loginIp);
+  if (ipLimited) return ipLimited;
   const body = (await req.json().catch(() => null)) as { email?: string; code?: string } | null;
   if (!body?.email || !body?.code) {
     return NextResponse.json({ error: "email and code required" }, { status: 400 });
   }
+
+  const accountLimited = await limitRequest(req, { ...LIMITS.loginAccount, discriminator: body.email });
+  if (accountLimited) return accountLimited;
   const email = body.email.trim().toLowerCase().slice(0, 254);
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? null;
   const userAgent = req.headers.get("user-agent") ?? null;

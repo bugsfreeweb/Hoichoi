@@ -2,6 +2,7 @@ import { getPoll, getPollResults, getPollVotes, pollResultsVisible, setPollVotes
 import { getSettings } from "@/lib/settings";
 import { parseAppConfig } from "@hoichoi/db";
 import { NextResponse } from "next/server";
+import { limitRequest, LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -42,6 +43,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 }
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+  const rateLimited = await limitRequest(request, LIMITS.pollVote);
+  if (rateLimited) return rateLimited;
   if (!parseAppConfig((await getSettings()).app_config_json).show_live_polls) return json({ error: "পোলটি পাওয়া যায়নি।" }, 404);
   const { id: rawId } = await context.params;
   const id = Number(rawId);

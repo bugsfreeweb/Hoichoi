@@ -202,4 +202,36 @@ check("editorial writes require at least the editor role", () => {
   }
 });
 
+/* ---------- rate limiting (C5) ---------- */
+
+check("high-abuse public endpoints are throttled", () => {
+  const expected: Record<string, string> = {
+    "auth/login/route.ts": "LIMITS.loginIp",
+    "comments/route.ts": "LIMITS.comment",
+    "report-content/route.ts": "LIMITS.report",
+    "submit-page/route.ts": "LIMITS.submission",
+    "polls/[id]/route.ts": "LIMITS.pollVote",
+    "track/route.ts": "LIMITS.track",
+    "platform-ads/event/route.ts": "LIMITS.adEvent",
+  };
+  for (const [rel, spec] of Object.entries(expected)) {
+    const src = stripComments(readFileSync(join(API, rel), "utf8"));
+    assert.ok(src.includes(spec), `${rel} must consume ${spec}`);
+    assert.ok(src.includes("limitRequest("), `${rel} must call limitRequest()`);
+  }
+});
+
+check("login is throttled per account as well as per address", () => {
+  const src = stripComments(readFileSync(join(API, "auth", "login", "route.ts"), "utf8"));
+  assert.ok(src.includes("LIMITS.loginIp"), "login must consume the per-IP budget");
+  assert.match(src, /limitRequest\(req, \{ \.\.\.LIMITS\.loginAccount, discriminator: body\.email \}\)/);
+});
+
+check("the limiter answers 429 with a retry hint", () => {
+  const src = stripComments(readFileSync(join(here, "..", "src", "lib", "rate-limit.ts"), "utf8"));
+  assert.match(src, /status: 429/);
+  assert.match(src, /"retry-after"/);
+  assert.match(src, /try \{/, "the limiter must be wrapped in try/catch so infrastructure failure cannot 500 the site");
+});
+
 console.log(`[web] auth-hardening: ${passed} checks passed`);
