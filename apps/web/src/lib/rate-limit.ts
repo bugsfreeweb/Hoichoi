@@ -81,4 +81,7 @@ export const LIMITS = {
   pollVote: { name: "poll-vote", limit: 12, windowMs: 60_000 },
   track: { name: "track", limit: 120, windowMs: 60_000 },
   adEvent: { name: "ad-event", limit: 120, windowMs: 60_000 },
+  // A page with a broken policy reports once per violation per load, so the
+  // budget has to be generous or a real problem looks like an attack.
+  cspReport: { name: "csp-report", limit: 300, windowMs: 60_000 },
 } as const satisfies Record<string, { name: string; limit: number; windowMs: number }>;

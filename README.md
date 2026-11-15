@@ -705,6 +705,30 @@ The endpoint fails **closed** (503) without `CRON_SECRET` and requires
 row's `owner_email`, falling back to `SECURITY_CONTACT_EMAIL` then the first
 `ADMIN_ALLOWED_EMAILS` entry.
 
+### Security headers
+
+`apps/web/security-headers.mjs` is the single source of the header policy, and
+`next.config.mjs` just calls it, so the policy can be unit-tested (10 checks)
+without booting Next.
+
+| Header | Value |
+| --- | --- |
+| `Strict-Transport-Security` | 2 years, `includeSubDomains; preload` — **production only** (sending it from `http://localhost` pins localhost to https for a year) |
+| `Content-Security-Policy` | report-only by default; `CSP_ENFORCE=true` promotes the identical policy to enforcing |
+| `Permissions-Policy` | camera/microphone/geolocation/payment/usb/sensors `=()` — deny, never wildcard |
+| `X-Content-Type-Options` · `X-Frame-Options` · `Referrer-Policy` | `nosniff` · `SAMEORIGIN` (the admin design studio frames the public site) · `strict-origin-when-cross-origin` |
+
+The CSP allows only what the app actually uses: `self` scripts (no `unsafe-eval`
+in production — the test fails if it appears), `https:` images and media, and
+Facebook iframes for `FbPost`. `object-src`, `base-uri` and `form-action` are
+locked to `'self'`/`'none'`.
+
+Violations post to `/api/csp-report`, which is public by necessity: it is
+rate-limited (300/min), size-capped (8 KB), refuses to throw on hostile JSON, and
+**stores nothing** — a violation contains the reader's page URL, and persisting
+that would be analytics wearing a security badge. Reports go to the platform log
+only.
+
 ### Aggregation limits (publisher gate)
 
 Summarising someone else's story is legitimate; republishing it is not. Two

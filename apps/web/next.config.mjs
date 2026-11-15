@@ -1,4 +1,10 @@
 /** @type {import('next').NextConfig} */
+import { securityHeaders } from "./security-headers.mjs";
+
+const isProd = process.env.NODE_ENV === "production";
+// Report-only until someone has watched the reports. Flip with CSP_ENFORCE=true.
+const enforceCsp = process.env.CSP_ENFORCE === "true";
+
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@hoichoi/dash", "@hoichoi/db", "@hoichoi/shared-types", "@hoichoi/llm"],
@@ -11,28 +17,12 @@ const nextConfig = {
     "/api/**": ["../../packages/db/migrations/**/*.sql"],
     "/admin/**": ["../../packages/db/migrations/**/*.sql"],
   },
-  serverExternalPackages: [
-    "@libsql/client",
-    "bcryptjs",
-    "sharp",
-  ],
+  serverExternalPackages: ["@libsql/client", "bcryptjs", "sharp"],
   async headers() {
     return [
       {
         source: "/(.*)",
-        headers: [
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          // SAMEORIGIN, not DENY: the admin's LIVE design studio previews the
-          // real public site inside a same-origin iframe. DENY blocked even that,
-          // so the studio panel stayed blank. SAMEORIGIN still refuses to be
-          // framed by any other origin, which is what clickjacking protection
-          // actually requires here.
-          { key: "X-Frame-Options", value: "SAMEORIGIN" },
-          // Belt-and-braces for browsers that ignore X-Frame-Options on this
-          // response path; keeps the framing lock to our own origin.
-          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-        ],
+        headers: securityHeaders({ production: isProd, dev: !isProd, enforce: enforceCsp }),
       },
     ];
   },
