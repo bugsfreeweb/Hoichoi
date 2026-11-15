@@ -97,7 +97,19 @@ export function isRemoteDatabaseUrl(url?: string | null): boolean {
   return /^libsql:\/\//i.test(raw) || /^https?:\/\//i.test(raw) || /^wss?:\/\//i.test(raw);
 }
 
+/**
+ * Test hook: replace the shared client with an in-memory database.
+ *
+ * Used by the suites that exercise a function whose only input is the ambient
+ * client (reconciliation, health counters). Production always resolves the URL.
+ */
+let testClient: Client | null = null;
+export function __useClientForTests(client: Client | null): void {
+  testClient = client;
+}
+
 export function getClient(): Client {
+  if (testClient) return testClient;
   const url = resolveDatabaseUrl();
   if (cached && cachedUrl === url) return cached;
   if (url.startsWith("file:")) {

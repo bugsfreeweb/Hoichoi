@@ -18,7 +18,7 @@
     "demo": "tsx scripts/demo.ts",
     "clean": "tsx scripts/clean.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx src/__tests__/db-url-mode.test.ts && tsx src/__tests__/source-merge.test.ts && tsx src/__tests__/bulk-moderate.test.ts && tsx src/__tests__/source-categories.test.ts && tsx src/__tests__/page-rows.test.ts && tsx src/__tests__/run-history.test.ts && tsx src/__tests__/media-path.test.ts && tsx src/__tests__/live-events.test.ts && tsx src/__tests__/ad-analytics.test.ts && tsx src/__tests__/migrations-sync.test.ts && tsx src/__tests__/image-providers-seed.test.ts && tsx src/__tests__/ad-slot-inventory.test.ts && tsx src/__tests__/rate-limit.test.ts && tsx src/__tests__/audit.test.ts && tsx src/__tests__/credential-expiry.test.ts && tsx src/__tests__/provider-health.test.ts && tsx src/__tests__/verification.test.ts"
+    "test": "tsx src/__tests__/db-url-mode.test.ts && tsx src/__tests__/source-merge.test.ts && tsx src/__tests__/bulk-moderate.test.ts && tsx src/__tests__/source-categories.test.ts && tsx src/__tests__/page-rows.test.ts && tsx src/__tests__/run-history.test.ts && tsx src/__tests__/media-path.test.ts && tsx src/__tests__/live-events.test.ts && tsx src/__tests__/ad-analytics.test.ts && tsx src/__tests__/migrations-sync.test.ts && tsx src/__tests__/image-providers-seed.test.ts && tsx src/__tests__/ad-slot-inventory.test.ts && tsx src/__tests__/rate-limit.test.ts && tsx src/__tests__/audit.test.ts && tsx src/__tests__/credential-expiry.test.ts && tsx src/__tests__/provider-health.test.ts && tsx src/__tests__/media-reconcile.test.ts && tsx src/__tests__/verification.test.ts"
   },
   "dependencies": {
     "@hoichoi/shared-types": "workspace:*",

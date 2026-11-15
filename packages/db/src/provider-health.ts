@@ -12,20 +12,12 @@
  * stays NULL until an operator sets it, and `used_bytes` only grows by bytes a
  * real upload reported.
  */
-import type { Client } from "@libsql/client";
 import { getClient, nowIso } from "./client";
 
 /**
- * Test hook: point every function here at an in-memory database.
- *
- * The state machine is only meaningful against real SQL (ON CONFLICT, the
- * MAX-style clamps), so the tests cannot use a stub.
+ * The shared client can be pointed at an in-memory database for the suites that
+ * exercise this module against real SQL (see `__useClientForTests` in client.ts).
  */
-let injected: Client | null = null;
-export function __useClientForTests(client: Client | null): void {
-  injected = client;
-}
-const db = (): Client => injected ?? getClient();
 
 export type ProviderKind = "github" | "s3" | "image" | "local";
 
@@ -153,7 +145,7 @@ function mapRow(row: Record<string, unknown>): ProviderHealth {
 
 /** Create the row on first sight; leave counters untouched on later calls. */
 export async function registerProvider(identity: ProviderIdentity): Promise<void> {
-  const client = db();
+  const client = getClient();
   const now = nowIso();
   await client.execute({
     sql: `INSERT INTO media_provider_health (provider_key, kind, label, created_at, updated_at)
@@ -164,7 +156,7 @@ export async function registerProvider(identity: ProviderIdentity): Promise<void
 }
 
 export async function getProviderHealth(key: string): Promise<ProviderHealth | null> {
-  const client = db();
+  const client = getClient();
   const res = await client.execute({
     sql: "SELECT * FROM media_provider_health WHERE provider_key = ?",
     args: [key],
@@ -173,7 +165,7 @@ export async function getProviderHealth(key: string): Promise<ProviderHealth | n
 }
 
 export async function listProviderHealth(kind?: ProviderKind): Promise<ProviderHealth[]> {
-  const client = db();
+  const client = getClient();
   const res = kind
     ? await client.execute({
         sql: "SELECT * FROM media_provider_health WHERE kind = ? ORDER BY provider_key",
@@ -185,7 +177,7 @@ export async function listProviderHealth(kind?: ProviderKind): Promise<ProviderH
 
 /** A real upload succeeded: clear the failure streak and the cooldown. */
 export async function recordProviderSuccess(key: string, bytes = 0): Promise<void> {
-  const client = db();
+  const client = getClient();
   const now = nowIso();
   await client.execute({
     sql: `UPDATE media_provider_health SET
@@ -204,7 +196,7 @@ export async function recordProviderSuccess(key: string, bytes = 0): Promise<voi
 
 /** A real upload failed: count it, keep the message, start a cooldown if repeated. */
 export async function recordProviderFailure(key: string, error: string): Promise<void> {
-  const client = db();
+  const client = getClient();
   const now = nowIso();
   // Read-then-write: the cooldown depends on the new streak length, and this is
   // one upload at a time per provider in practice (a run is sequential).
@@ -231,7 +223,7 @@ export async function recordProviderFailure(key: string, error: string): Promise
  * kind of wrong: it silently pushes every upload onto the backup.
  */
 export async function recordProviderRemoval(key: string, bytes = 0): Promise<void> {
-  const client = db();
+  const client = getClient();
   const size = Math.max(0, Math.trunc(bytes));
   await client.execute({
     sql: `UPDATE media_provider_health SET
@@ -245,7 +237,7 @@ export async function recordProviderRemoval(key: string, bytes = 0): Promise<voi
 
 /** Note why the uploader skipped a provider (cooldown, quota, disabled, error). */
 export async function recordProviderSkip(key: string, reason: string): Promise<void> {
-  const client = db();
+  const client = getClient();
   await client.execute({
     sql: "UPDATE media_provider_health SET last_fallback_reason = ?, updated_at = ? WHERE provider_key = ?",
     args: [clampText(reason), nowIso(), key],
@@ -257,7 +249,7 @@ export async function updateProviderSettings(
   key: string,
   patch: { quota_bytes?: number | null; enabled?: boolean; clear_cooldown?: boolean },
 ): Promise<void> {
-  const client = db();
+  const client = getClient();
   const now = nowIso();
   if (patch.quota_bytes !== undefined) {
     const quota =

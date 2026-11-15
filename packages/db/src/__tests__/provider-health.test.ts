@@ -29,7 +29,7 @@ import {
   COOLDOWN_BASE_MS,
   COOLDOWN_MAX_MS,
 } from "../provider-health";
-import { __useClientForTests } from "../provider-health";
+import { __useClientForTests } from "../client";
 
 let passed = 0;
 async function check(name: string, fn: () => void | Promise<void>): Promise<void> {

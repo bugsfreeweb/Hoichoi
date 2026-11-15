@@ -705,6 +705,32 @@ The endpoint fails **closed** (503) without `CRON_SECRET` and requires
 row's `owner_email`, falling back to `SECURITY_CONTACT_EMAIL` then the first
 `ADMIN_ALLOWED_EMAILS` entry.
 
+### Media reconciliation
+
+Media drifts out of sync in ways nobody sees: a file written just before a crash
+that no post points at, a post archived while its blob stays, two registry rows
+for one object double-counting a quota, or a remote object whose post is gone so
+the retention job can never reach it.
+
+`reconcileMedia()` classifies all four in one scan (`media-reconcile.ts`):
+
+| Class | Meaning | What cleanup does |
+| --- | --- | --- |
+| `unreferenced_local` | file on disk that no post, `post_images` row or `raw_posts.screenshot_path` mentions | deleted **only** if older than the 6 h guard |
+| `missing_local` | a post points at a relative path that neither disk nor registry has | reported, never "fixed" by inventing a file |
+| `duplicate_remote_row` | two `media_objects` rows for one adapter+key | extras deleted, quota corrected |
+| `remote_row_without_post` | row whose post is gone and which no live post references | deleted, quota corrected |
+
+Two rules keep it safe: a path a post references is **never** touched, and files
+younger than 6 hours are assumed to belong to an in-flight upload. External URLs
+(Pexels, a source CDN) are not "missing local media" — only relative paths are
+compared against the tree.
+
+Admin: `/admin/backup` → **মিডিয়া মিলিয়ে দেখা**. Scan is a dry run (`GET`, changes
+nothing); cleanup is a separate `POST` (admin only, audited). 9 checks in
+`packages/db/src/__tests__/media-reconcile.test.ts` run against a real database and
+a real temp directory, because the point of the pass is that it deletes files.
+
 ### Media provider health and quotas
 
 Media uploads fail over between GitHub and S3 targets, so a dead target was

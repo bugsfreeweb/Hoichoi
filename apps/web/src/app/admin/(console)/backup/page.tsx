@@ -1,4 +1,5 @@
 import { BackupManager } from "@/components/admin/BackupManager";
+import { MediaReconcilePanel } from "@/components/admin/MediaReconcilePanel";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export default function AdminBackupPage() {
         </p>
       </header>
       <BackupManager />
+      <MediaReconcilePanel />
     </div>
   );
 }

@@ -22,6 +22,7 @@ export * from "./live-events";
 export * from "./polls";
 export * from "./ads";
 export * from "./provider-health";
+export * from "./media-reconcile";
 
 import {
   DEFAULT_APP_CONFIG,
