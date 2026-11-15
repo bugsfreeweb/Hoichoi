@@ -35,6 +35,16 @@ import { readFile, unlink, writeFile, mkdir } from "node:fs/promises";
 import * as path from "node:path";
 import { localMediaPath, mediaRoot, ensureMediaDir } from "./media";
 import { getMediaStorageConfig } from "./media-storage";
+import {
+  getProviderHealth,
+  recordProviderRemoval,
+  recordProviderFailure,
+  recordProviderSkip,
+  recordProviderSuccess,
+  registerProvider,
+  storageProviderIdentity,
+  usableNow,
+} from "./provider-health";
 import type { MediaStorageConfig } from "@hoichoi/shared-types";
 import {
   recordMediaObject,
@@ -492,6 +502,78 @@ export async function hasEnabledAdapter(): Promise<boolean> {
   return (await buildAdapters()).some((a) => a.enabled);
 }
 
+/** Registry key for a resolved adapter, shared with the health table + UI. */
+export function adapterProviderKey(a: ResolvedAdapter): string {
+  if (a.id === "github") return `github:${a.repo || "unset"}`;
+  return `s3:${a.id}:${a.bucket || "unset"}`;
+}
+
+/**
+ * Register every adapter and demote the ones that are currently unusable.
+ *
+ * A target that failed twice in a row goes into a cooldown, and a target with a
+ * quota the operator set is dropped once its measured bytes reach it. Neither is
+ * removed from the chain entirely: if *every* target is cooling down we still
+ * try them in order, because a stale cooldown must never be the reason nothing
+ * uploads. Health bookkeeping is best-effort — a broken health table cannot be
+ * allowed to break uploads.
+ */
+async function applyProviderHealth(
+  adapters: ResolvedAdapter[],
+  cfg: MediaStorageConfig,
+): Promise<ResolvedAdapter[]> {
+  if (adapters.length === 0) return adapters;
+  try {
+    const rows = new Map<string, Awaited<ReturnType<typeof getProviderHealth>>>();
+    for (const a of adapters) {
+      const identity = storageProviderIdentity({
+        kind: a.id === "github" ? "github" : "s3",
+        label: a.label,
+        repo: a.repo,
+        provider: a.id === "github" ? undefined : a.id,
+        bucket: a.bucket,
+      });
+      await registerProvider(identity);
+      rows.set(a.tag, await getProviderHealth(identity.key));
+    }
+    void cfg;
+    const usable = adapters.filter((a) => {
+      const row = rows.get(a.tag);
+      return row ? usableNow(row) : true;
+    });
+    if (usable.length === 0) {
+      // Everything is cooling down or over quota: try anyway, in config order.
+      return adapters;
+    }
+    // Record why the demoted targets were skipped, so the desk can explain a
+    // sudden shift of every upload onto the backup.
+    for (const a of adapters.filter((x) => !usable.includes(x))) {
+      const row = rows.get(a.tag);
+      if (!row) continue;
+      const reason = row.enabled
+        ? row.quota_bytes !== null && row.used_bytes >= row.quota_bytes
+          ? `quota reached (${row.used_bytes}/${row.quota_bytes} bytes)`
+          : `cooling down until ${row.cooldown_until ?? "?"} after ${row.consecutive_failures} failures`
+        : "disabled in the desk";
+      await recordProviderSkip(row.provider_key, reason).catch(() => undefined);
+    }
+    return usable;
+  } catch {
+    return adapters;
+  }
+}
+
+/** Report one attempt to the registry; never throws. */
+async function reportAttempt(a: ResolvedAdapter, ok: boolean, detail: string, bytes = 0): Promise<void> {
+  try {
+    const key = adapterProviderKey(a);
+    if (ok) await recordProviderSuccess(key, bytes);
+    else await recordProviderFailure(key, detail);
+  } catch {
+    /* health bookkeeping is best-effort */
+  }
+}
+
 async function uploadAdapters(cfg: MediaStorageConfig): Promise<ResolvedAdapter[]> {
   const configured = cfg.adapters.filter((adapter) => adapter.enabled);
   const adapters = (await buildAdapters()).filter((adapter) => adapter.enabled);
@@ -504,7 +586,7 @@ async function uploadAdapters(cfg: MediaStorageConfig): Promise<ResolvedAdapter[
     });
     throw new Error(`No media storage adapter is ready: ${problems.join("; ")}`);
   }
-  return adapters;
+  return applyProviderHealth(adapters, cfg);
 }
 
 function uploadFailureMessage(errors: string[]): Error {
@@ -526,17 +608,30 @@ export async function uploadRemote(rel: string, postId?: string | null): Promise
   let firstUrl: string | null = null;
   let anyOk = false;
   const errors: string[] = [];
+  const failedThisUpload: ResolvedAdapter[] = [];
   for (const a of targets) {
     try {
       const key = adapterKey(a, rel);
       const url =
         a.id === "github" ? await ghUpload(ghConfig(a), key, body) : await s3Upload(a, key, body);
       await recordMediaObject({ adapter: a.tag, key, url, post_id: postId ?? null, bytes: body.length });
+      await reportAttempt(a, true, "", body.length);
       anyOk = true;
       if (firstUrl == null) firstUrl = url;
-      if (!mirror) break; // failover/shard: first success wins
+      if (!mirror) {
+        // Explain the fallback in the desk: which target failed and who absorbed it.
+        for (const failed of failedThisUpload) {
+          await recordProviderSkip(adapterProviderKey(failed), `upload failed; fell back to ${a.label}`).catch(
+            () => undefined,
+          );
+        }
+        break; // failover/shard: first success wins
+      }
     } catch (err) {
-      errors.push(`${a.label}: ${err instanceof Error ? err.message : String(err)}`);
+      const message = err instanceof Error ? err.message : String(err);
+      errors.push(`${a.label}: ${message}`);
+      failedThisUpload.push(a);
+      await reportAttempt(a, false, message);
     }
   }
   if (!anyOk && errors.length > 0) throw uploadFailureMessage(errors);
@@ -564,16 +659,28 @@ export async function uploadBufferRemote(
   const { targets, mirror } = orderForUpload(adapters, cfg.mode, rel);
   let firstUrl: string | null = null;
   const errors: string[] = [];
+  const failedThisUpload: ResolvedAdapter[] = [];
   for (const a of targets) {
     try {
       const key = adapterKey(a, rel);
       const url =
         a.id === "github" ? await ghUpload(ghConfig(a), key, body) : await s3Upload(a, key, body);
       await recordMediaObject({ adapter: a.tag, key, url, post_id: postId ?? null, bytes: body.length });
+      await reportAttempt(a, true, "", body.length);
       if (firstUrl == null) firstUrl = url;
-      if (!mirror) break;
+      if (!mirror) {
+        for (const failed of failedThisUpload) {
+          await recordProviderSkip(adapterProviderKey(failed), `upload failed; fell back to ${a.label}`).catch(
+            () => undefined,
+          );
+        }
+        break;
+      }
     } catch (err) {
-      errors.push(`${a.label}: ${err instanceof Error ? err.message : String(err)}`);
+      const message = err instanceof Error ? err.message : String(err);
+      errors.push(`${a.label}: ${message}`);
+      failedThisUpload.push(a);
+      await reportAttempt(a, false, message);
     }
   }
   if (!firstUrl && errors.length > 0) throw uploadFailureMessage(errors);
@@ -605,6 +712,10 @@ export async function deleteMediaObjectRowAndBlob(row: MediaObjectRow): Promise<
     await deleteOnAdapter(target, row.key).catch(() => undefined);
   }
   await deleteMediaObjectRow(row.id);
+  // Quota accounting follows the object: a deleted blob must not keep counting.
+  await recordProviderRemoval(row.adapter, Number((row as { bytes?: number }).bytes ?? 0)).catch(
+    () => undefined,
+  );
 }
 
 /**

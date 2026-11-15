@@ -705,6 +705,35 @@ The endpoint fails **closed** (503) without `CRON_SECRET` and requires
 row's `owner_email`, falling back to `SECURITY_CONTACT_EMAIL` then the first
 `ADMIN_ALLOWED_EMAILS` entry.
 
+### Media provider health and quotas
+
+Media uploads fail over between GitHub and S3 targets, so a dead target was
+invisible from the outside: every upload still succeeded — on the backup. One row
+per provider now carries the evidence (`media_provider_health`, migration 029).
+
+| Column | Meaning |
+| --- | --- |
+| `used_bytes` / `objects` | grown only by uploads that actually succeeded, and given back on delete |
+| `quota_bytes` | `NULL` until an operator sets one — never guessed from a plan |
+| `consecutive_failures` · `last_error` | the real error text, clamped to 500 chars |
+| `cooldown_until` | 2 min after the 2nd consecutive failure, doubling to a 1 h cap |
+| `last_fallback_reason` | e.g. "upload failed; fell back to GitHub media" |
+
+`applyProviderHealth()` demotes a provider that is cooling down or over quota
+before the upload loop runs, and **never empties the chain**: if every target is
+demoted the uploader tries them anyway, because a stale cooldown must not be the
+reason nothing uploads. One failure is treated as noise (a flaky 502); two in a
+row start the cooldown.
+
+The same registry tracks image providers (`image:<provider_key>`), so a row stuck
+on 429 stops being retried first on every generation.
+
+Admin: `GET/POST /api/admin/providers/health` (moderator reads, admin writes;
+every change is audited) plus a **MEDIA PROVIDER HEALTH** table on
+`/admin/providers` showing measured bytes, quota, last error and the last fallback
+reason. With no uploads yet it says so instead of showing a row of reassuring
+zeroes — 11 checks in `packages/db/src/__tests__/provider-health.test.ts`.
+
 ### Security headers
 
 `apps/web/security-headers.mjs` is the single source of the header policy, and

@@ -1,4 +1,13 @@
-import { getClient, mapProvider } from "@hoichoi/db";
+import {
+  getClient,
+  getProviderHealth,
+  mapProvider,
+  providerState,
+  recordProviderFailure,
+  recordProviderSkip,
+  recordProviderSuccess,
+  registerProvider,
+} from "@hoichoi/db";
 import type { LLMProviderRow } from "@hoichoi/shared-types";
 import { buildProvider, type KeyStore } from "./build";
 import type { ImageGenRequest, ImageGenResult, LLMProvider } from "./types";
@@ -220,15 +229,60 @@ export async function generateImage(
     );
   }
 
+  /**
+   * Health-aware ordering for image providers too.
+   *
+   * A provider that keeps answering 429 for an hour used to be retried first on
+   * every single generation, so each click paid the rate-limit round trip before
+   * falling through. Registering the rows also gives the desk a place to see that
+   * the "gemini" row has been failing since Tuesday.
+   */
+  let ordered2 = candidates;
+  const healthKey = (ap: (typeof candidates)[number]) => `image:${ap.row.provider_key}`;
+  try {
+    for (const ap of candidates) {
+      await registerProvider({
+        key: healthKey(ap),
+        kind: "image",
+        label: ap.row.display_name || ap.row.provider_key,
+      });
+    }
+    const rows = await Promise.all(candidates.map((ap) => getProviderHealth(healthKey(ap))));
+    const now = new Date();
+    const healthy = candidates.filter((_, i) => {
+      const row = rows[i];
+      if (!row) return true;
+      const state = providerState(row, now);
+      return state === "ok" || state === "degraded";
+    });
+    // Never empty the chain: a stale cooldown must not stop image generation.
+    ordered2 = healthy.length > 0 ? healthy : candidates;
+    for (const ap of candidates.filter((c) => !ordered2.includes(c))) {
+      const row = await getProviderHealth(healthKey(ap)).catch(() => null);
+      if (row) await recordProviderSkip(row.provider_key, "cooling down after repeated failures").catch(() => undefined);
+    }
+  } catch {
+    ordered2 = candidates;
+  }
+
   const errors: string[] = [];
-  for (const ap of candidates) {
+  const failedThisRun: { row: { provider_key: string; display_name: string } }[] = [];
+  for (const ap of ordered2) {
     const key = resolver.resolveKey(ap.row);
     if (!key && providerNeedsKey(ap.row)) {
       errors.push(`${ap.row.display_name}: key missing (${ap.row.api_key_env_var})`);
       continue;
     }
     try {
-      return await ap.provider.generateImage!(opts, signal);
+      const result = await ap.provider.generateImage!(opts, signal);
+      await recordProviderSuccess(healthKey(ap)).catch(() => undefined);
+      for (const failed of failedThisRun) {
+        await recordProviderSkip(
+          failed.row.provider_key,
+          `generation failed; fell back to ${ap.row.display_name}`,
+        ).catch(() => undefined);
+      }
+      return result;
     } catch (err) {
       // A per-minute rate limit is worth one short retry before giving up on the
       // row: Gemini's free tier answers 429 while the same key works again a few
@@ -237,9 +291,13 @@ export async function generateImage(
       if (!opts.strict && /(^|[^0-9])429([^0-9]|$)|rate.?limit/i.test(msg)) {
         await new Promise((r) => setTimeout(r, 4_000));
         try {
-          return await ap.provider.generateImage!(opts, signal);
+          const result = await ap.provider.generateImage!(opts, signal);
+          await recordProviderSuccess(healthKey(ap)).catch(() => undefined);
+          return result;
         } catch (retryErr) {
           errors.push(`${ap.row.display_name}: ${(retryErr as Error).message}`);
+          failedThisRun.push(ap);
+          await recordProviderFailure(healthKey(ap), (retryErr as Error).message).catch(() => undefined);
           continue;
         }
       }
@@ -250,6 +308,8 @@ export async function generateImage(
       // the operator saw "ছবি তৈরি ব্যর্থ" even though a usable provider was
       // configured one row down.
       errors.push(`${ap.row.display_name}: ${(err as Error).message}`);
+      failedThisRun.push(ap);
+      await recordProviderFailure(healthKey(ap), (err as Error).message).catch(() => undefined);
       continue;
     }
   }

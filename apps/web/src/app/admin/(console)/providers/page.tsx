@@ -3,6 +3,7 @@ import { mapProvider, pageRows } from "@hoichoi/db";
 import { ProviderRow } from "@/components/admin/ProviderRow";
 import { ProviderForm } from "@/components/admin/ProviderForm";
 import { Paginator } from "@/components/admin/Paginator";
+import { ProviderHealthTable } from "@/components/admin/ProviderHealthTable";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,7 @@ export default async function AdminProvidersPage({
         <span className="font-mono-x">gpt-image-1</span>) থাকতে হবে। তিনটির একটি না মিললে জেনারেশন ওই রো
         এড়িয়ে যায়।
       </div>
+      <ProviderHealthTable />
       <div className="mt-6 grid gap-8 lg:grid-cols-[320px_1fr]">
         <div className="border border-ink/20 bg-paper-deep p-5">
           <h3 className="font-sans-bn text-[15px] font-bold text-ink">প্রোভাইডার যোগ</h3>

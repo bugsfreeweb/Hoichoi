@@ -21,6 +21,7 @@ export * from "./storage-report";
 export * from "./live-events";
 export * from "./polls";
 export * from "./ads";
+export * from "./provider-health";
 
 import {
   DEFAULT_APP_CONFIG,
