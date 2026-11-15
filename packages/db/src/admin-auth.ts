@@ -203,3 +203,119 @@ export async function clearLoginLog(): Promise<number> {
   const res = await client.execute("DELETE FROM admin_login_log");
   return res.rowsAffected;
 }
+/* ---------- session/device management (credential lifecycle) ---------- */
+
+export interface AdminSessionRow {
+  /** Public id: first 16 hex chars of the token hash — never the token itself. */
+  id: string;
+  user_id: string;
+  email: string;
+  display_name: string | null;
+  role: string;
+  device_name: string | null;
+  device_os: string | null;
+  app_version: string | null;
+  ip_hash: string | null;
+  user_agent_hash: string | null;
+  created_at: string;
+  expires_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+  revoked_by: string | null;
+  revoked_reason: string | null;
+}
+
+/**
+ * Sessions for the credential/security screen. `forEmail` limits to one admin
+ * account; an admin looking at their own devices must not see other admins'.
+ * Order: active first (most recent), then revoked.
+ */
+export async function listAdminSessions(opts: { email?: string; limit?: number } = {}): Promise<AdminSessionRow[]> {
+  const client = getClient();
+  const limit = Math.min(opts.limit ?? 100, 500);
+  if (opts.email) {
+    const res = await client.execute({
+      sql: `SELECT s.token_hash, s.user_id, u.email, u.display_name, u.role,
+                   s.device_name, s.device_os, s.app_version, s.ip_hash, s.user_agent_hash,
+                   s.created_at, s.expires_at, s.last_used_at, s.revoked_at, s.revoked_by, s.revoked_reason
+            FROM admin_sessions s JOIN admin_users u ON u.id = s.user_id
+            WHERE u.email = ?
+            ORDER BY (s.revoked_at IS NULL) DESC, s.last_used_at DESC
+            LIMIT ?`,
+      args: [opts.email.trim().toLowerCase(), limit],
+    });
+    return res.rows.map(mapSessionRow);
+  }
+  const res = await client.execute({
+    sql: `SELECT s.token_hash, s.user_id, u.email, u.display_name, u.role,
+                 s.device_name, s.device_os, s.app_version, s.ip_hash, s.user_agent_hash,
+                 s.created_at, s.expires_at, s.last_used_at, s.revoked_at, s.revoked_by, s.revoked_reason
+          FROM admin_sessions s JOIN admin_users u ON u.id = s.user_id
+          ORDER BY (s.revoked_at IS NULL) DESC, s.last_used_at DESC
+          LIMIT ?`,
+    args: [limit],
+  });
+  return res.rows.map(mapSessionRow);
+}
+
+export function mapSessionRow(r: Record<string, unknown>): AdminSessionRow {
+  const tokenHash = String(r.token_hash);
+  return {
+    id: tokenHash.slice(0, 16),
+    user_id: String(r.user_id),
+    email: String(r.email),
+    display_name: (r.display_name as string) ?? null,
+    role: String(r.role),
+    device_name: (r.device_name as string) ?? null,
+    device_os: (r.device_os as string) ?? null,
+    app_version: (r.app_version as string) ?? null,
+    ip_hash: (r.ip_hash as string) ?? null,
+    user_agent_hash: (r.user_agent_hash as string) ?? null,
+    created_at: String(r.created_at),
+    expires_at: String(r.expires_at),
+    last_used_at: (r.last_used_at as string) ?? null,
+    revoked_at: (r.revoked_at as string) ?? null,
+    revoked_by: (r.revoked_by as string) ?? null,
+    revoked_reason: (r.revoked_reason as string) ?? null,
+  };
+}
+
+/**
+ * Revoke one session by its public id (token-hash prefix).
+ * Returns rows affected, so callers can tell a real revoke from a stale id.
+ */
+export async function revokeAdminSessionById(id: string, revokedBy: string, reason: string): Promise<number> {
+  const client = getClient();
+  const res = await client.execute({
+    sql: "UPDATE admin_sessions SET revoked_at = ?, revoked_by = ?, revoked_reason = ? WHERE substr(token_hash, 1, 16) = ? AND revoked_at IS NULL",
+    args: [new Date().toISOString(), revokedBy, reason, id],
+  });
+  return res.rowsAffected;
+}
+
+/**
+ * Revoke every active session of one admin, optionally keeping the current one
+ * (`exceptId` = its public id). Used by "sign out everywhere" and by
+ * credential-revocation on account deletion.
+ */
+export async function revokeAllAdminSessions(
+  userId: string,
+  revokedBy: string,
+  reason: string,
+  exceptId?: string | null,
+): Promise<number> {
+  const client = getClient();
+  const now = new Date().toISOString();
+  if (exceptId) {
+    const res = await client.execute({
+      sql: "UPDATE admin_sessions SET revoked_at = ?, revoked_by = ?, revoked_reason = ? WHERE user_id = ? AND revoked_at IS NULL AND substr(token_hash, 1, 16) != ?",
+      args: [now, revokedBy, reason, userId, exceptId],
+    });
+    return res.rowsAffected;
+  }
+  const res = await client.execute({
+    sql: "UPDATE admin_sessions SET revoked_at = ?, revoked_by = ?, revoked_reason = ? WHERE user_id = ? AND revoked_at IS NULL",
+    args: [now, revokedBy, reason, userId],
+  });
+  return res.rowsAffected;
+}

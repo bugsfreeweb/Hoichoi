@@ -97,4 +97,40 @@ check("revalidate: fails closed when the secret is not configured", () => {
   assert.match(revalidate, /timingSafeEqual/, "the secret comparison must be constant-time");
 });
 
+const auth = readFileSync(join(here, "..", "src", "lib", "auth.ts"), "utf8");
+const authCode = stripComments(auth);
+
+check("auth: session lifetime comes from the policy module, not a 365-day literal", () => {
+  assert.match(authCode, /session-policy/, "auth.ts must import the session policy");
+  assert.match(authCode, /sessionState\(/, "auth.ts must classify sessions with sessionState()");
+  assert.match(authCode, /nextExpiry\(/, "auth.ts must compute expiry with nextExpiry()");
+  assert.match(
+    authCode,
+    /SESSION_MAX_AGE_MS = 30 \* 24/,
+    "the cookie lifetime constant must be 30 days (the device-id cookie keeps its own, longer life)",
+  );
+  assert.match(
+    authCode,
+    /maxAge: SESSION_MAX_AGE_MS \/ 1000/,
+    "the session cookie must use the 30-day constant",
+  );
+});
+
+check("auth: logout revokes the row instead of deleting it", () => {
+  assert.match(
+    authCode,
+    /UPDATE admin_sessions SET revoked_at/,
+    "logout must stamp revoked_at so a stolen copy of the cookie stops working and the history survives",
+  );
+  assert.ok(
+    !/DELETE FROM admin_sessions WHERE token_hash = \?[\s\S]{0,40}store\.delete/.test(authCode),
+    "logout must not fall back to a silent DELETE",
+  );
+});
+
+check("auth: ip and user agent are hashed before storage", () => {
+  assert.match(authCode, /hashValue\(/, "device metadata must go through hashValue()");
+  assert.ok(!/args: \[[^\]]*ip[^\]]*\]/.test(authCode), "raw ip must not be bound as a session argument");
+});
+
 console.log(`[web] auth-hardening: ${passed} checks passed`);

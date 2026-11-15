@@ -685,6 +685,24 @@ Two rules keep that model safe, and both are regression-tested in
 Set `ADMIN_ALLOWED_EMAILS` in every environment, including production. With the
 allow-list empty, only accounts that already exist in `admin_users` can sign in.
 
+### Session lifetime and devices
+
+A session is **not** permanent. It dies 30 days after it was created, whatever
+happens, and 7 days after its last use (`apps/web/src/lib/session-policy.ts`,
+unit-tested in `src/__tests__/session-policy.test.ts`). `last_used_at` is written
+at most every 5 minutes so a polling dashboard does not become a write per
+request. Signing out **revokes** the row (`revoked_at`) instead of deleting it —
+a stolen copy of the cookie stops working immediately, and the history survives.
+
+`/admin/security` (সিস্টেম → নিরাপত্তা ও ডিভাইস) lists every device with its
+browser/OS, when it was last used, how many days remain, which one is current,
+and one-click revocation; an `admin` can also see and evict every admin's
+sessions. IP addresses and user agents are stored **hashed**
+(HMAC-SHA256 keyed by `ADMIN_AUTH_SECRET`), never in the clear.
+
+Migration `024_admin_credentials.sql` adds the device/revocation columns; the
+Vercel build runs `pnpm db:migrate`, so a deploy applies it before serving.
+
 ## Editorial & safety
 
 - No verified users under 18; absolute block on child-sexual-abuse content.
