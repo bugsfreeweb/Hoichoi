@@ -685,6 +685,20 @@ Two rules keep that model safe, and both are regression-tested in
 Set `ADMIN_ALLOWED_EMAILS` in every environment, including production. With the
 allow-list empty, only accounts that already exist in `admin_users` can sign in.
 
+### Audit trail
+
+Every privileged mutation writes a row to `admin_actions`, which `/admin/logs`
+renders (filterable by action and by admin email). A row snapshots **who** acted
+(`actor_email`, `actor_role`) instead of pointing at a user id that a later
+delete would erase, plus the action, the object, a human sentence and a hashed
+IP (HMAC of `ADMIN_AUTH_SECRET`, never the raw address).
+
+Migration `026_admin_actions_actor.sql` adds those columns, backfills existing
+rows from `admin_users`, and installs a trigger so any older `INSERT` that never
+learned the new columns still records its actor. Writers live in
+`apps/web/src/lib/audit.ts` (`audit(user, {...}, req)`), which never throws — a
+failed audit write must not fail the action the operator already took.
+
 ### Abuse limits
 
 Public write endpoints are throttled by a shared counter table

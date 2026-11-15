@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClient, nowIso } from "@hoichoi/db";
 import type { InValue } from "@libsql/client";
 import { forbidden, requireApiRole } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const guard = await requireApiRole("admin");
@@ -41,6 +42,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     args.push(id);
     await client.execute({ sql: `UPDATE llm_providers SET ${sets.join(", ")} WHERE id = ?`, args });
   }
+  await audit(user, { action: "provider.update", entityType: "provider", entityId: id, summary: `প্রোভাইডার আপডেট: ${id}` }, req);
   return NextResponse.json({ ok: true });
 }
 

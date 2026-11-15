@@ -5,6 +5,7 @@ import {
   revokeAllAdminSessions,
 } from "@hoichoi/db";
 import { currentSession, forbidden, requiresRole, requireApiRole } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,7 @@ export async function POST(req: NextRequest) {
       reason,
       body?.keepSelf ? (current?.id ?? null) : null,
     );
+    await audit(user, { action: "session.revoke_all", entityType: "session", summary: "সব সেশন বাতিল", metadata: { revoked, keptCurrent: Boolean(body?.keepSelf) } }, req);
     return NextResponse.json({ ok: true, revoked, keptCurrent: Boolean(body?.keepSelf) });
   }
 
@@ -86,5 +88,6 @@ export async function POST(req: NextRequest) {
   if (revoked === 0) {
     return NextResponse.json({ error: "session not found or already revoked" }, { status: 404 });
   }
+  await audit(user, { action: "session.revoke", entityType: "session", entityId: id, summary: "একটি ডিভাইসের সেশন বাতিল" }, req);
   return NextResponse.json({ ok: true, revoked });
 }

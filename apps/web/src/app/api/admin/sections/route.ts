@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requiresRole, forbidden, requireApiRole } from "@/lib/auth";
 import { listSections, setSectionState, getSiteVariant, setSiteVariant } from "@hoichoi/db";
 import { DEFAULT_VARIANT, PRESETS } from "@hoichoi/shared-types";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,7 @@ export async function PUT(request: Request) {
       }
       const ok = await setSiteVariant(target);
       if (!ok) return NextResponse.json({ ok: false, error: "অজানা ভ্যারিয়েন্ট।" }, { status: 400 });
+      await audit(user, { action: "sections.update", entityType: "settings", summary: "সেকশন প্রিসেট প্রয়োগ", metadata: { preset: body.preset } }, request);
       return NextResponse.json({ ok: true });
     }
 

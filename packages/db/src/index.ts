@@ -10,6 +10,7 @@ export * from "./media-storage";
 export * from "./transfer";
 export * from "./admin-auth";
 export * from "./rate-limit";
+export * from "./audit";
 export * from "./source-errors";
 export * from "./media-objects";
 export * from "./post-images";
@@ -2532,17 +2533,36 @@ function safePage(page: number | undefined): number {
   return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
 }
 
+/**
+ * Audit trail page. `filter` narrows by exact action and/or actor email so the
+ * log stays readable once it has thousands of rows.
+ */
 export async function listAdminActionsPage(
   page = 1,
   pageSize = 40,
+  filter: { action?: string; actor?: string } = {},
 ): Promise<Page<Record<string, unknown>>> {
   const p = safePage(page);
   const client = getClient();
-  const countRes = await client.execute("SELECT COUNT(*) AS n FROM admin_actions");
+  const where: string[] = [];
+  const args: (string | number)[] = [];
+  if (filter.action) {
+    where.push("action = ?");
+    args.push(filter.action);
+  }
+  if (filter.actor) {
+    where.push("actor_email = ?");
+    args.push(filter.actor.trim().toLowerCase());
+  }
+  const clause = where.length ? " WHERE " + where.join(" AND ") : "";
+  const countRes = await client.execute({
+    sql: `SELECT COUNT(*) AS n FROM admin_actions${clause}`,
+    args: [...args],
+  });
   const total = Number((countRes.rows[0] as Record<string, unknown>).n ?? 0);
   const res = await client.execute({
-    sql: "SELECT * FROM admin_actions ORDER BY created_at DESC LIMIT ? OFFSET ?",
-    args: [pageSize, (p - 1) * pageSize],
+    sql: `SELECT * FROM admin_actions${clause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+    args: [...args, pageSize, (p - 1) * pageSize],
   });
   return { rows: res.rows as Record<string, unknown>[], total, page: p, pageSize };
 }

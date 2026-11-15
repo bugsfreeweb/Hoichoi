@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { applyImportBundle, getClient, type ExportBundle } from "@hoichoi/db";
 import { forbidden, requireApiRole } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 
 export async function POST(req: NextRequest) {
   const guard = await requireApiRole("admin");
@@ -20,5 +21,6 @@ export async function POST(req: NextRequest) {
   }
 
   const written = await applyImportBundle(getClient(), bundle);
+  await audit(user, { action: "data.import", entityType: "system", summary: `ইমপোর্ট: ${written} রেকর্ড`, metadata: { written } }, req);
   return NextResponse.json({ ok: true, written });
 }

@@ -10,15 +10,18 @@ const PAGE_SIZE = 20;
 export default async function AdminLogsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ runsPage?: string; actionsPage?: string }>;
+  searchParams: Promise<{ runsPage?: string; actionsPage?: string; action?: string; actor?: string }>;
 }) {
-  const { runsPage: runsParam, actionsPage: actionsParam } = await searchParams;
+  const { runsPage: runsParam, actionsPage: actionsParam, action: actionFilter, actor: actorFilter } = await searchParams;
   // Each list paginates on its own `page` param. They used to share one, so
   // paging the run history scrolled the audit log too and the two sections
   // fought over the same number.
   const [runs, actions] = await Promise.all([
     listPipelineRunsPage(Number(runsParam ?? 1), PAGE_SIZE),
-    listAdminActionsPage(Number(actionsParam ?? 1), PAGE_SIZE),
+    listAdminActionsPage(Number(actionsParam ?? 1), PAGE_SIZE, {
+      action: actionFilter,
+      actor: actorFilter,
+    }),
   ]);
 
   return (
@@ -58,16 +61,67 @@ export default async function AdminLogsPage({
         </section>
         <section>
           <SectionTitle>অ্যাডমিন অ্যাকশন (অডিট লগ)</SectionTitle>
+          <p className="mt-1 font-mono-x text-[10.5px] text-ink-soft">
+            প্রতিটি এন্ট্রিতে কে (ইমেইল ও ভূমিকা), কী কাজ, কোন বস্তু এবং কখন — লেখা থাকে।
+          </p>
+          <form action="/admin/logs" method="get" className="mt-3 flex flex-wrap items-end gap-2">
+            <label className="font-mono-x text-[10.5px] text-ink-soft">
+              অ্যাকশন
+              <input
+                name="action"
+                defaultValue={actionFilter ?? ""}
+                placeholder="provider.update"
+                className="mt-1 block w-48 border border-ink/25 bg-paper px-2 py-1 font-mono-x text-[11px] text-ink"
+              />
+            </label>
+            <label className="font-mono-x text-[10.5px] text-ink-soft">
+              অ্যাডমিন ইমেইল
+              <input
+                name="actor"
+                defaultValue={actorFilter ?? ""}
+                placeholder="admin@hoichoi.io"
+                className="mt-1 block w-52 border border-ink/25 bg-paper px-2 py-1 font-mono-x text-[11px] text-ink"
+              />
+            </label>
+            <button type="submit" className="border border-ink/25 bg-ink px-3 py-1.5 font-mono-x text-[10.5px] font-bold text-paper">
+              ফিল্টার
+            </button>
+            {(actionFilter || actorFilter) && (
+              <a href="/admin/logs" className="font-mono-x text-[10.5px] font-bold text-alizarin underline">
+                ফিল্টার সরান
+              </a>
+            )}
+          </form>
           <div className="mt-3 space-y-1.5">
             {actions.rows.length === 0 && <Empty />}
-            {actions.rows.map((a) => (
-              <div key={String(a.id)} className="flex items-center justify-between gap-3 border border-ink/20 bg-paper-deep px-4 py-2">
-                <p className="font-mono-x text-[11.5px] text-ink">
-                  <span className="font-bold">{String(a.action)}</span> · {String(a.target_table)}/{String(a.target_id)}
-                </p>
-                <span className="font-mono-x text-[10.5px] text-ink-soft">{new Date(String(a.created_at)).toLocaleString("bn-BD")}</span>
-              </div>
-            ))}
+            {actions.rows.map((a) => {
+              const details = parseDetails(a.details);
+              return (
+                <div key={String(a.id)} className="flex flex-wrap items-start justify-between gap-3 border border-ink/20 bg-paper-deep px-4 py-2">
+                  <div className="min-w-0">
+                    <p className="font-mono-x text-[11.5px] text-ink">
+                      <span className="font-bold">{String(a.action)}</span>
+                      {" · "}
+                      {a.target_table ? (
+                        <span className="text-ink-soft">
+                          {String(a.target_table)}
+                          {a.target_id ? `/${String(a.target_id).slice(0, 18)}` : ""}
+                        </span>
+                      ) : null}
+                    </p>
+                    {details.summary && (
+                      <p className="mt-0.5 font-sans-bn text-[12px] text-ink">{details.summary}</p>
+                    )}
+                    <p className="mt-0.5 font-mono-x text-[10.5px] text-ink-soft">
+                      {a.actor_email ? String(a.actor_email) : "—"}
+                      {a.actor_role ? ` · ${String(a.actor_role)}` : ""}
+                      {a.ip_hash ? " · আইপি হ্যাশড" : ""}
+                    </p>
+                  </div>
+                  <span className="font-mono-x text-[10.5px] whitespace-nowrap text-ink-soft">{new Date(String(a.created_at)).toLocaleString("bn-BD")}</span>
+                </div>
+              );
+            })}
           </div>
           <Paginator
             page={actions.page}
@@ -75,7 +129,11 @@ export default async function AdminLogsPage({
             total={actions.total}
             basePath="/admin/logs"
             paramName="actionsPage"
-            extraParams={runsParam ? { runsPage: runsParam } : {}}
+            extraParams={{
+              ...(runsParam ? { runsPage: runsParam } : {}),
+              ...(actionFilter ? { action: actionFilter } : {}),
+              ...(actorFilter ? { actor: actorFilter } : {}),
+            }}
           />
         </section>
         <section>
@@ -87,6 +145,17 @@ export default async function AdminLogsPage({
       </div>
     </div>
   );
+}
+
+/** `details` holds `{ summary, ...metadata }`; older rows hold ad-hoc JSON. */
+function parseDetails(raw: unknown): { summary?: string } {
+  if (typeof raw !== "string" || !raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return typeof parsed.summary === "string" ? { summary: parsed.summary } : {};
+  } catch {
+    return {};
+  }
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {

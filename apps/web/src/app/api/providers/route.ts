@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ensureSchema, getClient, nowIso, mapProvider } from "@hoichoi/db";
 import { PROCESSOR_ENV_DEFAULTS, type ProviderKey } from "@hoichoi/shared-types";
 import { forbidden, requireApiRole } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 
 const KEYS: ProviderKey[] = ["google", "groq", "openrouter", "ollama", "anthropic", "openai", "mistral", "github", "github-models", "custom"];
 
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
         nowIso(),
       ],
     });
+    await audit(user, { action: "provider.create", entityType: "provider", entityId: body.providerKey, summary: `প্রোভাইডার যোগ: ${body.providerKey}` }, req);
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });

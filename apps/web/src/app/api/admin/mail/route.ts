@@ -3,6 +3,7 @@ import { getClient } from "@hoichoi/db";
 import { forbidden, requireApiRole } from "@/lib/auth";
 import { mailConfig, messageShell, sendMail } from "@/lib/mail";
 import { requestPasswordReset } from "@/lib/password-reset";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +71,7 @@ export async function POST(req: Request) {
     if (!result.ok) {
       return NextResponse.json({ ok: false, error: result.error ?? "ইমেইল পাঠানো যায়নি।" }, { status: 502 });
     }
+    await audit(user, { action: "mail.test", entityType: "mail", summary: `টেস্ট ইমেইল: ${to}`, metadata: { transport: result.transport } }, req);
     return NextResponse.json({ ok: true, transport: result.transport, to });
   }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { listNotices, createNotice } from "@hoichoi/db";
 import type { NoticeTone } from "@hoichoi/shared-types";
 import { requireApiUser, unauthorized, forbidden, requireApiRole } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 
 const TONES: NoticeTone[] = ["info", "success", "warn", "alert"];
 
@@ -41,5 +42,6 @@ export async function POST(req: NextRequest) {
     expires_at: typeof body.expiresAt === "string" && body.expiresAt.trim() ? body.expiresAt.trim() : null,
     created_by: "web",
   });
+  await audit(user, { action: "notice.create", entityType: "notice", entityId: notice.id, summary: `নোটিশ প্রকাশ: ${notice.title}` }, req);
   return NextResponse.json({ notice }, { status: 201 });
 }

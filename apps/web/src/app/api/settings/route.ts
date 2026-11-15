@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getSettings, updateSettings } from "@hoichoi/db";
 import { forbidden, requireApiRole } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 
 export async function GET() {
   const settings = await getSettings();
@@ -40,5 +41,6 @@ export async function PATCH(req: NextRequest) {
   });
   revalidatePath("/");
   revalidatePath("/post/[slug]", "page");
+  await audit(user, { action: "settings.update", entityType: "settings", summary: "সাইট সেটিংস আপডেট" }, req);
   return NextResponse.json({ ok: true });
 }

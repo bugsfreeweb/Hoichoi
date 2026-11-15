@@ -234,4 +234,40 @@ check("the limiter answers 429 with a retry hint", () => {
   assert.match(src, /try \{/, "the limiter must be wrapped in try/catch so infrastructure failure cannot 500 the site");
 });
 
+/* ---------- audit trail (C7) ---------- */
+
+check("every privileged mutation writes an audit row", () => {
+  const mustAudit = [
+    "posts/[id]/route.ts",
+    "posts/[id]/media/route.ts",
+    "providers/route.ts",
+    "providers/[id]/route.ts",
+    "settings/route.ts",
+    "admin/purge/route.ts",
+    "admin/maintenance/route.ts",
+    "admin/archive/delete/route.ts",
+    "admin/mail/route.ts",
+    "admin/login-log/route.ts",
+    "admin/sections/route.ts",
+    "admin/sessions/route.ts",
+    "import/route.ts",
+    "moderation/[postId]/route.ts",
+    "sources/route.ts",
+    "notices/route.ts",
+  ];
+  const missing: string[] = [];
+  for (const rel of mustAudit) {
+    const src = readFileSync(join(API, rel), "utf8");
+    if (!/(audit\(|INSERT INTO admin_actions)/.test(src)) missing.push(rel);
+  }
+  assert.deepEqual(missing, [], `mutations with no audit row: ${missing.join(", ")}`);
+});
+
+check("the audit helper never takes secrets and never throws", () => {
+  const src = readFileSync(join(here, "..", "src", "lib", "audit.ts"), "utf8");
+  assert.match(src, /try \{/, "audit() must be wrapped so a storage failure cannot fail the action");
+  assert.match(src, /createHmac/, "the stored IP must be hashed, not raw");
+  assert.ok(!/api_key|apiKey|password/i.test(src), "no credential field may be written to the trail");
+});
+
 console.log(`[web] auth-hardening: ${passed} checks passed`);
