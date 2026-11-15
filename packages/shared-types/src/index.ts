@@ -168,6 +168,8 @@ export interface RawPost {
 /** Provenance of a post's primary image. */
 export type MediaOrigin = "collector" | "ai" | "admin" | "external";
 
+export type VerificationStatus = "unverified" | "single_source" | "multi_source" | "human_verified" | "corrected";
+
 export interface Post {
   id: string;
   raw_post_id: string | null;
@@ -184,6 +186,15 @@ export interface Post {
    * (a remote URL). Null on legacy rows — callers fall back to a path heuristic.
    */
   media_origin?: MediaOrigin | null;
+  /**
+   * Claim grade, backed by the `claims` table and (for `human_verified`) a named
+   * editor. See packages/db/src/verification.ts — a badge is only rendered when
+   * `showsBadge()` allows it, so absence of evidence means absence of a badge.
+   */
+  verification_status?: VerificationStatus | null;
+  verification_note?: string | null;
+  verified_by?: string | null;
+  verified_at?: string | null;
   source_url: string;
   source_name: string;
   slug: string;

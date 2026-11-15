@@ -12,6 +12,7 @@ export * from "./admin-auth";
 export * from "./rate-limit";
 export * from "./audit";
 export * from "./credentials";
+export * from "./verification";
 export * from "./source-errors";
 export * from "./media-objects";
 export * from "./post-images";

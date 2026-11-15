@@ -23,6 +23,7 @@ import { getSettings } from "@/lib/settings";
 import { getLive } from "@/lib/mv/live";
 import { isMvMode } from "@/lib/mv/variant";
 import MvPost from "@/components/mv/MvPost";
+import VerificationBadge from "@/components/VerificationBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -389,7 +390,15 @@ function PostContent({
 
           {/* source attribution */}
           <div className="mt-10 border-t border-ink/15 pt-6">
-            <p className="font-mono-x text-[10px] tracking-[0.24em] text-ink-soft uppercase">─── সূত্র ───</p>
+            <p className="flex flex-wrap items-center gap-2 font-mono-x text-[10px] tracking-[0.24em] text-ink-soft uppercase">
+              ─── সূত্র ───
+              <VerificationBadge
+                status={post!.verification_status}
+                note={post!.verification_note}
+                verifier={post!.verified_by}
+                at={post!.verified_at}
+              />
+            </p>
             <p className="mt-3 text-[13px] text-ink">
               <span className="font-bold">লেখক:</span> <span className="font-serif-bn">{post!.original_author_name ?? "—"} </span>
               <span className="text-ink-soft">(মূল পোস্টের লেখক)</span>

@@ -705,6 +705,34 @@ The endpoint fails **closed** (503) without `CRON_SECRET` and requires
 row's `owner_email`, falling back to `SECURITY_CONTACT_EMAIL` then the first
 `ADMIN_ALLOWED_EMAILS` entry.
 
+### Verification, claims and corrections
+
+The site stamped every card **FACT-CHECKED** while nothing in the pipeline checked
+a fact. That is gone: an aggregated story now says what it is — `AI REWRITE`
+next to the existing `SOURCE · <outlet>` pill — and the trust badge is rendered
+only from a stored record.
+
+`migration 028` adds the record:
+
+| Surface | Meaning |
+| --- | --- |
+| `posts.verification_status` | `unverified` · `single_source` · `multi_source` · `human_verified` · `corrected` |
+| `claims` | individual checkable statements with an evidence link and a verdict (`supported` / `disputed` / `false`) |
+| `correction_history` | every corrected field, old text, new text, reason and editor |
+
+The grade is **derived, never typed**: `gradeFromEvidence()` refuses
+`multi_source` with one source, refuses `human_verified` without a named editor,
+and drops to `unverified` when any claim is disputed or false. The API clamps a
+requested grade to the strongest thing the evidence supports (a weaker grade is
+always allowed). `VerificationBadge` renders nothing for `unverified` and
+`single_source`, so absence of evidence means absence of a badge — the Bangla
+label always names the method (`একাধিক সূত্র`, `সম্পাদক যাচাইকৃত`, `সংশোধিত`).
+
+Editors work in the post editor's **যাচাই ও সংশোধন** panel: add a claim + evidence,
+recompute the grade, or record a correction (which flips the post to `corrected`
+and shows the label publicly). `scripts/trust-claims.test.ts` fails the build if
+`FACT-CHECKED` ever reappears in the source.
+
 ### Audit trail
 
 Every privileged mutation writes a row to `admin_actions`, which `/admin/logs`

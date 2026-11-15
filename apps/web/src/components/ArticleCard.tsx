@@ -5,6 +5,7 @@ import { categoryLabel, categoryTint, readableOn } from "@/lib/category-style";
 import { readMinutesBn, shortId } from "@/lib/bn";
 import { mediaUrl } from "@/lib/media";
 import SafeImage from "@/components/SafeImage";
+import VerificationBadge from "@/components/VerificationBadge";
 
 interface ArticleCardProps {
   post: Post;
@@ -60,9 +61,10 @@ export default function ArticleCard({ post, index, categories }: ArticleCardProp
         <span className="absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full bg-ink/80 px-3 py-1.5 font-mono-x text-[9.5px] tracking-[0.16em] text-paper uppercase backdrop-blur-sm">
           {Icons.Globe} SOURCE · {post.source_name}
         </span>
-        <span className="absolute top-3 left-3 flex items-center gap-1.5 bg-alizarin px-2.5 py-1 text-[10px] font-bold text-white">
-          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>
-          FACT-CHECKED
+        {/* "FACT-CHECKED" was a claim no code path could back: nothing here is
+            fact-checked, only rewritten from a cited source. Show that instead. */}
+        <span className="absolute top-3 left-3 flex items-center gap-1.5 bg-ink/80 px-2.5 py-1 font-mono-x text-[9.5px] tracking-[0.14em] text-paper uppercase backdrop-blur-sm">
+          AI REWRITE
         </span>
       </div>
       <p className="mt-3 flex items-center justify-between text-[10.5px] text-ink-soft/80">
@@ -82,6 +84,13 @@ export default function ArticleCard({ post, index, categories }: ArticleCardProp
         <span className="flex items-center gap-1 text-[12px] text-ink-soft">
           {Icons.Pin} {post.source_name}
         </span>
+        <VerificationBadge
+          status={post.verification_status}
+          note={post.verification_note}
+          verifier={post.verified_by}
+          at={post.verified_at}
+          compact
+        />
       </div>
       <h3 className="mt-4 link-sweep inline font-serif-bn text-[22px] leading-[1.35] font-extrabold text-ink">
         {post.title_bn}

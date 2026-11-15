@@ -79,6 +79,12 @@ export function mapPost(row: Record<string, unknown>): Post {
     media_path: (row.media_path as string | null) ?? null,
     media_kind: (row.media_kind as MediaKind) ?? "none",
     media_origin: (row.media_origin as Post["media_origin"]) ?? null,
+    // Verification grade travels with the post so a badge can never be rendered
+    // from a value the caller had to guess.
+    verification_status: (row.verification_status as Post["verification_status"]) ?? "unverified",
+    verification_note: (row.verification_note as string | null) ?? null,
+    verified_by: (row.verified_by as string | null) ?? null,
+    verified_at: (row.verified_at as string | null) ?? null,
     source_url: String(row.source_url),
     source_name: String(row.source_name),
     slug: String(row.slug),

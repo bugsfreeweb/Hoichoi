@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Post, PostStatus, CaseStatus, CategorySlug } from "@hoichoi/shared-types";
 import { PostImageGenerator } from "./PostImageGenerator";
+import VerificationPanel from "@/components/admin/VerificationPanel";
 
 const CATEGORY_LABELS: Record<CategorySlug, string> = {
   "child-sexual-abuse": "শিশু যৌন নির্যাতন",
@@ -627,6 +628,8 @@ export function PostEditor({ post }: { post: Post }) {
         </button>
       </div>
       {busy === "save" && <p className="mt-3 font-mono-x text-[11px] text-ink-soft">সংরক্ষণ হচ্ছে…</p>}
+
+      <VerificationPanel postId={post.id} canEdit />
     </div>
   );
 }

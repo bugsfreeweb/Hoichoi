@@ -188,9 +188,11 @@ export default async function HomePage({
                       <svg xmlns="http://www.w3.org/2000/svg" width="9.5" height="9.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
                       SOURCE · {featured.source_name}
                     </span>
-                    <span className="absolute top-3 left-3 flex items-center gap-1.5 bg-alizarin px-2.5 py-1 text-[10px] font-bold text-white">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>
-                      FACT-CHECKED
+                    {/* This used to read FACT-CHECKED, which nothing in the pipeline proves.
+                        An aggregated story is rewritten by an LLM from one source; the honest
+                        label is the rewrite plus the source pill already under it. */}
+                    <span className="absolute top-3 left-3 flex items-center gap-1.5 bg-ink/80 px-2.5 py-1 font-mono-x text-[9.5px] tracking-[0.14em] text-paper uppercase backdrop-blur-sm">
+                      AI REWRITE
                     </span>
                   </div>
                 </TiltCard>
