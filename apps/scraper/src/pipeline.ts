@@ -17,6 +17,7 @@ import { isVideoUrl, mediaRoot, processImage, randomMediaName } from "./media";
 import { mirrorMediaFile } from "./media-backfill";
 import { processVideo } from "./video";
 import { makeSlug, rewritePost } from "./rewrite";
+import { checkRepublication } from "./source-overlap";
 import { captureScreenshot } from "./screenshot";
 import { classifyContent, sourceCategoryCandidates } from "./classify";
 import { uploadRemote } from "./storage";
@@ -102,6 +103,14 @@ export interface PipelineStats {
   duplicatesBlocked: number;
   /** Posts rejected because the rewrite was unusable (no title, no body, …). */
   skipped: number;
+  /**
+   * Posts held because the rewrite copied too much of the source.
+   *
+   * Aggregation is legal when we summarise and quote briefly; republishing the
+   * article is not. A model that lifts sentences still produces fluent Bangla, so
+   * the copy is invisible in review without this counter.
+   */
+  copiedText: number;
   /**
    * Posts with no scraped caption.
    *
@@ -291,6 +300,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
     rewritten: 0,
     duplicatesBlocked: 0,
     skipped: 0,
+    copiedText: 0,
     emptyText: 0,
     published: 0,
     pendingReview: 0,
@@ -890,11 +900,27 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           continue;
         }
 
+        // Publisher gate: summarise and quote briefly, never republish. Checked
+        // against the raw text, because a fluent copy reads exactly like our own
+        // writing and a human reviewer cannot spot it from the queue alone.
+        const overlap = checkRepublication(
+          sp.rawText,
+          `${outcome.rewritten.title_bn}
+${outcome.rewritten.body_bn}`,
+        );
+        if (overlap.exceedsLimit) {
+          stats.copiedText++;
+          log(
+            `[copy] ${overlap.longestRun} consecutive words copied from the source (limit ${overlap.limit}) — held for review · "${overlap.sample}"`,
+          );
+        }
+
         const decision = assessRisk(config, outcome.flags);
         // A weak category match escalates regardless of what the category or the
         // safety flags say: the content may be fine, but its placement on the
         // site is a guess, and a human should confirm it.
-        const status: PostStatus = lowConfidenceThisPost ? "pending_review" : decision.status;
+        const status: PostStatus =
+          lowConfidenceThisPost || overlap.exceedsLimit ? "pending_review" : decision.status;
         const slug = makeSlug(outcome.rewritten.title_bn);
         const now = nowIso();
         const newPostId = crypto.randomUUID();

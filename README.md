@@ -705,6 +705,23 @@ The endpoint fails **closed** (503) without `CRON_SECRET` and requires
 row's `owner_email`, falling back to `SECURITY_CONTACT_EMAIL` then the first
 `ADMIN_ALLOWED_EMAILS` entry.
 
+### Aggregation limits (publisher gate)
+
+Summarising someone else's story is legitimate; republishing it is not. Two
+mechanisms enforce the line:
+
+- **Prompt**: the shared body contract asks for the story in our own words, at
+  most one direct quote under 20 words, and no sentence copying.
+- **Code** (`apps/scraper/src/source-overlap.ts`): `checkRepublication()` measures
+  the longest verbatim run against the raw source text. Over 35 consecutive words
+  and the post is **held for review** instead of published, with the copied run
+  logged; `copiedShare()` catches a rearranged but fully copied story. 8 tests
+  cover punctuation/case evasion, the strict ceiling, and genuine summaries.
+
+The public policy pages state the same rules, so the promise and the pipeline
+cannot drift apart: `/about/editorial`, `/about/ai`, `/about/corrections`
+(linked from the footer alongside `/privacy`, `/terms`, `/cookies`, `/dmca`).
+
 ### Verification, claims and corrections
 
 The site stamped every card **FACT-CHECKED** while nothing in the pipeline checked

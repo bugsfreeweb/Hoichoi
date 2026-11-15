@@ -24,7 +24,11 @@ own paragraph):
 - Do not use bullet points, numbered lists, or markdown. Plain paragraphs only.
 - Do not restate the summary. The summary is shown separately as a pull quote.
 - Never invent a fact, a name, a date, or a quote that is absent from the source.
-  If the source is thin, write shorter paragraphs and say what is not yet known.`;
+  If the source is thin, write shorter paragraphs and say what is not yet known.
+- Summarise in your own words. Do NOT copy sentences from the source: at most one
+  short direct quote, under 20 words, inside "…". A rewrite that reuses a longer
+  run of source words is held for review instead of being published, because
+  republishing another outlet's article is not aggregation.`;
 
 export function childSexualAbuseSystemPrompt(ctx: RewriteContext): string {
   return `You are a Bangla news editor for a public-interest website reporting on
