@@ -270,4 +270,24 @@ check("the audit helper never takes secrets and never throws", () => {
   assert.ok(!/api_key|apiKey|password/i.test(src), "no credential field may be written to the trail");
 });
 
+/* ---------- credential expiry (C4) ---------- */
+
+check("the credential cron fails closed and warns once per day", () => {
+  const src = stripComments(readFileSync(join(API, "cron", "credentials", "route.ts"), "utf8"));
+  assert.match(src, /CRON_SECRET/, "the job must require CRON_SECRET");
+  assert.match(src, /status: 503/, "an unconfigured secret must refuse to run, not send mail");
+  assert.match(src, /markNotified/, "a successful send must stamp last_notified_at so retries do not spam");
+});
+
+check("credential routes are role-guarded and audited", () => {
+  const src = stripComments(readFileSync(join(API, "admin", "credentials", "route.ts"), "utf8"));
+  assert.match(src, /requireApiRole\("admin"\)/, "writes must require the admin role");
+  assert.match(src, /action: "credential\.save"/, "saving a credential must be audited");
+});
+
+check("no credential route accepts a secret value", () => {
+  const src = readFileSync(join(API, "admin", "credentials", "route.ts"), "utf8");
+  assert.ok(!/api_key|apiKey|password|secret_value/i.test(src), "only a name and an expiry date may be stored");
+});
+
 console.log(`[web] auth-hardening: ${passed} checks passed`);

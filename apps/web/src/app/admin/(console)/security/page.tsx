@@ -1,5 +1,6 @@
 import { PageHeading } from "@/components/admin/ui/PageHeader";
 import SessionList from "@/components/admin/SessionList";
+import CredentialList from "@/components/admin/CredentialList";
 import LoginLogViewer from "@/components/admin/LoginLogViewer";
 import { currentSession, requiresRole } from "@/lib/auth";
 
@@ -31,6 +32,17 @@ export default async function AdminSecurityPage() {
           <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">সেশন ও ডিভাইস</h2>
           <div className="mt-3">
             <SessionList canSeeAll={canSeeAll} />
+          </div>
+        </section>
+
+        <section>
+          <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">ক্রেডেনশিয়ালের মেয়াদ</h2>
+          <p className="mt-1 font-mono-x text-[10.5px] text-ink-soft">
+            প্রোভাইডার কী, টোকেন বা স্টোরেজ সিক্রেটের মেয়াদ এখানে লিখে রাখুন — মেয়াদ শেষের ৭ দিন আগে
+            ডেইলি চেক ইমেইল পাঠাবে। এখানে কোনো সিক্রেট সংরক্ষিত হয় না।
+          </p>
+          <div className="mt-3">
+            <CredentialList canEdit={canSeeAll} />
           </div>
         </section>
 

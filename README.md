@@ -685,6 +685,26 @@ Two rules keep that model safe, and both are regression-tested in
 Set `ADMIN_ALLOWED_EMAILS` in every environment, including production. With the
 allow-list empty, only accounts that already exist in `admin_users` can sign in.
 
+### Credential expiry
+
+Nothing tracked when a key dies, so the first signal was a red pipeline run.
+`/admin/security` → **ক্রেডেনশিয়ালের মেয়াদ** now stores a name, a scope and an
+expiry date for anything the server cannot read (GitHub PAT, storage keys, Vercel
+env secrets). **No secret value is stored** — only the label, so the table is not
+a credential store.
+
+`POST /api/cron/credentials` (dry run: `GET`) runs daily and mails one warning
+when a credential is inside its `warn_days` window (default 7) or already
+expired. `last_notified_at` is stamped after a successful send, so a retry or a
+manual curl the same day sends nothing; renewing a credential clears the stamp.
+
+The endpoint fails **closed** (503) without `CRON_SECRET` and requires
+`Authorization: Bearer $CRON_SECRET`. The schedule lives in
+`.github/workflows/credential-check.yml` (needs repo secrets `SITE_URL` and
+`CRON_SECRET`; it skips politely when they are absent). Recipients come from each
+row's `owner_email`, falling back to `SECURITY_CONTACT_EMAIL` then the first
+`ADMIN_ALLOWED_EMAILS` entry.
+
 ### Audit trail
 
 Every privileged mutation writes a row to `admin_actions`, which `/admin/logs`
