@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listLoginLog, clearLoginLog, deleteLoginLog } from "@hoichoi/db";
-import { requireApiUser, unauthorized } from "@/lib/auth";
+import { requireApiRole } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("admin");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   const page = Math.max(1, Number(new URL(req.url).searchParams.get("page") ?? 1));
   const perPage = Math.min(100, Math.max(1, Number(new URL(req.url).searchParams.get("perPage") ?? 100)));
   const data = await listLoginLog(page, perPage);
@@ -12,8 +13,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("admin");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   const id = new URL(req.url).searchParams.get("id");
   if (id) {
     await deleteLoginLog(id);

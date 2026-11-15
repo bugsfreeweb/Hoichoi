@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient, nowIso } from "@hoichoi/db";
 import type { InValue } from "@libsql/client";
-import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
+import { forbidden, requireApiRole } from "@/lib/auth";
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("admin");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin") return forbidden();
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
@@ -44,8 +45,9 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 }
 
 export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("admin");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin") return forbidden();
   const { id } = await ctx.params;
   const client = getClient();

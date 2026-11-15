@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { countReviewQueues, getClient, getMediaStorageConfig, recentPipelineRuns } from "@hoichoi/db";
 import { listImageProviders } from "@hoichoi/llm";
-import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
+import { forbidden, requireApiRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +19,9 @@ export const dynamic = "force-dynamic";
  * distinguishable from "down".
  */
 export async function GET() {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin" && user.role !== "editor") return forbidden();
 
   const started = Date.now();

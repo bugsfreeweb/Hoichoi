@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listNotices, createNotice } from "@hoichoi/db";
 import type { NoticeTone } from "@hoichoi/shared-types";
-import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
+import { requireApiUser, unauthorized, forbidden, requireApiRole } from "@/lib/auth";
 
 const TONES: NoticeTone[] = ["info", "success", "warn", "alert"];
 
@@ -20,8 +20,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin") return forbidden();
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;

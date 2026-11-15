@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, sep } from "node:path";
 
 /**
  * Auth hardening guards.
@@ -131,6 +131,75 @@ check("auth: logout revokes the row instead of deleting it", () => {
 check("auth: ip and user agent are hashed before storage", () => {
   assert.match(authCode, /hashValue\(/, "device metadata must go through hashValue()");
   assert.ok(!/args: \[[^\]]*ip[^\]]*\]/.test(authCode), "raw ip must not be bound as a session argument");
+});
+
+/* ---------- role enforcement (C6) ---------- */
+
+function routeFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...routeFiles(full));
+    else if (entry.name === "route.ts") out.push(full);
+  }
+  return out;
+}
+
+const API = join(here, "..", "src", "app", "api");
+const allRoutes = routeFiles(API);
+const guardedRoles = new Map<string, string>();
+for (const file of allRoutes) {
+  const src = stripComments(readFileSync(file, "utf8"));
+  const match = /requireApiRole\("(admin|editor|moderator)"\)/.exec(src);
+  if (match) guardedRoles.set(file.slice(API.length + 1).split(sep).join("/"), match[1]!);
+}
+
+check("every admin API route declares a minimum role", () => {
+  const missing = allRoutes
+    .filter((f) => f.includes(join("api", "admin") + sep))
+    .map((f) => f.slice(API.length + 1).split(sep).join("/"))
+    .filter((rel) => !guardedRoles.has(rel));
+  assert.deepEqual(missing, [], `admin routes without requireApiRole(): ${missing.join(", ")}`);
+});
+
+check("destructive and credential routes require the admin role", () => {
+  const expected: Record<string, string> = {
+    "admin/purge/route.ts": "admin",
+    "admin/archive/delete/route.ts": "admin",
+    "admin/mail/route.ts": "admin",
+    "admin/maintenance/route.ts": "admin",
+    "admin/login-log/route.ts": "admin",
+    "providers/route.ts": "admin",
+    "providers/[id]/route.ts": "admin",
+    "reset/route.ts": "admin",
+    "import/route.ts": "admin",
+    "export/route.ts": "admin",
+    "settings/route.ts": "admin",
+  };
+  for (const [rel, role] of Object.entries(expected)) {
+    assert.equal(guardedRoles.get(rel), role, `${rel} must require "${role}", got "${guardedRoles.get(rel)}"`);
+  }
+});
+
+check("a route that imports the guard actually calls it", () => {
+  const liars = allRoutes
+    .filter((f) => /requireApiRole/.test(readFileSync(f, "utf8")) && !/requireApiRole\("/.test(readFileSync(f, "utf8")))
+    .map((f) => f.slice(API.length + 1).split(sep).join("/"));
+  assert.deepEqual(liars, [], `imported but never called: ${liars.join(", ")}`);
+});
+
+check("the provider list is not readable without an admin session", () => {
+  const src = stripComments(readFileSync(join(API, "providers", "route.ts"), "utf8"));
+  const get = /export async function GET\(\)([\s\S]*?)\n}/.exec(src);
+  assert.ok(get, "providers GET must exist");
+  assert.match(get[1]!, /requireApiRole\("admin"\)/, "providers GET must require the admin role");
+});
+
+check("editorial writes require at least the editor role", () => {
+  for (const rel of ["posts/[id]/route.ts", "sources/route.ts", "notices/route.ts", "moderation/[postId]/route.ts"]) {
+    const role = guardedRoles.get(rel);
+    assert.ok(role === "editor" || role === "admin", `${rel} must require editor or admin, got "${role}"`);
+  }
 });
 
 console.log(`[web] auth-hardening: ${passed} checks passed`);

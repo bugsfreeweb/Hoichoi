@@ -8,7 +8,7 @@ import {
   getClient,
   nowIso,
 } from "@hoichoi/db";
-import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
+import { forbidden, requireApiRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +17,9 @@ const isImageUrl = (u: string): boolean =>
 
 /** GET — gallery images attached to a post, in display order. */
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin" && user.role !== "editor") return forbidden();
 
   const { id } = await ctx.params;
@@ -33,8 +34,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
  * media candidates, but an operator may paste any URL).
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin" && user.role !== "editor") return forbidden();
 
   const { id } = await ctx.params;
@@ -66,8 +68,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
 /** PATCH — promote a gallery image to the post's primary image. */
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin" && user.role !== "editor") return forbidden();
   const { id } = await ctx.params;
 
@@ -82,8 +85,9 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
 /** DELETE — remove a gallery image by id. */
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin" && user.role !== "editor") return forbidden();
   const { id } = await ctx.params;
 

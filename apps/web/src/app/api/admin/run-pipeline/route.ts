@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
+import { forbidden, requireApiRole } from "@/lib/auth";
 
 /**
  * ম্যানুয়াল পাইপলাইন ট্রিগার।
@@ -7,8 +7,9 @@ import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
  * - না থাকলে 501 — লোকালি চালান: `pnpm scrape` অথবা `pnpm --filter scraper scrape --mock`।
  */
 export async function POST() {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin" && user.role !== "editor") return forbidden();
 
   const runnerUrl = process.env.RUNNER_URL;

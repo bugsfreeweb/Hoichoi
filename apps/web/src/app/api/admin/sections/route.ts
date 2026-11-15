@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiUser, requiresRole, unauthorized, forbidden } from "@/lib/auth";
+import { requiresRole, forbidden, requireApiRole } from "@/lib/auth";
 import { listSections, setSectionState, getSiteVariant, setSiteVariant } from "@hoichoi/db";
 import { DEFAULT_VARIANT, PRESETS } from "@hoichoi/shared-types";
 
@@ -12,8 +12,9 @@ export const dynamic = "force-dynamic";
  * is the seam for the optional mockup variant engine.
  */
 export async function GET() {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   try {
     const [sections, siteVariant] = await Promise.all([listSections(), getSiteVariant()]);
     return NextResponse.json({ ok: true, sections, siteVariant, defaultVariant: DEFAULT_VARIANT });
@@ -32,8 +33,9 @@ export async function GET() {
  * Body: { siteVariant?: string } | { key: string, variant?: string, enabled?: boolean }
  */
 export async function PUT(request: Request) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (!requiresRole(user, "admin")) return forbidden();
 
   let body: Record<string, unknown>;

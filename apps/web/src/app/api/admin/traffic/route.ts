@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiUser, unauthorized } from "@/lib/auth";
+import { requireApiRole } from "@/lib/auth";
 import { trafficSnapshot } from "@hoichoi/db";
 import type { TrafficRange } from "@hoichoi/shared-types";
 
@@ -11,8 +11,9 @@ export const dynamic = "force-dynamic";
  * most-read content, comments, page-view/OS/browser mix, ad views).
  */
 export async function GET(req: NextRequest) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
 
   const raw = new URL(req.url).searchParams.get("range");
   const range: TrafficRange = raw === "7d" || raw === "30d" ? raw : "24h";

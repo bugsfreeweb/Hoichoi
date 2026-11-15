@@ -1,17 +1,19 @@
-import { requireApiUser, unauthorized } from "@/lib/auth";
+import { requireApiRole } from "@/lib/auth";
 import { listCategories, createCategory } from "@hoichoi/db";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   const categories = await listCategories();
   return NextResponse.json({ ok: true, categories });
 }
 
 export async function POST(request: Request) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   const body = await request.json();
   const { slug, displayNameBn, displayNameEn, descriptionBn, descriptionEn, dot, sortOrder, showInFooter } = body;
 

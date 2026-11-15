@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
+import { forbidden, requireApiRole } from "@/lib/auth";
 import { pipelineEverSucceeded, recentPipelineRuns } from "@hoichoi/db";
 import { LLM_SECRET_NAMES } from "@hoichoi/shared-types";
 import { evaluateReadiness } from "@/lib/setup-readiness";
@@ -20,8 +20,9 @@ import { reapStaleRuns } from "@/lib/reap-runs";
  * Secret *values* are never read or returned; only their presence.
  */
 export async function GET() {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin") return forbidden();
 
   const hasTriggerToken = Boolean(process.env.GH_TRIGGER_TOKEN);

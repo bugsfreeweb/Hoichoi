@@ -9,7 +9,7 @@ import {
   getPostById,
   parseAppConfig,
 } from "@hoichoi/db";
-import { requireApiUser, unauthorized } from "@/lib/auth";
+import { requireApiRole } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
@@ -39,8 +39,9 @@ export async function GET(req: NextRequest) {
   }
 
   // No postId → admin moderation queue.
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   const comments = await getAllComments();
   return NextResponse.json({ ok: true, comments });
 }
@@ -104,8 +105,9 @@ export async function POST(req: Request) {
  * Admin/moderation — used by the web admin console and the desktop desk view.
  */
 export async function PATCH(req: Request) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
 
   let payload: unknown;
   try {
@@ -134,8 +136,9 @@ export async function PATCH(req: Request) {
  * Admin/moderation — hard-removes a comment.
  */
 export async function DELETE(req: Request) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
 
   let payload: unknown;
   try {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiUser, unauthorized } from "@/lib/auth";
+import { requireApiRole } from "@/lib/auth";
 import { recentPipelineRuns } from "@hoichoi/db";
 
 export const dynamic = "force-dynamic";
@@ -11,8 +11,9 @@ export const dynamic = "force-dynamic";
  * `completed`/`failed` row when done).
  */
 export async function GET(req: NextRequest) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
 
   const raw = new URL(req.url).searchParams.get("limit");
   const limit = Math.min(50, Math.max(1, Number(raw) || 10));

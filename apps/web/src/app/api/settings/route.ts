@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getSettings, updateSettings } from "@hoichoi/db";
-import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
+import { forbidden, requireApiRole } from "@/lib/auth";
 
 export async function GET() {
   const settings = await getSettings();
@@ -9,8 +9,9 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("admin");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin") return forbidden();
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;

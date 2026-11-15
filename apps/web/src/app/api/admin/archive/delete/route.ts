@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient, nowIso } from "@hoichoi/db";
-import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
+import { forbidden, requireApiRole } from "@/lib/auth";
 
 /**
  * Permanently delete a single archived post.
@@ -18,8 +18,9 @@ import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
  * original text and the source can be re-scraped if it is ever needed again.
  */
 export async function POST(req: NextRequest) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("admin");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin") return forbidden();
 
   const body = (await req.json().catch(() => null)) as { id?: string } | null;

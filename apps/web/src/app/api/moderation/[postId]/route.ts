@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient, nowIso, getPostById, getCategory } from "@hoichoi/db";
-import { requireApiUser, unauthorized } from "@/lib/auth";
+import { requireApiRole } from "@/lib/auth";
 
 type Action = "approve" | "publish" | "reject" | "remove" | "archive";
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ postId: string }> }) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
 
   const { postId } = await ctx.params;
   const body = (await req.json().catch(() => null)) as { action?: Action; note?: string } | null;

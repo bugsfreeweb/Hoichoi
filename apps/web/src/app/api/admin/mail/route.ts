@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getClient } from "@hoichoi/db";
-import { forbidden, requireApiUser, unauthorized } from "@/lib/auth";
+import { forbidden, requireApiRole } from "@/lib/auth";
 import { mailConfig, messageShell, sendMail } from "@/lib/mail";
 import { requestPasswordReset } from "@/lib/password-reset";
 
@@ -18,8 +18,9 @@ export const dynamic = "force-dynamic";
  * Only the admin console can read that link.
  */
 export async function GET() {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("admin");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin") return forbidden();
 
   const cfg = mailConfig();
@@ -44,8 +45,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("admin");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin") return forbidden();
 
   const body = (await req.json().catch(() => null)) as

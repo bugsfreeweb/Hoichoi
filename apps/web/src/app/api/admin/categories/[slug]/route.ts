@@ -1,4 +1,4 @@
-import { requireApiUser, unauthorized } from "@/lib/auth";
+import { requireApiRole } from "@/lib/auth";
 import { updateCategory, deleteCategory } from "@hoichoi/db";
 import { NextResponse } from "next/server";
 
@@ -6,8 +6,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   const { slug } = await params;
   const body = await request.json();
   const { displayNameBn, displayNameEn, descriptionBn, descriptionEn, isActive, sortOrder, dot, showInFooter, config } = body;
@@ -31,8 +32,9 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   const { slug } = await params;
 
   await deleteCategory(slug);

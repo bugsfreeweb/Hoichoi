@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiUser, unauthorized } from "@/lib/auth";
+import { requireApiRole } from "@/lib/auth";
 import { buildAdminDashboard } from "@/lib/admin-dashboard";
 import type { DashRange } from "@hoichoi/dash";
 
@@ -11,8 +11,9 @@ export const dynamic = "force-dynamic";
  * as JSON so the client can live-refresh and poll without a full navigation.
  */
 export async function GET(req: NextRequest) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
 
   const raw = new URL(req.url).searchParams.get("range");
   const range: DashRange = raw === "24h" || raw === "7d" ? raw : "all";

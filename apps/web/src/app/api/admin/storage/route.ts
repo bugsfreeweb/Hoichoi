@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiUser, unauthorized } from "@/lib/auth";
+import { requireApiRole } from "@/lib/auth";
 import { storageSnapshot } from "@hoichoi/db";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +15,9 @@ export const dynamic = "force-dynamic";
  * `res.json()` with "Unexpected token '<', "<!DOCTYPE"… is not valid JSON".
  */
 export async function GET() {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
 
   try {
     const snapshot = await storageSnapshot();

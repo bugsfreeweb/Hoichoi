@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { requireApiUser, requiresRole, unauthorized, forbidden } from "@/lib/auth";
+import { requiresRole, forbidden, requireApiRole } from "@/lib/auth";
 import { DEFAULT_VARIANT, PRESETS, getSectionMeta } from "@hoichoi/shared-types";
 import { encodePreviewDraft, PREVIEW_COOKIE, type PreviewDraft } from "@/lib/mv/live";
 
@@ -23,8 +23,9 @@ interface IncomingSection {
  * show/hide state — before committing anything to the database.
  */
 export async function POST(request: Request) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (!requiresRole(user, "admin")) return forbidden();
 
   let body: Record<string, unknown>;
@@ -84,8 +85,9 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE() {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   const jar = await cookies();
   jar.delete(PREVIEW_COOKIE);
   return NextResponse.json({ ok: true });

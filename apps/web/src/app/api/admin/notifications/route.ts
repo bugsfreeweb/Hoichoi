@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
+import { forbidden, requireApiRole } from "@/lib/auth";
 import { countReviewQueues } from "@hoichoi/db";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +17,9 @@ export const dynamic = "force-dynamic";
  * needs to know *that* something is waiting and where, not what it says.
  */
 export async function GET() {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin" && user.role !== "editor") return forbidden();
 
   try {

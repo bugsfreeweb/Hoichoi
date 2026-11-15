@@ -5,7 +5,7 @@ import {
   setReaderReportStatus,
   getPostById,
 } from "@hoichoi/db";
-import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
+import { forbidden, requireApiRole } from "@/lib/auth";
 import { REPORT_REASONS } from "@/lib/report-reasons";
 
 export const dynamic = "force-dynamic";
@@ -73,16 +73,18 @@ export async function POST(req: Request) {
 
 /** GET /api/reports — admin queue. */
 export async function GET() {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   const reports = await listReaderReports();
   return NextResponse.json({ ok: true, reports });
 }
 
 /** PATCH /api/reports  { id, action: "reviewed" | "dismissed" } — admin. */
 export async function PATCH(req: NextRequest) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role === "moderator") return forbidden();
 
   let payload: unknown;

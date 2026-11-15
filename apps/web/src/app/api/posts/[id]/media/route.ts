@@ -6,7 +6,7 @@ import {
   getClient,
   nowIso,
 } from "@hoichoi/db";
-import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
+import { forbidden, requireApiRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -26,8 +26,9 @@ const isImage = (u: string): boolean =>
  * time-limited), rather than writing a dead URL into media_path.
  */
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin" && user.role !== "editor") return forbidden();
 
   const { id } = await ctx.params;
@@ -78,8 +79,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
  * text fields use, so it lands in `admin_actions` with an audit trail.
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin" && user.role !== "editor") return forbidden();
 
   const { id } = await ctx.params;

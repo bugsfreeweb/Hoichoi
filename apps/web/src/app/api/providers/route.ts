@@ -1,19 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureSchema, getClient, nowIso, mapProvider } from "@hoichoi/db";
 import { PROCESSOR_ENV_DEFAULTS, type ProviderKey } from "@hoichoi/shared-types";
-import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
+import { forbidden, requireApiRole } from "@/lib/auth";
 
 const KEYS: ProviderKey[] = ["google", "groq", "openrouter", "ollama", "anthropic", "openai", "mistral", "github", "github-models", "custom"];
 
 export async function GET() {
+  // Provider rows carry base URLs, model names and key *presence*; the setup
+  // page is admin-only, so the API must be too — without this guard an
+  // unauthenticated request could enumerate the configured AI stack.
+  const guard = await requireApiRole("admin");
+  if ("response" in guard) return guard.response;
   const client = getClient();
   const res = await client.execute("SELECT * FROM llm_providers ORDER BY priority ASC");
   return NextResponse.json({ providers: res.rows.map((r) => mapProvider(r as Record<string, unknown>)) });
 }
 
 export async function POST(req: NextRequest) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("admin");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin") return forbidden();
 
   const body = (await req.json().catch(() => null)) as {

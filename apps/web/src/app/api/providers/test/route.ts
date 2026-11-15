@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureSchema, getClient } from "@hoichoi/db";
 import { generateImage } from "@hoichoi/llm";
-import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
+import { forbidden, requireApiRole } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -19,8 +19,9 @@ export const maxDuration = 120;
  * `gemini-2.5-flash-image: 429 quota exceeded` instead of a mystery.
  */
 export async function POST(req: NextRequest) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("admin");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin") return forbidden();
 
   const body = (await req.json().catch(() => null)) as { id?: string; prompt?: string } | null;

@@ -10,7 +10,7 @@ import {
 } from "@hoichoi/db";
 import { uploadBufferRemote, writeGeneratedMedia } from "@hoichoi/db/storage";
 import { buildImageBrief, EDITORIAL_IMAGE_NEGATIVE, extensionForMime, generateImage, listImageProviders } from "@hoichoi/llm";
-import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
+import { forbidden, requireApiRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -129,8 +129,9 @@ function str(v: unknown): string {
  * post so the operator can generate with one click or edit it first.
  */
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin" && user.role !== "editor") return forbidden();
 
   const { id } = await ctx.params;
@@ -189,8 +190,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
  * `updatePost` path and an `admin_actions` row records it.
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin" && user.role !== "editor") return forbidden();
 
   const { id } = await ctx.params;

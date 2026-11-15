@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient, nowIso } from "@hoichoi/db";
-import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
+import { forbidden, requireApiRole } from "@/lib/auth";
 
 /** ঊজ্জ্বল পদক্ষেপ: removal_request-র উপর মডারেশন। */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin" && user.role !== "editor") return forbidden();
 
   const { id } = await ctx.params;

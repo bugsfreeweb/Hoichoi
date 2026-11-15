@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getNotice, updateNotice, deleteNotice } from "@hoichoi/db";
 import type { NoticeTone } from "@hoichoi/shared-types";
-import { requireApiUser, unauthorized, forbidden } from "@/lib/auth";
+import { forbidden, requireApiRole } from "@/lib/auth";
 
 const TONES: NoticeTone[] = ["info", "success", "warn", "alert"];
 
@@ -9,8 +9,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin") return forbidden();
 
   const { id } = await params;
@@ -39,8 +40,9 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("editor");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   if (user.role !== "admin") return forbidden();
 
   const { id } = await params;

@@ -4,7 +4,7 @@ import {
   revokeAdminSessionById,
   revokeAllAdminSessions,
 } from "@hoichoi/db";
-import { currentSession, forbidden, requireApiUser, unauthorized, requiresRole } from "@/lib/auth";
+import { currentSession, forbidden, requiresRole, requireApiRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +22,9 @@ export const dynamic = "force-dynamic";
  * operator mid-incident.
  */
 export async function GET(req: NextRequest) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   const scope = req.nextUrl.searchParams.get("scope");
   if (scope === "all") {
     if (!requiresRole(user, "admin")) return forbidden();
@@ -45,8 +46,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await requireApiUser();
-  if (!user) return unauthorized();
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
   const body = (await req.json().catch(() => null)) as
     | { action?: string; id?: string; keepSelf?: boolean }
     | null;
