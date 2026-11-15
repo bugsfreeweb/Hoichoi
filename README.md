@@ -663,6 +663,28 @@ animate from real signals instead of a page-load snapshot:
 - **Live-event studio:** the homepage ticker uses the shared marquee animation and
   falls back to event title/summary text when there are no live updates.
 
+## Admin sign-in security
+
+The console signs in with **one-time codes**, never passwords. A code is
+8 characters from an unambiguous alphabet, hashed before storage, valid for 10
+minutes, and consumed atomically — a second request with the same code fails.
+
+Two rules keep that model safe, and both are regression-tested in
+`apps/web/scripts/auth-hardening.test.ts`:
+
+1. **A code never creates an admin by itself.** Provisioning is gated on
+   `ADMIN_ALLOWED_EMAILS`; an address that is neither invited nor already
+   provisioned gets the same generic 401 as a bad code, so the endpoint cannot
+   be used to discover which emails are admins. The very first account
+   (empty `admin_users`) becomes the bootstrap `admin`; every later invited
+   account starts as `editor` and is promoted deliberately.
+2. **`/api/revalidate` fails closed.** With `REVALIDATE_SECRET` unset it returns
+   503 instead of allowing an anonymous full-site cache purge, and the secret is
+   compared in constant time.
+
+Set `ADMIN_ALLOWED_EMAILS` in every environment, including production. With the
+allow-list empty, only accounts that already exist in `admin_users` can sign in.
+
 ## Editorial & safety
 
 - No verified users under 18; absolute block on child-sexual-abuse content.
