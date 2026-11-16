@@ -48,6 +48,59 @@ export default async function AboutPage() {
       ) : (
         <p>বিভাগের তালিকা এখনো প্রকাশিত হয়নি — অ্যাডমিন কনসোল থেকে যোগ করুন।</p>
       )}
+      <h2>নীতি, এবং কোন কোড সেটা চালায়</h2>
+      <p>
+        প্রতিটি নীতি শুধু লেখা নয় — কোন ফাইল সেটা কার্যকর করে, সেটাও এখানে বলা আছে। নীতি আর কোড আলাদা
+        হয়ে গেলে দুটোরই দাম কমে যায়।
+      </p>
+      <ul>
+        <li>
+          <Link className="font-bold text-alizarin hover:underline" href="/about/editorial">
+            সম্পাদকীয় নীতি
+          </Link>{" "}
+          — হুবহু কপি নয়, নিজের ভাষায় সারমর্ম। চালায়:{" "}
+          <code>apps/scraper/src/source-overlap.ts</code>
+        </li>
+        <li>
+          <Link className="font-bold text-alizarin hover:underline" href="/about/ai">
+            এআই নীতি
+          </Link>{" "}
+          — কোন মডেল, কী কাজে, আর কোথায় মানুষ অনুমোদন দেয়। চালায়:{" "}
+          <code>packages/llm/src/build.ts</code>
+        </li>
+        <li>
+          <Link className="font-bold text-alizarin hover:underline" href="/about/corrections">
+            সংশোধন নীতি
+          </Link>{" "}
+          — প্রতিটি সংশোধনের রেকর্ড থাকে। চালায়: <code>packages/db/src/verification.ts</code>
+        </li>
+        <li>
+          <Link className="font-bold text-alizarin hover:underline" href="/about/security">
+            নিরাপত্তা ও দুর্বলতা জানানো
+          </Link>{" "}
+          — ৭২ ঘণ্টায় উত্তর। চালায়: <code>SECURITY.md</code>,{" "}
+          <code>apps/web/security-headers.mjs</code>
+        </li>
+        <li>
+          <Link className="font-bold text-alizarin hover:underline" href="/privacy">
+            গোপনীয়তা
+          </Link>{" "}
+          · <Link className="font-bold text-alizarin hover:underline" href="/cookies">
+            কুকি
+          </Link>{" "}
+          — পাঠকের ফর্ম ইমেইল/আইপির হ্যাশ রাখে, কাঁচা ঠিকানা নয়। চালায়:{" "}
+          <code>packages/db/src/guest.ts</code>
+        </li>
+        <li>
+          <Link className="font-bold text-alizarin hover:underline" href="/terms">
+            শর্তাবলি
+          </Link>{" "}
+          · <Link className="font-bold text-alizarin hover:underline" href="/dmca">
+            DMCA
+          </Link>{" "}
+          — সরানোর অনুরোধের কিউ ও সময়সীমা। চালায়: <code>apps/web/src/app/api/report-content</code>
+        </li>
+      </ul>
       <h2>সাইটের কাঠামো</h2>
       <ul>
         <li>

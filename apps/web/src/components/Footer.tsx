@@ -25,6 +25,7 @@ export async function Footer() {
     { href: "/about/editorial", label: "সম্পাদকীয় নীতি" },
     { href: "/about/ai", label: "এআই নীতি" },
     { href: "/about/corrections", label: "সংশোধন নীতি" },
+    { href: "/about/security", label: "নিরাপত্তা নীতি" },
     { href: "/privacy", label: "গোপনীয়তা" },
     { href: "/terms", label: "শর্তাবলি" },
     { href: "/cookies", label: "কুকি নীতি" },

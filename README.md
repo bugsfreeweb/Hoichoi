@@ -705,6 +705,27 @@ The endpoint fails **closed** (503) without `CRON_SECRET` and requires
 row's `owner_email`, falling back to `SECURITY_CONTACT_EMAIL` then the first
 `ADMIN_ALLOWED_EMAILS` entry.
 
+### Policies on the site
+
+The policies ship as pages, not as files in a gitignored folder — a reader who
+wants to know how corrections or disclosure work lands on the website.
+
+| Page | Enforced by |
+| --- | --- |
+| `/about/editorial` | `apps/scraper/src/source-overlap.ts` (35-word verbatim ceiling) |
+| `/about/ai` | `packages/llm/src/build.ts` (provider, task, human approval) |
+| `/about/corrections` | `packages/db/src/verification.ts` (correction history) |
+| `/about/security` | `SECURITY.md`, `security-headers.mjs` |
+| `/privacy`, `/cookies` | `packages/db/src/guest.ts` (hashes, never raw) |
+| `/terms`, `/dmca` | `apps/web/src/app/api/report-content` |
+
+`/about` is the index: it lists each policy **and the file that implements it**,
+because a policy that describes behaviour the code does not perform is worse than
+no policy. `/about/security` carries the disclosure promise in Bangla first with
+an English section below, and the footer links it alongside the rest.
+7 checks in `apps/web/scripts/policy-pages.test.ts` keep the set complete, linked,
+and honest about what enforces it. `docs/` stays gitignored.
+
 ### Health, logs and error reporting
 
 **`GET /api/health`** answers "can this deployment serve a story right now?"
