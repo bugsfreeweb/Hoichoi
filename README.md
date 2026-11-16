@@ -705,6 +705,25 @@ The endpoint fails **closed** (503) without `CRON_SECRET` and requires
 row's `owner_email`, falling back to `SECURITY_CONTACT_EMAIL` then the first
 `ADMIN_ALLOWED_EMAILS` entry.
 
+### Media dashboard
+
+`mediaDashboard()` (`media-dashboard.ts`) puts C12's health rows and C13's
+registry on one screen — `/admin/media` (🗄️ মিডিয়া ও কোটা).
+
+- **KPI strip**: total bytes, files, providers, problems (failing + cooldown + over quota).
+- **One card per provider**: measured bytes, quota bar (only when an operator set
+  one — an unlimited provider shows no bar), success/failure counts, the live
+  streak, last error and last fallback reason.
+- **14-day inline sparkline**, zero-filled so a quiet day reads as *nothing
+  uploaded* instead of collapsing the chart — a stalled pipeline cannot look
+  healthy by going blank.
+- **Headline** picks the hardest condition first (quota full beats a cooldown,
+  which beats mere failures) so the most blocking problem is the one you read.
+
+All numbers come from the uploader's own rows, so the dashboard can never
+disagree with the pipeline. 7 checks in
+`packages/db/src/__tests__/media-dashboard.test.ts`.
+
 ### Media reconciliation
 
 Media drifts out of sync in ways nobody sees: a file written just before a crash

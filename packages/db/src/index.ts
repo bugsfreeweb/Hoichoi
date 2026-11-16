@@ -23,6 +23,7 @@ export * from "./polls";
 export * from "./ads";
 export * from "./provider-health";
 export * from "./media-reconcile";
+export * from "./media-dashboard";
 
 import {
   DEFAULT_APP_CONFIG,

@@ -87,6 +87,7 @@ const NAV_GROUPS: Array<{ title: string; en: string; items: NavItem[] }> = [
     en: "System",
     items: [
       { href: "/admin/providers", emoji: "🤖", label: "AI প্রোভাইডার" },
+      { href: "/admin/media", emoji: "🗄️", label: "মিডিয়া ও কোটা" },
       { href: "/admin/backup", emoji: "💾", label: "ব্যাকআপ ও রিসেট" },
       { href: "/admin/logs", emoji: "📜", label: "লগ" },
       { href: "/admin/security", emoji: "🔐", label: "নিরাপত্তা ও ডিভাইস" },
