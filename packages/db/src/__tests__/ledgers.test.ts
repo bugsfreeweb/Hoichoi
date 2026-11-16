@@ -14,7 +14,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createClient } from "@libsql/client";
-import { applyMigration, ensureAppConfigColumn, ensureBrandingColumns, ensureAdSlotColumns, ensureAdSlotInventory, ensureNoticesTable, __useClientForTests } from "../client";
+import { applyMigration, ensureAiProvenanceColumns, ensureAppConfigColumn, ensureBrandingColumns, ensureAdSlotColumns, ensureAdSlotInventory, ensureNoticesTable, __useClientForTests } from "../client";
 import { baseSchemaSql, migrationSql } from "../migrations";
 import { deletionCountFor, listDeletions, logDeletion } from "../deletion-log";
 import { aiTaskSummary, listAiTaskRuns } from "../ai-runs";
@@ -47,6 +47,9 @@ for (const name of ["034_ai_provenance_and_ledgers"]) {
   assert.ok(sql, `migration ${name} must exist`);
   await applyMigration(client, name, sql);
 }
+// Columns live in a PRAGMA-guarded helper (SQLite has no ADD COLUMN IF NOT
+// EXISTS), so a fresh schema needs it exactly like an upgrade does.
+await ensureAiProvenanceColumns(client);
 
 await check("a deletion is recorded with reason, actor and detail", async () => {
   await logDeletion({
