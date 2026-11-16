@@ -84,7 +84,7 @@ async function main(): Promise<void> {
     const scopedEvents = await ads.listAdEvents("client-a");
     assert.equal(scopedEvents.length, 2);
     assert.ok(scopedEvents.every((event) => event.bookingId === "booking-a"));
-    assert.equal((await ads.listAdEvents()).length, 3);
+    assert.equal((await ads.listAllAdEvents()).length, 3);
 
     console.log("ad analytics checks passed");
   } finally {

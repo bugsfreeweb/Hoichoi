@@ -8,7 +8,7 @@
     "build": "pnpm -w run db:migrate && next build",
     "start": "next start --port 3070",
     "typecheck": "tsc --noEmit",
-    "test": "node --conditions=react-server --import tsx --test src/__tests__/live-stream-proxy.test.ts && tsx src/__tests__/category-style.test.ts && tsx scripts/theme-audit.test.ts && tsx scripts/external-links.test.ts && tsx scripts/setup-readiness.test.ts && tsx scripts/cron.test.ts && tsx scripts/api-routes.test.ts && tsx scripts/mv-images.test.ts && tsx scripts/auth-hardening.test.ts && tsx src/__tests__/session-policy.test.ts && tsx scripts/policy-pages.test.ts && tsx scripts/health.test.ts && tsx scripts/quality-gate.test.ts && tsx scripts/supply-chain.test.ts && tsx scripts/i18n.test.ts && tsx scripts/trust-claims.test.ts && tsx scripts/security-headers.test.ts"
+    "test": "node --conditions=react-server --import tsx --test src/__tests__/live-stream-proxy.test.ts && tsx src/__tests__/category-style.test.ts && tsx scripts/theme-audit.test.ts && tsx scripts/external-links.test.ts && tsx scripts/setup-readiness.test.ts && tsx scripts/cron.test.ts && tsx scripts/api-routes.test.ts && tsx scripts/mv-images.test.ts && tsx scripts/auth-hardening.test.ts && tsx src/__tests__/session-policy.test.ts && tsx scripts/policy-pages.test.ts && tsx scripts/health.test.ts && tsx scripts/quality-gate.test.ts && tsx scripts/advertiser-isolation.test.ts && tsx scripts/supply-chain.test.ts && tsx scripts/i18n.test.ts && tsx scripts/trust-claims.test.ts && tsx scripts/security-headers.test.ts"
   },
   "dependencies": {
     "@hoichoi/dash": "workspace:*",

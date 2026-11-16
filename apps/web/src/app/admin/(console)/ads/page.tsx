@@ -1,4 +1,4 @@
-import { getAdAnalytics, listAdSlots, listAdCreatives, listAdBookings, listAdClients } from "@hoichoi/db";
+import { getAllAdAnalytics, listAdSlots, listAllAdCreatives, listAllAdBookings, listAdClients } from "@hoichoi/db";
 import Link from "next/link";
 import { requirePageUser, requiresRole } from "@/lib/auth";
 import { updateAdBookingStatus, updateAdClientStatus } from "./actions";
@@ -13,10 +13,10 @@ export default async function AdminAdsPage() {
   const canManageClients = requiresRole(user, "admin");
   const [slots, creatives, bookings, clients, analytics] = await Promise.all([
     listAdSlots(),
-    listAdCreatives(),
-    listAdBookings(),
+    listAllAdCreatives(),
+    listAllAdBookings(),
     listAdClients(),
-    getAdAnalytics().catch(() => []),
+    getAllAdAnalytics().catch(() => []),
   ]);
 
   return (

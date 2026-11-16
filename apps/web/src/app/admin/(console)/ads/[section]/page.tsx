@@ -1,10 +1,10 @@
 import Link from "next/link";
 import {
-  getAdAnalytics,
-  listAdBookings,
+  getAllAdAnalytics,
+  listAllAdBookings,
   listAdClients,
-  listAdCreatives,
-  listAdEvents,
+  listAllAdCreatives,
+  listAllAdEvents,
   listAdSlots,
 } from "@hoichoi/db";
 import { notFound } from "next/navigation";
@@ -52,11 +52,11 @@ export default async function AdminAdsSectionPage({
   const canManage = requiresRole(user, "admin");
   const [slots, creatives, bookings, clients, analytics, events] = await Promise.all([
     listAdSlots(),
-    listAdCreatives(),
-    listAdBookings(),
+    listAllAdCreatives(),
+    listAllAdBookings(),
     listAdClients(),
-    getAdAnalytics(),
-    listAdEvents(),
+    getAllAdAnalytics(),
+    listAllAdEvents(),
   ]);
   const card = "border border-ink/15 bg-card p-4";
   const field = "border border-ink/25 bg-paper px-2 py-1.5 text-[11px] text-ink";

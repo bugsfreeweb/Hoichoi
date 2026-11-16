@@ -119,10 +119,40 @@ export async function getAdSlot(slotKey: string) {
   };
 }
 
-export async function listAdCreatives(clientId?: string) {
+/**
+ * Advertiser-scoped readers.
+ *
+ * Every reader below that an advertiser portal can reach REQUIRES a client id.
+ * The old shape took `clientId?: string` and returned every row when it was
+ * omitted, so one forgotten argument in a page turned into a full cross-tenant
+ * dump — a bug that leaves no trace in a log. Cross-tenant reads now live in
+ * separate, explicitly named `All…` functions that only the admin console calls.
+ */
+export async function listAdCreatives(clientId: string) {
   const client = getClient();
-  const sql = clientId ? "SELECT * FROM ad_creatives WHERE client_id = ? ORDER BY created_at DESC" : "SELECT * FROM ad_creatives ORDER BY created_at DESC";
-  const res = await client.execute(clientId ? { sql, args: [clientId] } : sql);
+  const res = await client.execute({
+    sql: "SELECT * FROM ad_creatives WHERE client_id = ? ORDER BY created_at DESC",
+    args: [clientId],
+  });
+  return res.rows.map((row) => ({
+    id: String(row.id),
+    clientId: row.client_id ? String(row.client_id) : null,
+    name: String(row.name),
+    templateId: String(row.template_id),
+    palette: String(row.palette),
+    data: JSON.parse(String(row.data_json || "{}")),
+    style: JSON.parse(String(row.style_json || "{}")),
+    layout: JSON.parse(String(row.layout_json || "{}")),
+    baseLang: String(row.base_lang),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  }));
+}
+
+/** Admin console only: every advertiser's creatives. */
+export async function listAllAdCreatives() {
+  const client = getClient();
+  const res = await client.execute("SELECT * FROM ad_creatives ORDER BY created_at DESC");
   return res.rows.map((row) => ({
     id: String(row.id),
     clientId: row.client_id ? String(row.client_id) : null,
@@ -179,13 +209,37 @@ export async function updateAdCreative(input: {
   if (result.rowsAffected === 0) throw new Error("ক্রিয়েটিভটি আপনার অ্যাকাউন্টে পাওয়া যায়নি।");
 }
 
-export async function listAdBookings(clientId?: string) {
+export async function listAdBookings(clientId: string) {
   const client = getClient();
-  const res = await client.execute(
-    clientId
-      ? { sql: "SELECT * FROM ad_bookings WHERE client_id = ? ORDER BY created_at DESC", args: [clientId] }
-      : "SELECT * FROM ad_bookings ORDER BY created_at DESC",
-  );
+  const res = await client.execute({
+    sql: "SELECT * FROM ad_bookings WHERE client_id = ? ORDER BY created_at DESC",
+    args: [clientId],
+  });
+  return res.rows.map((row) => ({
+    id: String(row.id),
+    clientId: String(row.client_id),
+    creativeId: String(row.creative_id),
+    slotKey: String(row.slot_key),
+    startsAt: String(row.starts_at),
+    endsAt: String(row.ends_at),
+    days: Number(row.days),
+    status: String(row.status),
+    priority: Number(row.priority),
+    grossBdt: Number(row.gross_bdt),
+    discountBdt: Number(row.discount_bdt),
+    vatBdt: Number(row.vat_bdt),
+    totalBdt: Number(row.total_bdt),
+    impressions: Number(row.impressions),
+    clicks: Number(row.clicks),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  }));
+}
+
+/** Admin console only: every advertiser's bookings. */
+export async function listAllAdBookings() {
+  const client = getClient();
+  const res = await client.execute("SELECT * FROM ad_bookings ORDER BY created_at DESC");
   return res.rows.map((row) => ({
     id: String(row.id),
     clientId: String(row.client_id),
@@ -220,6 +274,14 @@ export async function createAdBooking(input: {
   totalBdt: number;
 }) {
   const client = getClient();
+  // Ownership is enforced here and not only in the server action: a booking that
+  // pointed at another advertiser's creative would put their artwork on this
+  // client's slot, and the action is one of several future callers.
+  const owned = await client.execute({
+    sql: "SELECT 1 AS ok FROM ad_creatives WHERE id = ? AND client_id = ?",
+    args: [input.creativeId, input.clientId],
+  });
+  if (!owned.rows.length) throw new Error("ক্রিয়েটিভটি আপনার অ্যাকাউন্টে নেই।");
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   await client.execute({
@@ -292,19 +354,27 @@ export async function recordAdDeliveryEvent(input: {
   ], "write");
 }
 
-export async function getAdAnalytics(clientId?: string): Promise<AdAnalyticsDay[]> {
+export async function getAdAnalytics(clientId: string): Promise<AdAnalyticsDay[]> {
+  return adAnalyticsSince(clientId);
+}
+
+/** Admin console only: platform-wide delivery analytics. */
+export async function getAllAdAnalytics(): Promise<AdAnalyticsDay[]> {
+  return adAnalyticsSince(null);
+}
+
+/** One implementation, one place where the tenant filter exists or does not. */
+async function adAnalyticsSince(clientId: string | null): Promise<AdAnalyticsDay[]> {
   const client = getClient();
-  const clientFilter = clientId ? "AND b.client_id = ?" : "";
+  const since = new Date(Date.now() - 13 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const query = await client.execute({
     sql: `SELECT substr(e.created_at, 1, 10) AS event_date, e.kind, COUNT(*) AS total
       FROM platform_ad_events e
       LEFT JOIN ad_bookings b ON b.id = e.booking_id
-      WHERE e.created_at >= ? ${clientFilter}
+      WHERE e.created_at >= ? ${clientId ? "AND b.client_id = ?" : ""}
       GROUP BY event_date, e.kind
       ORDER BY event_date`,
-    args: clientId
-      ? [new Date(Date.now() - 13 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10), clientId]
-      : [new Date(Date.now() - 13 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)],
+    args: clientId ? [since, clientId] : [since],
   });
 
   const series = new Map<string, AdAnalyticsDay>();
@@ -323,18 +393,31 @@ export async function getAdAnalytics(clientId?: string): Promise<AdAnalyticsDay[
   return [...series.values()];
 }
 
-export async function listAdEvents(clientId?: string): Promise<AdEvent[]> {
+export async function listAdEvents(clientId: string): Promise<AdEvent[]> {
+  const client = getClient();
+  const result = await client.execute({
+    sql: `SELECT e.* FROM platform_ad_events e
+      JOIN ad_bookings b ON b.id = e.booking_id
+      WHERE b.client_id = ?
+      ORDER BY e.created_at DESC LIMIT 200`,
+    args: [clientId],
+  });
+  return result.rows.map((row) => ({
+    id: String(row.id),
+    bookingId: row.booking_id ? String(row.booking_id) : null,
+    slotKey: String(row.slot_key),
+    kind: String(row.kind),
+    path: row.path ? String(row.path) : null,
+    device: row.device ? String(row.device) : null,
+    createdAt: String(row.created_at),
+  }));
+}
+
+/** Admin console only: every advertiser's delivery events. */
+export async function listAllAdEvents(): Promise<AdEvent[]> {
   const client = getClient();
   const result = await client.execute(
-    clientId
-      ? {
-          sql: `SELECT e.* FROM platform_ad_events e
-            JOIN ad_bookings b ON b.id = e.booking_id
-            WHERE b.client_id = ?
-            ORDER BY e.created_at DESC LIMIT 200`,
-          args: [clientId],
-        }
-      : "SELECT * FROM platform_ad_events ORDER BY created_at DESC LIMIT 200",
+    "SELECT * FROM platform_ad_events ORDER BY created_at DESC LIMIT 200",
   );
   return result.rows.map((row) => ({
     id: String(row.id),
