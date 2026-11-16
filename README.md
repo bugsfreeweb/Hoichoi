@@ -705,6 +705,19 @@ The endpoint fails **closed** (503) without `CRON_SECRET` and requires
 row's `owner_email`, falling back to `SECURITY_CONTACT_EMAIL` then the first
 `ADMIN_ALLOWED_EMAILS` entry.
 
+### Supply chain and disclosure
+
+| File | What it does |
+| --- | --- |
+| `.github/dependabot.yml` | weekly npm (grouped minor/patch), cargo, actions; `next`/`react` majors are ignored so a framework migration stays a decision |
+| `.github/workflows/codeql.yml` | `security-extended` queries over `javascript-typescript`, on push, PR and weekly |
+| `.github/workflows/secret-scan.yml` | gitleaks with `fetch-depth: 0` — a shallow clone hides leaked history |
+| `SECURITY.md` | contact, scope, 72 h acknowledgement, what we already do, no paid bounty |
+| `.github/pull_request_template.md` | asks for the checks actually run, and flags migrations/CSP/desktop rebuilds |
+| `apps/web/scripts/supply-chain.test.ts` | 8 checks — the configs stay effective (permissions, full history, ecosystem coverage) and **no `.env` is tracked** |
+
+Report vulnerabilities to **security@hoichoi.io**; please do not open a public issue.
+
 ### Bilingual strings (`t()`)
 
 `apps/web/src/i18n/` is the single dictionary for new user-facing text:
