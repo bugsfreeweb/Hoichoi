@@ -276,5 +276,22 @@ export async function reconcileMedia(options: ReconcileOptions): Promise<Reconci
     }
   }
 
+  if (!dryRun && (report.deletedLocal.length > 0 || report.deletedRemoteRows > 0)) {
+    try {
+      const { notify } = await import("./admin-notifications");
+      await notify({
+        kind: "media",
+        severity: "info",
+        title_bn: `মিডিয়া পুনর্মিলন: ${report.deletedLocal.length} ফাইল ও ${report.deletedRemoteRows} রেকর্ড মুছে`,
+        body_bn: `স্ক্যানে ${report.scannedLocalFiles}টি লোকাল ফাইল দেখা হয়েছে; কোনো পোস্টের রেফারেন্স নষ্ট হয়নি।`,
+        href: "/admin/media",
+        // One row per run is right here: each run reflects a distinct cleanup.
+        dedupeKey: `media:reconcile:${report.ranAt}`,
+      });
+    } catch {
+      /* best-effort */
+    }
+  }
+
   return report;
 }

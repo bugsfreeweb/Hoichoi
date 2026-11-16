@@ -1,0 +1,30 @@
+name: Alert digest
+
+# Emails warn/critical desk events that have never been mailed. The endpoint
+# fails closed without CRON_SECRET, so the job no-ops on a fork.
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip when the deployment secrets are absent
+        id: gate
+        run: |
+          if [ -z "${{ secrets.SITE_URL }}" ] || [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Send digest
+        if: steps.gate.outputs.skip == 'false'
+        run: |
+          code=$(curl -s -o /tmp/alerts.json -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.SITE_URL }}/api/cron/alerts")
+          echo "HTTP $code"
+          cat /tmp/alerts.json
+          test "$code" = "200"

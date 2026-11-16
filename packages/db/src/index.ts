@@ -24,6 +24,7 @@ export * from "./ads";
 export * from "./provider-health";
 export * from "./media-reconcile";
 export * from "./media-dashboard";
+export * from "./admin-notifications";
 
 import {
   DEFAULT_APP_CONFIG,

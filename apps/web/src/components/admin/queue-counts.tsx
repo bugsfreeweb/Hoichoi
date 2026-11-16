@@ -30,8 +30,19 @@ export type QueueCounts = {
   pending_comments: number;
 };
 
+export type AlertItem = {
+  id: string;
+  kind: string;
+  severity: "info" | "warn" | "critical";
+  title_bn: string;
+  body_bn: string | null;
+  href: string | null;
+  created_at: string;
+  read_at: string | null;
+};
+
 type Payload =
-  | { ok: true; counts: QueueCounts; urgent: UrgentItem[]; at: string }
+  | { ok: true; counts: QueueCounts; urgent: UrgentItem[]; alerts?: AlertItem[]; unread?: number; at: string }
   | { ok: false; error: string };
 
 export type UrgentItem = { key: string; href: string; count: number; label: string };
@@ -51,11 +62,21 @@ const EMPTY: QueueCounts = {
   pending_comments: 0,
 };
 
-type Store = { counts: QueueCounts; urgent: UrgentItem[]; stale: boolean; refresh: () => void };
+type Store = {
+  counts: QueueCounts;
+  urgent: UrgentItem[];
+  /** Real events (provider cooldown, expiring credential, failed cron). */
+  alerts: AlertItem[];
+  unread: number;
+  stale: boolean;
+  refresh: () => void;
+};
 
 const QueueCountsContext = createContext<Store>({
   counts: EMPTY,
   urgent: [],
+  alerts: [],
+  unread: 0,
   stale: false,
   refresh: () => {},
 });
@@ -78,6 +99,8 @@ export function QueueCountsProvider({
 export function useQueueCountsPolling(): Store {
   const [counts, setCounts] = useState<QueueCounts>(EMPTY);
   const [urgent, setUrgent] = useState<UrgentItem[]>([]);
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [unread, setUnread] = useState(0);
   const [stale, setStale] = useState(false);
   const [nonce, setNonce] = useState(0);
 
@@ -93,6 +116,8 @@ export function useQueueCountsPolling(): Store {
         if (data.ok) {
           setCounts(data.counts);
           setUrgent(data.urgent);
+          setAlerts(data.alerts ?? []);
+          setUnread(data.unread ?? 0);
           setStale(false);
         } else {
           // Keep the last known numbers rather than blanking the badge: a failed
@@ -120,5 +145,5 @@ export function useQueueCountsPolling(): Store {
     };
   }, [nonce]);
 
-  return { counts, urgent, stale, refresh: () => setNonce((n) => n + 1) };
+  return { counts, urgent, alerts, unread, stale, refresh: () => setNonce((n) => n + 1) };
 }

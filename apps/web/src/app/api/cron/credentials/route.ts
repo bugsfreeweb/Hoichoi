@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { credentialsDue, credentialState, listCredentials, markNotified } from "@hoichoi/db";
+import { credentialsDue, credentialState, listCredentials, markNotified, notify } from "@hoichoi/db";
 import { sendMail } from "@/lib/mail";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +49,19 @@ async function run(req: NextRequest, send: boolean) {
   const due = await credentialsDue(now);
   const all = await listCredentials();
   const summary = all.map((row) => ({ name: row.name, scope: row.scope, ...credentialState(row.expires_at, now, row.warn_days) }));
+
+  // Mirror every due credential into the bell as well: mail can be filtered,
+  // and the desk is where someone actually renews the key.
+  for (const { row, status } of due) {
+    await notify({
+      kind: "credential",
+      severity: status.state === "expired" ? "critical" : "warn",
+      title_bn: `${row.name} — ${status.state === "expired" ? "মেয়াদ শেষ" : `${status.daysLeft} দিন বাকি`}`,
+      body_bn: `${row.scope} ক্রেডেনশিয়াল · ${status.expiresAt?.slice(0, 10) ?? row.expires_at.slice(0, 10)}`,
+      href: "/admin/security",
+      dedupeKey: `credential:${row.name}:${status.state}:${status.expiresAt?.slice(0, 10) ?? row.expires_at.slice(0, 10)}`,
+    }).catch(() => undefined);
+  }
 
   if (due.length === 0) {
     return NextResponse.json({ ok: true, sent: 0, due: 0, checked: all.length, credentials: summary });

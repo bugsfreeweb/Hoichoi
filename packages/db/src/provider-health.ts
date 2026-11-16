@@ -195,6 +195,24 @@ export async function recordProviderSuccess(key: string, bytes = 0): Promise<voi
 }
 
 /** A real upload failed: count it, keep the message, start a cooldown if repeated. */
+/** Notify the desk when a provider goes into a cooldown (once per cooldown). */
+async function alertCooldown(key: string, error: string, streak: number, cooldown: string | null): Promise<void> {
+  if (!cooldown) return;
+  try {
+    const { notify } = await import("./admin-notifications");
+    await notify({
+      kind: "provider",
+      severity: "warn",
+      title_bn: `প্রোভাইডার বিরতিতে: ${key}`,
+      body_bn: `টানা ${streak}বার ব্যর্থ — ${error.slice(0, 180)}। ${cooldown} পর্যন্ত এড়িয়ে যাওয়া হবে।`,
+      href: "/admin/media",
+      dedupeKey: `provider:${key}:cooldown:${cooldown}`,
+    });
+  } catch {
+    /* notifications are best-effort: never let one break an upload */
+  }
+}
+
 export async function recordProviderFailure(key: string, error: string): Promise<void> {
   const client = getClient();
   const now = nowIso();
@@ -202,6 +220,7 @@ export async function recordProviderFailure(key: string, error: string): Promise
   // one upload at a time per provider in practice (a run is sequential).
   const existing = await getProviderHealth(key);
   const streak = (existing?.consecutive_failures ?? 0) + 1;
+  const cooldown = cooldownUntil(streak);
   await client.execute({
     sql: `UPDATE media_provider_health SET
             failure_count = failure_count + 1,
@@ -211,8 +230,9 @@ export async function recordProviderFailure(key: string, error: string): Promise
             cooldown_until = ?,
             updated_at = ?
           WHERE provider_key = ?`,
-    args: [streak, now, clampText(error), cooldownUntil(streak), now, key],
+    args: [streak, now, clampText(error), cooldown, now, key],
   });
+  await alertCooldown(key, error, streak, cooldown);
 }
 
 /**

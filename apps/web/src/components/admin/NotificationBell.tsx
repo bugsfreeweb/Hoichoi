@@ -18,9 +18,30 @@ function toBn(v: number): string {
   return String(v).replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)] ?? d);
 }
 
+const SEVERITY_STYLE: Record<string, string> = {
+  critical: "border-l-2 border-alizarin",
+  warn: "border-l-2 border-amberx",
+  info: "border-l-2 border-ink/20",
+};
+
 export function NotificationBell() {
-  const { urgent, stale, refresh } = useQueueCounts();
+  const { urgent, alerts, unread, stale, refresh } = useQueueCounts();
   const [open, setOpen] = useState(false);
+  const [marking, setMarking] = useState(false);
+
+  async function markAllRead(): Promise<void> {
+    setMarking(true);
+    try {
+      await fetch("/api/admin/notifications", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ all: true }),
+      });
+      refresh();
+    } finally {
+      setMarking(false);
+    }
+  }
   const wrapRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click and on Escape; both are expected of a dropdown.
@@ -40,7 +61,9 @@ export function NotificationBell() {
     };
   }, [open]);
 
-  const total = urgent.reduce((sum, i) => sum + i.count, 0);
+  // Queue depth and unread alerts are different things: a queue of 40 pending
+  // posts and one "provider cooling down" both deserve a badge.
+  const total = urgent.reduce((sum, i) => sum + i.count, 0) + unread;
 
   return (
     <div className="relative" ref={wrapRef}>
@@ -103,6 +126,47 @@ export function NotificationBell() {
               </span>
             </Link>
           ))}
+          <div className="mt-1 border-t border-ink/10 pt-1.5">
+            <div className="flex items-center justify-between px-2">
+              <p className="font-mono-x text-[9.5px] tracking-[0.18em] text-ink-soft uppercase">
+                ঘটনা{alerts.length ? ` · ${toBn(alerts.length)}` : ""}
+              </p>
+              {unread > 0 ? (
+                <button
+                  type="button"
+                  onClick={markAllRead}
+                  disabled={marking}
+                  className="font-mono-x text-[9.5px] text-alizarin underline disabled:opacity-50"
+                >
+                  সব পড়া হয়েছে
+                </button>
+              ) : null}
+            </div>
+            {alerts.length === 0 ? (
+              <p className="px-2 py-2 text-[12px] text-ink-soft">কোনো ঘটনা নেই।</p>
+            ) : (
+              alerts.map((a) => {
+                const body = (
+                  <>
+                    <p className="text-[12.5px] font-semibold text-ink">{a.title_bn}</p>
+                    {a.body_bn ? <p className="mt-0.5 text-[11.5px] text-ink-soft">{a.body_bn}</p> : null}
+                  </>
+                );
+                const cls = `mt-1 block rounded-lg px-2 py-1.5 transition-colors hover:bg-ink/5 ${
+                  SEVERITY_STYLE[a.severity] ?? SEVERITY_STYLE.info
+                } ${a.read_at ? "opacity-60" : ""}`;
+                return a.href ? (
+                  <Link key={a.id} href={a.href} onClick={() => setOpen(false)} className={cls}>
+                    {body}
+                  </Link>
+                ) : (
+                  <div key={a.id} className={cls}>
+                    {body}
+                  </div>
+                );
+              })
+            )}
+          </div>
           <p className="border-t border-ink/10 px-2 pt-2 pb-1 font-mono-x text-[9.5px] text-ink-soft">
             {stale ? "সংযোগ ফিরে এলে হালনাগাদ হবে" : `${POLL_MS / 1000}s পরপর হালনাগাদ হয়`}
           </p>

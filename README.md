@@ -705,6 +705,32 @@ The endpoint fails **closed** (503) without `CRON_SECRET` and requires
 row's `owner_email`, falling back to `SECURITY_CONTACT_EMAIL` then the first
 `ADMIN_ALLOWED_EMAILS` entry.
 
+### Desk notifications
+
+The bell used to show only queue *counts*, so events outside a queue — a provider
+cooling down, a credential about to expire, a cron failing closed, a
+reconciliation that deleted files — lived in a log nobody read.
+
+`admin_notifications` (migration 030) holds real events. `notify()` is
+**idempotent**: the same condition (`dedupe_key`) produces one row no matter how
+often the job reports it, so the bell stays quiet instead of becoming noise.
+Writers are wired where the events actually happen:
+
+| Event | Writer | When |
+| --- | --- | --- |
+| provider cooldown | `recordProviderFailure` | 2nd consecutive failure, once per cooldown |
+| credential due | credential cron | every expiry, stamped per day |
+| media cleanup | `reconcileMedia` | after a run that deleted something |
+| failed cron | `/api/cron/alerts` | alerts that could not be mailed |
+
+**Surfaces**: the header bell shows `warn`/`critical` events under the queue
+depths with one-tap "সব পড়া হয়েছে" (role-filtered — an admin-only alert is
+invisible to a moderator); `/api/cron/alerts` emails a digest of never-emailed
+`warn`/`critical` rows and fails closed without `CRON_SECRET` (GitHub workflow
+`.github/workflows/alerts.yml`, every 6 h); the desktop app polls the same
+endpoint and raises a native OS notification per new alert (`Notifier.tsx`, once
+per id). 6 checks in `packages/db/src/__tests__/notifications.test.ts`.
+
 ### Media dashboard
 
 `mediaDashboard()` (`media-dashboard.ts`) puts C12's health rows and C13's

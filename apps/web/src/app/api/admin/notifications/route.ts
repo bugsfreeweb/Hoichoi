@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { forbidden, requireApiRole } from "@/lib/auth";
-import { countReviewQueues } from "@hoichoi/db";
+import {
+  countReviewQueues,
+  countUnreadNotifications,
+  listNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from "@hoichoi/db";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +29,19 @@ export async function GET() {
   if (user.role !== "admin" && user.role !== "editor") return forbidden();
 
   try {
-    const counts = await countReviewQueues();
+    const [counts, alerts, unread] = await Promise.all([
+      countReviewQueues(),
+      // Real events (a provider cooling down, a credential expiring, a cron that
+      // failed closed). Queue depths cannot express these, and they were the
+      // things an operator only found out about by reading a log.
+      listNotifications({ limit: 8, roleMin: user.role }).catch(() => []),
+      countUnreadNotifications(user.role).catch(() => 0),
+    ]);
     return NextResponse.json({
       ok: true,
       counts,
+      alerts,
+      unread,
       // The bell sorts by urgency, so the API states the order rather than
       // leaving each client to re-derive it (and getting it wrong).
       urgent: [
@@ -78,4 +93,32 @@ export async function GET() {
       { status: 500 },
     );
   }
+}
+
+/**
+ * Mark alerts read. `{ id }` marks one; `{ all: true }` marks every alert the
+ * caller can see. Queue counts are derived, so they need no read state.
+ */
+export async function POST(req: Request) {
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
+
+  let body: { id?: unknown; all?: unknown };
+  try {
+    body = (await req.json()) as typeof body;
+  } catch {
+    return NextResponse.json({ ok: false, error: "invalid JSON" }, { status: 400 });
+  }
+
+  if (body.all === true) {
+    const marked = await markAllNotificationsRead(user.role);
+    return NextResponse.json({ ok: true, marked });
+  }
+  const id = typeof body.id === "string" ? body.id.trim() : "";
+  if (!/^[0-9a-f]{18,32}$/.test(id)) {
+    return NextResponse.json({ ok: false, error: "invalid id" }, { status: 400 });
+  }
+  const marked = await markNotificationRead(id, user.role);
+  return NextResponse.json({ ok: true, marked });
 }

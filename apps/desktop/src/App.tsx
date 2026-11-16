@@ -35,6 +35,7 @@ import Ads from "./screens/Ads";
 import ThemeToggle from "./components/ThemeToggle";
 import DeskSyncBar from "./components/DeskSyncBar";
 import { ToastHost } from "./components/ToastHost";
+import Notifier from "./components/Notifier";
 import PaneBoundary from "./components/PaneBoundary";
 import { toast } from "./lib/toast";
 
@@ -812,6 +813,7 @@ export default function App() {
       </div>
 
       <ToastHost />
+      <Notifier />
     </div>
   );
 }
