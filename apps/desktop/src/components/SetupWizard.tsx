@@ -13,6 +13,8 @@ type Step = 1 | 2 | 3 | 4 | 5;
 
 export default function SetupWizard({ onDone }: { onDone: () => Promise<void> }) {
   const [step, setStep] = useState<Step>(1);
+  const [deskBaseUrl, setDeskBaseUrl] = useState("");
+  const [deskToken, setDeskToken] = useState("");
   const [tursoUrl, setTursoUrl] = useState("");
   const [tursoToken, setTursoToken] = useState("");
   const [ghPat, setGhPat] = useState("");
@@ -26,11 +28,28 @@ export default function SetupWizard({ onDone }: { onDone: () => Promise<void> })
   const next = () => setStep((s) => Math.min(5, (s + 1) as Step) as Step);
   const back = () => setStep((s) => Math.max(1, (s - 1) as Step) as Step);
 
+  /**
+   * Two ways in:
+   *  - device token (default): the server holds the database credential and
+   *    hands this machine a short-lived grant, revocable from the console;
+   *  - Turso URL + token: the older direct mode, kept for a desk that must run
+   *    without a deployed site.
+   * Saving a device token clears any stored Turso credential so there is exactly
+   * one source of truth.
+   */
   const saveStep1 = async () => {
     setBusy(true);
     try {
-      await storeCredential("turso_url", tursoUrl.trim());
-      await storeCredential("turso_token", tursoToken.trim());
+      if (deskToken.trim()) {
+        await storeCredential("desk_base_url", deskBaseUrl.trim().replace(/\/+$/, ""));
+        await storeCredential("desk_token", deskToken.trim());
+        await storeCredential("turso_url", "");
+        await storeCredential("turso_token", "");
+      } else {
+        await storeCredential("turso_url", tursoUrl.trim());
+        await storeCredential("turso_token", tursoToken.trim());
+        await storeCredential("desk_token", "");
+      }
       next();
     } catch (e) {
       setError(String(e));
@@ -141,19 +160,38 @@ export default function SetupWizard({ onDone }: { onDone: () => Promise<void> })
         <div className="panel mt-4">
           {step === 1 && (
             <div className="space-y-3">
-              <p className="panel-title">Step 1/5 · Turso database</p>
+              <p className="panel-title">Step 1/5 · ডেস্ক টোকেন</p>
               <p className="text-[13px] text-ink-soft">
-                আপনার Turso ডেটাবেস URL ও টোকেন দিন। <b>মনে রাখুন</b> — টোকেনটির
-                read/write ক্ষমতা আছে; Stronghold-এ এনক্রিপ্টেড অবস্থায় থাকবে, কখনো ডিস্কে প্লেইনটেক্সটে নয়।
+                অ্যাডমিন কনসোল → <b>নিরাপত্তা</b> → <b>ডেস্কটপ ডিভাইস</b> থেকে একটি টোকেন তৈরি করুন
+                (<code className="bg-paper px-1">hdc_…</code>)। টোকেনটি দিয়ে এই কম্পিউটার সার্ভারের
+                ডেটাবেসে কাজ করবে — ডেটাবেসের গোপন চাবি আর এই ডিস্কে থাকবে না, আর কনসোল থেকে
+                ডিভাইস বাতিল করলেই এই কম্পিউটারের অ্যাক্সেস সাথে সাথে বন্ধ।
               </p>
               <label className="block">
-                <span className="field-label font-mono text-[10px] uppercase text-ink-soft">TURSO_DATABASE_URL</span>
-                <input className="field mt-1" placeholder="libsql://hoichoi-xxxx.turso.io" value={tursoUrl} onChange={(e) => setTursoUrl(e.target.value)} />
+                <span className="field-label font-mono text-[10px] uppercase text-ink-soft">সাইটের ঠিকানা</span>
+                <input className="field mt-1" placeholder="https://hoichoifeed.vercel.app" value={deskBaseUrl} onChange={(e) => setDeskBaseUrl(e.target.value)} />
               </label>
               <label className="block">
-                <span className="font-mono text-[10px] uppercase text-ink-soft">TURSO_AUTH_TOKEN</span>
-                <input className="field mt-1" type="password" placeholder="eyJ…" value={tursoToken} onChange={(e) => setTursoToken(e.target.value)} />
+                <span className="font-mono text-[10px] uppercase text-ink-soft">ডেস্ক টোকেন</span>
+                <input className="field mt-1" type="password" placeholder="hdc_…" value={deskToken} onChange={(e) => setDeskToken(e.target.value)} />
               </label>
+              <details className="rounded border border-ink/15 bg-paper-deep p-3">
+                <summary className="cursor-pointer text-[12px] font-bold text-ink-soft">
+                  টোকেন ছাড়া সরাসরি Turso (পুরোনো মোড — শুধু দরকার হলে)
+                </summary>
+                <p className="mt-2 text-[12px] text-ink-soft">
+                  এই মোডে ডেটাবেসের read/write টোকেন এই ডিস্কে এনক্রিপ্টেড অবস্থায় থাকবে, এবং
+                  ডিভাইস বাতিল করে দূর থেকে বন্ধ করা যাবে না।
+                </p>
+                <label className="mt-2 block">
+                  <span className="field-label font-mono text-[10px] uppercase text-ink-soft">TURSO_DATABASE_URL</span>
+                  <input className="field mt-1" placeholder="libsql://hoichoi-xxxx.turso.io" value={tursoUrl} onChange={(e) => setTursoUrl(e.target.value)} />
+                </label>
+                <label className="mt-2 block">
+                  <span className="font-mono text-[10px] uppercase text-ink-soft">TURSO_AUTH_TOKEN</span>
+                  <input className="field mt-1" type="password" placeholder="eyJ…" value={tursoToken} onChange={(e) => setTursoToken(e.target.value)} />
+                </label>
+              </details>
               {error && <p className="text-[12px] text-alizarin">{error}</p>}
               <div className="flex justify-between">
                 <button
@@ -166,7 +204,11 @@ export default function SetupWizard({ onDone }: { onDone: () => Promise<void> })
                 >
                   Skip — set up later →
                 </button>
-                <button className="btn" onClick={() => void saveStep1()} disabled={busy || !tursoUrl.trim() || !tursoToken.trim()}>
+                <button
+                  className="btn"
+                  onClick={() => void saveStep1()}
+                  disabled={busy || (deskToken.trim() ? !deskBaseUrl.trim() : !tursoUrl.trim() || !tursoToken.trim())}
+                >
                   Save & next →
                 </button>
               </div>

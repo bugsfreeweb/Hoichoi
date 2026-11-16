@@ -174,6 +174,8 @@ export default function App() {
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem(ONBOARD_KEY) === "1");
   const [view, setView] = useState<View>("dashboard");
   const [configured, setConfigured] = useState<Partial<Record<CredentialName, boolean>>>({});
+  /** Set when the server refused a session grant (revoked device, wrong URL). */
+  const [grantError, setGrantError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   /*
@@ -270,6 +272,13 @@ export default function App() {
   const maybeRevalidate = async () => {
     try {
       const env = await getRunEnv();
+      // A refused grant must be said out loud: the screens below would other-
+      // wise show an empty newsroom, which reads as "no content" rather than
+      // "this device lost access".
+      setGrantError(env.HOICHOI_DESK_GRANT_ERROR ?? null);
+      if (env.HOICHOI_DESK_GRANT_ERROR) {
+        return { ok: false, error: env.HOICHOI_DESK_GRANT_ERROR };
+      }
       const u = new URL("/api/revalidate", SITE_URL);
       const secret = env["REVALIDATE_SECRET"];
       if (secret) u.searchParams.set("secret", secret);
@@ -544,7 +553,9 @@ export default function App() {
     );
   }
 
-  const dbDriver = configured.turso_url ? "TURSO" : "LOCAL";
+  // Device-token mode is the supported connection: the credential lives on the
+  // server and this app only carries a revocable token.
+  const dbDriver = configured.desk_token ? "SERVER" : configured.turso_url ? "TURSO" : "LOCAL";
   const watchingCount = sources.filter((s) => s.is_active).length;
 
   const jump = (v: View) => setView(v);
@@ -806,7 +817,7 @@ export default function App() {
 
         <footer className="statusbar">
           <span className="sb lime"><svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2.5 9a15 15 0 0 1 19 0M5.5 12.5a10 10 0 0 1 13 0M8.6 16a5 5 0 0 1 6.8 0"/><circle cx="12" cy="19" r="1.2" fill="currentColor" stroke="none"/></svg>TAURI 2.1</span>
-          <span className="sb lime"><svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>{dbDriver} · CONNECTED</span>
+          <span className="sb lime"><svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>{dbDriver} · {grantError ? "ACCESS DENIED" : "CONNECTED"}</span>
           <span className="sb"><svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M6 8.5v7M18 12H8.5"/></svg>HOICHOI-CONTENT</span>
           <StatusClock />
         </footer>

@@ -74,8 +74,10 @@ const SCOPE: Record<string, "desktop" | "web" | "both"> = {
 };
 
 const META: Record<CredentialName, { label: string; note: string; service: string }> = {
-  turso_url: { label: "Turso ডেটাবেস URL", note: "shared cloud DB", service: "database" },
-  turso_token: { label: "Turso টোকেন", note: "libsql auth", service: "database" },
+  desk_token: { label: "ডেস্ক টোকেন", note: "কনসোল থেকে তৈরি · সার্ভার ডেটাবেস ব্যবহার করে", service: "desk" },
+  desk_base_url: { label: "সাইটের ঠিকানা", note: "https://hoichoifeed.vercel.app", service: "desk" },
+  turso_url: { label: "Turso ডেটাবেস URL", note: "শুধু টোকেন ছাড়া মোডে", service: "database" },
+  turso_token: { label: "Turso টোকেন", note: "শুধু টোকেন ছাড়া মোডে — ডিস্কে থাকে", service: "database" },
   github_pat: { label: "GitHub PAT", note: "app repo + Actions", service: "github" },
   github_repo: { label: "App repo", note: "owner/name — never used for media", service: "github" },
   github_media_repos: { label: "Media repo(s)", note: "owner/name, comma separated", service: "github" },

@@ -1,5 +1,7 @@
 import { PageHeading } from "@/components/admin/ui/PageHeader";
 import SessionList from "@/components/admin/SessionList";
+import { MfaPanel } from "@/components/admin/MfaPanel";
+import { DeskDevicesPanel } from "@/components/admin/DeskDevicesPanel";
 import { PrivacyTool } from "@/components/admin/PrivacyTool";
 import CredentialList from "@/components/admin/CredentialList";
 import LoginLogViewer from "@/components/admin/LoginLogViewer";
@@ -29,6 +31,24 @@ export default async function AdminSecurityPage() {
       />
 
       <div className="mt-6 grid gap-10">
+        <section>
+          <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">
+            দুই-ধাপ যাচাই (2FA)
+          </h2>
+          <div className="mt-3">
+            <MfaPanel />
+          </div>
+        </section>
+
+        <section>
+          <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">
+            ডেস্কটপ ডিভাইস
+          </h2>
+          <div className="mt-3">
+            {canSeeAll ? <DeskDevicesPanel /> : null}
+          </div>
+        </section>
+
         <section>
           <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">সেশন ও ডিভাইস</h2>
           <div className="mt-3">

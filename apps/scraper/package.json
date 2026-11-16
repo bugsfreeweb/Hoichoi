@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./media": "./src/media.ts",
+    "./desk": "./src/cli.ts",
     "./archive": "./src/archive.ts"
   },
   "bin": {

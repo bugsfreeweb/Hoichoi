@@ -75,6 +75,13 @@ export default async function AboutPage() {
           — প্রতিটি সংশোধনের রেকর্ড থাকে। চালায়: <code>packages/db/src/verification.ts</code>
         </li>
         <li>
+          <Link className="font-bold text-alizarin hover:underline" href="/about/retention">
+            ধারণ নীতি
+          </Link>{" "}
+          — কত দিন কী থাকে, কোন ব্যতিক্রমে থাকে বেশি। চালায়:{" "}
+          <code>packages/db/src/archive.ts</code>
+        </li>
+        <li>
           <Link className="font-bold text-alizarin hover:underline" href="/about/security">
             নিরাপত্তা ও দুর্বলতা জানানো
           </Link>{" "}

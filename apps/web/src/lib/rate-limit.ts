@@ -87,6 +87,10 @@ export const LIMITS = {
   // Data-subject export/erase is a heavy, destructive action: a handful per
   // minute is plenty and stops a stuck button from running twenty erasures.
   adminWrite: { name: "admin-write", limit: 10, windowMs: 60_000 },
+  // The desk console polls while the operator watches a screen; reads happen at
+  // human + refresh speed, writes at button-click speed.
+  deskRead: { name: "desk-read", limit: 720, windowMs: 60_000 },
+  deskWrite: { name: "desk-write", limit: 90, windowMs: 60_000 },
   // One AI generation is the most expensive request this app makes; twenty an
   // hour is generous for authoring and useless for abuse.
   aiTask: { name: "ai-task", limit: 20, windowMs: 60 * 60_000 },

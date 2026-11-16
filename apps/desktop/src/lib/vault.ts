@@ -1,6 +1,12 @@
 import { invoke } from "./tauri";
+import { fetchDeskGrant, grantToEnv } from "./desk-session";
 
 export const CREDENTIAL_NAMES = [
+  // Device token + site origin: the supported connection. With these set the
+  // desk never stores a database credential — it asks the server for a
+  // short-lived grant (see lib/desk-session.ts and api/desk/session).
+  "desk_token",
+  "desk_base_url",
   "turso_url",
   "turso_token",
   "github_pat",
@@ -36,6 +42,8 @@ export type CredentialName = (typeof CREDENTIAL_NAMES)[number];
 
 /** Vault key → actual env var name read by the runner. */
 const ENV_MAP: Partial<Record<CredentialName, string>> = {
+  desk_token: "HOICHOI_DESK_TOKEN",
+  desk_base_url: "HOICHOI_DESK_BASE_URL",
   turso_url: "TURSO_DATABASE_URL",
   turso_token: "TURSO_AUTH_TOKEN",
   fb_session_cookie: "FB_SESSION_COOKIE",
@@ -76,6 +84,8 @@ export function cloudSyncDefault(): boolean {
  * ------------------------------------------------------------------ */
 
 type Snapshot = Partial<Record<CredentialName, string | null>>;
+/** Why the last device-token grant attempt failed, if it did. */
+let lastGrantError: string | null = null;
 let snapshotCache: Snapshot | null = null;
 
 async function getSnapshot(): Promise<Snapshot> {
@@ -138,7 +148,42 @@ export async function getEnvFromVault(): Promise<Record<string, string>> {
   } catch {
     /* vault unavailable — canonical env is still returned */
   }
+
+  // Device-token mode: the server, not this machine, holds the database
+  // credential. A stored Turso credential is dropped rather than preferred, so
+  // there is exactly one source of truth and revoking the device really is a
+  // kill switch.
+  const deviceToken = out.HOICHOI_DESK_TOKEN?.trim();
+  if (deviceToken) {
+    delete out.TURSO_DATABASE_URL;
+    delete out.TURSO_AUTH_TOKEN;
+    try {
+      const grant = await fetchDeskGrant(out.HOICHOI_DESK_BASE_URL ?? "", deviceToken);
+      Object.assign(out, grantToEnv(grant));
+      delete out.HOICHOI_DESK_GRANT_ERROR;
+      lastGrantError = null;
+    } catch (err) {
+      // Keep the failure visible instead of silently falling back to a local
+      // file DB, which would look like "no content" rather than "no access".
+      lastGrantError = (err as Error).message;
+      out.HOICHOI_DESK_GRANT_ERROR = lastGrantError;
+      delete out.HOICHOI_DESK_GRANTED;
+    }
+  }
   return out;
+}
+
+/** The device-token connection, when configured. */
+export async function getDeskToken(): Promise<{ token: string; baseUrl: string } | null> {
+  const snap = await getSnapshot();
+  const token = snap.desk_token?.trim();
+  if (!token) return null;
+  return { token, baseUrl: (snap.desk_base_url ?? "").trim() };
+}
+
+/** The message shown when a grant was refused (revoked device, bad base URL). */
+export async function deskGrantError(): Promise<string | null> {
+  return (await getSnapshot()).desk_token ? lastGrantError : null;
 }
 
 /**
@@ -162,6 +207,9 @@ export async function getRunEnv(): Promise<Record<string, string>> {
 /** True when the desktop writes to the shared cloud DB (Turso) on pipeline runs. */
 export async function isCloudSync(): Promise<boolean> {
   const snap = await getSnapshot();
+  // A device token means "the server's database", which is always the shared
+  // one; local-only mode only makes sense with a stored local file DB.
+  if (snap.desk_token?.trim()) return snap.use_cloud !== "0";
   return Boolean(snap.turso_url) && snap.use_cloud !== "0";
 }
 

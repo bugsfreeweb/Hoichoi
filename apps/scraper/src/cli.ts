@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import os from "node:os";
 import { createInterface } from "node:readline";
 import { parsePipelineLimit, runPipeline, type PipelineOptions } from "./pipeline";
@@ -2445,7 +2446,56 @@ program
     });
   });
 
-program.parseAsync(process.argv).catch((err) => {
-  console.error("[fatal]", (err as Error).message);
-  process.exitCode = 1;
-});
+/**
+ * Run one desk-console command in-process and return exactly what the CLI would
+ * have printed on stdout, parsed.
+ *
+ * This is the same `dispatchCmd` the desktop daemon drives, so the server-routed
+ * desk API and the local runner cannot drift apart. The caller (the web app)
+ * decides *which* commands are reachable; this function only executes.
+ */
+export async function runDeskCommand(
+  args: string[],
+  env?: Record<string, string>,
+): Promise<{ ok: boolean; data?: unknown; error?: string }> {
+  try {
+    if (env) applyDaemonEnv(env);
+    const captured = await runCaptured(() => dispatchCmd(args));
+    const text = captured.out.trim();
+    if (!text) {
+      const why = captured.err.trim() || "no output";
+      return { ok: false, error: why };
+    }
+    try {
+      return { ok: true, data: JSON.parse(text) as unknown };
+    } catch {
+      // A handler that printed human text (a progress line) is not a protocol
+      // failure; hand the text back so the caller can decide.
+      return { ok: true, data: { text } };
+    }
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
+  }
+}
+
+/**
+ * Only parse argv when this file *is* the entry point. The web app imports this
+ * module to reuse `runDeskCommand`; without this guard, importing it would run
+ * the CLI against Next's own argv.
+ */
+const invokedDirectly = (() => {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return pathToFileURL(entry).href === import.meta.url;
+  } catch {
+    return false;
+  }
+})();
+
+if (invokedDirectly) {
+  program.parseAsync(process.argv).catch((err) => {
+    console.error("[fatal]", (err as Error).message);
+    process.exitCode = 1;
+  });
+}

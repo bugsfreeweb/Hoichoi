@@ -17,6 +17,11 @@ const POLICIES = [
   { route: "about/ai", file: "apps/web/src/app/(site)/about/ai/page.tsx", enforcedBy: "packages/llm/src" },
   { route: "about/corrections", file: "apps/web/src/app/(site)/about/corrections/page.tsx", enforcedBy: "packages/db/src/verification.ts" },
   { route: "about/security", file: "apps/web/src/app/(site)/about/security/page.tsx", enforcedBy: null },
+  {
+    route: "about/retention",
+    file: "apps/web/src/app/(site)/about/retention/page.tsx",
+    enforcedBy: "packages/db/src/archive.ts",
+  },
   { route: "privacy", file: "apps/web/src/app/(site)/privacy/page.tsx", enforcedBy: "packages/db/src/guest.ts" },
   { route: "terms", file: "apps/web/src/app/(site)/terms/page.tsx", enforcedBy: null },
   { route: "cookies", file: "apps/web/src/app/(site)/cookies/page.tsx", enforcedBy: null },

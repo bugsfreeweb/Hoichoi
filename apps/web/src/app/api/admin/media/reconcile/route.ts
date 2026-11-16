@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { reconcileMedia } from "@hoichoi/db";
+import { reconcileMedia, retryMediaDeletions } from "@hoichoi/db";
 import { requireApiRole } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { limitRequest, LIMITS } from "@/lib/rate-limit";
@@ -41,6 +41,10 @@ export async function POST(req: Request) {
   if (limited) return limited;
 
   try {
+    // Retry whatever a previous post-delete could not remove (a locked file on
+    // Windows is the common case). This runs with the reconcile pass because
+    // both jobs answer the same question: "is anything left behind?".
+    const retried = await retryMediaDeletions(50).catch(() => ({ retried: 0, deleted: 0 }));
     const report = await reconcileMedia({ dryRun: false });
     await audit(
       user,
@@ -52,7 +56,7 @@ export async function POST(req: Request) {
       },
       req,
     ).catch(() => undefined);
-    return NextResponse.json({ ok: true, dryRun: false, report });
+    return NextResponse.json({ ok: true, dryRun: false, report, retried });
   } catch (err) {
     return NextResponse.json(
       { ok: false, error: (err as Error).message || "reconciliation failed" },

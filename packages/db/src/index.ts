@@ -23,6 +23,10 @@ export * from "./polls";
 export * from "./ads";
 export * from "./ad-invoices";
 export * from "./deletion-log";
+export * from "./post-media-cleanup";
+export * from "./totp";
+export * from "./mfa";
+export * from "./desk-devices";
 export * from "./ai-runs";
 export * from "./provider-health";
 export * from "./media-reconcile";
@@ -70,6 +74,7 @@ import type { InValue } from "@libsql/client";
 import { randomUUID } from "node:crypto";
 import { getClient, isRemoteDatabaseUrl, nowIso } from "./client";
 import { logDeletion } from "./deletion-log";
+import { purgePostMedia } from "./post-media-cleanup";
 import { mapCategory, mapNotice, mapPost, parseJson, pickCategoryDot } from "./rows";
 import { DEFAULT_MEDIA_STORAGE } from "./media-storage";
 
@@ -2152,6 +2157,17 @@ export async function deletePost(id: string, opts: { actor?: string | null; reas
   // fails, and the columns available differ between schema versions.
   const before = await client.execute({ sql: "SELECT * FROM posts WHERE id = ?", args: [id] });
   const row = before.rows[0] as Record<string, unknown> | undefined;
+  // Media paths must be captured *before* the delete: the gallery cascades with
+  // the post, so afterwards there is nothing left to name the files by.
+  const mediaPaths: string[] = [];
+  if (row && typeof row.media_path === "string" && row.media_path) mediaPaths.push(row.media_path);
+  const galleryBefore = await client
+    .execute({ sql: "SELECT path FROM post_images WHERE post_id = ?", args: [id] })
+    .catch(() => null);
+  for (const g of galleryBefore?.rows ?? []) {
+    const p = String((g as Record<string, unknown>).path);
+    if (p) mediaPaths.push(p);
+  }
   const res = await client.execute({ sql: "DELETE FROM posts WHERE id = ?", args: [id] });
   if (res.rowsAffected === 0) {
     throw new Error(`post not found: ${id}`);
@@ -2170,6 +2186,18 @@ export async function deletePost(id: string, opts: { actor?: string | null; reas
         }
       : null,
   }).catch(() => undefined);
+
+  // The bytes go with the article. This runs after the row delete on purpose:
+  // the "still referenced by another post?" check in purgePostMedia must not
+  // count the post we are deleting. Failure never undoes the delete — the
+  // ledger records what could not be removed, and retryMediaDeletions tries
+  // again later.
+  if (row && mediaPaths.length > 0) {
+    await purgePostMedia(id, mediaPaths, {
+      actor: opts.actor ?? null,
+      reason: opts.reason ?? "post delete",
+    }).catch(() => undefined);
+  }
 }
 
 /* ------------------------------------------------------------------ *

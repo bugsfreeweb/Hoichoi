@@ -377,6 +377,41 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 > before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
 > (latest e.g. `012_post_images.sql`).
 
+## Second factor, device access, media that leaves with the article (v1.1.27)
+
+**A privileged account can now carry a second factor.** `packages/db/src/totp.ts`
+implements RFC 6238 directly (base32, the 8-byte counter, and a ±1 step window so
+a phone whose clock drifts still works) and is pinned to the RFC's own vectors.
+`/admin/security` has a panel to enroll, confirm, disable and stash recovery
+codes; the code is shown once, the secret is never readable again, a used step
+cannot be replayed, and disabling needs a live code — a stolen session cannot
+silently drop the factor.
+
+**Guessing is not possible at HTTP speed.** Five bad attempts in fifteen minutes
+lock that email for fifteen, answered with a 429 and `Retry-After`. The counter is
+keyed on the *email hash*, so the attempts table is not a list of who tried to
+sign in. The login route checks the lock **before** it spends the one-time code,
+verifies the factor **before** it creates a session, and a wiring test fails if
+that order ever changes.
+
+**The desktop no longer carries the keys.** It authenticates as a device
+(`hdc_…`, created in নিরাপত্তা → ডেস্কটপ ডিভাইস, only a SHA-256 stored) and asks
+`/api/desk/session` for a 60-minute grant. Storing a device token clears any
+Turso credential from the vault, so there is exactly one source of truth, and
+revoking the device makes the very next call fail — the app shows
+`ACCESS DENIED` rather than an empty newsroom, because "no content" and "no
+access" must not look the same. The grant still travels to the machine (the
+collector runs locally and needs the database), so the guarantee is a bound,
+revocable, audited session — not magic.
+
+**An article takes its pictures with it.** `purgePostMedia` captures the paths
+*before* the row is deleted (the gallery cascades with it), skips remote URLs and
+files another post still uses, unlinks every mirror, writes one `deletion_log`
+row per outcome, and `retryMediaDeletions` retries a file Windows had locked on
+the next reconcile pass. A taken-down article is a 404 on the public site
+(`posts_current_window`) while the console can still inspect the record until
+retention purges it.
+
 ## Obsidian hero scene + queue fixes (v1.1.26)
 
 **The hero panel is now an instrument, not a decoration.** It follows the

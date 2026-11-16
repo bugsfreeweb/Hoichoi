@@ -81,8 +81,14 @@ const TABS = [
 type SettingsTab = (typeof TABS)[number]["id"];
 
 const FIELDS: Array<{ name: CredentialName; label: string; secret: boolean; push?: boolean }> = [
-  { name: "turso_url", label: "TURSO_DATABASE_URL", secret: false },
-  { name: "turso_token", label: "TURSO_AUTH_TOKEN", secret: true },
+  // Supported connection: a device token from the admin console
+  // (নিরাপত্তা → ডেস্কটপ ডিভাইস). With these two set the desk holds no database
+  // credential at all — it gets a short-lived grant from the server.
+  { name: "desk_base_url", label: "সাইটের ঠিকানা (https://hoichoifeed.vercel.app)", secret: false },
+  { name: "desk_token", label: "ডেস্ক টোকেন (hdc_…)", secret: true },
+  // Legacy / local: only needed when running without a device token.
+  { name: "turso_url", label: "TURSO_DATABASE_URL (টোকেন ছাড়া মোড)", secret: false },
+  { name: "turso_token", label: "TURSO_AUTH_TOKEN (টোকেন ছাড়া মোড)", secret: true },
   { name: "github_pat", label: "GitHub PAT (app repo + Actions)", secret: true },
   { name: "github_repo", label: "App repo (owner/name)", secret: false },
   { name: "github_media_repos", label: "Media repo(s) — owner/name, comma separated", secret: false, push: true },
