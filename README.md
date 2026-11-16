@@ -705,6 +705,35 @@ The endpoint fails **closed** (503) without `CRON_SECRET` and requires
 row's `owner_email`, falling back to `SECURITY_CONTACT_EMAIL` then the first
 `ADMIN_ALLOWED_EMAILS` entry.
 
+### Performance and accessibility gates
+
+Two gates run in `.github/workflows/web-quality.yml` against a **production**
+build, on a throwaway file database so the job cannot touch production data:
+
+- **axe accessibility audit** (`apps/web/scripts/a11y.ts`) over 12 public routes in
+  **both** themes — the palette is a token set per theme, so a page that passes in
+  one can fail in the other. It fails on serious/critical WCAG 2.1 AA violations
+  and prints the rule and the element. `color-contrast` is never on the ignore
+  list; only `color-contrast-enhanced` (AAA) and `video-caption` are.
+- **Lighthouse budgets** (`lighthouserc.cjs`): accessibility ≥ 0.95 and
+  CLS ≤ 0.1 are hard gates; LCP 4 s, TBT 600 ms and performance 0.7 are warnings,
+  because a shared runner's CPU is not a product regression.
+
+Running the audit found real defects and they are fixed, not suppressed:
+
+| Was | Measured | Fixed by |
+| --- | --- | --- |
+| `text-ink-soft` on `paper-deep` | 4.07:1 | token darkened to `#625a49` (4.61:1) |
+| `text-alizarin` on `paper-deep` | 3.57:1 | light-theme token to `#b3141f` (4.68:1) |
+| `text-paper` on the `amberx` badge | 4.33:1 | `amberx` to `#9a4708` (5.53:1) |
+| `text-ink-soft/70`, `text-white/40`, `text-bandline/55` | 2.87–3.78:1 | stepped to the plain tokens |
+| `text-white` on `bg-alizarin` | 2.27:1 in dark | new `--color-on-accent` token that flips per theme |
+
+Result: **24 page-checks, 0 serious violations** (12 routes × light/dark). Six
+checks in `apps/web/scripts/quality-gate.test.ts` pin the gates themselves — that
+the audit runs in CI, that it exits nonzero, that `color-contrast` is not ignored,
+and that the quality job never sees a secret.
+
 ### AI task gateway (`POST /api/ai/task`)
 
 The web console can draft a tip, summarise a body or propose a headline without

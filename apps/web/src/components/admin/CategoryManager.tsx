@@ -153,7 +153,7 @@ export function CategoryManager({ initial }: { initial: CategoryMeta[] }) {
         </div>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 bg-alizarin px-5 py-2.5 text-[13px] font-bold text-paper hover:bg-alizarin-deep"
+          className="flex items-center gap-2 bg-alizarin px-5 py-2.5 text-[13px] font-bold text-on-accent hover:bg-alizarin-deep"
         >
           {Icons.Plus} নতুন বিভাগ
         </button>
@@ -162,7 +162,7 @@ export function CategoryManager({ initial }: { initial: CategoryMeta[] }) {
       {notice && (
         <div
           className={`mb-4 px-4 py-3 text-[13px] font-bold ${
-            notice.type === "ok" ? "bg-lime text-night" : "bg-alizarin text-paper"
+            notice.type === "ok" ? "bg-lime text-night" : "bg-alizarin text-on-accent"
           }`}
         >
           {notice.text}
@@ -255,7 +255,7 @@ export function CategoryManager({ initial }: { initial: CategoryMeta[] }) {
             >
               বাতিল
             </button>
-            <button type="submit" disabled={busy} className="bg-alizarin px-5 py-2.5 text-[13px] font-bold text-paper hover:bg-alizarin-deep disabled:opacity-60">
+            <button type="submit" disabled={busy} className="bg-alizarin px-5 py-2.5 text-[13px] font-bold text-on-accent hover:bg-alizarin-deep disabled:opacity-60">
               তৈরি করুন
             </button>
           </div>
@@ -334,7 +334,7 @@ export function CategoryManager({ initial }: { initial: CategoryMeta[] }) {
                     <button
                       onClick={handleSave}
                       disabled={busy}
-                      className="bg-alizarin px-4 py-1.5 text-[12px] font-bold text-paper hover:bg-alizarin-deep disabled:opacity-60"
+                      className="bg-alizarin px-4 py-1.5 text-[12px] font-bold text-on-accent hover:bg-alizarin-deep disabled:opacity-60"
                     >
                       সংরক্ষণ
                     </button>

@@ -15,7 +15,7 @@ export default function NotFound() {
         হৈচৈ-এর প্রতিটি পোস্ট সাত দিনের জানালায় সীমাবদ্ধ — জানালা শেষ হলে তা আর্কাইভ ও নির্দিষ্ট সময় পর স্থায়ীভাবে মুছে যায়। যা খুঁজছেন তা হয়তো এভাবে উবে গেছে।
       </p>
       <div className="mt-8 flex justify-center gap-3">
-        <Link href="/" className="border border-ink bg-ink px-5 py-2.5 text-[13px] font-bold text-paper hover:bg-alizarin">
+        <Link href="/" className="border border-ink bg-ink px-5 py-2.5 text-[13px] font-bold text-on-accent hover:bg-alizarin">
           ← হোমে ফিরুন
         </Link>
         <Link href="/system" className="border border-ink/30 px-5 py-2.5 text-[13px] font-bold text-ink hover:bg-ink hover:text-paper">

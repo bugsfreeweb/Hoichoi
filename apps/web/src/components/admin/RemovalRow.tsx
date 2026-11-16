@@ -61,7 +61,7 @@ export function RemovalRow({
             <span className="text-[13px] font-bold text-ink-soft">(পোস্ট দেখা যায়নি)</span>
           )}
           <p className="truncate text-[11px] text-ink-soft">{req.reason ?? "কারণ লেখা হয়নি"}</p>
-          <p className="font-mono-x text-[9.5px] text-ink-soft/70">
+          <p className="font-mono-x text-[9.5px] text-ink-soft">
             {req.reporter_email ?? "ইমেইল নেই"} · {new Date(req.created_at).toLocaleString("bn-BD")}
           </p>
         </div>
@@ -71,7 +71,7 @@ export function RemovalRow({
             <button onClick={() => decide("reviewed", "none")} disabled={busy !== null} className="border border-cat-teal bg-cat-teal/15 px-2.5 py-1 text-[11px] font-bold text-ink disabled:opacity-50">
               {busy === "review" ? <Loader2 size={11} className="animate-spin" /> : "রাখুন"}
             </button>
-            <button onClick={() => decide("actioned", "remove")} disabled={busy !== null} className="border border-alizarin px-2.5 py-1 text-[11px] font-bold text-alizarin hover:bg-alizarin hover:text-paper disabled:opacity-50">
+            <button onClick={() => decide("actioned", "remove")} disabled={busy !== null} className="border border-alizarin px-2.5 py-1 text-[11px] font-bold text-alizarin hover:bg-alizarin hover:text-on-accent disabled:opacity-50">
               {busy === "remove" ? <Loader2 size={11} className="animate-spin" /> : "সরান"}
             </button>
           </span>

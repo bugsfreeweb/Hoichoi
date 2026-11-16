@@ -12,7 +12,7 @@ export function LiveDeleteButton({ id }: { id: string }) {
             event.preventDefault();
           }
         }}
-        className="border border-alizarin/50 px-3 py-2 text-[12px] font-bold text-alizarin hover:bg-alizarin hover:text-white"
+        className="border border-alizarin/50 px-3 py-2 text-[12px] font-bold text-alizarin hover:bg-alizarin hover:text-on-accent"
       >
         ইভেন্ট মুছুন
       </button>

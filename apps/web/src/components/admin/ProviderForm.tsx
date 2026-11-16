@@ -322,7 +322,7 @@ export function ProviderForm() {
       )}
       {status === "denied" && <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[12px] font-bold text-ink">অনুমতি নেই — admin প্রয়োজন।</p>}
 
-      <button className="w-fit border-2 border-ink bg-ink px-5 py-2 text-[12.5px] font-bold text-paper transition hover:bg-alizarin">
+      <button className="w-fit border-2 border-ink bg-ink px-5 py-2 text-[12.5px] font-bold text-on-accent transition hover:bg-alizarin">
         {purpose === "image" ? "🎨 ইমেজ প্রোভাইডার যোগ করুন →" : "✍️ টেক্সট প্রোভাইডার যোগ করুন →"}
       </button>
     </form>

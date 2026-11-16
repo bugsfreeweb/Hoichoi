@@ -345,7 +345,7 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
                         type="button"
                         aria-label={`${source.label || `চ্যানেল ${index + 1}`} মুছুন`}
                         onClick={() => setSources((current) => current.filter((_, sourceIndex) => sourceIndex !== index))}
-                        className="mt-5 flex h-10 w-10 items-center justify-center border border-alizarin/30 text-alizarin hover:bg-alizarin hover:text-white md:mt-0 md:self-end"
+                        className="mt-5 flex h-10 w-10 items-center justify-center border border-alizarin/30 text-alizarin hover:bg-alizarin hover:text-on-accent md:mt-0 md:self-end"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -440,7 +440,7 @@ export function LiveEventForm({ event }: { event?: LiveEventRecord }) {
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex items-center gap-2 bg-alizarin px-5 py-3 text-[12.5px] font-bold text-white transition-colors hover:bg-alizarin-deep disabled:cursor-wait disabled:opacity-60"
+          className="inline-flex items-center gap-2 bg-alizarin px-5 py-3 text-[12.5px] font-bold text-on-accent transition-colors hover:bg-alizarin-deep disabled:cursor-wait disabled:opacity-60"
         >
           {pending && <LoaderCircle size={15} className="animate-spin" />}
           {pending ? "সংরক্ষণ হচ্ছে…" : event ? "পরিবর্তন সংরক্ষণ করুন" : "লাইভ ইভেন্ট তৈরি করুন"}

@@ -180,11 +180,11 @@ export function SubmitSourceForm() {
 
       <button
         disabled={status === "sending"}
-        className="sm:col-span-2 border-2 border-ink bg-ink px-6 py-3 text-[13.5px] font-bold text-paper transition hover:bg-alizarin disabled:opacity-50"
+        className="sm:col-span-2 border-2 border-ink bg-ink px-6 py-3 text-[13.5px] font-bold text-on-accent transition hover:bg-alizarin disabled:opacity-50"
       >
         {status === "sending" ? "পাঠানো হচ্ছে…" : "প্রস্তাব জমা দিন →"}
       </button>
-      <p className="sm:col-span-2 text-[11px] text-ink-soft/80">
+      <p className="sm:col-span-2 text-[11px] text-ink-soft">
         ব্যক্তিগত প্রোফাইল নয় — কেবল পেজ ও গ্রুপ গ্রহণ করা হয়। প্রতিটি প্রস্তাব ম্যানুয়াল যাচাইয়ের পর অনুমোদিত হয়।
       </p>
     </form>

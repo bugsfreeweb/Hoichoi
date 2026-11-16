@@ -38,7 +38,7 @@ export function Masthead({ settings }: { settings: SiteSettings }) {
           </p>
           <span className="h-px flex-1 bg-ink/25"></span>
         </div>
-        <p className="mt-2 text-[10.5px] text-ink-soft/70 md:text-[11px]">{settings.tagline}</p>
+        <p className="mt-2 text-[10.5px] text-ink-soft md:text-[11px]">{settings.tagline}</p>
       </div>
     </header>
   );

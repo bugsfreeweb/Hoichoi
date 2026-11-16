@@ -92,7 +92,7 @@ export function LiveChat({
   if (!ev.commentsEnabled) {
     return (
       <div className={clsx("flex flex-col items-center justify-center gap-2 py-10 text-center", className)}>
-        <MessageSquareText size={20} className={dark ? "text-white/40" : "text-ink-soft"} />
+        <MessageSquareText size={20} className={dark ? "text-white/70" : "text-ink-soft"} />
         <p className={clsx("text-[13px]", dark ? "text-white/60" : "text-ink-soft")}>এই লাইভে মন্তব্য বন্ধ রাখা হয়েছে</p>
       </div>
     );
@@ -153,7 +153,7 @@ export function LiveChat({
                     <p className={clsx("text-[13px] font-bold", dark ? "text-white" : "text-ink")}>
                       {c.name} {c.mine && <span className="ml-1 font-mono-x text-[9.5px] font-normal text-ink-soft">(আপনি)</span>}
                     </p>
-                    <TimeAgo iso={c.createdAt} className={clsx("text-[11px]", dark ? "text-white/40" : "text-ink-soft")} />
+                    <TimeAgo iso={c.createdAt} className={clsx("text-[11px]", dark ? "text-white/70" : "text-ink-soft")} />
                   </div>
                   {c.status === "pending" && <span className="bg-amberx/15 px-2 py-0.5 font-mono-x text-[9px] text-amberx">রিভিউয়ের অপেক্ষায়</span>}
                 </div>
@@ -164,7 +164,7 @@ export function LiveChat({
                     onClick={() => like(c.id)}
                   disabled={liking.includes(c.id)}
                   aria-busy={liking.includes(c.id)}
-                    className={clsx("inline-flex items-center gap-1 text-[11.5px] font-semibold", c.liked ? "text-alizarin" : dark ? "text-white/40 hover:text-white" : "text-ink-soft hover:text-ink")}
+                    className={clsx("inline-flex items-center gap-1 text-[11.5px] font-semibold", c.liked ? "text-alizarin" : dark ? "text-white/70 hover:text-white" : "text-ink-soft hover:text-ink")}
                   >
                     <Heart size={12} fill={c.liked ? "currentColor" : "none"} /> {c.liked ? "পছন্দ করেছেন" : "পছন্দ"} · {bn(c.likes)}
                   </button>
@@ -203,7 +203,7 @@ export function LiveChat({
             type="submit"
             disabled={busy}
             aria-label="পাঠান"
-            className={clsx("flex w-10 shrink-0 items-center justify-center transition-colors disabled:opacity-50", dark ? "bg-[#c8f65d] text-[#0a0c10] hover:bg-white" : "bg-ink text-paper hover:bg-alizarin")}
+            className={clsx("flex w-10 shrink-0 items-center justify-center transition-colors disabled:opacity-50", dark ? "bg-[#c8f65d] text-[#0a0c10] hover:bg-white" : "bg-ink text-on-accent hover:bg-alizarin")}
           >
             <Send size={15} />
           </button>
@@ -274,7 +274,7 @@ export function QABox({ tone = "default", height = 420, className }: { tone?: "d
             maxLength={40}
             className={clsx("min-w-0 flex-1 border-b bg-transparent py-1 text-[12.5px] outline-none", dark ? "border-white/15 text-white placeholder:text-white/35" : "border-ink/20 text-ink placeholder:text-ink/40")}
           />
-          <button type="submit" disabled={busy} className={clsx("px-3.5 py-1.5 text-[12px] font-bold disabled:opacity-50", dark ? "bg-[#c8f65d] text-[#0a0c10]" : "bg-ink text-paper hover:bg-alizarin")}>
+          <button type="submit" disabled={busy} className={clsx("px-3.5 py-1.5 text-[12px] font-bold disabled:opacity-50", dark ? "bg-[#c8f65d] text-[#0a0c10]" : "bg-ink text-on-accent hover:bg-alizarin")}>
             প্রশ্ন পাঠান
           </button>
         </div>
@@ -300,7 +300,7 @@ export function QABox({ tone = "default", height = 420, className }: { tone?: "d
             </button>
             <div className="min-w-0 flex-1">
               <p className={clsx("text-[13.5px] leading-snug font-semibold", dark ? "text-white" : "text-ink")}>{q.body}</p>
-              <p className={clsx("mt-1 text-[11px]", dark ? "text-white/40" : "text-ink-soft")}>
+              <p className={clsx("mt-1 text-[11px]", dark ? "text-white/70" : "text-ink-soft")}>
                 {q.name} · <TimeAgo iso={q.createdAt} />
                 {q.status === "pending" && <span className="ml-1.5 text-amberx">· রিভিউয়ের অপেক্ষায়</span>}
               </p>
@@ -365,7 +365,7 @@ export function EngageTabs({
               )}
             >
               <Icon size={14} /> {t.label}
-              <span className={clsx("font-mono-x text-[10px] font-medium", dark ? "text-white/40" : "text-ink-soft")}>{bnCompact(t.count)}</span>
+              <span className={clsx("font-mono-x text-[10px] font-medium", dark ? "text-white/70" : "text-ink-soft")}>{bnCompact(t.count)}</span>
             </button>
           );
         })}

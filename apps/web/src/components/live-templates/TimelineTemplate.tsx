@@ -84,7 +84,7 @@ export default function TimelineTemplate() {
           <UpdatesFeed variant="timeline" limit={5} title="ঘটনাপ্রবাহ" />
           <Link
             href={`/live/${ev.slug}`}
-            className="group mt-6 inline-flex items-center gap-2 bg-ink px-5 py-3 text-[13px] font-bold text-paper transition-colors hover:bg-alizarin"
+            className="group mt-6 inline-flex items-center gap-2 bg-ink px-5 py-3 text-[13px] font-bold text-on-accent transition-colors hover:bg-alizarin"
           >
             পুরো লাইভ ব্লগ, মন্তব্য ও প্রশ্নোত্তর <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
           </Link>

@@ -133,7 +133,7 @@ export default async function AdminAdsSectionPage({
                     দৈনিক মূল্য (৳)
                     <input name="dayRateBdt" type="number" min={0} max={100000000} step={1} required defaultValue={slot.dayRateBdt} disabled={!canManage} className={`${field} w-32`} />
                   </label>
-                  {canManage && <button className="bg-ink px-3 py-2 text-[10px] font-bold text-paper hover:bg-alizarin">সেটিং সংরক্ষণ</button>}
+                  {canManage && <button className="bg-ink px-3 py-2 text-[10px] font-bold text-on-accent hover:bg-alizarin">সেটিং সংরক্ষণ</button>}
                 </form>
               ))}
             </div>

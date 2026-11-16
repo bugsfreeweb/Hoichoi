@@ -125,7 +125,7 @@ export default async function AdminMediaPage() {
                     {p.consecutiveFailures > 0 ? ` · টানা ${toBn(p.consecutiveFailures)}` : ""}
                     {p.lastSuccessAt ? ` · শেষ সফল ${p.lastSuccessAt.slice(0, 16).replace("T", " ")}` : ""}
                   </p>
-                  <span className="text-ink-soft/70">
+                  <span className="text-ink-soft">
                     <Spark series={p.series} />
                   </span>
                 </div>

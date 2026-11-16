@@ -70,7 +70,7 @@ export function StandalonePollForm() {
       {state?.error && <p role="alert" className="md:col-span-2 border border-alizarin/30 bg-alizarin/10 px-3 py-2 text-[12px] font-semibold text-alizarin">{state.error}</p>}
       {state?.notice && <p role="status" className="md:col-span-2 border border-lime/30 bg-lime/10 px-3 py-2 text-[12px] font-semibold text-ink">{state.notice}</p>}
       <div className="md:col-span-2">
-        <button disabled={pending} className="bg-ink px-5 py-3 text-[12px] font-bold text-paper transition-colors hover:bg-alizarin disabled:opacity-60">
+        <button disabled={pending} className="bg-ink px-5 py-3 text-[12px] font-bold text-on-accent transition-colors hover:bg-alizarin disabled:opacity-60">
           {pending ? "সংরক্ষণ হচ্ছে…" : "পোল সংরক্ষণ করুন"}
         </button>
       </div>

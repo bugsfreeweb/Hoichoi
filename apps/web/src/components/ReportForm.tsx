@@ -161,7 +161,7 @@ export function ReportForm({ postId }: { postId: string }) {
             <button
               type="submit"
               disabled={busy}
-              className="flex items-center gap-2 bg-ink px-4 py-2.5 text-[12.5px] font-semibold text-paper transition-colors hover:bg-alizarin disabled:opacity-50"
+              className="flex items-center gap-2 bg-ink px-4 py-2.5 text-[12.5px] font-semibold text-on-accent transition-colors hover:bg-alizarin disabled:opacity-50"
             >
               {busy ? Icons.Loader : Icons.Flag}
               রিপোর্ট জমা দিন

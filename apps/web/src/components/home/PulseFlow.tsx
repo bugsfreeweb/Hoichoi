@@ -74,10 +74,10 @@ export default function PulseFlow() {
             <p className="mt-4 font-serif-bn text-[14.5px] font-bold text-ink">
               {n.t}
             </p>
-            <p className="mt-1 font-mono-x text-[8.5px] tracking-[0.16em] text-ink/35 uppercase">
+            <p className="mt-1 font-mono-x text-[8.5px] tracking-[0.16em] text-ink/60 uppercase">
               {n.s}
             </p>
-            <span className="absolute top-3 right-3 font-mono-x text-[10px] text-ink/25">
+            <span className="absolute top-3 right-3 font-mono-x text-[10px] text-ink/70">
               0{(i + 1).toString()}
             </span>
           </div>

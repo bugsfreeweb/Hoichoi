@@ -143,7 +143,7 @@ export function CategoryRow({ category }: { category: CategoryMeta }) {
         )}
         {err && <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">{err}</p>}
         <div className="flex items-center gap-3">
-          <button className="px-4 py-2 text-[12.5px] font-bold text-paper transition disabled:opacity-50 bg-ink hover:bg-alizarin" disabled={busy}>
+          <button className="px-4 py-2 text-[12.5px] font-bold text-on-accent transition disabled:opacity-50 bg-ink hover:bg-alizarin" disabled={busy}>
             ✓ সংরক্ষণ
           </button>
           <button type="button" className="px-4 py-2 text-[12.5px] font-bold text-ink border border-ink/30 hover:border-ink" onClick={() => setEditing(false)}>
@@ -175,7 +175,7 @@ export function CategoryRow({ category }: { category: CategoryMeta }) {
       </div>
       <div className="flex items-center gap-3">
         {!category.isActive && (
-          <span className="rounded-full bg-alizarin px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-paper">নিষ্ক্রিয়</span>
+          <span className="rounded-full bg-alizarin px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-on-accent">নিষ্ক্রিয়</span>
         )}
         {category.showInFooter && (
           <span className="rounded-full border border-ink/20 px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">Footer</span>
@@ -183,7 +183,7 @@ export function CategoryRow({ category }: { category: CategoryMeta }) {
         <button onClick={() => setEditing(true)} disabled={busy} title="সম্পাদনা" className="flex h-7 w-7 items-center justify-center border border-ink/25 text-ink transition hover:border-ink hover:bg-ink hover:text-paper disabled:opacity-50">
           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
         </button>
-        <button onClick={remove} disabled={busy} title="মুছুন" className="flex h-7 w-7 items-center justify-center border border-alizarin/40 text-alizarin transition hover:bg-alizarin hover:text-white disabled:opacity-50">
+        <button onClick={remove} disabled={busy} title="মুছুন" className="flex h-7 w-7 items-center justify-center border border-alizarin/40 text-alizarin transition hover:bg-alizarin hover:text-on-accent disabled:opacity-50">
           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
         </button>
       </div>

@@ -43,7 +43,7 @@ export function RecoveryForm({ kind }: { kind: "admin" | "advertiser" }) {
       <button
         type="submit"
         disabled={pending}
-        className="bg-ink px-4 py-3 text-[13px] font-bold text-paper transition-colors hover:bg-alizarin disabled:cursor-wait disabled:opacity-60"
+        className="bg-ink px-4 py-3 text-[13px] font-bold text-on-accent transition-colors hover:bg-alizarin disabled:cursor-wait disabled:opacity-60"
       >
         {pending ? "পাঠানো হচ্ছে…" : kind === "admin" ? "লগইন কোড ইমেইলে পাঠান" : "রিসেট লিংক পাঠান"}
       </button>

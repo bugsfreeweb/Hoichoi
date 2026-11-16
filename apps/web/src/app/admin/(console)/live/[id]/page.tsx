@@ -158,7 +158,7 @@ export default async function LiveEventControlPage({
             <span className="field-label">ছবি / মিডিয়া URL (ঐচ্ছিক)</span>
             <input name="mediaUrl" type="url" className="field font-mono-x !text-[11px]" />
           </label>
-          <div className="md:col-span-2"><button className="bg-alizarin px-4 py-2.5 text-[12px] font-bold text-white">আপডেট প্রকাশ করুন →</button></div>
+          <div className="md:col-span-2"><button className="bg-alizarin px-4 py-2.5 text-[12px] font-bold text-on-accent">আপডেট প্রকাশ করুন →</button></div>
         </form>
         <div className="mt-5 divide-y divide-ink/10">
           {data.updates.length ? data.updates.map((update) => (
@@ -178,7 +178,7 @@ export default async function LiveEventControlPage({
                   <button title={update.pinned ? "পিন সরান" : "পিন করুন"} className="border border-ink/20 p-2 text-ink-soft hover:text-ink">{update.pinned ? <PinOff size={13} /> : <Pin size={13} />}</button>
                 </form>
                 <form action={deleteLiveUpdate.bind(null, update.id, event.id)}>
-                  <button title="আপডেট মুছুন" className="border border-alizarin/30 p-2 text-alizarin hover:bg-alizarin hover:text-white"><Trash2 size={13} /></button>
+                  <button title="আপডেট মুছুন" className="border border-alizarin/30 p-2 text-alizarin hover:bg-alizarin hover:text-on-accent"><Trash2 size={13} /></button>
                 </form>
               </div>
             </article>

@@ -166,7 +166,7 @@ export default function Hero({
           <div className="mt-9 flex flex-wrap items-center gap-4">
             <a
               href="#latest"
-              className="group flex items-center gap-2 bg-alizarin px-6 py-3.5 text-[13.5px] font-bold text-paper transition-colors duration-300 hover:bg-alizarin-deep"
+              className="group flex items-center gap-2 bg-alizarin px-6 py-3.5 text-[13.5px] font-bold text-on-accent transition-colors duration-300 hover:bg-alizarin-deep"
             >
               সর্বশেষ সংগ্রহ পড়ুন
               <svg
@@ -209,7 +209,7 @@ export default function Hero({
       {showLiveGraph && (
       <div className="relative border-t border-ink/8">
         <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-8">
-          <p className="font-mono-x text-[9.5px] tracking-[0.24em] text-ink/35 uppercase">
+          <p className="font-mono-x text-[9.5px] tracking-[0.24em] text-ink/60 uppercase">
             FEED → SHOT → HASH → LLM → GIT → DEPLOY
           </p>
           <div className="flex flex-wrap items-center gap-5">

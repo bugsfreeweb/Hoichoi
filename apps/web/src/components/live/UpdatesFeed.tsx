@@ -156,7 +156,7 @@ export default function UpdatesFeed({
               </div>
               {u.title && u.kind !== "quote" && <h4 className={clsx("mt-2 font-serif-bn text-[18px] leading-snug font-bold", dark ? "text-white" : "text-ink")}>{u.title}</h4>}
               <UpdateBody u={u} dark={dark} />
-              <div className={clsx("mt-2.5 flex items-center gap-3 text-[11px]", dark ? "text-white/40" : "text-ink-soft")}>
+              <div className={clsx("mt-2.5 flex items-center gap-3 text-[11px]", dark ? "text-white/70" : "text-ink-soft")}>
                 {u.kind !== "quote" && <span>{u.author}</span>}
                 <button type="button" onClick={() => copyLink(u.id)} className="inline-flex items-center gap-1 hover:text-alizarin">
                   <Link2 size={11} /> {copied === u.id ? "কপি হয়েছে" : "লিংক"}

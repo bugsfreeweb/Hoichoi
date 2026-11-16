@@ -59,7 +59,7 @@ function CreativeEditor({ creative }: { creative: AdCreative }) {
           {state?.error && <p role="alert" className="md:col-span-2 border border-alizarin/30 bg-alizarin/10 px-3 py-2 text-[11px] font-semibold text-alizarin">{state.error}</p>}
           {state?.notice && <p role="status" className="md:col-span-2 border border-lime/30 bg-lime/10 px-3 py-2 text-[11px] font-semibold text-ink">{state.notice}</p>}
           <div className="md:col-span-2">
-            <button type="submit" disabled={pending} className="bg-ink px-3 py-2 text-[11px] font-bold text-paper hover:bg-alizarin disabled:opacity-50">
+            <button type="submit" disabled={pending} className="bg-ink px-3 py-2 text-[11px] font-bold text-on-accent hover:bg-alizarin disabled:opacity-50">
               {pending ? "সংরক্ষণ হচ্ছে…" : "পরিবর্তন সংরক্ষণ"}
             </button>
           </div>

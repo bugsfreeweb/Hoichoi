@@ -50,7 +50,7 @@ export function ModerationListRow({ post, queue }: { post: Post; queue: "pending
           {post.title_bn}
         </Link>
         <p className="truncate text-[11px] text-ink-soft">{post.summary_bn ?? post.body_bn}</p>
-        <p className="truncate font-mono-x text-[9.5px] text-ink-soft/70">
+        <p className="truncate font-mono-x text-[9.5px] text-ink-soft">
           {post.category} · {post.source_name}
           {post.category === "child-sexual-abuse" ? " · 🔒 double" : ""}
         </p>
@@ -72,7 +72,7 @@ export function ModerationListRow({ post, queue }: { post: Post; queue: "pending
               type="button"
               onClick={() => void act("reject")}
               disabled={busy !== null}
-              className="border border-alizarin px-2.5 py-1 text-[11px] font-bold text-alizarin hover:bg-alizarin hover:text-paper disabled:opacity-50"
+              className="border border-alizarin px-2.5 py-1 text-[11px] font-bold text-alizarin hover:bg-alizarin hover:text-on-accent disabled:opacity-50"
             >
               {busy === "reject" ? <Loader2 size={11} className="animate-spin" /> : "প্রত্যাখ্যান"}
             </button>

@@ -153,7 +153,7 @@ function PostCard({ post }: { post: Post }) {
         <span className="rounded-full border border-ink/20 px-2 py-0.5 text-[9.5px] font-bold text-ink-soft">
           {post.category}
         </span>
-        <span className="font-mono-x text-[9.5px] text-ink-soft/80">{date(post.updated_at)}</span>
+        <span className="font-mono-x text-[9.5px] text-ink-soft">{date(post.updated_at)}</span>
         <span className="ml-auto flex items-center gap-1.5">
           <QuickImageButton postId={post.id} hasImage={Boolean(post.media_path)} compact />
           <Link
@@ -180,7 +180,7 @@ function PostListRow({ post }: { post: Post }) {
           {post.title_bn}
         </Link>
         <p className="truncate text-[11px] text-ink-soft">{post.summary_bn ?? post.body_bn}</p>
-        <p className="truncate font-mono-x text-[9.5px] text-ink-soft/70">
+        <p className="truncate font-mono-x text-[9.5px] text-ink-soft">
           {post.slug} · আপডেট: {date(post.updated_at)}
         </p>
       </div>

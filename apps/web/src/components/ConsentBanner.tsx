@@ -70,7 +70,7 @@ export default function ConsentBanner() {
           <button
             type="button"
             onClick={() => choose("all")}
-            className="bg-alizarin px-4 py-2 text-[12px] font-bold text-paper transition-colors hover:bg-alizarin-deep"
+            className="bg-alizarin px-4 py-2 text-[12px] font-bold text-on-accent transition-colors hover:bg-alizarin-deep"
           >
             সব গ্রহণ করুন
           </button>

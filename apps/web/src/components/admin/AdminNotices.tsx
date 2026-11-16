@@ -147,7 +147,7 @@ export function AdminNotices({ notices }: { notices: Notice[] }) {
       </p>
 
       {msg && (
-        <p className={`mt-3 rounded-lg px-3 py-2 text-[12px] font-bold ${msg.type === "ok" ? "bg-lime text-night" : "bg-alizarin text-paper"}`}>
+        <p className={`mt-3 rounded-lg px-3 py-2 text-[12px] font-bold ${msg.type === "ok" ? "bg-lime text-night" : "bg-alizarin text-on-accent"}`}>
           {msg.type === "ok" ? "✓ " : "✕ "}
           {msg.text}
         </p>
@@ -174,7 +174,7 @@ export function AdminNotices({ notices }: { notices: Notice[] }) {
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block sm:col-span-2">
-              <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/40">শিরোনাম</span>
+              <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/70">শিরোনাম</span>
               <input
                 className="mt-1 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 text-[13px] text-white outline-none focus:border-lime/60"
                 value={form.title}
@@ -183,7 +183,7 @@ export function AdminNotices({ notices }: { notices: Notice[] }) {
               />
             </label>
             <label className="block sm:col-span-2">
-              <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/40">বিস্তারিত</span>
+              <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/70">বিস্তারিত</span>
               <textarea
                 className="mt-1 h-20 w-full resize-none rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 text-[12px] text-white outline-none focus:border-lime/60"
                 value={form.body}
@@ -191,7 +191,7 @@ export function AdminNotices({ notices }: { notices: Notice[] }) {
               />
             </label>
             <label className="block">
-              <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/40">টোন</span>
+              <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/70">টোন</span>
               <select
                 className="mt-1 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 text-[13px] text-white outline-none"
                 value={form.tone}
@@ -205,7 +205,7 @@ export function AdminNotices({ notices }: { notices: Notice[] }) {
               </select>
             </label>
             <label className="block">
-              <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/40">লিঙ্ক (ক্লিক করলে খুলবে)</span>
+              <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/70">লিঙ্ক (ক্লিক করলে খুলবে)</span>
               <input
                 className="mt-1 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 font-mono-x text-[11px] text-white outline-none focus:border-lime/60"
                 value={form.url}
@@ -214,7 +214,7 @@ export function AdminNotices({ notices }: { notices: Notice[] }) {
               />
             </label>
             <label className="block">
-              <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/40">মেয়াদ (ISO, ঐচ্ছিক)</span>
+              <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/70">মেয়াদ (ISO, ঐচ্ছিক)</span>
               <input
                 className="mt-1 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 font-mono-x text-[11px] text-white outline-none focus:border-lime/60"
                 value={form.expiresAt}
@@ -259,7 +259,7 @@ export function AdminNotices({ notices }: { notices: Notice[] }) {
                 <div className="space-y-3">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="block sm:col-span-2">
-                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/40">শিরোনাম</span>
+                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/70">শিরোনাম</span>
                       <input
                         className="mt-1 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 text-[13px] text-white outline-none focus:border-lime/60"
                         value={editForm.title}
@@ -267,7 +267,7 @@ export function AdminNotices({ notices }: { notices: Notice[] }) {
                       />
                     </label>
                     <label className="block sm:col-span-2">
-                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/40">বিস্তারিত</span>
+                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/70">বিস্তারিত</span>
                       <textarea
                         className="mt-1 h-20 w-full resize-none rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 text-[12px] text-white outline-none focus:border-lime/60"
                         value={editForm.body}
@@ -275,7 +275,7 @@ export function AdminNotices({ notices }: { notices: Notice[] }) {
                       />
                     </label>
                     <label className="block">
-                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/40">টোন</span>
+                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/70">টোন</span>
                       <select
                         className="mt-1 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 text-[13px] text-white outline-none"
                         value={editForm.tone}
@@ -289,7 +289,7 @@ export function AdminNotices({ notices }: { notices: Notice[] }) {
                       </select>
                     </label>
                     <label className="block">
-                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/40">লিঙ্ক</span>
+                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/70">লিঙ্ক</span>
                       <input
                         className="mt-1 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 font-mono-x text-[11px] text-white outline-none focus:border-lime/60"
                         value={editForm.url}
@@ -297,7 +297,7 @@ export function AdminNotices({ notices }: { notices: Notice[] }) {
                       />
                     </label>
                     <label className="block">
-                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/40">মেয়াদ (ISO)</span>
+                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-white/70">মেয়াদ (ISO)</span>
                       <input
                         className="mt-1 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 font-mono-x text-[11px] text-white outline-none focus:border-lime/60"
                         value={editForm.expiresAt}
@@ -345,7 +345,7 @@ export function AdminNotices({ notices }: { notices: Notice[] }) {
                         </span>
                       )}
                     </p>
-                    <p className="mt-0.5 font-mono-x text-[10px] text-white/40">
+                    <p className="mt-0.5 font-mono-x text-[10px] text-white/70">
                       {n.id.slice(0, 8)} · {n.created_by} · {n.updated_at.slice(0, 10)}
                       {n.expires_at ? ` · মেয়াদ ${n.expires_at.slice(0, 10)}` : ""}
                     </p>

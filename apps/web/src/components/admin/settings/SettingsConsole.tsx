@@ -259,7 +259,7 @@ export function SettingsConsole({
             <button
               onClick={() => void save()}
               disabled={saving || !dirty}
-              className="flex items-center gap-2 border-2 border-ink bg-ink px-6 py-2.5 text-[13px] font-bold text-paper transition hover:bg-alizarin disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex items-center gap-2 border-2 border-ink bg-ink px-6 py-2.5 text-[13px] font-bold text-on-accent transition hover:bg-alizarin disabled:cursor-not-allowed disabled:opacity-40"
             >
               {saving ? "সংরক্ষণ হচ্ছে…" : dirty ? "সংরক্ষণ করুন →" : "✓ সংরক্ষিত"}
             </button>

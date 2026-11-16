@@ -155,7 +155,7 @@ function Row({
           onClick={onRun}
           disabled={busy || disabled || !reviewed}
           title={reviewed ? undefined : "আগে “পরীক্ষা করুন” চাপুন"}
-          className="bg-alizarin px-3 py-1.5 text-[11.5px] font-bold text-white transition-colors hover:bg-alizarin/80 disabled:opacity-40"
+          className="bg-alizarin px-3 py-1.5 text-[11.5px] font-bold text-on-accent transition-colors hover:bg-alizarin/80 disabled:opacity-40"
         >
           {busy ? "চলছে…" : runLabel}
         </button>

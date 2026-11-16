@@ -140,7 +140,7 @@ export function MailSection() {
               type="button"
               onClick={() => void sendTest()}
               disabled={busy}
-              className="inline-flex items-center gap-2 bg-ink px-4 py-2.5 text-[12px] font-bold text-paper hover:bg-alizarin disabled:cursor-wait disabled:opacity-60"
+              className="inline-flex items-center gap-2 bg-ink px-4 py-2.5 text-[12px] font-bold text-on-accent hover:bg-alizarin disabled:cursor-wait disabled:opacity-60"
             >
               {busy ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} টেস্ট ইমেইল পাঠান
             </button>

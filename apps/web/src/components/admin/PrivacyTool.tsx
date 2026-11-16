@@ -121,7 +121,7 @@ export function PrivacyTool() {
               type="button"
               disabled={confirmation !== "ERASE" || busy}
               onClick={() => send("erase")}
-              className="rounded-lg bg-alizarin px-3 py-1.5 text-[12px] font-bold text-paper disabled:opacity-40"
+              className="rounded-lg bg-alizarin px-3 py-1.5 text-[12px] font-bold text-on-accent disabled:opacity-40"
             >
               {t("privacy.eraseConfirm")}
             </button>

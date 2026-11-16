@@ -30,7 +30,7 @@ export function RunPipelineButton() {
       <button
         onClick={run}
         disabled={busy}
-        className="w-fit border-2 border-ink bg-ink px-5 py-2.5 text-[13px] font-bold text-paper transition hover:bg-alizarin disabled:opacity-50"
+        className="w-fit border-2 border-ink bg-ink px-5 py-2.5 text-[13px] font-bold text-on-accent transition hover:bg-alizarin disabled:opacity-50"
       >
         {busy ? "ট্রিগার হচ্ছে…" : "⚡ এখনই পাইপলাইন চালান"}
       </button>

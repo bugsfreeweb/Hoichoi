@@ -194,7 +194,7 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
                 <path d="M3 6h18M3 12h18M3 18h18" />
               </svg>
             </button>
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-alizarin font-serif-bn text-[15px] font-black text-white">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-alizarin font-serif-bn text-[15px] font-black text-on-accent">
               হ
             </span>
             <div className="min-w-0">
@@ -216,7 +216,7 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
             <form action={adminLogout}>
               <button
                 type="submit"
-                className="rounded-lg border border-alizarin/40 px-3 py-1.5 text-[10.5px] font-bold text-alizarin transition-colors hover:bg-alizarin hover:text-white"
+                className="rounded-lg border border-alizarin/40 px-3 py-1.5 text-[10.5px] font-bold text-alizarin transition-colors hover:bg-alizarin hover:text-on-accent"
               >
                 লগআউট
               </button>
@@ -294,7 +294,7 @@ function SidebarNav({
   return (
     <>
       <div className={`flex items-center gap-3 border-b border-white/8 py-4 ${collapsed ? "justify-center px-1" : "px-3"}`}>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-alizarin font-serif-bn text-[17px] font-black text-white">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-alizarin font-serif-bn text-[17px] font-black text-on-accent">
           হ
         </span>
         {!collapsed ? (
@@ -373,7 +373,7 @@ function SidebarNav({
                         <>
                           <span className="flex-1">{n.label}</span>
                           {badge > 0 && (
-                            <span className="rounded-full bg-alizarin px-1.5 py-0.5 font-mono-x text-[9px] font-bold text-white">
+                            <span className="rounded-full bg-alizarin px-1.5 py-0.5 font-mono-x text-[9px] font-bold text-on-accent">
                               {toBn(badge)}
                             </span>
                           )}
@@ -395,7 +395,7 @@ function SidebarNav({
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-lime"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             ভল্ট সিলড
           </p>
-          <p className="mt-2 font-mono-x text-[9px] leading-relaxed tracking-wide text-white/40">
+          <p className="mt-2 font-mono-x text-[9px] leading-relaxed tracking-wide text-white/70">
             KEYS ENCRYPTED · AES-256 MASTER KEY DESKTOP ENV-এ · রিপোতে কখনো না
           </p>
         </div>
@@ -435,7 +435,7 @@ function AdminFooter({
         wraps on its own and the bar grows vertically instead of losing content.
       */}
       <div className="grid w-full grid-cols-1 gap-x-4 gap-y-0.5 px-4 py-2 sm:grid-cols-[minmax(0,1fr)_auto] md:px-6 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
-        <span className="min-w-0 truncate font-mono-x text-[9.5px] tracking-[0.16em] text-white/40 uppercase">
+        <span className="min-w-0 truncate font-mono-x text-[9.5px] tracking-[0.16em] text-white/70 uppercase">
           {active ? `${active.emoji} ${active.label}` : "হৈচৈ কন্ট্রোল"}
         </span>
         <span className="min-w-0 truncate text-[10.5px] text-white/45 sm:text-right">{email}</span>

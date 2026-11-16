@@ -72,7 +72,7 @@ export default function Countdown({
         </div>
       </div>
       <div className="hidden flex-col gap-1 sm:flex">
-        <span className="font-mono-x text-[9px] tracking-[0.22em] text-white/40 uppercase">
+        <span className="font-mono-x text-[9px] tracking-[0.22em] text-white/70 uppercase">
           পরবর্তী স্বয়ংক্রিয় রান
         </span>
         <span className="text-[12px] font-semibold">
@@ -83,7 +83,7 @@ export default function Countdown({
           })}{" "}
           (ঢাকা)
         </span>
-        <span className="font-mono-x text-[9.5px] text-white/40">
+        <span className="font-mono-x text-[9.5px] text-white/70">
           cron: ম্যানুয়াল
         </span>
       </div>

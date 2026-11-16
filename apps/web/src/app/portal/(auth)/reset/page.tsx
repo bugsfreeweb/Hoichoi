@@ -27,7 +27,7 @@ export default async function AdClientResetPage({
             </p>
             <Link
               href="/portal/forgot"
-              className="mt-5 inline-block bg-ink px-4 py-3 text-[13px] font-bold text-paper hover:bg-alizarin"
+              className="mt-5 inline-block bg-ink px-4 py-3 text-[13px] font-bold text-on-accent hover:bg-alizarin"
             >
               নতুন লিংক চান
             </Link>

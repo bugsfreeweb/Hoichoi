@@ -170,7 +170,7 @@ export function SystemStatusBar({ compact = false }: { compact?: boolean }) {
               </span>
             </Link>
           ))}
-          <p className="col-span-full font-mono-x text-[9.5px] text-ink-soft/70">
+          <p className="col-span-full font-mono-x text-[9.5px] text-ink-soft">
             শেষ যাচাই {new Date(data.generatedAt).toLocaleTimeString("bn-BD")} · {data.latencyMs} ms · প্রতি ৩০ সেকেন্ডে
             স্বয়ংক্রিয়
           </p>

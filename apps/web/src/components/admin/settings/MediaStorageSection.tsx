@@ -234,7 +234,7 @@ export function MediaStorageSection({
             type="button"
             onClick={() => void handleSave()}
             disabled={saving}
-            className="rounded border border-ink bg-ink px-5 py-2 text-[13px] font-bold text-paper transition hover:bg-alizarin disabled:opacity-50"
+            className="rounded border border-ink bg-ink px-5 py-2 text-[13px] font-bold text-on-accent transition hover:bg-alizarin disabled:opacity-50"
           >
             {saving ? "সংরক্ষণ হচ্ছে..." : saved ? "✓ সংরক্ষিত হয়েছে" : "মিডিয়া কনফিগ সংরক্ষণ করুন"}
           </button>

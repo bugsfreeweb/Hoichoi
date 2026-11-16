@@ -103,7 +103,7 @@ export function NotificationsBell() {
       >
         <Bell size={14} />
         {unread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-alizarin px-1 text-[9px] font-black text-paper">
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-alizarin px-1 text-[9px] font-black text-on-accent">
             {unread}
           </span>
         )}
@@ -125,9 +125,9 @@ export function NotificationsBell() {
           </div>
 
           <div className="scroll-slim max-h-80 overflow-auto">
-            {!loaded && <p className="px-4 py-8 text-center text-[12px] text-white/40">লোড হচ্ছে…</p>}
+            {!loaded && <p className="px-4 py-8 text-center text-[12px] text-white/70">লোড হচ্ছে…</p>}
             {loaded && notices.length === 0 && (
-              <p className="px-4 py-8 text-center text-[12px] text-white/40">কোনো নোটিফিকেশন নেই</p>
+              <p className="px-4 py-8 text-center text-[12px] text-white/70">কোনো নোটিফিকেশন নেই</p>
             )}
             {notices.map((n) => {
               const read = readRead();

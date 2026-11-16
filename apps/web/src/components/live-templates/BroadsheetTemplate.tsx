@@ -37,7 +37,7 @@ export default function BroadsheetTemplate() {
           <div className="frame-press overflow-hidden bg-[#0a0c10]">
             <LiveMedia floating />
           </div>
-          <p className="mt-3 flex items-center justify-between text-[10.5px] text-ink-soft/80">
+          <p className="mt-3 flex items-center justify-between text-[10.5px] text-ink-soft">
             <span>ভিডিও: {ev.location || "হৈচৈ লাইভ ডেস্ক"} · সরাসরি</span>
             <span className="font-mono-x tracking-wide uppercase">STREAM · {streamLabel(sources[0]?.type ?? "youtube")}</span>
           </p>
@@ -56,7 +56,7 @@ export default function BroadsheetTemplate() {
           </Link>
           <p className="mt-4 text-[14.5px] leading-relaxed text-ink-soft">{ev.summary}</p>
           <div className="mt-6 flex flex-wrap items-center gap-4">
-            <Link href={`/live/${ev.slug}`} className="group flex items-center gap-2 bg-ink px-5 py-3 text-[13px] font-bold text-paper transition-colors duration-300 hover:bg-alizarin">
+            <Link href={`/live/${ev.slug}`} className="group flex items-center gap-2 bg-ink px-5 py-3 text-[13px] font-bold text-on-accent transition-colors duration-300 hover:bg-alizarin">
               লাইভ পাতায় পড়ুন <ArrowRight size={14} />
             </Link>
             <FollowButton />

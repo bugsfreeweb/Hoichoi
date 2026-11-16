@@ -60,7 +60,7 @@ export function PortalManagementForms({
             </label>
           </div>
           <ActionMessage error={creativeState?.error} />
-          <button type="submit" disabled={creating} className="bg-ink px-3 py-2 text-[11px] font-bold text-paper hover:bg-alizarin disabled:opacity-50">
+          <button type="submit" disabled={creating} className="bg-ink px-3 py-2 text-[11px] font-bold text-on-accent hover:bg-alizarin disabled:opacity-50">
             {creating ? "সংরক্ষণ হচ্ছে…" : "ক্রিয়েটিভ সংরক্ষণ"}
           </button>
         </div>
@@ -106,7 +106,7 @@ export function PortalManagementForms({
         {creatives.length === 0 && <p className="text-[10.5px] text-ink-soft">বুকিংয়ের আগে একটি ক্রিয়েটিভ তৈরি করুন।</p>}
         {availableSlots.length === 0 && <p className="text-[10.5px] text-ink-soft">এখন কোনো বুকিংযোগ্য স্লট নেই।</p>}
         <ActionMessage error={bookingState?.error} />
-        <button type="submit" disabled={booking || creatives.length === 0 || availableSlots.length === 0} className="bg-alizarin px-3 py-2 text-[11px] font-bold text-white disabled:opacity-50">
+        <button type="submit" disabled={booking || creatives.length === 0 || availableSlots.length === 0} className="bg-alizarin px-3 py-2 text-[11px] font-bold text-on-accent disabled:opacity-50">
           {booking ? "অনুরোধ পাঠানো হচ্ছে…" : "বুকিং অনুরোধ পাঠান"}
         </button>
       </form>}

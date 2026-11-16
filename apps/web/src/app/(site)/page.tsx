@@ -196,7 +196,7 @@ export default async function HomePage({
                     </span>
                   </div>
                 </TiltCard>
-                <p className="mt-3 flex items-center justify-between text-[10.5px] text-ink-soft/80">
+                <p className="mt-3 flex items-center justify-between text-[10.5px] text-ink-soft">
                   <span>ছবি: {featured.media_path ? "সংগৃহীত" : "কেবল টেক্সট"} · প্রতীকী</span>
                   <span className="font-mono-x tracking-wide">
                     SHOT_{shortId(featured.id).toUpperCase()} · PLAYWRIGHT
@@ -237,7 +237,7 @@ export default async function HomePage({
               <div className="mt-6 flex flex-wrap items-center gap-4">
                 <Link
                   href={`/post/${featured.slug}`}
-                  className="group flex items-center gap-2 bg-ink px-5 py-3 text-[13px] font-bold text-paper transition-colors duration-300 hover:bg-alizarin"
+                  className="group flex items-center gap-2 bg-ink px-5 py-3 text-[13px] font-bold text-on-accent transition-colors duration-300 hover:bg-alizarin"
                 >
                   পুরোটা পড়ুন
                   <svg

@@ -57,7 +57,7 @@ export default function ArticleGrid({
             </span>
           </button>
         ))}
-        <span className="ml-auto hidden font-mono-x text-[10px] tracking-[0.18em] text-ink-soft/70 uppercase md:block">
+        <span className="ml-auto hidden font-mono-x text-[10px] tracking-[0.18em] text-ink-soft uppercase md:block">
           FILTER · AUTO-CATEGORIZED BY LLM
         </span>
       </div>

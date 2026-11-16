@@ -84,7 +84,7 @@ export function RowsEditor({
           <button
             type="button"
             onClick={() => remove(index)}
-            className="mt-5 flex h-10 w-10 items-center justify-center border border-alizarin/30 text-alizarin hover:bg-alizarin hover:text-white md:mt-0 md:self-end"
+            className="mt-5 flex h-10 w-10 items-center justify-center border border-alizarin/30 text-alizarin hover:bg-alizarin hover:text-on-accent md:mt-0 md:self-end"
             aria-label="মুছুন"
           >
             <Trash2 size={14} />

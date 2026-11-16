@@ -25,7 +25,7 @@ export function PurgeButton({ retentionDays }: { retentionDays: number }) {
       <button
         onClick={run}
         disabled={busy}
-        className="border-2 border-alizarin bg-alizarin/10 px-4 py-2 text-[12.5px] font-bold text-alizarin transition hover:bg-alizarin hover:text-paper disabled:opacity-50"
+        className="border-2 border-alizarin bg-alizarin/10 px-4 py-2 text-[12.5px] font-bold text-alizarin transition hover:bg-alizarin hover:text-on-accent disabled:opacity-50"
       >
         {busy ? "মোছা হচ্ছে…" : "মেয়াদোত্তীর্ণ আর্কাইভ পুর্জ করুন"}
       </button>

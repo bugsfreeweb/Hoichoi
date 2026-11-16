@@ -90,7 +90,7 @@ export default function RewriteSlider({
               {sourceName} · ক্যাপশন অপরিশোধিত · বানান-ভুলসহ
             </p>
           </div>
-          <p className="mt-3 inline-block bg-alizarin-deep px-3 py-1.5 text-[11px] font-bold text-white">
+          <p className="mt-3 inline-block bg-alizarin-deep px-3 py-1.5 text-[11px] font-bold text-on-accent">
             A · কাঁচা ফিড
           </p>
         </div>

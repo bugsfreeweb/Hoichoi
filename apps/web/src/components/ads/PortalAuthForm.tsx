@@ -73,7 +73,7 @@ export function PortalAuthForm({ mode }: { mode: "login" | "signup" }) {
       <button
         type="submit"
         disabled={pending}
-        className="bg-ink px-4 py-3 text-[13px] font-bold text-paper transition-colors hover:bg-alizarin disabled:cursor-wait disabled:opacity-60"
+        className="bg-ink px-4 py-3 text-[13px] font-bold text-on-accent transition-colors hover:bg-alizarin disabled:cursor-wait disabled:opacity-60"
       >
         {pending ? "অপেক্ষা করুন…" : signup ? "অ্যাকাউন্ট তৈরি করুন" : "ক্লায়েন্ট পোর্টালে প্রবেশ করুন"}
       </button>

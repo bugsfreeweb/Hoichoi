@@ -269,7 +269,7 @@ export function CategoryFunnel({ radar }: { radar: RadarSnapshot }) {
             {label}
           </span>
         ))}
-        <span className="ml-auto text-[10.5px] text-white/40">
+        <span className="ml-auto text-[10.5px] text-white/70">
           সব বার একই মাপে আঁকা — সবচেয়ে বেশি সংগৃহীত ক্যাটাগরির সমান
         </span>
       </div>

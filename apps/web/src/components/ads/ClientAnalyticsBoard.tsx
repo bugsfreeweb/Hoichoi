@@ -89,7 +89,7 @@ export function ClientAnalyticsBoard({
       <section className="overflow-hidden border border-ink/20 bg-[#0b0e15] text-white shadow-[0_18px_50px_-24px_rgba(0,0,0,0.65)]">
         <div className="flex flex-wrap items-end justify-between gap-3 border-b border-white/10 px-4 py-3.5 md:px-6">
           <div>
-            <p className="font-mono-x text-[9px] tracking-[0.2em] text-white/40 uppercase">DELIVERY · OBSIDIAN</p>
+            <p className="font-mono-x text-[9px] tracking-[0.2em] text-white/70 uppercase">DELIVERY · OBSIDIAN</p>
             <h2 className="mt-1 font-serif-bn text-[18px] font-bold text-white/95">ইম্প্রেশন ও ক্লিকের ধারা</h2>
           </div>
           <div className="flex items-center gap-4 font-mono-x text-[9.5px] tracking-wide text-white/50 uppercase">
@@ -185,7 +185,7 @@ export function ClientAnalyticsBoard({
                     {KIND_BN[e.kind] ?? e.kind} · {e.slotKey}
                     {e.path ? ` · ${e.path}` : ""}
                   </span>
-                  <span className="shrink-0 font-mono-x text-[9px] text-ink-soft/70">
+                  <span className="shrink-0 font-mono-x text-[9px] text-ink-soft">
                     {new Date(e.createdAt).toLocaleTimeString("bn-BD", { timeZone: "Asia/Dhaka", hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </li>

@@ -146,7 +146,7 @@ export default function LoginLogViewer() {
                   <button
                     onClick={() => void remove(row.id)}
                     disabled={busy}
-                    className="rounded-lg p-1.5 text-white/40 transition-colors hover:bg-alizarin/15 hover:text-alizarin disabled:opacity-40"
+                    className="rounded-lg p-1.5 text-ink-soft transition-colors hover:bg-alizarin/15 hover:text-alizarin disabled:opacity-40"
                     title="মুছুন"
                   >
                     <Trash2 size={14} />
@@ -157,12 +157,12 @@ export default function LoginLogViewer() {
           </tbody>
         </table>
         {data && data.rows.length === 0 && (
-          <p className="p-8 text-center text-[13px] text-white/40">কোনো লগইন এন্ট্রি নেই।</p>
+          <p className="p-8 text-center text-[13px] text-white/70">কোনো লগইন এন্ট্রি নেই।</p>
         )}
       </div>
 
       {data && (
-        <div className="mt-4 flex items-center justify-between font-mono-x text-[10.5px] tracking-wide text-white/40 uppercase">
+        <div className="mt-4 flex items-center justify-between font-mono-x text-[10.5px] tracking-wide text-white/70 uppercase">
           <span>মোট {data.total} · পৃষ্ঠা {data.page}/{data.pages}</span>
           <span>নতুন—পুরনো</span>
         </div>

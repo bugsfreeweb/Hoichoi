@@ -52,7 +52,7 @@ export function FooterSocials({ links }: { links: FooterSocialLink[] }) {
           rel="noopener noreferrer"
           title={l.label || l.url}
           aria-label={l.label || l.url}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-ink/15 text-ink-soft ring-offset-paper transition-all duration-300 hover:-translate-y-0.5 hover:border-alizarin hover:bg-alizarin hover:text-paper"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-ink/15 text-ink-soft ring-offset-paper transition-all duration-300 hover:-translate-y-0.5 hover:border-alizarin hover:bg-alizarin hover:text-on-accent"
         >
           {iconGlyph(l.icon)}
         </a>

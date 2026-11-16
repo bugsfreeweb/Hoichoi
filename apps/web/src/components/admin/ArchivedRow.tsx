@@ -61,7 +61,7 @@ export function ArchivedRow({ post }: { post: Post }) {
             <button
               onClick={() => void remove()}
               disabled={pending}
-              className="rounded-lg bg-alizarin px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-alizarin/80 disabled:opacity-60"
+              className="rounded-lg bg-alizarin px-3 py-1.5 text-[11px] font-bold text-on-accent transition-colors hover:bg-alizarin/80 disabled:opacity-60"
             >
               {pending ? "মুছছে…" : "নিশ্চিত করুন"}
             </button>

@@ -124,7 +124,7 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
       {status === "ok" && <p className="border border-cat-teal bg-cat-teal/10 px-3 py-2 text-[12.5px] font-bold text-ink">✓ সংরক্ষিত।</p>}
       {status === "err" && <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">✗ ব্যর্থ।</p>}
       {status === "denied" && <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">অনুমতি নেই — admin প্রয়োজন।</p>}
-      <button className="w-fit border-2 border-ink bg-ink px-6 py-2.5 text-[13px] font-bold text-paper transition hover:bg-alizarin">
+      <button className="w-fit border-2 border-ink bg-ink px-6 py-2.5 text-[13px] font-bold text-on-accent transition hover:bg-alizarin">
         সংরক্ষণ করুন →
       </button>
     </form>

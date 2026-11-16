@@ -41,7 +41,7 @@ export function PostCard({ post, cats }: { post: Post; cats: CategoryMeta[] }) {
         <p className="line-clamp-3 mt-2 text-[13.5px] leading-relaxed text-ink-soft">
           {post.summary_bn ?? post.body_bn}
         </p>
-        <div className="mt-4 flex items-center justify-between text-[10.5px] text-ink-soft/80">
+        <div className="mt-4 flex items-center justify-between text-[10.5px] text-ink-soft">
           <span>
             সূত্র: {post.source_name} · <span className="font-serif-bn">{post.original_author_name ?? "—"}</span>
           </span>

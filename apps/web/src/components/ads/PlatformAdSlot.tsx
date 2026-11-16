@@ -137,7 +137,7 @@ export function PlatformAdSlot({
             }}
           />
         </div>
-        <span className="pointer-events-none absolute left-2 top-1 font-mono-x text-[8px] tracking-[0.2em] text-ink-soft/70 uppercase">
+        <span className="pointer-events-none absolute left-2 top-1 font-mono-x text-[8px] tracking-[0.2em] text-ink-soft uppercase">
           AD
         </span>
       </div>

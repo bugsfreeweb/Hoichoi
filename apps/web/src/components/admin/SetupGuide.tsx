@@ -45,7 +45,7 @@ function SecretCard({ s, unknown = false }: { s: SecretView; unknown?: boolean }
       ? "bg-lime/20 text-lime"
       : s.requirement === "required"
         ? "bg-alizarin/20 text-alizarin"
-        : "bg-white/8 text-white/40";
+        : "bg-white/8 text-white/70";
   const dotGlyph = unknown ? "?" : s.present ? "✓" : s.requirement === "required" ? "!" : "–";
   return (
     <details
@@ -86,7 +86,7 @@ function SecretCard({ s, unknown = false }: { s: SecretView; unknown?: boolean }
         <p className="text-[13px] leading-relaxed text-white/75">{s.purposeBn}</p>
 
         <div>
-          <p className="font-mono-x text-[10px] tracking-[0.2em] text-white/40 uppercase">
+          <p className="font-mono-x text-[10px] tracking-[0.2em] text-white/70 uppercase">
             যেভাবে পাবেন
           </p>
           <ol className="mt-2 space-y-2">
@@ -104,14 +104,14 @@ function SecretCard({ s, unknown = false }: { s: SecretView; unknown?: boolean }
         {s.dashboardUrl && (
           <ExternalLink
             href={s.dashboardUrl}
-            className="inline-block border border-white/20 px-4 py-2 text-[12px] font-bold text-white transition-colors hover:border-alizarin hover:bg-alizarin"
+            className="inline-block border border-white/20 px-4 py-2 text-[12px] font-bold text-on-accent transition-colors hover:border-alizarin hover:bg-alizarin"
           >
             {s.dashboardLabelBn ?? "ড্যাশবোর্ড খুলুন"} ↗
           </ExternalLink>
         )}
 
         <div>
-          <p className="font-mono-x text-[10px] tracking-[0.2em] text-white/40 uppercase">
+          <p className="font-mono-x text-[10px] tracking-[0.2em] text-white/70 uppercase">
             .env লাইন
           </p>
           <pre className="mt-1.5 overflow-x-auto border border-white/10 bg-black/40 p-3 font-mono-x text-[11.5px] leading-relaxed whitespace-pre-wrap text-lime">
@@ -131,7 +131,7 @@ function SecretCard({ s, unknown = false }: { s: SecretView; unknown?: boolean }
           {s.ifMissingBn}
         </p>
 
-        <p className="text-[11.5px] text-white/40">
+        <p className="text-[11.5px] text-white/70">
           {unknown
             ? "এখন যাচাই করা গেল না — ডেটাবেসে পৌঁছানো যাচ্ছে না।"
             : s.present && s.updatedAt
@@ -216,7 +216,7 @@ export function SetupGuide({
               {dbUnavailable ? "—" : presentCount}
               {!dbUnavailable && <span className="text-white/30">/{secrets.length}</span>}
             </p>
-            <p className="font-mono-x text-[9.5px] tracking-[0.18em] text-white/40 uppercase">
+            <p className="font-mono-x text-[9.5px] tracking-[0.18em] text-white/70 uppercase">
               secrets ready
             </p>
           </div>
@@ -304,7 +304,7 @@ export function SetupGuide({
 
       {/* ============ SECRET CARDS ============ */}
       <section className="space-y-3">
-        <h3 className="font-mono-x text-[10px] tracking-[0.24em] text-white/40 uppercase">
+        <h3 className="font-mono-x text-[10px] tracking-[0.24em] text-white/70 uppercase">
           ধাপ ১ · প্রতিটি সিক্রেট বিস্তারিত
         </h3>
         {secrets.map((s) => (
@@ -372,7 +372,7 @@ export function SetupGuide({
             </ol>
             <ExternalLink
               href={NEW_TOKEN_URL}
-              className="inline-block border border-white/20 px-4 py-2 text-[12px] font-bold text-white transition-colors hover:border-alizarin hover:bg-alizarin"
+              className="inline-block border border-white/20 px-4 py-2 text-[12px] font-bold text-on-accent transition-colors hover:border-alizarin hover:bg-alizarin"
             >
               নতুন PAT তৈরি করুন ↗
             </ExternalLink>

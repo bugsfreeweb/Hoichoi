@@ -64,7 +64,7 @@ export default function CompactTemplate({ others = [] }: { others?: EventCard[] 
           <RotatingUpdate />
         </div>
         <div className="flex flex-col justify-between gap-4 border-t border-ink/12 p-4 xl:border-t-0 xl:border-l">
-          <Link href={`/live/${ev.slug}`} className="group flex items-center justify-center gap-2 bg-alizarin px-4 py-3 text-[13px] font-bold text-paper transition-colors hover:bg-alizarin-deep">
+          <Link href={`/live/${ev.slug}`} className="group flex items-center justify-center gap-2 bg-alizarin px-4 py-3 text-[13px] font-bold text-on-accent transition-colors hover:bg-alizarin-deep">
             {ev.status === "scheduled" ? "রিমাইন্ডার ও বিস্তারিত" : ev.status === "ended" ? "রিপ্লে দেখুন" : "লাইভ দেখুন"}
             <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
           </Link>

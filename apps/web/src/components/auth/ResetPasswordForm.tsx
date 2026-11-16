@@ -41,7 +41,7 @@ export function ResetPasswordForm({
       <button
         type="submit"
         disabled={pending}
-        className="bg-ink px-4 py-3 text-[13px] font-bold text-paper transition-colors hover:bg-alizarin disabled:cursor-wait disabled:opacity-60"
+        className="bg-ink px-4 py-3 text-[13px] font-bold text-on-accent transition-colors hover:bg-alizarin disabled:cursor-wait disabled:opacity-60"
       >
         {pending ? "সংরক্ষণ হচ্ছে…" : submitLabel}
       </button>

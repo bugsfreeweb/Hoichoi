@@ -1,0 +1,77 @@
+name: Web quality
+
+# Performance budgets and an accessibility audit over the real pages.
+#
+# Separate from CI on purpose: Lighthouse needs a production build and a Chrome
+# instance, and it is slow. This runs on `main` and on pull requests that touch
+# the web app, so a regression is caught before it ships but a docs-only change
+# does not pay for a browser.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "packages/**"
+      - "lighthouserc.cjs"
+      - ".github/workflows/web-quality.yml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/**"
+      - "lighthouserc.cjs"
+      - ".github/workflows/web-quality.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: web-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lighthouse budgets · axe accessibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      # A throwaway file database: this job reads public pages only and must
+      # never touch the production libSQL URL, even with production secrets set.
+      TURSO_DATABASE_URL: file:${{ github.workspace }}/data/quality.db
+      DATABASE_URL: file:${{ github.workspace }}/data/quality.db
+      NEXT_PUBLIC_SITE_URL: http://localhost:3070
+      # No provider keys, no mail, no cron secrets: the job proves the public
+      # pages render without them, which is also a useful constraint to check.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.18.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Chromium for Playwright
+        run: pnpm --filter @hoichoi/web exec playwright install --with-deps chromium
+      - name: Migrate and seed a local database
+        run: |
+          pnpm db:migrate
+          pnpm db:seed
+      - name: Build for production
+        run: pnpm build
+      - name: Start the production server
+        run: |
+          pnpm --filter @hoichoi/web start > "$RUNNER_TEMP/web.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3070/api/health > /dev/null; then echo "server up"; exit 0; fi
+            sleep 2
+          done
+          echo "server did not start"; tail -50 "$RUNNER_TEMP/web.log"; exit 1
+      # Accessibility is the gate: a violation is a defect a reader would hit.
+      - name: Accessibility audit (axe, light + dark)
+        run: pnpm --filter @hoichoi/web exec tsx scripts/a11y.ts http://localhost:3070
+      # Lighthouse asserts CLS and the accessibility score; perf/TBT/LCP are
+      # warnings by design (see lighthouserc.cjs) because a shared runner's CPU
+      # is not a product regression.
+      - name: Lighthouse budgets
+        run: npx --yes @lhci/cli@0.14.x autorun
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}

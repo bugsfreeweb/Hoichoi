@@ -50,9 +50,9 @@ export async function LiveDeskMonitor() {
             </div>
           </div>
           <div className="hidden flex-col gap-1 sm:flex">
-            <span className="font-mono-x text-[9px] tracking-[0.22em] uppercase text-white/40">পরবর্তী স্বয়ংক্রিয় রান</span>
+            <span className="font-mono-x text-[9px] tracking-[0.22em] uppercase text-white/70">পরবর্তী স্বয়ংক্রিয় রান</span>
             <span className="text-[12px] font-semibold">{at} (ঢাকা)</span>
-            <span className="font-mono-x text-[9.5px] text-white/40">cron: 0 */{bnNum(hours)} * * *</span>
+            <span className="font-mono-x text-[9.5px] text-white/70">cron: 0 */{bnNum(hours)} * * *</span>
           </div>
         </div>
       </div>

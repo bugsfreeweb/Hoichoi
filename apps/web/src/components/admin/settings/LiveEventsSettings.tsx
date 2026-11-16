@@ -77,7 +77,7 @@ export function LiveEventsSettings({ eventCount }: { eventCount: number }) {
                     </span>
                     <span className="mt-1 block font-serif-bn text-[16px] font-extrabold text-ink">{theme.bn}</span>
                     <span className="mt-1 block text-[11.5px] leading-relaxed text-ink-soft">{theme.hint}</span>
-                    <span className="mt-2 block font-mono-x text-[9px] leading-relaxed text-ink-soft/80">{theme.features}</span>
+                    <span className="mt-2 block font-mono-x text-[9px] leading-relaxed text-ink-soft">{theme.features}</span>
                   </span>
                 </button>
               );

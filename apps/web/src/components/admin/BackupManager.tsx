@@ -133,7 +133,7 @@ export function BackupManager() {
         <button
           onClick={doReset}
           disabled={busy !== null}
-          className="mt-3 border-2 border-alizarin bg-alizarin px-4 py-2 text-[12.5px] font-bold text-paper transition hover:bg-paper hover:text-alizarin disabled:opacity-50"
+          className="mt-3 border-2 border-alizarin bg-alizarin px-4 py-2 text-[12.5px] font-bold text-on-accent transition hover:bg-paper hover:text-alizarin disabled:opacity-50"
         >
           {busy === "reset" ? "মোছা হচ্ছে…" : "⟲ সম্পূর্ণ রিসেট"}
         </button>

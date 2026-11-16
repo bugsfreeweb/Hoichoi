@@ -63,7 +63,7 @@ export default function StageTemplate() {
             <UpdatesFeed variant="compact" limit={6} filters={false} className="mt-1 max-h-[300px] overflow-y-auto scroll-thin" />
             <Link
               href={`/live/${ev.slug}`}
-              className="group mt-4 flex items-center justify-center gap-2 bg-alizarin px-5 py-3 text-[13.5px] font-bold text-paper transition-colors hover:bg-alizarin-deep"
+              className="group mt-4 flex items-center justify-center gap-2 bg-alizarin px-5 py-3 text-[13.5px] font-bold text-on-accent transition-colors hover:bg-alizarin-deep"
             >
               পুরো লাইভ কভারেজ
               <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />

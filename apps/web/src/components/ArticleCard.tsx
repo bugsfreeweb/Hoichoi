@@ -67,7 +67,7 @@ export default function ArticleCard({ post, index, categories }: ArticleCardProp
           AI REWRITE
         </span>
       </div>
-      <p className="mt-3 flex items-center justify-between text-[10.5px] text-ink-soft/80">
+      <p className="mt-3 flex items-center justify-between text-[10.5px] text-ink-soft">
         <span>পুনর্লিখন · প্রতীকী</span>
         <span className="font-mono-x tracking-wide">
           SHOT_{shortId(post.id).toUpperCase()} · PLAYWRIGHT
@@ -99,7 +99,7 @@ export default function ArticleCard({ post, index, categories }: ArticleCardProp
         {post.summary_bn ?? post.body_bn}
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <span className="group flex items-center gap-2 bg-ink px-5 py-2.5 text-[13px] font-bold text-paper transition-colors duration-300 group-hover:bg-alizarin">
+        <span className="group flex items-center gap-2 bg-ink px-5 py-2.5 text-[13px] font-bold text-on-accent transition-colors duration-300 group-hover:bg-alizarin">
           পুরোটা পড়ুন
           <svg
             xmlns="http://www.w3.org/2000/svg"

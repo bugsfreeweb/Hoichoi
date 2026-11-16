@@ -136,7 +136,7 @@ export function CategoryForm() {
         <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
           ক্যাটাগরি চেনার কীওয়ার্ড (কমা দিয়ে আলাদা করুন)
         </span>
-        <span className="mt-0.5 block text-[11px] leading-4 text-ink-soft/80">
+        <span className="mt-0.5 block text-[11px] leading-4 text-ink-soft">
           ক্লাসিফায়ার এগুলো দিয়ে পোস্টের বিভাগ ঠিক করে; খালি রাখলে শুধু বিল্ট-ইন প্রোফাইল ব্যবহার হবে।
         </span>
         <textarea
@@ -150,7 +150,7 @@ export function CategoryForm() {
       {status === "ok" && <p className="border border-cat-teal bg-cat-teal/10 px-3 py-2 text-[12.5px] font-bold text-ink">✓ যোগ হয়েছে।</p>}
       {status === "err" && <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">{err ?? "✗ যোগ করা যায়নি।"}</p>}
       {status === "denied" && <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">অনুমতি নেই — admin/editor প্রয়োজন।</p>}
-      <button className="w-fit border-2 border-ink bg-ink px-5 py-2 text-[12.5px] font-bold text-paper transition hover:bg-alizarin disabled:opacity-50" disabled={status === "busy"}>
+      <button className="w-fit border-2 border-ink bg-ink px-5 py-2 text-[12.5px] font-bold text-on-accent transition hover:bg-alizarin disabled:opacity-50" disabled={status === "busy"}>
         বিভাগ যোগ করুন →
       </button>
     </form>

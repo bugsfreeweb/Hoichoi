@@ -34,7 +34,7 @@ export function ReportSlugForm() {
       <input type="email" placeholder="আপনার ইমেইল (ঐচ্ছিক)" className={`${field} w-full`} value={email} onChange={(e) => setEmail(e.target.value)} />
       {status === "ok" && <p className="border border-cat-teal bg-cat-teal/10 px-4 py-3 text-[13px] font-bold text-ink">ধন্যবাদ! রিপোর্টটি রিসিভ হয়েছে।</p>}
       {status === "err" && <p className="border border-alizarin bg-alizarin/10 px-4 py-3 text-[13px] font-bold text-ink">পাঠানো যায়নি — slug পড়ুন: /post/slug ফরম্যাট চেক করুন।</p>}
-      <button disabled={status === "sending"} className="w-fit border-2 border-ink bg-ink px-6 py-3 text-[13.5px] font-bold text-paper transition hover:bg-alizarin disabled:opacity-50">
+      <button disabled={status === "sending"} className="w-fit border-2 border-ink bg-ink px-6 py-3 text-[13.5px] font-bold text-on-accent transition hover:bg-alizarin disabled:opacity-50">
         {status === "sending" ? "পাঠানো হচ্ছে…" : "রিপোর্ট জমা দিন →"}
       </button>
     </form>

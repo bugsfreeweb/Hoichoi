@@ -191,7 +191,7 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
                 <td className="px-5 py-3.5">
                   <div className="flex items-center justify-end gap-1.5">
                     {busy === r.id ? (
-                      <span className="text-[11px] text-white/40">· চলছে …</span>
+                      <span className="text-[11px] text-white/70">· চলছে …</span>
                     ) : (
                       <>
                         {r.status !== "approved" && (
@@ -281,7 +281,7 @@ function CommentCard({
           {STATUS_BN[row.status] ?? row.status}
         </span>
         {busy ? (
-          <span className="text-[11px] text-white/40">· চলছে …</span>
+          <span className="text-[11px] text-white/70">· চলছে …</span>
         ) : (
           <div className="flex items-center gap-1.5">
             {row.status !== "approved" && (

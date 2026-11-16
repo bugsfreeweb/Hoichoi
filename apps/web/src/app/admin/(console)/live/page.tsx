@@ -34,7 +34,7 @@ export default async function AdminLiveEventsPage({
           <h1 className="mt-2 font-serif-bn text-[32px] font-black text-ink md:text-[40px]">লাইভ ইভেন্ট</h1>
           <p className="mt-1 text-[13px] text-ink-soft">শুধু এখানে তৈরি ও সংরক্ষিত আসল ইভেন্ট দেখানো হয়; কোনো নমুনা বা সিমুলেটেড ডেটা নেই।</p>
         </div>
-        <Link href="/admin/live?new=1#new-live-event" className="flex items-center gap-2 bg-alizarin px-4 py-2.5 text-[13px] font-bold text-paper hover:bg-alizarin-deep">
+        <Link href="/admin/live?new=1#new-live-event" className="flex items-center gap-2 bg-alizarin px-4 py-2.5 text-[13px] font-bold text-on-accent hover:bg-alizarin-deep">
           <Plus size={15} /> নতুন লাইভ ইভেন্ট
         </Link>
       </header>
@@ -83,7 +83,7 @@ export default async function AdminLiveEventsPage({
                   </p>
                 </div>
                 <div className="flex flex-wrap items-start gap-2 md:max-w-[300px] md:justify-end">
-                  <Link href={`/admin/live/${event.id}`} className="flex items-center gap-1.5 bg-ink px-3 py-1.5 text-[12px] font-bold text-paper hover:bg-alizarin">
+                  <Link href={`/admin/live/${event.id}`} className="flex items-center gap-1.5 bg-ink px-3 py-1.5 text-[12px] font-bold text-on-accent hover:bg-alizarin">
                     <Radio size={13} /> কন্ট্রোল রুম
                   </Link>
                   <Link href={`/admin/live/${event.id}?tab=settings`} className="border border-ink/20 px-3 py-1.5 text-[11px] font-bold text-ink transition-colors hover:border-ink">সম্পাদনা</Link>

@@ -37,7 +37,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
     <label className="block">
       <span className="font-mono-x text-[10px] tracking-[0.18em] text-ink-soft uppercase">{label}</span>
       <div className="mt-1.5">{children}</div>
-      {hint && <span className="mt-1 block text-[11px] leading-relaxed text-ink-soft/80">{hint}</span>}
+      {hint && <span className="mt-1 block text-[11px] leading-relaxed text-ink-soft">{hint}</span>}
     </label>
   );
 }

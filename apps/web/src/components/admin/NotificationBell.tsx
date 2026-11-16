@@ -83,7 +83,7 @@ export function NotificationBell() {
       >
         <Bell size={15} />
         {total > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-alizarin px-1 font-mono-x text-[9px] font-bold text-white">
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-alizarin px-1 font-mono-x text-[9px] font-bold text-on-accent">
             {total > 99 ? "৯৯+" : toBn(total)}
           </span>
         )}
@@ -120,7 +120,7 @@ export function NotificationBell() {
               <span className="text-[12.5px] font-semibold text-ink">{i.label}</span>
               <span
                 className={`rounded-full px-2 py-0.5 font-mono-x text-[10px] font-bold ${
-                  i.count > 0 ? "bg-alizarin text-paper" : "bg-ink/10 text-ink-soft"
+                  i.count > 0 ? "bg-alizarin text-on-accent" : "bg-ink/10 text-ink-soft"
                 }`}
               >
                 {toBn(i.count)}

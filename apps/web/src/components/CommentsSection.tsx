@@ -171,7 +171,7 @@ export function CommentsSection({
       <p className="mt-3 text-[13.5px] leading-relaxed text-ink-soft">
         মতামত দিন, ব্যক্তিগত আক্রমণ নয়। প্রতিটি নতুন মন্তব্য সম্পাদকীয় পর্যালোচনার পর প্রকাশ করা হয়।
         {total > comments.length && (
-          <span className="ml-1 text-ink-soft/80">সর্বমোট {toBn(total)}টির মধ্যে সর্বশেষ {toBn(comments.length)}টি দেখানো হচ্ছে।</span>
+          <span className="ml-1 text-ink-soft">সর্বমোট {toBn(total)}টির মধ্যে সর্বশেষ {toBn(comments.length)}টি দেখানো হচ্ছে।</span>
         )}
       </p>
 
@@ -230,7 +230,7 @@ export function CommentsSection({
           </span>
           <button
             disabled={busy}
-            className="flex items-center gap-2 bg-ink px-4 py-3 text-[13px] font-semibold text-paper transition-colors hover:bg-alizarin disabled:opacity-50"
+            className="flex items-center gap-2 bg-ink px-4 py-3 text-[13px] font-semibold text-on-accent transition-colors hover:bg-alizarin disabled:opacity-50"
           >
             {busy ? Icons.Loader : Icons.Send}
             মন্তব্য জমা দিন

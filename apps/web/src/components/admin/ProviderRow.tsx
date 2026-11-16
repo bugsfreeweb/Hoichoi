@@ -222,7 +222,7 @@ export function ProviderRow({
           <button type="button" onClick={() => setEditing(false)} disabled={busy} className="border border-ink/30 px-3 py-1.5 text-[12px]">
             Cancel
           </button>
-          <button type="button" onClick={remove} disabled={busy} className="ml-auto border border-alizarin px-3 py-1.5 text-[12px] text-alizarin hover:bg-alizarin hover:text-white disabled:opacity-40">
+          <button type="button" onClick={remove} disabled={busy} className="ml-auto border border-alizarin px-3 py-1.5 text-[12px] text-alizarin hover:bg-alizarin hover:text-on-accent disabled:opacity-40">
             Delete
           </button>
         </div>
@@ -266,7 +266,7 @@ export function ProviderRow({
             >
               {hasKey ? "✓ কী আছে" : "✗ কী নেই"}
             </span>
-            <span className="font-mono-x text-ink-soft/70">
+            <span className="font-mono-x text-ink-soft">
               {provider.api_key ? "DB-তে সংরক্ষিত" : `env · ${provider.api_key_env_var}`}
             </span>
             {!modelFitsPurpose && (
@@ -282,7 +282,7 @@ export function ProviderRow({
           <span className="font-mono-x text-[10.5px] text-cat-blue">embed</span>
         )}
         {provider.supports_rewrite && (
-          <span className="font-mono-x text-[10.5px] text-ink-soft/70">rewrite</span>
+          <span className="font-mono-x text-[10.5px] text-ink-soft">rewrite</span>
         )}
         {isImage && (
           <button

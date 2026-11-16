@@ -76,3 +76,4 @@ live-event-feature-mockup/
 ad-management-system-mockup/
 .continue/
 .tmp-*.db
+.lighthouseci/

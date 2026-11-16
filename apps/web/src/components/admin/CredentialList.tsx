@@ -206,7 +206,7 @@ export default function CredentialList({ canEdit }: { canEdit: boolean }) {
         {items.map((item) => {
           const st = item.status.state;
           const badge =
-            st === "expired" ? "bg-alizarin text-paper" : st === "due" ? "bg-amberx text-paper" : "bg-cat-teal text-paper";
+            st === "expired" ? "bg-alizarin text-on-accent" : st === "due" ? "bg-amberx text-on-accent" : "bg-cat-teal text-on-accent";
           return (
             <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 border border-ink/20 bg-paper-deep px-4 py-3">
               <div className="flex items-start gap-3">

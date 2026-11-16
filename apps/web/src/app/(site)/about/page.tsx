@@ -120,7 +120,7 @@ export default async function AboutPage() {
         যেকোনো পোস্ট তার প্রকাশের জানালা শেষ হলে স্বয়ংক্রিয়ভাবে আর্কাইভে চলে যায় এবং নির্ধারিত সময় পর
         স্থায়ীভাবে মুছে যায় — এটাই আমাদের স্বচ্ছতার অঙ্গীকার।
       </p>
-      <Link className="mt-4 inline-block border border-ink bg-ink px-5 py-2.5 text-[13px] font-bold text-paper hover:bg-alizarin" href="/system">
+      <Link className="mt-4 inline-block border border-ink bg-ink px-5 py-2.5 text-[13px] font-bold text-on-accent hover:bg-alizarin" href="/system">
         সিস্টেম ব্লুপ্রিন্ট দেখুন →
       </Link>
     </PageSection>

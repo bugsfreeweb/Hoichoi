@@ -173,7 +173,7 @@ export function VisibilityPanel() {
       </div>
 
       {msg && (
-        <p className={`mt-3 rounded-lg px-3 py-2 text-[12px] font-bold ${msg.type === "ok" ? "bg-lime text-night" : "bg-alizarin text-paper"}`}>
+        <p className={`mt-3 rounded-lg px-3 py-2 text-[12px] font-bold ${msg.type === "ok" ? "bg-lime text-night" : "bg-alizarin text-on-accent"}`}>
           {msg.type === "ok" ? "✓ " : "✕ "}
           {msg.text}
         </p>

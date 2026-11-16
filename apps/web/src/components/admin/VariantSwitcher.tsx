@@ -263,7 +263,7 @@ export function VariantSwitcher({
           type="button"
           disabled={busy}
           onClick={() => openStudio()}
-          className="mt-4 flex items-center gap-2 border-2 border-ink bg-ink px-4 py-2.5 text-[13px] font-bold text-paper transition hover:bg-alizarin disabled:opacity-40"
+          className="mt-4 flex items-center gap-2 border-2 border-ink bg-ink px-4 py-2.5 text-[13px] font-bold text-on-accent transition hover:bg-alizarin disabled:opacity-40"
         >
           ▶ লাইভ ডিজাইন স্টুডিও খুলুন
           {changeCount > 0 ? <span className="text-[11px] text-paper">· {changeCount} অসংরক্ষিত</span> : null}

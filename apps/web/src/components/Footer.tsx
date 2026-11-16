@@ -81,7 +81,7 @@ export async function Footer() {
               </p>
               <Link
                 href="/submit"
-                className="mt-4 inline-block bg-alizarin px-5 py-2.5 text-[12.5px] font-bold text-white transition-colors hover:bg-ink"
+                className="mt-4 inline-block bg-alizarin px-5 py-2.5 text-[12.5px] font-bold text-on-accent transition-colors hover:bg-ink"
               >
                 সোর্স জমা দিন →
               </Link>
@@ -94,7 +94,7 @@ export async function Footer() {
                 সিস্টেম ব্লুপ্রিন্ট →
               </Link>
             </div>
-            <p className="mt-6 text-[10.5px] leading-relaxed text-ink-soft/80">
+            <p className="mt-6 text-[10.5px] leading-relaxed text-ink-soft">
               ছবি: Pexels ফটোগ্রাফারগণ · এটি একটি প্রযুক্তি প্রদর্শনী (মকআপ) —
               সব চরিত্র ও ঘটনাবহুল কাল্পনিক এবং কেবল সচেতনতামূলক বিন্যাসে রচিত।
             </p>

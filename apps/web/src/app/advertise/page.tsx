@@ -16,7 +16,7 @@ export default async function AdvertisePage() {
           <nav aria-label="বিজ্ঞাপন পৃষ্ঠা" className="flex items-center gap-2">
             <Link href="#inventory" className="hidden px-3 py-2 text-[11px] font-semibold text-ink-soft hover:text-ink sm:inline">স্লট ও রেট</Link>
             <Link href="/portal/login" className="border border-ink/20 px-3 py-2 text-[11px] font-bold hover:border-ink">ক্লায়েন্ট লগইন</Link>
-            <Link href="/portal/signup" className="bg-alizarin px-3 py-2 text-[11px] font-bold text-white hover:bg-alizarin-deep">অ্যাকাউন্ট তৈরি</Link>
+            <Link href="/portal/signup" className="bg-alizarin px-3 py-2 text-[11px] font-bold text-on-accent hover:bg-alizarin-deep">অ্যাকাউন্ট তৈরি</Link>
           </nav>
         </div>
       </header>
@@ -33,7 +33,7 @@ export default async function AdvertisePage() {
               ক্যাম্পেইন তৈরি করুন, উপলভ্য বিজ্ঞাপন স্লট দেখুন, creative সংরক্ষণ করুন এবং ক্লায়েন্ট পোর্টাল থেকে বুকিং অনুরোধ পাঠান। প্রকাশের আগে প্রতিটি অ্যাকাউন্ট ও বুকিং প্রশাসক যাচাই করেন।
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/portal/signup" className="bg-alizarin px-5 py-3 text-[12px] font-bold text-white transition-colors hover:bg-alizarin-deep">ক্লায়েন্ট অ্যাকাউন্ট খুলুন →</Link>
+              <Link href="/portal/signup" className="bg-alizarin px-5 py-3 text-[12px] font-bold text-on-accent transition-colors hover:bg-alizarin-deep">ক্লায়েন্ট অ্যাকাউন্ট খুলুন →</Link>
               <Link href="/portal/login" className="border border-ink/25 px-5 py-3 text-[12px] font-bold text-ink transition-colors hover:border-ink">পোর্টালে সাইন ইন</Link>
               <Link href="#inventory" className="border border-ink/25 px-5 py-3 text-[12px] font-bold text-ink transition-colors hover:border-ink">স্লট ও রেট দেখুন</Link>
             </div>
@@ -112,7 +112,7 @@ export default async function AdvertisePage() {
           <p className="mt-1 text-[11px] text-ink-soft">অ্যাকাউন্ট খুলে client workspace-এ creative ও booking পরিচালনা করুন।</p>
         </div>
         <div className="flex gap-2">
-          <Link href="/portal/signup" className="bg-ink px-4 py-2.5 text-[11px] font-bold text-paper hover:bg-alizarin">অ্যাকাউন্ট তৈরি</Link>
+          <Link href="/portal/signup" className="bg-ink px-4 py-2.5 text-[11px] font-bold text-on-accent hover:bg-alizarin">অ্যাকাউন্ট তৈরি</Link>
           <Link href="/portal/login" className="border border-ink/20 px-4 py-2.5 text-[11px] font-bold hover:border-ink">লগইন</Link>
         </div>
       </footer>

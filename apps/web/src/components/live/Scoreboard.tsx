@@ -81,7 +81,7 @@ export default function Scoreboard({ variant = "card", tone = "default", classNa
       <div className="flex items-center justify-between gap-3">
         <p className={clsx("font-mono-x text-[9.5px] tracking-[0.22em] uppercase", dark ? "text-[#c8f65d]" : "text-alizarin")}>▚ {sb.title}</p>
         {feed.event.status === "live" && (
-          <span className={clsx("font-mono-x text-[9px] tracking-[0.18em] uppercase", dark ? "text-white/40" : "text-ink-soft")}>স্বয়ংক্রিয় আপডেট</span>
+          <span className={clsx("font-mono-x text-[9px] tracking-[0.18em] uppercase", dark ? "text-white/70" : "text-ink-soft")}>স্বয়ংক্রিয় আপডেট</span>
         )}
       </div>
 
@@ -157,7 +157,7 @@ export default function Scoreboard({ variant = "card", tone = "default", classNa
         <dl className={clsx("mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t pt-3", dark ? "border-white/10" : "border-ink/10")}>
           {sb.meta.map((m) => (
             <div key={m.label}>
-              <dt className={clsx("font-mono-x text-[9px] tracking-[0.14em] uppercase", dark ? "text-white/40" : "text-ink-soft")}>{m.label}</dt>
+              <dt className={clsx("font-mono-x text-[9px] tracking-[0.14em] uppercase", dark ? "text-white/70" : "text-ink-soft")}>{m.label}</dt>
               <dd className={clsx("mt-0.5 text-[13px] font-bold tabular", dark ? "text-white" : "text-ink")}>{m.value}</dd>
             </div>
           ))}

@@ -46,8 +46,8 @@ export function TopBar({ pipelineHours = 2 }: { pipelineHours?: number }) {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-alizarin opacity-75" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-alizarin" />
             </span>
-            HOICHOI <span className="hidden text-white/40 sm:inline">·</span>
-            <span className="hidden text-white/40 sm:inline">HOICHOI DESK</span>
+            HOICHOI <span className="hidden text-white/70 sm:inline">·</span>
+            <span className="hidden text-white/70 sm:inline">HOICHOI DESK</span>
           </Link>
 
           <nav className="flex items-center gap-1">
@@ -62,7 +62,7 @@ export function TopBar({ pipelineHours = 2 }: { pipelineHours?: number }) {
                   href={href}
                   className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] font-medium transition-all duration-300 ${
                     active
-                      ? "bg-alizarin text-[#f3eee1]"
+                      ? "bg-alizarin text-on-accent"
                       : "text-white/55 hover:bg-white/10 hover:text-white"
                   }`}
                 >

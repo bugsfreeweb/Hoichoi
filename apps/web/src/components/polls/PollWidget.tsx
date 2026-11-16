@@ -187,7 +187,7 @@ export function PollWidget({
             {message || (poll.status === "scheduled" ? `শুরু: ${new Date(poll.startsAt).toLocaleString("bn-BD")}` : `${new Intl.NumberFormat("bn-BD").format(total)}টি ${poll.allowMultiple ? "নির্বাচন" : "ভোট"}`)}
           </p>
           {poll.allowMultiple && poll.status === "open" && (
-            <button type="button" disabled={pending || draftVotes.length === 0} onClick={() => void submitVotes(draftVotes)} className="bg-ink px-3 py-2 font-mono-x text-[9px] font-bold text-paper hover:bg-alizarin disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" disabled={pending || draftVotes.length === 0} onClick={() => void submitVotes(draftVotes)} className="bg-ink px-3 py-2 font-mono-x text-[9px] font-bold text-on-accent hover:bg-alizarin disabled:cursor-not-allowed disabled:opacity-50">
               {pending ? "সংরক্ষণ হচ্ছে…" : "ভোট জমা দিন"}
             </button>
           )}

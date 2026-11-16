@@ -37,7 +37,7 @@ const STATUS_LABELS: Record<PostStatus, string> = {
 const field =
   "mt-1 w-full border border-ink/30 bg-paper px-3 py-2 text-[13px] focus:outline-none";
 const btnPrimary =
-  "border-2 border-ink bg-ink px-6 py-2.5 text-[13px] font-bold text-paper transition hover:bg-alizarin disabled:opacity-50";
+  "border-2 border-ink bg-ink px-6 py-2.5 text-[13px] font-bold text-on-accent transition hover:bg-alizarin disabled:opacity-50";
 const btnLime =
   "border-2 border-ink bg-lime px-4 py-2.5 text-[13px] font-bold text-ink transition hover:bg-paper disabled:opacity-50";
 const btnGhost =
@@ -418,7 +418,7 @@ export function PostEditor({ post }: { post: Post }) {
           <h3 className="font-sans-bn text-[15px] font-bold text-ink">🖼 ছবি</h3>
           {mediaPath && (
             <button
-              className="border border-alizarin px-3 py-1.5 text-[12px] font-bold text-alizarin transition hover:bg-alizarin hover:text-paper disabled:opacity-50"
+              className="border border-alizarin px-3 py-1.5 text-[12px] font-bold text-alizarin transition hover:bg-alizarin hover:text-on-accent disabled:opacity-50"
               onClick={() => void clearImage()}
               disabled={mediaBusy !== null}
             >
@@ -570,7 +570,7 @@ export function PostEditor({ post }: { post: Post }) {
                       {galleryBusy === g.id ? "…" : "প্রধান"}
                     </button>
                     <button
-                      className="shrink-0 border border-alizarin px-2 py-1 text-[10.5px] font-bold text-alizarin transition hover:bg-alizarin hover:text-paper disabled:opacity-50"
+                      className="shrink-0 border border-alizarin px-2 py-1 text-[10.5px] font-bold text-alizarin transition hover:bg-alizarin hover:text-on-accent disabled:opacity-50"
                       onClick={() => void removeGalleryImage(g.id)}
                       disabled={galleryBusy !== null}
                       title="গ্যালারি থেকে মুছুন"

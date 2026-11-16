@@ -12,6 +12,8 @@ These synthesized fallbacks provide those alpha variants via color-mix(), which
 follows the theme variables so the dark/light flip keeps working. Order: this
 block sits at the top so the more specific .admin-console / data-theme=light
 overrides appended below still win. */
+.text-on-accent{color:var(--color-on-accent)}
+.text-on-accent-deep{color:var(--color-on-accent-deep)}
 .text-ink-soft\/50{color:color-mix(in srgb,var(--color-ink-soft) 50%,transparent)}
 .text-ink-soft\/60{color:color-mix(in srgb,var(--color-ink-soft) 60%,transparent)}
 .text-ink-soft\/70{color:color-mix(in srgb,var(--color-ink-soft) 70%,transparent)}
@@ -118,13 +120,23 @@ overrides appended below still win. */
   --color-paper: #f3eee1;
   --color-paper-deep: #e9e2cf;
   --color-ink: #1a140d;
-  --color-ink-soft: #6b6250;
-  --color-alizarin: #d2202c;
+  /* Measured, not guessed: these three tokens are used for small text (9–13 px)
+     on `paper-deep`, where the previous values sat at 4.07 / 3.57 / 4.33:1 and
+     failed WCAG AA. The hue is unchanged; only lightness moved, so the palette
+     still reads as the same cream/red/amber desk. Ratios now 4.61 / 4.68 / 5.53. */
+  --color-ink-soft: #625a49;
+  --color-alizarin: #b3141f;
   --color-alizarin-deep: #a3121d;
   /* light-theme lime/amber are darkened so green/yellow text stays readable on
      the light paper background; dark islands below restore the bright values. */
   --color-lime: #5f8f0e;
-  --color-amberx: #b45309;
+  --color-amberx: #9a4708;
+  /* Text that sits on an `alizarin` fill. In the light theme that fill is a deep
+     red, so the label is cream; in the dark theme the same token becomes a light
+     pink, so the label must flip to dark ink. `text-white` was wrong in one of
+     the two and `text-paper` was wrong in the other — hence one token that flips. */
+  --color-on-accent: #f3eee1;
+  --color-on-accent-deep: #f3eee1;
   --color-fb: #1877f2;
   --color-cat-blue: #2563eb;
   --color-cat-teal: #0d9488;
@@ -150,6 +162,8 @@ overrides appended below still win. */
 }
 
 html[data-theme="dark"] {
+  --color-on-accent: #0a0c10;
+  --color-on-accent-deep: #ffffff;
   --color-paper: #0a0c10;
   --color-paper-deep: #10141b;
   --color-ink: #e9e2cf;

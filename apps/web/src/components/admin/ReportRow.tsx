@@ -63,7 +63,7 @@ export function ReportRow({ report, compact = false }: { report: ReaderReportWit
             <span className="font-bold text-alizarin-deep">{reasonLabel}</span>
             {report.details ? ` · ${report.details}` : ""}
           </p>
-          <p className="font-mono-x text-[9.5px] text-ink-soft/70">
+          <p className="font-mono-x text-[9.5px] text-ink-soft">
             {report.reporter_name} · {new Date(report.created_at).toLocaleString("bn-BD")}
           </p>
         </div>
@@ -75,7 +75,7 @@ export function ReportRow({ report, compact = false }: { report: ReaderReportWit
             <button onClick={() => decide("reviewed")} disabled={busy !== null} className="border border-cat-teal bg-cat-teal/15 px-2.5 py-1 text-[11px] font-bold text-ink disabled:opacity-50">
               {busy === "reviewed" ? <Loader2 size={11} className="animate-spin" /> : "পর্যালোচিত"}
             </button>
-            <button onClick={() => decide("dismissed")} disabled={busy !== null} className="border border-ink/30 px-2.5 py-1 text-[11px] font-bold text-ink hover:bg-alizarin hover:text-paper disabled:opacity-50">
+            <button onClick={() => decide("dismissed")} disabled={busy !== null} className="border border-ink/30 px-2.5 py-1 text-[11px] font-bold text-ink hover:bg-alizarin hover:text-on-accent disabled:opacity-50">
               {busy === "dismissed" ? <Loader2 size={11} className="animate-spin" /> : "খারিজ"}
             </button>
           </span>
@@ -135,7 +135,7 @@ export function ReportRow({ report, compact = false }: { report: ReaderReportWit
           <button
             onClick={() => decide("dismissed")}
             disabled={busy !== null}
-            className="border-2 border-ink bg-paper px-4 py-1.5 text-[12px] font-bold text-ink hover:bg-alizarin hover:text-paper disabled:opacity-50"
+            className="border-2 border-ink bg-paper px-4 py-1.5 text-[12px] font-bold text-ink hover:bg-alizarin hover:text-on-accent disabled:opacity-50"
           >
             {busy !== null ? (
               <span className="inline-flex items-center gap-1.5"><Loader2 size={12} className="animate-spin" /> চলছে…</span>
