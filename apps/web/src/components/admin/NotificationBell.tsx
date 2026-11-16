@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import { POLL_MS, useQueueCounts } from "./queue-counts";
+import { t } from "@/i18n";
 
 /**
  * Live queue badge in the header.
@@ -102,11 +103,11 @@ export function NotificationBell() {
           className="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-ink/20 bg-paper p-2 shadow-2xl text-ink"
         >
           <p className="px-2 py-1.5 font-mono-x text-[9.5px] tracking-[0.18em] text-ink-soft uppercase">
-            কিউ আপডেট{stale ? " (অসাময়িক)" : ""}
+            {t("notify.queues")}{stale ? " (অসাময়িক)" : ""}
           </p>
           {urgent.length === 0 && (
             <p className="px-2 py-3 text-[12px] text-ink-soft">
-              {stale ? "সংযোগ ব্যর্থ — আপডেট আনা যায়নি।" : "কোনো তথ্য পাওয়া যায়নি।"}
+              {stale ? t("notify.stale") : "কোনো তথ্য পাওয়া যায়নি।"}
             </p>
           )}
           {urgent.map((i) => (
@@ -129,7 +130,7 @@ export function NotificationBell() {
           <div className="mt-1 border-t border-ink/10 pt-1.5">
             <div className="flex items-center justify-between px-2">
               <p className="font-mono-x text-[9.5px] tracking-[0.18em] text-ink-soft uppercase">
-                ঘটনা{alerts.length ? ` · ${toBn(alerts.length)}` : ""}
+                {t("notify.events")}{alerts.length ? ` · ${toBn(alerts.length)}` : ""}
               </p>
               {unread > 0 ? (
                 <button
@@ -138,12 +139,12 @@ export function NotificationBell() {
                   disabled={marking}
                   className="font-mono-x text-[9.5px] text-alizarin underline disabled:opacity-50"
                 >
-                  সব পড়া হয়েছে
+                  {t("notify.markAll")}
                 </button>
               ) : null}
             </div>
             {alerts.length === 0 ? (
-              <p className="px-2 py-2 text-[12px] text-ink-soft">কোনো ঘটনা নেই।</p>
+              <p className="px-2 py-2 text-[12px] text-ink-soft">{t("notify.empty")}</p>
             ) : (
               alerts.map((a) => {
                 const body = (

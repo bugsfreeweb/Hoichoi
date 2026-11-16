@@ -705,6 +705,21 @@ The endpoint fails **closed** (503) without `CRON_SECRET` and requires
 row's `owner_email`, falling back to `SECURITY_CONTACT_EMAIL` then the first
 `ADMIN_ALLOWED_EMAILS` entry.
 
+### Bilingual strings (`t()`)
+
+`apps/web/src/i18n/` is the single dictionary for new user-facing text:
+`DICTIONARY` holds `{ bn, en }` per key, `t(key, params, locale="bn")` is
+Bangla-first with `{name}` substitution, and `tBoth()` returns both lines for
+public statements. A missing key renders as the key itself, so a typo is visible
+rather than an empty span.
+
+New surfaces (media dashboard, notifications, privacy tooling, poll integrity)
+go through `t()`. Existing screens are deliberately untouched — rewriting their
+copy would risk changing a UI you asked me to preserve. 7 checks in
+`apps/web/scripts/i18n.test.ts` enforce: both languages present, namespaced keys,
+**placeholders identical across languages**, Bangla default, and no duplicate
+Bangla string inside one surface.
+
 ### Poll integrity
 
 A poll vote used to be (poll, option, session id) and nothing else, so clearing

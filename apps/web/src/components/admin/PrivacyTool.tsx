@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useToast } from "./ui/toast";
+import { t } from "@/i18n";
 
 /**
  * Data-subject tooling on /admin/security.
@@ -67,11 +68,10 @@ export function PrivacyTool() {
   return (
     <section className="rounded-xl border border-ink/20 bg-paper p-4">
       <h2 className="font-mono-x text-[11px] tracking-[0.16em] text-ink-soft uppercase">
-        ডেটা-সাবজেক্ট · এক্সপোর্ট / মুছে ফেলা
+        {t("privacy.heading")}
       </h2>
       <p className="mt-1 text-[12.5px] text-ink-soft">
-        পাঠকের গেস্ট আইডি দিন (অথবা নতুন ইনস্টল হলে ইমেইল লুকআপ ব্যবহার করুন)। শুধু ওই পাঠকের মন্তব্য,
-        রিপোর্ট, সাবমিশন ও সরানোর অনুরোধ প্রযোজ্য — সম্পাদকীয় কনটেন্ট বা অডিট লগ অপরিবর্তিত থাকে।
+        {t("privacy.explain")}
       </p>
 
       <label className="mt-3 block text-[12px] font-semibold text-ink" htmlFor="privacy-id">
@@ -93,7 +93,7 @@ export function PrivacyTool() {
           onClick={() => send("export")}
           className="rounded-lg border border-ink/25 px-3 py-2 text-[12px] font-semibold text-ink disabled:opacity-40"
         >
-          এক্সপোর্ট (JSON)
+          {t("privacy.export")}
         </button>
         <button
           type="button"
@@ -101,14 +101,14 @@ export function PrivacyTool() {
           onClick={() => setPhase("confirm")}
           className="rounded-lg border border-alizarin px-3 py-2 text-[12px] font-semibold text-alizarin disabled:opacity-40"
         >
-          মুছে ফেলুন
+          {t("privacy.erase")}
         </button>
       </div>
 
       {phase === "confirm" && (
         <div className="mt-3 rounded-lg border border-alizarin/40 bg-alizarin/5 p-3">
           <p className="text-[12.5px] text-ink">
-            এটা ফেরানো যাবে না। নিশ্চিত করতে <span className="font-mono-x font-bold">ERASE</span> লিখুন।
+            {t("privacy.eraseWarn")}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <input
@@ -123,7 +123,7 @@ export function PrivacyTool() {
               onClick={() => send("erase")}
               className="rounded-lg bg-alizarin px-3 py-1.5 text-[12px] font-bold text-paper disabled:opacity-40"
             >
-              হ্যাঁ, মুছে ফেলুন
+              {t("privacy.eraseConfirm")}
             </button>
             <button
               type="button"
@@ -133,7 +133,7 @@ export function PrivacyTool() {
               }}
               className="text-[12px] text-ink-soft underline"
             >
-              বাতিল
+              {t("common.cancel")}
             </button>
           </div>
         </div>
@@ -147,13 +147,13 @@ export function PrivacyTool() {
 
       {result?.kind === "erase" && (
         <p className="mt-3 rounded-lg border border-ink/20 px-3 py-2 text-[12.5px] text-ink">
-          {result.total === 0 ? "কোনো সারি পাওয়া যায়নি।" : `${result.total}টি সারি মুছে ফেলা হয়েছে।`}
+          {result.total === 0 ? t("privacy.none") : t("privacy.erased", { n: result.total })}
         </p>
       )}
 
       {result?.kind === "export" && (
         <div className="mt-3">
-          <p className="text-[12.5px] text-ink">{result.total}টি সারি পাওয়া গেছে।</p>
+          <p className="text-[12.5px] text-ink">{t("privacy.exported", { n: result.total })}</p>
           <pre className="mt-2 max-h-72 overflow-auto rounded-lg border border-ink/20 bg-paper-deep p-3 font-mono-x text-[11px] text-ink">
             {result.json}
           </pre>

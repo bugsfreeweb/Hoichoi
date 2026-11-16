@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useToast } from "./ui/toast";
+import { t } from "@/i18n";
 
 /**
  * Per-poll integrity panel.
@@ -63,7 +64,7 @@ export function PollIntegrityPanel({ pollId }: { pollId: number }) {
 
   async function invalidate(ipHash: string): Promise<void> {
     if (reason.trim().length < 3) {
-      setError("বাতিল করার কারণ লিখুন (কমপক্ষে ৩ অক্ষর)।");
+      setError(t("poll.reasonTooShort"));
       return;
     }
     setBusy(true);
@@ -105,10 +106,10 @@ export function PollIntegrityPanel({ pollId }: { pollId: number }) {
     <div className="mt-2 rounded-lg border border-ink/15 p-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className={`rounded-full border px-2 py-0.5 font-mono-x text-[9.5px] font-bold uppercase ${VERDICT_STYLE[report.verdict]}`}>
-          {report.verdict === "clean" ? "পরিষ্কার" : report.verdict === "flagged" ? "সন্দেহজনক" : "অসততা সনাক্ত"}
+          {t(`poll.verdict.${report.verdict}` as const)}
         </span>
         <span className="font-mono-x text-[9.5px] text-ink-soft">
-          রিস্ক স্কোর {toBn(report.score)}/১০০ · বৈধ ভোট {toBn(report.totalValidVotes)} · বাতিল {toBn(report.invalidated)}
+          {t("poll.riskScore", { score: toBn(report.score) })} · {t("poll.validVotes", { n: toBn(report.totalValidVotes) })} · {t("poll.invalidated", { n: toBn(report.invalidated) })}
         </span>
       </div>
 
@@ -125,7 +126,7 @@ export function PollIntegrityPanel({ pollId }: { pollId: number }) {
       {groups.length > 0 && (
         <div className="mt-3 border-t border-ink/10 pt-2">
           <p className="font-mono-x text-[9.5px] tracking-[0.14em] text-ink-soft uppercase">
-            নেটওয়ার্কভিত্তিক ভোট (শীর্ষ {toBn(groups.length)})
+            {t("poll.networks", { n: toBn(groups.length) })}
           </p>
           <ul className="mt-1 space-y-1">
             {groups.map((group) => (
@@ -139,7 +140,7 @@ export function PollIntegrityPanel({ pollId }: { pollId: number }) {
                   onClick={() => invalidate(group.ipHash)}
                   className="rounded border border-alizarin/60 px-2 py-0.5 text-[10.5px] font-bold text-alizarin disabled:opacity-40"
                 >
-                  এই নেটওয়ার্কের ভোট বাতিল
+                  {t("poll.invalidateNetwork")}
                 </button>
               </li>
             ))}
@@ -148,7 +149,7 @@ export function PollIntegrityPanel({ pollId }: { pollId: number }) {
       )}
 
       <label className="mt-3 block text-[11px] font-semibold text-ink" htmlFor={`reason-${pollId}`}>
-        বাতিলের কারণ (অডিটে লেখা থাকবে)
+        {t("poll.reason")}
       </label>
       <input
         id={`reason-${pollId}`}
