@@ -21,6 +21,7 @@ export * from "./storage-report";
 export * from "./live-events";
 export * from "./polls";
 export * from "./ads";
+export * from "./ad-invoices";
 export * from "./provider-health";
 export * from "./media-reconcile";
 export * from "./media-dashboard";

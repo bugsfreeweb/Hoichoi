@@ -46,13 +46,23 @@ const adminAds = [
   ...sources(path.join(APP, "src/components/admin/ads")),
 ];
 
-const SCOPED = ["listAdCreatives", "listAdBookings", "getAdAnalytics", "listAdEvents"];
+const SCOPED = [
+  "listAdCreatives",
+  "listAdBookings",
+  "getAdAnalytics",
+  "listAdEvents",
+  // Billing is the same rule: the advertiser sees their invoices, nobody else's.
+  "listInvoices",
+  "invoiceBalance",
+  "listPaymentsForClient",
+];
 const ADMIN_WIDE = [
   "listAllAdCreatives",
   "listAllAdBookings",
   "listAllAdEvents",
   "getAllAdAnalytics",
   "listAdClients",
+  "listAllInvoices",
 ];
 
 check("the portal never imports an admin-wide ad reader", () => {
@@ -91,10 +101,14 @@ check("every scoped call in the portal is given the signed-in client", () => {
 });
 
 check("the scoped readers require a client id by signature", () => {
-  const ads = fs.readFileSync(path.join(ROOT, "packages/db/src/ads.ts"), "utf8");
+  // Two modules, one rule: ads.ts for campaigns, ad-invoices.ts for money.
+  const ads = [
+    fs.readFileSync(path.join(ROOT, "packages/db/src/ads.ts"), "utf8"),
+    fs.readFileSync(path.join(ROOT, "packages/db/src/ad-invoices.ts"), "utf8"),
+  ].join("\n");
   for (const name of SCOPED) {
     const signature = ads.match(new RegExp(`export async function ${name}\\(([^)]*)\\)`))?.[1];
-    if (signature === undefined) throw new Error(`${name} is missing from packages/db/src/ads.ts`);
+    if (signature === undefined) throw new Error(`${name} is missing from packages/db`);
     if (!/clientId: string/.test(signature)) {
       throw new Error(`${name}(${signature}) — a required client id is the whole guard`);
     }

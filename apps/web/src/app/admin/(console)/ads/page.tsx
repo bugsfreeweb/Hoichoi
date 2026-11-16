@@ -1,9 +1,10 @@
-import { getAllAdAnalytics, listAdSlots, listAllAdCreatives, listAllAdBookings, listAdClients } from "@hoichoi/db";
+import { getAllAdAnalytics, listAdSlots, listAllAdCreatives, listAllAdBookings, listAdClients, listAllInvoices } from "@hoichoi/db";
 import Link from "next/link";
 import { requirePageUser, requiresRole } from "@/lib/auth";
 import { updateAdBookingStatus, updateAdClientStatus } from "./actions";
 import { AdsAdminNavigation } from "@/components/admin/ads/AdsAdminNavigation";
 import { AdsOverviewBoard } from "@/components/admin/ads/AdsOverviewBoard";
+import { InvoicePanel } from "@/components/admin/ads/InvoicePanel";
 import { PageHeading } from "@/components/admin/ui/PageHeader";
 
 export const dynamic = "force-dynamic";
@@ -11,12 +12,13 @@ export const dynamic = "force-dynamic";
 export default async function AdminAdsPage() {
   const user = await requirePageUser();
   const canManageClients = requiresRole(user, "admin");
-  const [slots, creatives, bookings, clients, analytics] = await Promise.all([
+  const [slots, creatives, bookings, clients, analytics, invoices] = await Promise.all([
     listAdSlots(),
     listAllAdCreatives(),
     listAllAdBookings(),
     listAdClients(),
     getAllAdAnalytics().catch(() => []),
+    listAllInvoices(),
   ]);
 
   return (
@@ -118,6 +120,22 @@ export default async function AdminAdsPage() {
           <p className="text-[12.5px] text-ink-soft">কোনো বুকিং পাওয়া যায়নি।</p>
         )}
       </section>
+
+      {canManageClients && (
+        <InvoicePanel
+          invoices={invoices}
+          bookings={bookings
+            .filter((booking) => booking.status === "active")
+            .map((booking) => ({
+              id: booking.id,
+              clientId: booking.clientId,
+              slotKey: booking.slotKey,
+              totalBdt: booking.totalBdt,
+              startsAt: booking.startsAt,
+            }))}
+          clients={clients.map((client) => ({ id: client.id, name: client.name }))}
+        />
+      )}
 
       <section className="mt-10 border border-line bg-paper p-5 md:p-7">
         <p className="eyebrow">▚ CLIENTS</p>

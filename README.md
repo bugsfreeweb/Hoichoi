@@ -705,6 +705,31 @@ The endpoint fails **closed** (503) without `CRON_SECRET` and requires
 row's `owner_email`, falling back to `SECURITY_CONTACT_EMAIL` then the first
 `ADMIN_ALLOWED_EMAILS` entry.
 
+### Advertiser isolation and manual billing
+
+Two advertisers exist in this system and neither may ever see the other's rows.
+The readers that the portal can reach take a **required** `clientId`
+(`listAdCreatives`, `listAdBookings`, `getAdAnalytics`, `listAdEvents`,
+`listInvoices`, `invoiceBalance`, `listPaymentsForClient`); cross-tenant reads
+live in separate, explicitly named `listAll…`/`getAll…` functions that only the
+admin console calls. `createAdBooking` also checks at the data layer that the
+creative belongs to the client. 7 DB checks in
+`packages/db/src/__tests__/advertiser-isolation.test.ts`, 7 call-site checks in
+`apps/web/scripts/advertiser-isolation.test.ts` (the portal cannot import an
+admin-wide reader and the signatures cannot go optional again).
+
+Billing is **manual, because there is no gateway** and none is pretended:
+`packages/db/src/ad-invoices.ts` issues numbered invoices (`HC-<year>-0001`,
+monotonic via a counter table), records payments with method + reference, and
+derives `paid` from the payment sums — a status column can never drift from the
+ledger. Refused by the database, not by a form: overpayment, the same bank
+reference twice, invoicing another client's booking, a second live invoice for
+one booking, and voiding a settled invoice. Void is a flag that keeps the row and
+the number. Admin-only route `/api/admin/ads/invoices` (`issue` / `payment` /
+`void`) is rate-limited and audited with the amount and invoice number; the
+advertiser's `/portal/payments` shows their own invoices, balance and payments.
+13 checks in `packages/db/src/__tests__/ad-invoices.test.ts`.
+
 ### Performance and accessibility gates
 
 Two gates run in `.github/workflows/web-quality.yml` against a **production**
