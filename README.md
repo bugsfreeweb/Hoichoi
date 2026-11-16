@@ -705,6 +705,31 @@ The endpoint fails **closed** (503) without `CRON_SECRET` and requires
 row's `owner_email`, falling back to `SECURITY_CONTACT_EMAIL` then the first
 `ADMIN_ALLOWED_EMAILS` entry.
 
+### Guest identity, trust and data-subject requests
+
+Public forms no longer keep whatever the reader typed as their only handle.
+Migration 031 adds four columns to `comments`, `reader_reports`,
+`submitted_pages` and `removal_requests`:
+
+| Column | What it is | What it is not |
+| --- | --- | --- |
+| `guest_id` | opaque 128-bit id in an httpOnly `hoichoi_guest` cookie | not a fingerprint, not an email |
+| `email_hash` | HMAC-SHA256 of the normalised address | not reversible without `GUEST_HASH_SECRET` |
+| `ip_hash` | HMAC of the IP truncated to /24 (v4) or /64 (v6) | not the raw address |
+| `trust_score` | 0–100 from that guest's real moderation outcomes | not an auto-ban verdict |
+
+`trustScoreFor()` returns **NULL** for a guest with no history rather than an
+invented middle number; `computeTrustScore()` is pure (approved +5, rejected −8,
+reports reviewed +3, dismissed −5, clamped 0…100).
+
+**Data-subject tooling**: `/api/admin/privacy/subject` (admin only, audited,
+rate-limited) exports every row belonging to a guest id *or* an email as JSON, or
+erases them. Erasure by guest id also follows every email hash that guest ever
+used, so it cannot leave hash-only rows behind; published posts, other people's
+comments and audit rows are untouched. `/admin/security` → "ডেটা-সাবজেক্ট"
+drives it, with a typed `ERASE` confirmation. 10 checks in
+`packages/db/src/__tests__/guest-identity.test.ts`.
+
 ### Desk notifications
 
 The bell used to show only queue *counts*, so events outside a queue — a provider

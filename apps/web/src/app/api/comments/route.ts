@@ -12,6 +12,8 @@ import {
 import { requireApiRole } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { limitRequest, LIMITS } from "@/lib/rate-limit";
+import { clientIp, ensureGuestId } from "@/lib/guest";
+import { identityFor } from "@hoichoi/db";
 
 export const dynamic = "force-dynamic";
 
@@ -90,7 +92,17 @@ export async function POST(req: Request) {
   }
 
   try {
-    const comment = await createComment({ postId: post.id, author: authorStr, body: bodyStr, email: emailStr || null });
+    const comment = await createComment({
+      postId: post.id,
+      author: authorStr,
+      body: bodyStr,
+      email: emailStr || null,
+      identity: await identityFor({
+        guestId: await ensureGuestId(),
+        email: emailStr || null,
+        ip: clientIp(req),
+      }),
+    });
     return NextResponse.json(
       { ok: true, comment, message: "আপনার মন্তব্য সম্পাদকীয় পর্যালোচনায় গেছে — অনুমোদনের পর প্রকাশিত হবে।" },
       { status: 201 },

@@ -1,5 +1,6 @@
 import { PageHeading } from "@/components/admin/ui/PageHeader";
 import SessionList from "@/components/admin/SessionList";
+import { PrivacyTool } from "@/components/admin/PrivacyTool";
 import CredentialList from "@/components/admin/CredentialList";
 import LoginLogViewer from "@/components/admin/LoginLogViewer";
 import { currentSession, requiresRole } from "@/lib/auth";
@@ -32,6 +33,7 @@ export default async function AdminSecurityPage() {
           <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">সেশন ও ডিভাইস</h2>
           <div className="mt-3">
             <SessionList canSeeAll={canSeeAll} />
+            {canSeeAll ? <PrivacyTool /> : null}
           </div>
         </section>
 

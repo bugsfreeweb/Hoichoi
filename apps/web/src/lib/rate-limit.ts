@@ -84,4 +84,7 @@ export const LIMITS = {
   // A page with a broken policy reports once per violation per load, so the
   // budget has to be generous or a real problem looks like an attack.
   cspReport: { name: "csp-report", limit: 300, windowMs: 60_000 },
+  // Data-subject export/erase is a heavy, destructive action: a handful per
+  // minute is plenty and stops a stuck button from running twenty erasures.
+  adminWrite: { name: "admin-write", limit: 10, windowMs: 60_000 },
 } as const satisfies Record<string, { name: string; limit: number; windowMs: number }>;

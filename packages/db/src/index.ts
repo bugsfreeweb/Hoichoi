@@ -25,6 +25,7 @@ export * from "./provider-health";
 export * from "./media-reconcile";
 export * from "./media-dashboard";
 export * from "./admin-notifications";
+export * from "./guest";
 
 import {
   DEFAULT_APP_CONFIG,
@@ -2211,13 +2212,28 @@ export async function createComment(input: {
   author: string;
   body: string;
   email?: string | null;
+  /** Opaque guest handle + hashes from `identityFor()`; absent for anonymous posts. */
+  identity?: { guestId: string | null; emailHash: string | null; ipHash: string | null; trustScore: number | null };
 }): Promise<Comment> {
   const client = getClient();
   const id = crypto.randomUUID();
   const created = nowIso();
   await client.execute({
-    sql: "INSERT INTO comments (id, post_id, author, body, email, likes, status, created_at) VALUES (?, ?, ?, ?, ?, 0, 'pending', ?)",
-    args: [id, input.postId, input.author.trim(), input.body.trim(), input.email?.trim() || null, created],
+    sql: `INSERT INTO comments
+            (id, post_id, author, body, email, likes, status, created_at, guest_id, email_hash, ip_hash, trust_score)
+          VALUES (?, ?, ?, ?, ?, 0, 'pending', ?, ?, ?, ?, ?)`,
+    args: [
+      id,
+      input.postId,
+      input.author.trim(),
+      input.body.trim(),
+      input.email?.trim() || null,
+      created,
+      input.identity?.guestId ?? null,
+      input.identity?.emailHash ?? null,
+      input.identity?.ipHash ?? null,
+      input.identity?.trustScore ?? null,
+    ],
   });
   return {
     id,
@@ -2275,12 +2291,15 @@ export async function createReaderReport(input: {
   reporterEmail?: string;
   reason: string;
   details?: string;
+  identity?: { guestId: string | null; emailHash: string | null; ipHash: string | null; trustScore: number | null };
 }): Promise<ReaderReport> {
   const client = getClient();
   const id = crypto.randomUUID();
   const created = nowIso();
   await client.execute({
-    sql: "INSERT INTO reader_reports (id, post_id, reporter_name, reporter_email, reason, details, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'open', ?)",
+    sql: `INSERT INTO reader_reports
+            (id, post_id, reporter_name, reporter_email, reason, details, status, created_at, guest_id, email_hash, ip_hash, trust_score)
+          VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?)`,
     args: [
       id,
       input.postId,
@@ -2289,6 +2308,10 @@ export async function createReaderReport(input: {
       input.reason,
       input.details?.trim() || null,
       created,
+      input.identity?.guestId ?? null,
+      input.identity?.emailHash ?? null,
+      input.identity?.ipHash ?? null,
+      input.identity?.trustScore ?? null,
     ],
   });
   return {

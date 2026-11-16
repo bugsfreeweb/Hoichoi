@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClient, nowIso } from "@hoichoi/db";
 import type { CategorySlug } from "@hoichoi/shared-types";
 import { limitRequest, LIMITS } from "@/lib/rate-limit";
+import { clientIp, ensureGuestId } from "@/lib/guest";
+import { identityFor } from "@hoichoi/db";
 
 const PROFILE_RE =
   /\/profile\.php|\/photo\.php|personal\.[a-z]+\.com|ref=bookmarks$/i;
@@ -39,11 +41,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Identify the guest without identifying the person: opaque cookie id plus
+  // HMACs of the address and network. See packages/db/src/guest.ts.
+  const identity = await identityFor({
+    guestId: await ensureGuestId(),
+    email: body.submitterEmail ?? null,
+    ip: clientIp(req),
+  });
+
   const client = getClient();
   await client.execute({
     sql: `
-      INSERT INTO submitted_pages (id, page_url, page_name, submitter_email, submitter_name, category, notes, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'new', ?)
+      INSERT INTO submitted_pages
+        (id, page_url, page_name, submitter_email, submitter_name, category, notes, status, created_at,
+         guest_id, email_hash, ip_hash, trust_score)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, ?, ?, ?)
     `,
     args: [
       crypto.randomUUID(),
@@ -54,6 +66,10 @@ export async function POST(req: NextRequest) {
       body.category || null,
       body.notes?.trim() || null,
       nowIso(),
+      identity.guestId,
+      identity.emailHash,
+      identity.ipHash,
+      identity.trustScore,
     ],
   });
   return NextResponse.json({ ok: true });
