@@ -30,6 +30,7 @@ export function AiAssistPanel({
   onTitle,
   onSummary,
   onBody,
+  onAiAssisted,
 }: {
   /** Default material: the post's own body, editable before sending. */
   sourceText: string;
@@ -39,12 +40,18 @@ export function AiAssistPanel({
   onTitle: (value: string) => void;
   onSummary: (value: string) => void;
   onBody: (value: string) => void;
+  /**
+   * Tells the editor which task wrote into a field, so the save can record it.
+   * Provenance is a fact about this post, not a badge the panel prints itself.
+   */
+  onAiAssisted?: (task: Task) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [material, setMaterial] = useState(sourceText.slice(0, 6000));
   const [busy, setBusy] = useState<Task | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<string | null>(null);
+  const [pii, setPii] = useState<{ email: number; phone: number; longDigits: number; cardLike: number } | null>(null);
   const toast = useToast();
 
   async function run(task: Task): Promise<void> {
@@ -68,6 +75,7 @@ export function AiAssistPanel({
         error?: string;
         provider?: string;
         result?: { title_bn?: string; summary_bn?: string; body_bn?: string };
+        pii?: { email: number; phone: number; longDigits: number; cardLike: number };
       };
       if (!res.ok || !data.ok) {
         setError(data.error ?? `ব্যর্থ (${res.status})`);
@@ -79,6 +87,8 @@ export function AiAssistPanel({
       if (result.summary_bn) onSummary(result.summary_bn);
       if (result.body_bn) onBody(result.body_bn);
       setProvider(data.provider ?? null);
+      setPii(data.pii ?? null);
+      onAiAssisted?.(task);
       toast.settle(id, "success", `${TASK_LABEL[task]} প্রস্তুত`, "নিচের ফিল্ডে বসানো হয়েছে — দেখে নিন।");
     } catch (e) {
       setError(e instanceof Error ? e.message : "সংযোগ ব্যর্থ");
@@ -134,6 +144,21 @@ export function AiAssistPanel({
               <span className="self-center font-mono-x text-[10px] text-ink-soft">প্রোভাইডার: {provider}</span>
             )}
           </div>
+
+          {pii && pii.email + pii.phone + pii.longDigits + pii.cardLike > 0 && (
+            <p className="mt-2 border border-ink/30 bg-paper px-3 py-2 text-[11.5px] text-ink-soft">
+              ব্যক্তিগত তথ্য সরানো হয়েছে — মডেলে পাঠানোর আগে{" "}
+              {[
+                pii.email ? `${pii.email}টি ইমেইল` : null,
+                pii.phone ? `${pii.phone}টি ফোন` : null,
+                pii.longDigits ? `${pii.longDigits}টি দীর্ঘ সংখ্যা` : null,
+                pii.cardLike ? `${pii.cardLike}টি কার্ড নম্বর` : null,
+              ]
+                .filter(Boolean)
+                .join(", ")}{" "}
+              বাদ দেওয়া হয়েছে।
+            </p>
+          )}
 
           {error && (
             <p role="alert" className="mt-2 border border-alizarin bg-alizarin/10 px-3 py-2 text-[12px] font-bold text-ink">

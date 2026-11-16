@@ -14,6 +14,7 @@ import { getSettings } from "@/lib/settings";
 import { limitRequest, LIMITS } from "@/lib/rate-limit";
 import { clientIp, ensureGuestId } from "@/lib/guest";
 import { identityFor } from "@hoichoi/db";
+import { assessDisplayName } from "@/lib/name-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,10 @@ export async function POST(req: Request) {
     return bad("নাম/মন্তব্য খুব ছোট বা খুব দীর্ঘ");
   }
   if (emailStr.length > 120) return bad("ইমেইল খুব দীর্ঘ");
+  // The name field is a trust surface: it must not impersonate the desk or smuggle
+  // a link into the page. Refused with the reason the reader can act on.
+  const nameCheck = assessDisplayName(authorStr);
+  if (!nameCheck.ok) return bad(nameCheck.reason);
 
   const post = await getPostById(ref);
   if (!post) {
@@ -166,7 +171,7 @@ export async function DELETE(req: Request) {
     : "";
   if (!id) return bad();
   try {
-    await deleteComment(id);
+    await deleteComment(id, { actor: user.email, reason: "moderation delete" });
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : "Delete failed" },

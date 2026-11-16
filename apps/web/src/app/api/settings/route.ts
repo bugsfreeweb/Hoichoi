@@ -38,9 +38,35 @@ export async function PATCH(req: NextRequest) {
     ad_strip_html: (body.ad_strip_html as string | null) ?? null,
     app_config_json: body.app_config_json as string | undefined,
     media_storage_json: body.media_storage_json as string | undefined,
+    // The collection stop switch. Only a truthy/none value is accepted, so a
+    // typo cannot leave the pipeline half-paused.
+    collection_paused:
+      typeof body.collection_paused === "boolean" ? (body.collection_paused ? 1 : 0) : undefined,
+    collection_paused_reason:
+      // Resuming clears the reason: a stale "why we stopped" on a running
+      // pipeline is a lie the UI would happily display.
+      body.collection_paused === false
+        ? null
+        : typeof body.collection_paused_reason === "string"
+          ? body.collection_paused_reason.trim().slice(0, 300) || null
+          : undefined,
   });
   revalidatePath("/");
   revalidatePath("/post/[slug]", "page");
-  await audit(user, { action: "settings.update", entityType: "settings", summary: "সাইট সেটিংস আপডেট" }, req);
+  await audit(
+    user,
+    {
+      action: "settings.update",
+      entityType: "settings",
+      summary:
+        typeof body.collection_paused === "boolean"
+          ? body.collection_paused
+            ? `সংগ্রহ বন্ধ — ${String(body.collection_paused_reason ?? "কারণ নেই").slice(0, 80)}`
+            : "সংগ্রহ আবার চালু"
+          : "সাইট সেটিংস আপডেট",
+      metadata: { collection_paused: body.collection_paused ?? null },
+    },
+    req,
+  );
   return NextResponse.json({ ok: true });
 }

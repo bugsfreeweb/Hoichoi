@@ -64,6 +64,17 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     }
   }
 
+  // AI provenance travels with the same PATCH as the text it describes, so a
+  // post can never claim or hide authorship in a second, forgettable request.
+  if (typeof body.ai_assisted === "boolean") {
+    fields.ai_assisted = body.ai_assisted;
+    applied.push("ai_assisted");
+  }
+  if (body.ai_prompt_version === null || typeof body.ai_prompt_version === "string") {
+    fields.ai_prompt_version = body.ai_prompt_version as string | null;
+    applied.push("ai_prompt_version");
+  }
+
   try {
     if (applied.length > 0) await updatePost(id, fields);
   } catch (err) {
@@ -103,7 +114,7 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
   const post = await getPostById(id);
   if (!post) return NextResponse.json({ error: "post not found" }, { status: 404 });
 
-  await deletePost(id);
+  await deletePost(id, { actor: user.email, reason: "admin console delete" });
   await client.execute({
     sql: "INSERT INTO admin_actions (id, admin_user_id, action, target_table, target_id, details, created_at) VALUES (?, ?, ?, 'posts', ?, ?, ?)",
     args: [

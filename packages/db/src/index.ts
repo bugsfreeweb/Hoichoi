@@ -22,6 +22,8 @@ export * from "./live-events";
 export * from "./polls";
 export * from "./ads";
 export * from "./ad-invoices";
+export * from "./deletion-log";
+export * from "./ai-runs";
 export * from "./provider-health";
 export * from "./media-reconcile";
 export * from "./media-dashboard";
@@ -67,6 +69,7 @@ import type {
 import type { InValue } from "@libsql/client";
 import { randomUUID } from "node:crypto";
 import { getClient, isRemoteDatabaseUrl, nowIso } from "./client";
+import { logDeletion } from "./deletion-log";
 import { mapCategory, mapNotice, mapPost, parseJson, pickCategoryDot } from "./rows";
 import { DEFAULT_MEDIA_STORAGE } from "./media-storage";
 
@@ -284,6 +287,8 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   app_config_json: JSON.stringify(DEFAULT_APP_CONFIG),
   media_storage_json: JSON.stringify(DEFAULT_MEDIA_STORAGE),
   default_variant: DEFAULT_VARIANT,
+  collection_paused: 0,
+  collection_paused_reason: null,
 };
 
 export function mapSettings(row: Record<string, unknown>): SiteSettings {
@@ -314,6 +319,10 @@ export function mapSettings(row: Record<string, unknown>): SiteSettings {
     app_config_json: (row.app_config_json as string | null) ?? JSON.stringify(DEFAULT_APP_CONFIG),
     media_storage_json: (row.media_storage_json as string | null) ?? JSON.stringify(DEFAULT_MEDIA_STORAGE),
     default_variant: str(row.default_variant, DEFAULT_VARIANT),
+    // Absent on a database that predates migration 034; the ALTER adds the
+    // column, but an older worker may read before it runs.
+    collection_paused: Number(row.collection_paused ?? 0) === 1 ? 1 : 0,
+    collection_paused_reason: row.collection_paused_reason ? String(row.collection_paused_reason) : null,
   };
 }
 
@@ -351,6 +360,8 @@ export async function updateSettings(fields: Partial<SiteSettings>): Promise<voi
     "app_config_json",
     "media_storage_json",
     "default_variant",
+    "collection_paused",
+    "collection_paused_reason",
   ];
   if (fields.logo_url === "") fields.logo_url = null;
   if (fields.favicon_url === "") fields.favicon_url = null;
@@ -1995,6 +2006,13 @@ export interface PostUpdateFields {
   media_kind?: "image" | "video" | "none";
   /** Provenance of the new image (see `Post.media_origin`). */
   media_origin?: "collector" | "ai" | "admin" | "external" | null;
+  /**
+   * Provenance of the text: set when an AI task wrote or rewrote a field, with
+   * the prompt/task version that produced it. Never inferred — an editor who
+   * typed it themselves leaves this alone.
+   */
+  ai_assisted?: boolean;
+  ai_prompt_version?: string | null;
 }
 
 /**
@@ -2083,6 +2101,14 @@ export async function updatePost(id: string, fields: PostUpdateFields): Promise<
     sets.push("published_at = ?");
     args.push(fields.published_at ?? null);
   }
+  if (fields.ai_assisted !== undefined) {
+    sets.push("ai_assisted = ?");
+    args.push(fields.ai_assisted ? 1 : 0);
+  }
+  if ("ai_prompt_version" in fields && fields.ai_prompt_version !== undefined) {
+    sets.push("ai_prompt_version = ?");
+    args.push(fields.ai_prompt_version ?? null);
+  }
   if ("media_path" in fields && fields.media_path !== undefined) {
     // Throws on anything unsafe, so a bad URL can never reach the page.
     const normalized = normalizeMediaPath(fields.media_path ?? "");
@@ -2118,12 +2144,32 @@ export async function updatePost(id: string, fields: PostUpdateFields): Promise<
 
 /** Hard-delete a post (content manager); caller handles audit logging.
  *  Throws when the id doesn't exist so callers can't silently no-op. */
-export async function deletePost(id: string): Promise<void> {
+export async function deletePost(id: string, opts: { actor?: string | null; reason?: string | null } = {}): Promise<void> {
   const client = getClient();
+  // Read before delete: a ledger entry that cannot say what was removed is a
+  // useless apology.
+  // `SELECT *` on purpose: a ledger entry must never be the reason a delete
+  // fails, and the columns available differ between schema versions.
+  const before = await client.execute({ sql: "SELECT * FROM posts WHERE id = ?", args: [id] });
+  const row = before.rows[0] as Record<string, unknown> | undefined;
   const res = await client.execute({ sql: "DELETE FROM posts WHERE id = ?", args: [id] });
   if (res.rowsAffected === 0) {
     throw new Error(`post not found: ${id}`);
   }
+  await logDeletion({
+    entityType: "post",
+    entityId: id,
+    reason: opts.reason ?? "manual delete",
+    actor: opts.actor ?? null,
+    detail: row
+      ? {
+          title_bn: row.title_bn ? String(row.title_bn) : null,
+          slug: row.slug ? String(row.slug) : null,
+          category: row.category ? String(row.category) : null,
+          media_path: row.media_path ? String(row.media_path) : null,
+        }
+      : null,
+  }).catch(() => undefined);
 }
 
 /* ------------------------------------------------------------------ *
@@ -2266,9 +2312,23 @@ export async function setCommentStatus(
 }
 
 /** Hard-delete a comment (moderation). */
-export async function deleteComment(id: string): Promise<void> {
+export async function deleteComment(id: string, opts: { actor?: string | null; reason?: string | null } = {}): Promise<void> {
   const client = getClient();
+  const before = await client.execute({
+    sql: "SELECT post_id, author FROM comments WHERE id = ?",
+    args: [id],
+  });
+  const row = before.rows[0] as Record<string, unknown> | undefined;
   await client.execute({ sql: "DELETE FROM comments WHERE id = ?", args: [id] });
+  if (row) {
+    await logDeletion({
+      entityType: "comment",
+      entityId: id,
+      reason: opts.reason ?? "moderation delete",
+      actor: opts.actor ?? null,
+      detail: { post_id: String(row.post_id), author: String(row.author) },
+    }).catch(() => undefined);
+  }
 }
 
 /* ------------------------------------------------------------------ *

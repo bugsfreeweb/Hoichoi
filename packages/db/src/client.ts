@@ -353,6 +353,34 @@ export async function ensureDefaultVariantColumn(client: Client): Promise<void> 
   }
 }
 
+/**
+ * AI provenance + the collection stop switch (migration 034's columns).
+ *
+ * These live here, not in the migration, because SQLite has no
+ * `ADD COLUMN IF NOT EXISTS`: a migration that runs an ALTER twice fails the
+ * second time, and a half-applied migration cannot be retried. A PRAGMA-guarded
+ * helper is idempotent, which is what an upgrade path needs.
+ */
+export async function ensureAiProvenanceColumns(client: Client): Promise<void> {
+  const settingsInfo = await client.execute("PRAGMA table_info(settings)");
+  const settingsCols = new Set(settingsInfo.rows.map((r) => String((r as Record<string, unknown>).name)));
+  if (!settingsCols.has("collection_paused")) {
+    await client.execute("ALTER TABLE settings ADD COLUMN collection_paused INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!settingsCols.has("collection_paused_reason")) {
+    await client.execute("ALTER TABLE settings ADD COLUMN collection_paused_reason TEXT");
+  }
+
+  const postInfo = await client.execute("PRAGMA table_info(posts)");
+  const postCols = new Set(postInfo.rows.map((r) => String((r as Record<string, unknown>).name)));
+  if (!postCols.has("ai_assisted")) {
+    await client.execute("ALTER TABLE posts ADD COLUMN ai_assisted INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!postCols.has("ai_prompt_version")) {
+    await client.execute("ALTER TABLE posts ADD COLUMN ai_prompt_version TEXT");
+  }
+}
+
 /** Desk/console watchlist columns added to `sources` for the desktop UI. */
 const DESK_SOURCE_COLUMNS: Array<[name: string, ddl: string]> = [
   ["kind", "TEXT NOT NULL DEFAULT 'page'"],
@@ -855,6 +883,7 @@ export async function ensureSchema(client: Client, externalUrl?: string): Promis
   await ensureSectionsTable(client);
   await ensureDefaultVariantColumn(client);
   await ensureLiveEventTables(client);
+  await ensureAiProvenanceColumns(client);
   await seedDefaults(client, nowIso());
   await ensureGeneralCategories(client);
   await ensureCategoryKeywords(client);

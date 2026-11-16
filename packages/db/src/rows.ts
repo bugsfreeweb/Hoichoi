@@ -82,6 +82,8 @@ export function mapPost(row: Record<string, unknown>): Post {
     // Verification grade travels with the post so a badge can never be rendered
     // from a value the caller had to guess.
     verification_status: (row.verification_status as Post["verification_status"]) ?? "unverified",
+    ai_assisted: Number(row.ai_assisted ?? 0) === 1,
+    ai_prompt_version: row.ai_prompt_version ? String(row.ai_prompt_version) : null,
     verification_note: (row.verification_note as string | null) ?? null,
     verified_by: (row.verified_by as string | null) ?? null,
     verified_at: (row.verified_at as string | null) ?? null,

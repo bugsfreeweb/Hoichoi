@@ -323,6 +323,24 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
     args: [runId, started],
   });
 
+  // Emergency stop, checked before any work: one switch an operator can reach at
+  // 3 a.m. without disabling sources one by one or editing a workflow. The run is
+  // recorded and closed as failed so the dashboard shows why nothing happened,
+  // rather than showing a green run that collected nothing.
+  const pauseRes = await client.execute("SELECT collection_paused, collection_paused_reason FROM settings WHERE id = 1").catch(() => null);
+  const pauseRow = (pauseRes?.rows[0] ?? {}) as Record<string, unknown>;
+  if (Number(pauseRow.collection_paused ?? 0) === 1) {
+    const reason = pauseRow.collection_paused_reason ? String(pauseRow.collection_paused_reason) : "সংগ্রহ সাময়িকভাবে বন্ধ";
+    log(JSON.stringify({ event: "pipeline.paused", reason }));
+    await client.execute({
+      sql: "UPDATE pipeline_runs SET status = 'failed', finished_at = ?, error = ? WHERE id = ?",
+      args: [nowIso(), `কলেকশন বিরতিতে: ${reason}`, runId],
+    }).catch(() => undefined);
+    stats.status = "failed";
+    stats.errors.push(`collection paused: ${reason}`);
+    return stats;
+  }
+
   // Settings
   const catRes = await client.execute("SELECT * FROM category_configs ORDER BY sort_order");
   const cats = new Map<CategorySlug, ReturnType<typeof mapCategory>>();

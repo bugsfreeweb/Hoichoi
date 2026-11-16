@@ -76,6 +76,10 @@ export function PostEditor({ post }: { post: Post }) {
   const [title, setTitle] = useState(post.title_bn);
   const [body, setBody] = useState(post.body_bn);
   const [summary, setSummary] = useState(post.summary_bn ?? "");
+  /** Which AI task wrote into this post, or null if the text is a human's. */
+  const [aiAssisted, setAiAssisted] = useState<string | null>(
+    post.ai_prompt_version ?? (post.ai_assisted ? "legacy" : null),
+  );
   const [category, setCategory] = useState<CategorySlug>(post.category);
   const [caseStatus, setCaseStatus] = useState<CaseStatus | "">(post.case_status ?? "");
   const [publishedAt, setPublishedAt] = useState(toLocalInput(post.published_at));
@@ -293,6 +297,10 @@ export function PostEditor({ post }: { post: Post }) {
           // Sent on every save so the image field is part of the same atomic
           // write as the text fields. An empty string clears the image.
           media_path: mediaPath,
+          // Provenance: set by the AI assistant panel when it filled a field.
+          // An editor who rewrites by hand clears it, and the record follows.
+          ai_assisted: aiAssisted !== null,
+          ai_prompt_version: aiAssisted,
         }),
       });
       if (!res.ok) {
@@ -361,6 +369,7 @@ export function PostEditor({ post }: { post: Post }) {
       {err && <p className="mt-4 border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">✕ {err}</p>}
 
       <AiAssistPanel
+        onAiAssisted={(task) => setAiAssisted(task)}
         sourceText={body}
         sourceName={post.source_name}
         category={category}

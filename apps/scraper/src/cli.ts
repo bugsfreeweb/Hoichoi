@@ -186,6 +186,8 @@ const SETTING_KEYS: Array<keyof SiteSettings> = [
   "ad_infeed_html",
   "ad_strip_html",
   "app_config_json",
+  "collection_paused",
+  "collection_paused_reason",
 ];
 
 program
@@ -201,7 +203,7 @@ program
         const k = a.slice(0, eq) as keyof SiteSettings;
         const v = a.slice(eq + 1);
         if (!SETTING_KEYS.includes(k)) throw new Error(`unknown settings field: ${k}`);
-        if (k === "pipeline_hours" || k === "archive_visible_days" || k === "archive_retention_days") {
+        if (k === "pipeline_hours" || k === "archive_visible_days" || k === "archive_retention_days" || k === "collection_paused") {
           (fields as Record<string, number>)[k] = Number(v);
         } else {
           (fields as Record<string, string>)[k] = v;

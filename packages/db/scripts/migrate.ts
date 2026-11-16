@@ -17,6 +17,7 @@ import {
   ensureSectionsTable,
   ensureDefaultVariantColumn,
   ensureLiveEventTables,
+  ensureAiProvenanceColumns,
 } from "../src/client";
 import { seedDefaults } from "../src/seed";
 import { listMigrations } from "../src/migrations";
@@ -68,6 +69,8 @@ const seeded = await seedDefaults(client, nowIso());
   console.log("hoichoi:db — section variant engine ensured");
   await ensureLiveEventTables(client);
   console.log("hoichoi:db — live-event tables ensured");
+  await ensureAiProvenanceColumns(client);
+  console.log("hoichoi:db — AI provenance + collection switch ensured");
   await client.close();
 }
 

@@ -251,7 +251,14 @@ export function SettingsConsole({
           )}
           {tab === "mail" && <MailSection />}
           {tab === "maintenance" && <MaintenanceEditor />}
-          {tab === "operations" && <OperationsSection initialRuns={initialRuns} inbox={inbox} />}
+          {tab === "operations" && (
+            <OperationsSection
+              initialRuns={initialRuns}
+              inbox={inbox}
+              collectionPaused={initial.collection_paused === 1}
+              collectionPausedReason={initial.collection_paused_reason ?? null}
+            />
+          )}
         </div>
 
         {tab !== "design" && tab !== "media" && (

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { RecentPipelineRun } from "@hoichoi/db";
 import { ManualRun } from "@/components/admin/ManualRun";
+import { CollectionPause } from "./CollectionPause";
 import LoginLogViewer from "@/components/admin/LoginLogViewer";
 import { Section } from "./ui";
 import type { MaintenanceInbox } from "./state";
@@ -14,9 +15,13 @@ function toBn(v: number | string): string {
 export function OperationsSection({
   initialRuns,
   inbox,
+  collectionPaused,
+  collectionPausedReason,
 }: {
   initialRuns: RecentPipelineRun[];
   inbox: MaintenanceInbox | null;
+  collectionPaused: boolean;
+  collectionPausedReason: string | null;
 }) {
   return (
     <div className="space-y-6">
@@ -26,6 +31,9 @@ export function OperationsSection({
         hint="GitHub Actions cron প্রতি ৮ ঘণ্টায় চলে। নিচের বাটনটি সরাসরি GitHub-এ একটি রান ট্রিগার করে — সার্ভারে GH_TRIGGER_TOKEN ও GH_REPO সেট থাকতে হয়।"
       >
         <ManualRun initialRuns={initialRuns} />
+        <div className="mt-4">
+          <CollectionPause paused={collectionPaused} reason={collectionPausedReason} />
+        </div>
         <p className="border-t border-ink/15 pt-4 text-[12px] text-ink-soft">
           সেটআপ নিয়ে বিস্তারিত জানতে{" "}
           <Link href="/admin/setup" className="font-bold text-alizarin underline underline-offset-2">

@@ -193,6 +193,13 @@ export interface Post {
    */
   verification_status?: VerificationStatus | null;
   verification_note?: string | null;
+  /**
+   * Text provenance. True when an AI task wrote or rewrote a field on this post,
+   * with the task name that did it. Recorded at save time by the editor that
+   * accepted the draft — never inferred from the text.
+   */
+  ai_assisted?: boolean;
+  ai_prompt_version?: string | null;
   verified_by?: string | null;
   verified_at?: string | null;
   source_url: string;
@@ -394,6 +401,14 @@ export interface SiteSettings {
    */
   fact_gate?: number | null;
   site_name: string;
+  /**
+   * Emergency stop for collection. When true the pipeline refuses to start and
+   * says why — one switch an operator can reach at 3 a.m. without editing a
+   * workflow or disabling a source one by one. Publishing in-flight runs is not
+   * affected.
+   */
+  collection_paused: number;
+  collection_paused_reason: string | null;
   contact_email: string;
   police_helpline: string;
   child_helpline: string;

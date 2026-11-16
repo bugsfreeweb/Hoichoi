@@ -1,5 +1,5 @@
 import { PageHeading } from "@/components/admin/ui/PageHeader";
-import { listAdminActionsPage, listPipelineRunsPage } from "@hoichoi/db";
+import { aiTaskSummary, listAdminActionsPage, listAiTaskRuns, listDeletions, listPipelineRunsPage } from "@hoichoi/db";
 import LoginLogViewer from "@/components/admin/LoginLogViewer";
 import { Paginator } from "@/components/admin/Paginator";
 
@@ -16,12 +16,15 @@ export default async function AdminLogsPage({
   // Each list paginates on its own `page` param. They used to share one, so
   // paging the run history scrolled the audit log too and the two sections
   // fought over the same number.
-  const [runs, actions] = await Promise.all([
+  const [runs, actions, deletions, aiRuns, aiStats] = await Promise.all([
     listPipelineRunsPage(Number(runsParam ?? 1), PAGE_SIZE),
     listAdminActionsPage(Number(actionsParam ?? 1), PAGE_SIZE, {
       action: actionFilter,
       actor: actorFilter,
     }),
+    listDeletions(20),
+    listAiTaskRuns(12),
+    aiTaskSummary(),
   ]);
 
   return (
@@ -135,6 +138,56 @@ export default async function AdminLogsPage({
               ...(actorFilter ? { actor: actorFilter } : {}),
             }}
           />
+        </section>
+        <section>
+          <SectionTitle>মুছে ফেলার খাতা</SectionTitle>
+          <p className="mt-1 font-mono-x text-[11px] text-ink-soft">
+            মুছে ফেলা কিছু ফেরানো যায় না — কিন্তু কী গেল, কেন, কে বলল, তা থেকে যায়। শেষ ২০টি।
+          </p>
+          <div className="mt-3 space-y-2">
+            {deletions.length === 0 && <Empty />}
+            {deletions.map((d) => (
+              <div key={d.id} className="border border-ink/20 bg-paper-deep px-4 py-2">
+                <p className="font-mono-x text-[11.5px] text-ink">
+                  <span className="font-bold">{d.entityType}</span>
+                  <span className="text-ink-soft">/{d.entityId.slice(0, 18)}</span>
+                  {d.detail && typeof d.detail.title_bn === "string" ? ` · ${d.detail.title_bn}` : ""}
+                </p>
+                <p className="mt-0.5 font-mono-x text-[10.5px] text-ink-soft">
+                  {d.actor ?? "—"} · {d.reason ?? "কারণ নেই"} · {new Date(d.createdAt).toLocaleString("bn-BD")}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section>
+          <SectionTitle>AI ব্যবহার</SectionTitle>
+          <p className="mt-1 font-mono-x text-[11px] text-ink-soft">
+            ৩০ দিনে {aiStats.calls}টি কল · {aiStats.failures}টি ব্যর্থ · মোট {aiStats.totalChars.toLocaleString("bn-BD")} অক্ষর
+            {aiStats.medianMs > 0 ? ` · মধ্যক ${Math.round(aiStats.medianMs / 100) / 10}s` : ""}
+          </p>
+          <div className="mt-3 space-y-2">
+            {aiRuns.length === 0 && <Empty />}
+            {aiRuns.map((r) => (
+              <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 border border-ink/20 bg-paper-deep px-4 py-2">
+                <div>
+                  <p className="font-mono-x text-[11.5px] text-ink">
+                    <span className="font-bold">{r.task}</span>
+                    <span className="text-ink-soft">
+                      {" · "}
+                      {r.provider} · {r.ok ? "ok" : r.errorKind ?? "failed"}
+                    </span>
+                  </p>
+                  <p className="mt-0.5 font-mono-x text-[10.5px] text-ink-soft">
+                    {r.inputChars} অক্ষর → {r.outputChars} · {r.latencyMs}ms{r.actor ? ` · ${r.actor}` : ""}
+                  </p>
+                </div>
+                <span className="font-mono-x text-[10.5px] whitespace-nowrap text-ink-soft">
+                  {new Date(r.createdAt).toLocaleString("bn-BD")}
+                </span>
+              </div>
+            ))}
+          </div>
         </section>
         <section>
           <SectionTitle>অ্যাডমিন লগইন লগ (কোন ইমেইল/আইপি থেকে ঢোকার চেষ্টা)</SectionTitle>

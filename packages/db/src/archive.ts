@@ -4,6 +4,7 @@
  * run it without pulling in Playwright/tsx. Purely SQL over the Turso client.
  */
 import { getClient, nowIso } from "./client";
+import { logDeletion } from "./deletion-log";
 
 export interface ArchiveReport {
   rolledOver: number;
@@ -67,6 +68,13 @@ export async function purgeExpired(log: (m: string) => void = () => {}): Promise
   const ids = res.rows.map((r) => String(r.id));
   if (ids.length === 0) return { rolledOver: 0, purged: 0, purgedIds: [] };
 
+  // Snapshot what is about to be lost *before* deleting: the ledger cannot
+  // reconstruct a title from a row that no longer exists.
+  const snap = await client.execute({
+    sql: `SELECT * FROM posts WHERE id IN (${ids.map(() => "?").join(",")})`,
+    args: ids,
+  });
+
   const placeholders = ids.map(() => "?").join(",");
   await client.execute({
     sql: `DELETE FROM posts WHERE id IN (${placeholders})`,
@@ -75,6 +83,21 @@ export async function purgeExpired(log: (m: string) => void = () => {}): Promise
   // Remove orphan vectors (libSQL vec0 stores its own row per post_id).
   for (const id of ids) {
     await client.execute({ sql: "DELETE FROM posts_vec WHERE post_id = ?", args: [id] });
+  }
+  for (const row of snap.rows) {
+    await logDeletion({
+      entityType: "post",
+      entityId: String(row.id),
+      reason: `retention ${retentionDays}d`,
+      actor: "archive:purge",
+      detail: {
+        title_bn: row.title_bn ? String(row.title_bn) : null,
+        slug: row.slug ? String(row.slug) : null,
+        category: row.category ? String(row.category) : null,
+        media_path: row.media_path ? String(row.media_path) : null,
+        published_at: row.published_at ? String(row.published_at) : null,
+      },
+    }).catch(() => undefined);
   }
   log(`[archive] purged ${ids.length} posts past ${retentionDays}d retention`);
   return { rolledOver: 0, purged: ids.length, purgedIds: ids };

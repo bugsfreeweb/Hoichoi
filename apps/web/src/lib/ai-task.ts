@@ -1,6 +1,7 @@
 import {
   AI_TASKS,
   buildProvider,
+  redactFields,
   taskResult,
   validateTaskInput,
   type AiTaskInput,
@@ -82,6 +83,54 @@ export interface AiTaskRun {
   result: AiTaskResult;
   provider: string;
   ms: number;
+  /** How much PII was scrubbed from the request before it reached the model. */
+  pii: { email: number; phone: number; longDigits: number; cardLike: number };
+  /** Stable id of the recorded ledger row (see recordAiTaskRun). */
+  runId: string;
+}
+
+/**
+ * One row per gateway call, so "what did the AI cost and how slow was it" is a
+ * fact of the ledger, not an anecdote. Written by the route after a success or
+ * terminal failure.
+ */
+function outputCharsOf(result: AiTaskResult): number {
+  return [result.title_bn, result.summary_bn, result.body_bn].reduce((sum, part) => sum + (part?.length ?? 0), 0);
+}
+
+export async function recordAiTaskRun(input: {
+  task: string;
+  provider: string;
+  model?: string | null;
+  inputChars: number;
+  outputChars: number;
+  latencyMs: number;
+  ok: boolean;
+  errorKind?: string | null;
+  actor?: string | null;
+}): Promise<string> {
+  const client = getClient();
+  const id = crypto.randomUUID();
+  await client
+    .execute({
+      sql: `INSERT INTO ai_task_runs (id, task, provider, model, input_chars, output_chars, latency_ms, ok, error_kind, actor, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        id,
+        input.task,
+        input.provider,
+        input.model || null,
+        input.inputChars,
+        input.outputChars,
+        input.latencyMs,
+        input.ok ? 1 : 0,
+        input.errorKind || null,
+        input.actor || null,
+        new Date().toISOString(),
+      ],
+    })
+    .catch(() => undefined);
+  return id;
 }
 
 /**
@@ -99,6 +148,12 @@ export async function runAiTask(input: AiTaskInput): Promise<AiTaskRun> {
   const sourceName = input.sourceName?.trim() || "পাঠকের টিপ";
   const started = Date.now();
 
+  // PII never reaches the model. The redactor is a pure, unit-tested function,
+  // and its counts travel with the result so the editor is told when something
+  // was removed rather than silently losing it.
+  const scrubbed = redactFields({ rawText: input.text });
+  const requestText = scrubbed.fields.rawText ?? input.text;
+
   let lastError: unknown = null;
   for (const row of rows) {
     const controller = new AbortController();
@@ -107,7 +162,7 @@ export async function runAiTask(input: AiTaskInput): Promise<AiTaskRun> {
       const provider = buildProvider(row, (keyName) => process.env[keyName] ?? null);
       const parsed = await provider.rewrite(
         {
-          rawText: input.text,
+          rawText: requestText,
           sourceName,
           sourcePageName: input.sourceName?.trim() || meta?.displayNameBn || "হৈচৈ ডেস্ক",
           category: categorySlug,
@@ -118,11 +173,30 @@ export async function runAiTask(input: AiTaskInput): Promise<AiTaskRun> {
         },
         controller.signal,
       );
-      return {
-        result: taskResult(input.task, parsed),
-        provider: row.display_name ?? row.provider_key,
-        ms: Date.now() - started,
+      // Scrub anything the model echoed back before it is handed to the editor:
+      // after redaction the output may contain a marker where a phone number
+      // was, and that is exactly what should reach the editor.
+      const rawResult = taskResult(input.task, parsed);
+      const result: AiTaskResult = {
+        task: rawResult.task,
+        title_bn: rawResult.title_bn ? redactFields({ v: rawResult.title_bn }).fields.v : undefined,
+        summary_bn: rawResult.summary_bn ? redactFields({ v: rawResult.summary_bn }).fields.v : undefined,
+        body_bn: rawResult.body_bn ? redactFields({ v: rawResult.body_bn }).fields.v : undefined,
+        safety_flag: rawResult.safety_flag,
       };
+      const providerName = row.display_name ?? row.provider_key;
+      const ms = Date.now() - started;
+      // The ledger write is awaited but never allowed to fail the request: the
+      // draft the editor is waiting for matters more than the metrics row.
+      const runId = await recordAiTaskRun({
+        task: input.task,
+        provider: providerName,
+        inputChars: input.text.length,
+        outputChars: outputCharsOf(result),
+        latencyMs: ms,
+        ok: true,
+      }).catch(() => "");
+      return { result, provider: providerName, ms, pii: scrubbed.counts, runId };
     } catch (err) {
       lastError = err;
       // A timeout on one provider should still let the next one try.

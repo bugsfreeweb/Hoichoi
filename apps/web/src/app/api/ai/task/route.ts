@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireApiRole } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { limitRequest, LIMITS } from "@/lib/rate-limit";
-import { AiTaskError, AI_TASKS, runAiTask, validateTaskInput } from "@/lib/ai-task";
+import { AiTaskError, AI_TASKS, recordAiTaskRun, runAiTask, validateTaskInput } from "@/lib/ai-task";
 import { logError } from "@/lib/log";
 import { reportError } from "@/lib/observability";
 
@@ -58,7 +58,14 @@ export async function POST(req: Request) {
         entityType: "ai_task",
         entityId: null,
         summary: `AI ${input.task} — ${input.text.length} অক্ষরের কাঁচা লেখা, প্রোভাইডার ${run.provider}`,
-        metadata: { provider: run.provider, ms: run.ms, chars: input.text.length, category: input.category ?? null },
+        metadata: {
+          provider: run.provider,
+          ms: run.ms,
+          chars: input.text.length,
+          category: input.category ?? null,
+          run_id: run.runId,
+          pii_removed: run.pii,
+        },
       },
       req,
     );
@@ -69,6 +76,8 @@ export async function POST(req: Request) {
         result: run.result,
         provider: run.provider,
         ms: run.ms,
+        // How much personal data was scrubbed before the text reached the model.
+        pii: run.pii,
         // A draft is a draft: nothing here writes to the database.
         saved: false,
       },
@@ -79,6 +88,18 @@ export async function POST(req: Request) {
       if (err.kind === "provider" || err.kind === "timeout") {
         logError({ event: "ai.task.failed", task: input.task, kind: err.kind, chars: input.text.length });
       }
+      // A failed call is still a call: it spent an operator's time and possibly a
+      // provider's quota, so the ledger records it.
+      await recordAiTaskRun({
+        task: input.task,
+        provider: "unresolved",
+        inputChars: input.text.length,
+        outputChars: 0,
+        latencyMs: 0,
+        ok: false,
+        errorKind: err.kind,
+        actor: user.email,
+      }).catch(() => undefined);
       return NextResponse.json({ ok: false, error: err.message, kind: err.kind }, { status: err.status });
     }
     void reportError(err, { event: "ai.task.error", route: "/api/ai/task", task: input.task });
