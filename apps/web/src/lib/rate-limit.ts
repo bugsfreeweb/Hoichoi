@@ -87,4 +87,7 @@ export const LIMITS = {
   // Data-subject export/erase is a heavy, destructive action: a handful per
   // minute is plenty and stops a stuck button from running twenty erasures.
   adminWrite: { name: "admin-write", limit: 10, windowMs: 60_000 },
+  // One AI generation is the most expensive request this app makes; twenty an
+  // hour is generous for authoring and useless for abuse.
+  aiTask: { name: "ai-task", limit: 20, windowMs: 60 * 60_000 },
 } as const satisfies Record<string, { name: string; limit: number; windowMs: number }>;

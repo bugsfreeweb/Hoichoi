@@ -705,6 +705,33 @@ The endpoint fails **closed** (503) without `CRON_SECRET` and requires
 row's `owner_email`, falling back to `SECURITY_CONTACT_EMAIL` then the first
 `ADMIN_ALLOWED_EMAILS` entry.
 
+### AI task gateway (`POST /api/ai/task`)
+
+The web console can draft a tip, summarise a body or propose a headline without
+the desktop app running. It deliberately is **not** a chat endpoint:
+
+- **Closed vocabulary** — `draft | summarise | headline`. `packages/llm/src/task.ts`
+  rejects any extra field, so a `prompt` or `model` key is a 400 rather than a
+  bypass.
+- **The caller cannot choose a model.** `apps/web/src/lib/ai-task.ts` walks the
+  active text providers by priority, exactly like the pipeline, and falls through
+  to the next one when a provider times out (45 s budget, `AbortController`).
+- **Same editorial rules as publishing.** Generation goes through
+  `provider.rewrite()`, so the own-words rule, safety flags and redaction are the
+  pipeline's, not a second policy. Keys are resolved server-side and never appear
+  in a response.
+- **One field back.** A `headline` call returns only `title_bn`; a headline
+  request can never hand an operator a publishable body by accident.
+- **Nothing is saved.** `saved: false` always — the result lands in the editor's
+  form fields for a human to accept.
+- **Budgeted and audited.** `LIMITS.aiTask` = 20/hour per caller, editor role and
+  above, and each call writes `ai.task.<task>` with the provider and character
+  count (`audit.ts`), never the tip's text.
+
+11 checks in `packages/llm/src/__tests__/ai-task.test.ts`. Verified live against
+the real provider: a `summarise` call returned Bangla prose in 14 s from Gemini,
+`unverified_claim` flagged, `saved: false`, and the audit row recorded.
+
 ### Policies on the site
 
 The policies ship as pages, not as files in a gitignored folder — a reader who

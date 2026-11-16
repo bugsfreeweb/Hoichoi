@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Post, PostStatus, CaseStatus, CategorySlug } from "@hoichoi/shared-types";
 import { PostImageGenerator } from "./PostImageGenerator";
 import VerificationPanel from "@/components/admin/VerificationPanel";
+import { AiAssistPanel } from "@/components/admin/AiAssistPanel";
 
 const CATEGORY_LABELS: Record<CategorySlug, string> = {
   "child-sexual-abuse": "শিশু যৌন নির্যাতন",
@@ -358,6 +359,15 @@ export function PostEditor({ post }: { post: Post }) {
 
       {msg && <p className="mt-4 border border-cat-teal bg-cat-teal/10 px-3 py-2 text-[12.5px] font-bold text-ink">✓ {msg}</p>}
       {err && <p className="mt-4 border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">✕ {err}</p>}
+
+      <AiAssistPanel
+        sourceText={body}
+        sourceName={post.source_name}
+        category={category}
+        onTitle={setTitle}
+        onSummary={setSummary}
+        onBody={setBody}
+      />
 
       <div className="mt-5 space-y-4 border border-ink/20 bg-paper-deep p-5">
         <Field label="শিরোনাম (title_bn)">
