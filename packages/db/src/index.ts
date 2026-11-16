@@ -27,6 +27,9 @@ export * from "./media-dashboard";
 export * from "./admin-notifications";
 export * from "./guest";
 export * from "./poll-integrity";
+// Schema state is public information (counts and names, never SQL bodies), and
+// /api/health needs it to tell a half-deployed build from a healthy one.
+export { listMigrations } from "./migrations";
 
 import {
   DEFAULT_APP_CONFIG,

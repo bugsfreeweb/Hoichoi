@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { markNotificationsEmailed, pendingEmailNotifications } from "@hoichoi/db";
 import { sendMail } from "@/lib/mail";
+import { reportError } from "@/lib/observability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,6 +60,13 @@ export async function POST(req: Request) {
     text,
   });
   if (!result.ok) {
+    // A digest that cannot be sent means nobody will be told about the events in
+    // it, so this is worth an incident report rather than a quiet 502.
+    void reportError(new Error(result.error ?? "alert digest failed"), {
+      event: "cron.alerts.failed",
+      route: "/api/cron/alerts",
+      pending: pending.length,
+    });
     return NextResponse.json({ ok: false, error: result.error, pending: pending.length }, { status: 502 });
   }
 

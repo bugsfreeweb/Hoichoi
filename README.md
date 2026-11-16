@@ -705,6 +705,34 @@ The endpoint fails **closed** (503) without `CRON_SECRET` and requires
 row's `owner_email`, falling back to `SECURITY_CONTACT_EMAIL` then the first
 `ADMIN_ALLOWED_EMAILS` entry.
 
+### Health, logs and error reporting
+
+**`GET /api/health`** answers "can this deployment serve a story right now?"
+without a human reading logs. Public on purpose — the payload is booleans,
+counts, versions and durations only.
+
+| Probe | Critical | Meaning |
+| --- | --- | --- |
+| `db` | yes | `SELECT 1` succeeded |
+| `migrations` | yes | `_migrations` count ≥ embedded migrations |
+| `media` | no | how many image providers are *not* cooling down |
+| `mail` | no | a transport is configured |
+
+`unhealthy` (503) only when a critical probe fails; a broken optional dependency
+is `degraded` (still 200, because readers are still served), and a probe slower
+than 1.5 s downgrades itself. Absent config is `skipped`, never `fail`.
+
+**`apps/web/src/lib/log.ts`** emits one JSON object per line and redacts at the
+boundary — `password`/`secret`/`token`/`api_key`/`cookie`/`dsn` become
+`[redacted]`, an email becomes `***@domain`, and IPs never appear. Levels follow
+`LOG_LEVEL`. **`lib/observability.ts`** posts the same error to Sentry via its
+plain HTTP envelope when `SENTRY_DSN` is set — no SDK dependency, 2 s timeout,
+never throws. The health endpoint reports *unhealthy* and the alert cron reports a
+failed digest, so both reach the error sink.
+
+`.github/workflows/uptime.yml` probes the production endpoint every 15 minutes
+(skips when `SITE_URL` is unset). 8 checks in `apps/web/scripts/health.test.ts`.
+
 ### Supply chain and disclosure
 
 | File | What it does |

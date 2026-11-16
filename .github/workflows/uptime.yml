@@ -1,0 +1,38 @@
+name: Uptime
+
+# Polls the public health endpoint. It reports 503 only when something critical
+# (database, schema) is broken, so a red run here is a real outage rather than a
+# slow provider.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip without a site URL
+        id: gate
+        run: |
+          if [ -z "${{ vars.SITE_URL }}" ]; then echo "skip=true" >> "$GITHUB_OUTPUT"; else echo "skip=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Health check
+        if: steps.gate.outputs.skip == 'false'
+        run: |
+          body=$(mktemp)
+          code=$(curl -sS -m 20 -o "$body" -w "%{http_code}" "${{ vars.SITE_URL }}/api/health")
+          echo "HTTP $code"
+          cat "$body"
+          echo
+          if [ "$code" != "200" ]; then
+            echo "::error::health endpoint returned $code"
+            exit 1
+          fi
+          python3 - "$body" <<'PY'
+import json, sys
+report = json.load(open(sys.argv[1]))
+if report.get("status") != "healthy":
+    bad = [p for p in report.get("probes", []) if p.get("status") in ("fail", "degraded")]
+    print("::warning::degraded:", json.dumps(bad))
+PY
