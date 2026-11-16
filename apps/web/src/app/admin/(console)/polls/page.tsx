@@ -7,6 +7,7 @@ import {
 } from "./actions";
 import { StandalonePollForm } from "@/components/admin/polls/StandalonePollForm";
 import { PollTemplatePicker } from "@/components/admin/polls/PollTemplatePicker";
+import { PollIntegrityPanel } from "@/components/admin/PollIntegrityPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,7 @@ export default async function AdminPollsPage() {
                         );
                       })}
                     </ul>
+                    <PollIntegrityPanel pollId={poll.id} />
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <form action={toggleStandalonePoll.bind(null, poll.id, poll.status === "open" ? "closed" : "open")}>

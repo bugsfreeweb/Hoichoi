@@ -114,6 +114,34 @@ export default async function PollPage() {
         )}
 
         {polls.length === 0 && <p className="mt-8 border border-dashed border-ink/20 px-4 py-10 text-center text-[12px] text-ink-soft">এখনো কোনো পোল প্রকাশিত হয়নি।</p>}
+
+        <section aria-labelledby="poll-method" className="mt-12 border-t border-ink/10 pt-6">
+          <h2 id="poll-method" className="font-mono-x text-[10px] tracking-[0.18em] text-ink-soft uppercase">
+            ভোট কীভাবে গোনা হয়
+          </h2>
+          <ul className="mt-3 grid gap-3 text-[12.5px] leading-relaxed text-ink-soft sm:grid-cols-2">
+            <li>
+              <strong className="text-ink">প্রতি ব্রাউজার একটি ভোট।</strong> ভোট আপনার ব্রাউজারে রাখা একটি
+              অনামী সেশন আইডির সঙ্গে যুক্ত — অ্যাকাউন্ট বা ইমেইল লাগে না।
+            </li>
+            <li>
+              <strong className="text-ink">একই নেটওয়ার্ক থেকে অনেক সেশন সন্দেহজনক।</strong> শুধু হ্যাশ করা নেটওয়ার্ক
+              সংরক্ষণ করা হয়, কখনো আপনার আইপি ঠিকানা নয়।
+            </li>
+            <li>
+              <strong className="text-ink">অস্বাভাবিক গতি পর্যালোচনায় যায়।</strong> এক মিনিটে অস্বাভাবিক ভোট বা
+              এক অপশনে প্রায় সব ভোট গেলে সম্পাদক যাচাই করেন।
+            </li>
+            <li>
+              <strong className="text-ink">বাতিল মানে মুছে ফেলা নয়।</strong> সন্দেহজনক ভোট বাতিল হিসেবে চিহ্নিত হয়,
+              ফল থেকে বাদ যায়, কিন্তু রেকর্ডে থাকে — কারণ ও কে বাতিল করেছে সহ।
+            </li>
+          </ul>
+          <p className="mt-3 text-[11.5px] text-ink-soft">
+            এটা বৈজ্ঞানিক জরিপ নয় — পাঠকের মতামতের তাৎক্ষণিক ছবি। কোনো পোলের ফল Editorial-এ প্রকাশিত
+            প্রতিবেদনের বিকল্প নয়।
+          </p>
+        </section>
         <Link href="/" className="mt-8 inline-flex text-[12px] font-bold text-alizarin hover:underline">← হোমপেজে ফিরুন</Link>
       </div>
     </main>

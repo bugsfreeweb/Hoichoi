@@ -258,7 +258,13 @@ export async function getPollVotes(pollId: number, sessionId: string): Promise<s
   return res.rows.map((row) => String(row.option_id));
 }
 
-export async function setPollVotes(pollId: number, optionIds: string[], sessionId: string): Promise<void> {
+export async function setPollVotes(
+  pollId: number,
+  optionIds: string[],
+  sessionId: string,
+  /** Hashed client network; lets an operator invalidate an orchestrated run. */
+  ipHash: string | null = null,
+): Promise<void> {
   const client = getClient();
   const transaction = await client.transaction();
   try {
@@ -268,8 +274,8 @@ export async function setPollVotes(pollId: number, optionIds: string[], sessionI
     });
     for (const optionId of optionIds) {
       await transaction.execute({
-        sql: "INSERT INTO poll_votes (id, poll_id, option_id, session_id, created_at) VALUES (?, ?, ?, ?, ?)",
-        args: [crypto.randomUUID(), pollId, optionId, sessionId, nowIso()],
+        sql: "INSERT INTO poll_votes (id, poll_id, option_id, session_id, created_at, ip_hash) VALUES (?, ?, ?, ?, ?, ?)",
+        args: [crypto.randomUUID(), pollId, optionId, sessionId, nowIso(), ipHash],
       });
     }
     await transaction.commit();
@@ -282,7 +288,9 @@ export async function setPollVotes(pollId: number, optionIds: string[], sessionI
 export async function getPollResults(pollId: number): Promise<{ optionId: string; votes: number }[]> {
   const client = getClient();
   const res = await client.execute({
-    sql: "SELECT option_id, COUNT(*) AS n FROM poll_votes WHERE poll_id = ? GROUP BY option_id",
+    // Invalidated votes stay in the table (an operator's decision must remain
+    // auditable) but never count toward the published tally.
+    sql: "SELECT option_id, COUNT(*) AS n FROM poll_votes WHERE poll_id = ? AND invalidated_at IS NULL GROUP BY option_id",
     args: [pollId],
   });
   return res.rows.map((row) => ({ optionId: String(row.option_id), votes: Number(row.n ?? 0) }));
@@ -290,6 +298,9 @@ export async function getPollResults(pollId: number): Promise<{ optionId: string
 
 export async function getPollVoteCount(pollId: number): Promise<number> {
   const client = getClient();
-  const res = await client.execute({ sql: "SELECT COUNT(*) AS n FROM poll_votes WHERE poll_id = ?", args: [pollId] });
+  const res = await client.execute({
+    sql: "SELECT COUNT(*) AS n FROM poll_votes WHERE poll_id = ? AND invalidated_at IS NULL",
+    args: [pollId],
+  });
   return Number((res.rows[0] as Record<string, unknown>)?.n ?? 0);
 }

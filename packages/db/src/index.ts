@@ -26,6 +26,7 @@ export * from "./media-reconcile";
 export * from "./media-dashboard";
 export * from "./admin-notifications";
 export * from "./guest";
+export * from "./poll-integrity";
 
 import {
   DEFAULT_APP_CONFIG,

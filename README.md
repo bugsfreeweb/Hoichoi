@@ -705,6 +705,26 @@ The endpoint fails **closed** (503) without `CRON_SECRET` and requires
 row's `owner_email`, falling back to `SECURITY_CONTACT_EMAIL` then the first
 `ADMIN_ALLOWED_EMAILS` entry.
 
+### Poll integrity
+
+A poll vote used to be (poll, option, session id) and nothing else, so clearing
+the cookie was enough to vote again. Migration 032 adds `ip_hash`,
+`invalidated_at`, `invalid_reason`, `invalidated_by` to `poll_votes`.
+
+`packages/db/src/poll-integrity.ts` reports three falsifiable signals —
+**peak votes/minute**, **sessions per hashed network**, and the **top option's
+share** — and derives a 0–100 risk score (`clean` < 30 ≤ `flagged` < 60 ≤
+`suspicious`). It computes from **validated votes only**, so a cleaned poll reads
+clean again instead of staying permanently guilty.
+
+**Invalidation is a flag, not a delete.** `GET/POST /api/admin/polls/[id]/integrity`
+(moderator read, admin write, audited) invalidates every vote from one hashed
+network with a required reason; the tally and `getPollResults()` exclude those
+rows, but the rows keep the reason and the actor. `/admin/polls` shows the panel
+inline; `/poll` carries a bilingual "ভোট কীভাবে গোনা হয়" block that says exactly
+this, including that a poll is not a scientific survey. 7 checks in
+`packages/db/src/__tests__/poll-integrity.test.ts`.
+
 ### Guest identity, trust and data-subject requests
 
 Public forms no longer keep whatever the reader typed as their only handle.

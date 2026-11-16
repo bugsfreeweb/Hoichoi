@@ -3,6 +3,8 @@ import { getSettings } from "@/lib/settings";
 import { parseAppConfig } from "@hoichoi/db";
 import { NextResponse } from "next/server";
 import { limitRequest, LIMITS } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/guest";
+import { hashIp } from "@hoichoi/db";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -79,7 +81,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const [singleOptionId] = optionIds;
   if (!singleOptionId) return json({ error: "একটি বৈধ অপশন বেছে নিন।" }, 400);
 
-  await setPollVotes(id, poll.allowMultiple ? optionIds : [singleOptionId], body.sid);
+  // The hashed network travels with the vote so an operator can invalidate an
+  // orchestrated run later without ever storing a raw address.
+  await setPollVotes(
+    id,
+    poll.allowMultiple ? optionIds : [singleOptionId],
+    body.sid,
+    hashIp(clientIp(request)),
+  );
   const myVotes = await getPollVotes(id, body.sid);
   const results = pollResultsVisible(poll, myVotes.length > 0) ? await getPollResults(id) : [];
   return json({ ok: true, results, myVotes });
