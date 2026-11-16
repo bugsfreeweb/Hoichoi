@@ -30,8 +30,9 @@ import { limitRequest, LIMITS } from "@/lib/rate-limit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** How long a handed-out grant is valid for. Short enough to matter. */
-export const GRANT_TTL_MS = 60 * 60_000;
+/** How long a handed-out grant is valid for. Short enough to matter.
+ *  Not exported: a route file may only export HTTP methods and Next config. */
+const GRANT_TTL_MS = 60 * 60_000;
 
 function bearer(req: Request): string {
   const header = req.headers.get("authorization") ?? "";
