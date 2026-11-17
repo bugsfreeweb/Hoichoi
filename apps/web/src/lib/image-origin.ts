@@ -9,7 +9,7 @@ import type { Post } from "@hoichoi/shared-types";
  * operator clearing the queue: "AI" images are the ones they may want to
  * regenerate, and "external" ones may break when the other site deletes them.
  */
-export type ImageOriginKey = "collector" | "ai" | "admin" | "external" | "none";
+export type ImageOriginKey = "collector" | "ai" | "admin" | "external" | "plate" | "none";
 
 export interface ImageOrigin {
   key: ImageOriginKey;
@@ -31,6 +31,12 @@ const ORIGINS: Record<ImageOriginKey, ImageOrigin> = {
     labelBn: "AI তৈরি",
     cls: "bg-alizarin/12 text-alizarin border-alizarin/40",
     hint: "AI দিয়ে তৈরি ছবি — পছন্দ না হলে আবার তৈরি করা যায়",
+  },
+  plate: {
+    key: "plate",
+    labelBn: "ব্র্যান্ডেড প্লেট",
+    cls: "bg-lime/12 text-lime border-lime/40",
+    hint: "লোগো ও শিরোনামসহ নিজস্ব প্লেট — কোনো ছবি পাওয়া যায়নি, তাই ব্র্যান্ডের প্লেট বসানো হয়েছে",
   },
   admin: {
     key: "admin",

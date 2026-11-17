@@ -39,15 +39,14 @@ export interface ImageResolverOptions {
 /**
  * True when a provider legitimately runs without an API key.
  *
- * `ollama` is a local server (key only when auth is enabled) and
- * Pollinations' image endpoint is anonymous by design. Treating these as
- * "key missing" is what made the image chain report "no active provider" even
- * though a usable free backend was configured.
+ * `ollama` is a local server, and a row with no key variable at all is an
+ * anonymous endpoint by declaration. Treating those as "key missing" is what
+ * made the image chain report "no active provider" while a usable free backend
+ * was configured.
  */
 export function providerNeedsKey(row: LLMProviderRow): boolean {
   if (row.provider_key === "ollama") return false;
-  const url = row.base_url ?? "";
-  return !/gen\.pollinations\.ai|image\.pollinations\.ai/i.test(url);
+  return Boolean((row.api_key_env_var ?? "").trim());
 }
 
 /** Resolver for image-generation providers (purpose='image'). */
@@ -208,14 +207,13 @@ export async function generateImage(
    * happens when the pinned row succeeds.
    */
   /**
-   * The anonymous Pollinations host stamps a logo in the corner of every image
-   * and is keyless, so it won by default whenever a paid provider hiccuped —
-   * that is why *every* generated image carried the same watermark. It stays in
-   * the chain as a safety net but always runs last, and never before a provider
-   * the operator actually configured with a key.
+   * Rows keep the operator's own order: `usable` is already sorted by priority,
+   * and priority is the only thing that decides who renders first. The keyless
+   * watermark host that used to be forced to the end is gone — it was never a
+   * provider this newsroom wanted to publish, only a fallback that made every
+   * picture look the same.
    */
-  const isWatermarked = (ap: (typeof usable)[number]) => providerNeedsKey(ap.row) === false && /pollinations/i.test(ap.row.base_url ?? "");
-  const ordered = [...usable.filter((ap) => !isWatermarked(ap)), ...usable.filter(isWatermarked)];
+  const ordered = usable;
   const preferred = opts.providerId ? ordered.filter((ap) => ap.row.id === opts.providerId) : [];
   const rest = opts.providerId && !opts.strict ? ordered.filter((ap) => ap.row.id !== opts.providerId) : ordered;
   const candidates = opts.providerId ? [...preferred, ...(opts.strict ? [] : rest)] : ordered;
@@ -286,11 +284,10 @@ export async function generateImage(
     } catch (err) {
       // A transient "not right now" is worth one retry before giving up on the
       // row: Gemini's free tier answers 429 while the same key works again a few
-      // seconds later, and the keyless Pollinations host answers 503 "the classic
-      // API is at its limit right now" during peak load even though every other
-      // request to it succeeds. Failing over on that left the desk with *no*
-      // image at all — the operator clicks again and it works, which is the
-      // definition of a bug, not a quota.
+      // seconds later, and a shared free tier answers 503 during peak load even
+      // though every other request succeeds. Failing over on that left the desk
+      // with *no* image at all — the operator clicks again and it works, which
+      // is the definition of a bug, not a quota.
       const msg = (err as Error).message ?? "";
       const retryDelayMs = retryDelayFor(msg);
       if (!opts.strict && retryDelayMs > 0) {
@@ -324,10 +321,10 @@ export async function generateImage(
 /**
  * How long to wait before retrying one image call, or 0 when a retry is pointless.
  *
- * 429 means "slow down" (4 s). A 5xx overload means "come back later": the
- * keyless Pollinations host says so in prose ("Retry after 10s"), so that number
- * is honoured when present and capped, because a provider must not be able to
- * park a request for a minute.
+ * 429 means "slow down" (4 s). A 5xx overload means "come back later": providers
+ * often say so in prose ("Retry after 10s"), so that number is honoured when
+ * present and capped, because a provider must not be able to park a request for
+ * a minute.
  */
 export function retryDelayFor(message: string): number {
   if (/(^|[^0-9])429([^0-9]|$)|rate.?limit/i.test(message)) return 4_000;

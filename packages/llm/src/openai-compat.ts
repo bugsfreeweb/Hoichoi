@@ -245,11 +245,7 @@ export class OpenAICompatProvider implements LLMProvider {
     const prompt = composeImagePrompt(req);
     this.assertRoutable();
     if (this.isCloudflareWorkersAi()) {
-      return this.generateCloudflareImage(model, prompt, signal);
-    }
-    const pollinations = this.pollinationsFlavor();
-    if (pollinations) {
-      return this.generatePollinationsImage(pollinations, model, prompt, req.size, signal, req.aspectRatio);
+      return this.generateCloudflareImage(model, prompt, signal, req.size, req.aspectRatio);
     }
     const body: Record<string, unknown> = {
       model,
@@ -283,26 +279,6 @@ export class OpenAICompatProvider implements LLMProvider {
     }
   }
 
-  /**
-   * Which Pollinations endpoint family this base URL points at.
-   *
-   * Pollinations moved from the anonymous `image.pollinations.ai/prompt/<text>`
-   * route to `gen.pollinations.ai/image/<text>`, which now requires a pollen
-   * key (401 without one). Both shapes are still served, so the provider keeps
-   * supporting either — the keyless default in the seed uses the classic host,
-   * and an operator who buys a key can point the same row at `gen`.
-   */
-  private pollinationsFlavor(): "gen" | "classic" | null {
-    try {
-      const host = new URL(this.baseUrl).hostname;
-      if (host === "gen.pollinations.ai") return "gen";
-      if (host === "image.pollinations.ai") return "classic";
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
   private isTogether(): boolean {
     try {
       return new URL(this.baseUrl).hostname === "api.together.ai";
@@ -315,6 +291,8 @@ export class OpenAICompatProvider implements LLMProvider {
     model: string,
     prompt: string,
     signal?: AbortSignal,
+    size?: string,
+    aspectRatio?: string,
   ): Promise<ImageGenResult> {
     const modelPath = model
       .split("/")
@@ -322,11 +300,23 @@ export class OpenAICompatProvider implements LLMProvider {
       .join("/");
     const basePath = this.baseUrl.replace(/\/+$/, "");
     const url = basePath.endsWith(`/${modelPath}`) ? basePath : `${basePath}/${modelPath}`;
+    /**
+     * FLUX.1 schnell takes `width`/`height` directly (both a multiple of 8,
+     * 256–1920), so the brief's 16:9 is honoured at the source instead of being
+     * cropped back to landscape afterwards. `steps` must stay <= 8 on the
+     * Workers AI binding, and 4 is the tier's fast default.
+     */
+    const frame = frameDims(size, aspectRatio);
+    const payload: Record<string, unknown> = { prompt, steps: 4 };
+    if (frame) {
+      payload.width = frame.width;
+      payload.height = frame.height;
+    }
     const res = await fetch(url, {
       method: "POST",
       headers: this.headers,
       signal,
-      body: JSON.stringify({ prompt, steps: 4 }),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) classifyStatus(res.status, await res.text());
     const raw = (await res.json()) as {
@@ -341,50 +331,6 @@ export class OpenAICompatProvider implements LLMProvider {
     return {
       bytes,
       contentType: sniffImageMime(bytes),
-      provider: this.name,
-      model,
-      prompt,
-    };
-  }
-
-  private async generatePollinationsImage(
-    flavor: "gen" | "classic",
-    model: string,
-    prompt: string,
-    size?: string,
-    signal?: AbortSignal,
-    aspectRatio?: string,
-  ): Promise<ImageGenResult> {
-    const base = this.baseUrl.replace(/\/+$/, "");
-    const segment = flavor === "classic" ? "prompt" : "image";
-    const url = new URL(`${base}/${segment}/${encodeURIComponent(prompt)}`);
-    url.searchParams.set("model", model);
-    // `size` is the OpenAI-style "WxH"; Pollinations takes width/height.
-    const dims = frameDims(size, aspectRatio);
-    if (dims) {
-      url.searchParams.set("width", String(dims.width));
-      url.searchParams.set("height", String(dims.height));
-    }
-    /**
-     * `nologo` is only honoured when a referrer is present, which is why the
-     * corner watermark survived even though the flag was already being sent.
-     * `enhance=false` also stops Pollinations from rewriting the prompt, which
-     * was pushing the picture away from the article.
-     */
-    url.searchParams.set("nologo", "true");
-    url.searchParams.set("enhance", "false");
-    url.searchParams.set("safe", "false");
-    url.searchParams.set("referrer", "hoichoifeed.vercel.app");
-    const res = await fetch(url, { headers: this.headers, signal });
-    if (!res.ok) classifyStatus(res.status, await res.text());
-    const contentType = res.headers.get("content-type") ?? "";
-    if (!contentType.startsWith("image/")) {
-      throw new ProviderError("bad_output", `Pollinations returned ${contentType || "an unknown content type"}, not an image`);
-    }
-    const bytes = new Uint8Array(await res.arrayBuffer());
-    return {
-      bytes,
-      contentType: contentType.split(";")[0]!,
       provider: this.name,
       model,
       prompt,
@@ -625,8 +571,9 @@ export class OpenAICompatProvider implements LLMProvider {
  * The pixel frame to ask a free-form image host for.
  *
  * `size` exists for OpenAI, whose API only accepts 1024x1024, 1536x1024 and
- * 1024x1536 — so 16:9 has to be sent as 3:2 and cropped later. Pollinations
- * takes any width/height, and sending it the 3:2 size meant the brief promised a
+ * 1024x1536 — so 16:9 has to be sent as 3:2 and cropped later. A free-form host
+ * (Cloudflare's FLUX, or any custom endpoint with width/height parameters) takes
+ * the frame literally, and sending it the 3:2 size meant the brief promised a
  * "horizontal 16:9 frame" while the render was 1.5:1. Here the requested ratio
  * wins and the area of `size` is kept, rounded to a multiple of 8 because that
  * is what diffusion pipelines want.

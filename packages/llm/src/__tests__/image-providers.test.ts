@@ -47,54 +47,22 @@ try {
     key: "cloudflare-token",
     defaultBaseUrl: "",
   });
-  const cloudflareResult = await cloudflare.generateImage({ prompt: "A train station" });
+  const cloudflareResult = await cloudflare.generateImage({
+    prompt: "A train station",
+    size: "1600x900",
+    aspectRatio: "16:9",
+  });
+  // The plate is 16:9, so the frame must travel with the request: Workers AI
+  // takes width/height and would otherwise render the model's default square.
+  const w = Number(cloudflareRequests[0]?.body.width);
+  const h = Number(cloudflareRequests[0]?.body.height);
+  assert.ok(w > 0 && h > 0, "the frame is sent for Cloudflare renders");
+  assert.ok(Math.abs(w / h - 16 / 9) < 0.02, `the frame is 16:9, not ${w}x${h}`);
+  assert.equal(w % 8, 0, "the frame is a multiple of 8");
   assert.equal(cloudflareRequests[0]?.url, "https://api.cloudflare.com/client/v4/accounts/account123/ai/run/@cf/black-forest-labs/flux-1-schnell");
   assert.equal(cloudflareRequests[0]?.body.steps, 4);
   assert.deepEqual(Buffer.from(cloudflareResult.bytes), png);
   assert.equal(cloudflareResult.contentType, "image/png");
-
-  const pollinationsRequests: Array<{ url: URL; method: string | undefined; authorization: string | null }> = [];
-  globalThis.fetch = async (input, init) => {
-    pollinationsRequests.push({
-      url: new URL(String(input)),
-      method: init?.method,
-      authorization: new Headers(init?.headers).get("authorization"),
-    });
-    return new Response(png, { headers: { "content-type": "image/png" } });
-  };
-  const pollinations = new OpenAICompatProvider({
-    row: { ...row, base_url: "https://gen.pollinations.ai", model_name: "black-forest-labs/flux.1-schnell" },
-    key: "pollen-key",
-    defaultBaseUrl: "",
-  });
-  const pollinationsResult = await pollinations.generateImage({ prompt: "A train station" });
-  assert.equal(pollinationsRequests[0]?.url.hostname, "gen.pollinations.ai");
-  assert.equal(pollinationsRequests[0]?.url.searchParams.get("model"), "black-forest-labs/flux.1-schnell");
-  assert.equal(pollinationsRequests[0]?.method, undefined);
-  assert.match(pollinationsRequests[0]?.authorization ?? "", /^Bearer .+/);
-  assert.deepEqual(Buffer.from(pollinationsResult.bytes), png);
-
-  // Classic (keyless) Pollinations host: /prompt/<text>?model=…&width=&height=
-  const classicRequests: Array<{ url: URL; authorization: string | null }> = [];
-  globalThis.fetch = async (input, init) => {
-    classicRequests.push({
-      url: new URL(String(input)),
-      authorization: new Headers(init?.headers).get("authorization") ?? null,
-    });
-    return new Response(png, { headers: { "content-type": "image/jpeg" } });
-  };
-  const classic = new OpenAICompatProvider({
-    row: { ...row, base_url: "https://image.pollinations.ai", model_name: "flux" },
-    key: null,
-    defaultBaseUrl: "",
-  });
-  await classic.generateImage({ prompt: "A train station", size: "1024x576" });
-  assert.equal(classicRequests[0]?.url.hostname, "image.pollinations.ai");
-  assert.match(classicRequests[0]?.url.pathname ?? "", /^\/prompt\/.+/);
-  assert.equal(classicRequests[0]?.url.searchParams.get("model"), "flux");
-  assert.equal(classicRequests[0]?.url.searchParams.get("width"), "1024");
-  assert.equal(classicRequests[0]?.url.searchParams.get("height"), "576");
-  assert.equal(classicRequests[0]?.authorization, null, "keyless host must not send a bearer header");
 
   const togetherRequests: Array<{ url: string; body: Record<string, unknown> }> = [];
   globalThis.fetch = async (input, init) => {
@@ -116,7 +84,7 @@ try {
   await together.generateImage({ prompt: "A train station" });
   assert.equal(togetherRequests[0]?.url, "https://api.together.ai/v1/images/generations");
   assert.equal(togetherRequests[0]?.body.response_format, "base64");
-  console.log("[test] Cloudflare, Pollinations, and Together image provider checks passed");
+  console.log("[test] Cloudflare and Together image provider checks passed");
 } finally {
   globalThis.fetch = originalFetch;
 }

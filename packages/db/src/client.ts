@@ -1412,13 +1412,15 @@ export async function ensureProviderMultiKey(client: Client): Promise<void> {
  * database with the full set of text providers and every API key in
  * Secrets/GitHub still answered "কোনো সক্রিয় ছবি-প্রোভাইডার নেই".
  *
- * Order is free-first:
- *   1. Google Gemini 2.5 Flash Image (`GOOGLE_API_KEY`, free tier)
- *   2. Pollinations (`custom`, no key needed) — always-available free fallback
+ * Order is free-first, and the default is Cloudflare Workers AI:
+ *   1. Cloudflare Workers AI FLUX.1 schnell (priority 1) — watermark-free, free
+ *      daily Neuron allowance, and the operator can add more rows (one per
+ *      Cloudflare account) to multiply that allowance without touching code.
+ *   2. Google Gemini 2.5 Flash Image (`GOOGLE_API_KEY`, free tier)
  *   3. OpenAI GPT Image 1 (`OPENAI_API_KEY`)
- * The anonymous Pollinations route serves one image per ~45s per IP, so it is
- * deliberately placed after the keyed free provider; it only kicks in when the
- * keyed ones are missing or fail.
+ * The keyless Pollinations host that used to sit in this chain is gone: it
+ * stamped its own logo on every render, ignored the brief, and was the reason
+ * every story's picture looked the same.
  * A provider that fails falls through to the next one, so a missing/revoked key
  * never blocks the remaining chain.
  */
@@ -1449,10 +1451,6 @@ VALUES
    'https://app.manifest.build/v1', 'manifest/auto',
    'MANIFEST_API_KEY', 8, 1, 0, 1, 0,
    strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  ('prov-pollinations-image', 'custom', 'Pollinations (keyless)',
-   'https://image.pollinations.ai', 'flux',
-   'POLLINATIONS_API_KEY', 9, 1, 1, 0, 0,
-   strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   ('prov-google-image', 'google', 'Google Gemini Image',
    NULL, 'gemini-2.5-flash-image',
    'GOOGLE_API_KEY', 2, 1, 1, 0, 0,
@@ -1461,15 +1459,15 @@ VALUES
    'https://api.openai.com/v1', 'gpt-image-1',
    'OPENAI_API_KEY', 3, 1, 0, 0, 0,
    strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  -- The watermark-free free tier. Seeded inactive because the base URL needs the
-  -- operator's own account id: activate it in the console after pasting the
-  -- CLOUDFLARE_API_TOKEN secret and replacing ACCOUNT_ID in the base URL. Free
-  -- allowance is 10,000 Neurons a day and a 4-step FLUX.1 schnell render costs
-  -- roughly 40, i.e. about 250 editorial images a day with no watermark.
-  ('prov-cloudflare-image', 'custom', 'Cloudflare Workers AI — FLUX.1 schnell (watermark-free, free tier)',
+  -- The default image provider. Watermark-free, and the free allowance (10,000
+  -- Neurons a day; a 4-step FLUX.1 schnell render is roughly 40, so ~250
+  -- editorial images a day per Cloudflare account) is enough for a newsroom.
+  -- The account id is filled from CLOUDFLARE_ACCOUNT_ID or by the row editor, so
+  -- the placeholder never has to be hand-edited into a URL.
+  ('prov-cloudflare-image', 'cloudflare', 'Cloudflare Workers AI — FLUX.1 schnell (default)',
    'https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/ai/run/@cf/black-forest-labs/flux-1-schnell',
    '@cf/black-forest-labs/flux-1-schnell',
-   'CLOUDFLARE_API_TOKEN', 10, 0, 1, 0, 0,
+   'CLOUDFLARE_API_TOKEN', 1, 1, 1, 0, 0,
    strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 `);
   // Image rows are seeded with purpose = 'image'. A DB created before the
@@ -1480,7 +1478,41 @@ VALUES
       SET purpose = 'image',
           supports_rewrite = 0,
           updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
-      WHERE id IN ('prov-pollinations-image', 'prov-google-image', 'prov-openai-image', 'prov-cloudflare-image')
+      WHERE id IN ('prov-google-image', 'prov-openai-image', 'prov-cloudflare-image')
+  `);
+  /**
+   * Retire the keyless host that used to be seeded.
+   *
+   * A database created before this change still carries the row, and deleting a
+   * provider quietly would be a surprise in the console — but leaving it active
+   * would keep stamping a third party's logo on stories. So it is switched off
+   * and renamed, which is visible in the providers page and reversible by the
+   * operator, while the chain no longer reaches it.
+   */
+  await client.execute(`
+    UPDATE llm_providers
+      SET is_active = 0,
+          display_name = 'Pollinations — removed default (inactive)',
+          updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+      WHERE id = 'prov-pollinations-image'
+  `);
+  /**
+   * Cloudflare is the default now, and a database seeded by an earlier version
+   * still has that row switched off at priority 10. Promote it only while it
+   * still looks exactly as it was seeded: once an operator has changed the rank
+   * or paused the row, that decision is theirs and must not be undone by a
+   * restart.
+   */
+  await client.execute(`
+    UPDATE llm_providers
+      SET purpose = 'image',
+          is_active = 1,
+          priority = 1,
+          supports_rewrite = 0,
+          updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+      WHERE id = 'prov-cloudflare-image'
+        AND priority = 10
+        AND is_active = 0
   `);
   await client.execute(`
     UPDATE llm_providers

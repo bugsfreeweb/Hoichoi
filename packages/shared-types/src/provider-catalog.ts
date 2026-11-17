@@ -138,7 +138,7 @@ export const PROVIDER_META: ProviderMeta[] = [
     },
     baseUrl: "",
     freeTier: false,
-    noteBn: "Pollinations, Cloudflare Workers AI, Together AI — OpenAI-সদৃশ যেকোনো এন্ডপয়েন্ট।",
+    noteBn: "Cloudflare Workers AI, Together AI, OpenAI — OpenAI-সদৃশ যেকোনো এন্ডপয়েন্ট।",
   },
 ];
 
@@ -199,5 +199,5 @@ export function purposeLabelBn(purpose?: string | null): string {
 
 /** True when a model id looks like a text-to-image model. */
 export function looksLikeImageModel(model: string): boolean {
-  return /image|flux|dall-e|imagen|sdxl|stable-diffusion|pollinations|banana/i.test(model);
+  return /image|flux|dall-e|imagen|sdxl|stable-diffusion|banana/i.test(model);
 }

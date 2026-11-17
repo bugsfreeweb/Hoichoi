@@ -59,8 +59,13 @@ await client.execute(
 );
 // Broken first: a chat gateway with no image endpoint (404 → bad_output).
 await insert("broken-chat-row", 1, "free/mimo-v2.6-pro", "https://api.example-chat.test");
-// Working second: the keyless classic Pollinations host.
-await insert("working-image-row", 2, "flux", "https://image.pollinations.ai");
+// Working second: a Cloudflare Workers AI row.
+await insert(
+  "working-image-row",
+  2,
+  "@cf/black-forest-labs/flux-1-schnell",
+  "https://api.cloudflare.com/client/v4/accounts/account123/ai/run",
+);
 
 const originalFetch = globalThis.fetch;
 const calls: string[] = [];
@@ -70,6 +75,10 @@ try {
     calls.push(url);
     if (url.includes("example-chat.test")) {
       return new Response("not found", { status: 404 });
+    }
+    // Cloudflare answers a JSON envelope; the OpenAI-shaped hosts answer bytes.
+    if (url.includes("api.cloudflare.com")) {
+      return Response.json({ result: { image: png.toString("base64") } });
     }
     return new Response(png, { headers: { "content-type": "image/png" } });
   };
@@ -81,10 +90,9 @@ try {
     "the broken provider should have been attempted first",
   );
   assert.ok(
-    calls.some((u) => u.includes("image.pollinations.ai")),
+    calls.some((u) => u.includes("api.cloudflare.com")),
     "the chain must continue after a bad_output failure",
   );
-  assert.match(calls.at(-1) ?? "", /width=512&height=512|height=512&width=512/);
   // A *pinned* provider is a preference, not a filter. Pinning the broken row
   // used to shrink the candidate list to that row alone, so a quota/429 on the
   // chosen provider failed the request while the next row was healthy — the

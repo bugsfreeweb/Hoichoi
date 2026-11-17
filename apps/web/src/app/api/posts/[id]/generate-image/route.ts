@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {
+  banglaDate,
+  deskAccent,
+  deskLabel,
   getPostById,
   getClient,
   nowIso,
@@ -9,8 +12,8 @@ import {
   updatePost,
 } from "@hoichoi/db";
 import { uploadBufferRemote, writeGeneratedMedia } from "@hoichoi/db/storage";
-import { buildImageBrief, EDITORIAL_IMAGE_NEGATIVE, extensionForMime, generateImage, imageSizeFor, listImageProviders, watermarkTrimFraction } from "@hoichoi/llm";
-import { trimWatermark } from "@/lib/image-trim";
+import { buildImageBrief, EDITORIAL_IMAGE_NEGATIVE, extensionForMime, generateImage, imageSizeFor, listImageProviders } from "@hoichoi/llm";
+import { renderPoster } from "@hoichoi/poster";
 import { forbidden, requireApiRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -280,15 +283,32 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: (err as Error).message }, { status: 502 });
   }
 
-  // A provider-stamped watermark never reaches a story (see lib/image-trim.ts).
-  let bytes: Uint8Array = result.bytes;
+  /**
+   * The render becomes a plate, not a raw file: 16:9, our name on it, and the
+   * story's own headline as the caption. The download name follows the plate's
+   * content type, never the provider's claim.
+   */
+  let buf: Buffer;
+  let contentType = result.contentType;
   try {
-    bytes = await trimWatermark(result.bytes, watermarkTrimFraction(result.provider));
-  } catch {
-    /* trimming is cosmetic; the render itself is still usable */
+    const plate = await renderPoster({
+      background: Buffer.from(result.bytes),
+      spec: {
+        title: post.title_bn || "হৈচৈ",
+        category: deskLabel(post.category),
+        source: post.source_name ?? null,
+        dateText: post.published_at ? banglaDate(new Date(post.published_at)) : banglaDate(),
+      },
+      seed: post.slug,
+      accent: deskAccent(post.category),
+      format: "webp",
+    });
+    buf = plate.bytes;
+    contentType = plate.contentType;
+  } catch (plateErr) {
+    return NextResponse.json({ error: `প্লেট তৈরি ব্যর্থ: ${(plateErr as Error).message}` }, { status: 500 });
   }
-  const buf = Buffer.from(bytes);
-  const rel = randomMediaName("img", extensionForMime(result.contentType));
+  const rel = randomMediaName("img", extensionForMime(contentType));
 
   let applied: string | null = null;
   let stored: "remote" | "local" = "local";
@@ -313,7 +333,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     // here would attach a 404 to the post — which is exactly what "image does
     // not show" looked like.
     try {
-      await writeLocalMirror(rel, bytes);
+      await writeLocalMirror(rel, buf);
       applied = rel;
     } catch {
       return NextResponse.json(

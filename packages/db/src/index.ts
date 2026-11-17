@@ -4,6 +4,7 @@
  */
 export * from "./client";
 export * from "./rows";
+export { banglaDate, deskAccent, deskFor, deskLabel } from "./plate-meta";
 export * from "./archive";
 export * from "./media";
 export * from "./media-storage";
@@ -2011,7 +2012,7 @@ export interface PostUpdateFields {
   /** Inferred from media_path when omitted. */
   media_kind?: "image" | "video" | "none";
   /** Provenance of the new image (see `Post.media_origin`). */
-  media_origin?: "collector" | "ai" | "admin" | "external" | null;
+  media_origin?: "collector" | "ai" | "admin" | "external" | "plate" | null;
   /**
    * Provenance of the text: set when an AI task wrote or rewrote a field, with
    * the prompt/task version that produced it. Never inferred — an editor who

@@ -20,7 +20,9 @@
  * keeps one storage layout for desktop, local dev and production.
  */
 import { findRepoRoot, getClient, nowIso, updatePost } from "@hoichoi/db";
-import { imageSizeFor, composeImagePrompt, generateImage as llmGenerateImage, watermarkTrimFraction } from "@hoichoi/llm";
+import { imageSizeFor, composeImagePrompt, generateImage as llmGenerateImage } from "@hoichoi/llm";
+import { POSTER_FRAME } from "@hoichoi/poster";
+import { composeStoryPlate } from "./plate";
 import { downloadMedia, isVideoUrl, localMediaPath, mediaRoot, processImage, randomMediaName } from "./media";
 import { scrapePostUrls } from "./facebook";
 import { aiHeroEligible, generateAIHero } from "./ai-image";
@@ -487,6 +489,10 @@ export async function generateManualImage(opts: {
   quality?: string;
   negativePrompt?: string;
   attach?: boolean;
+  /** The headline to caption the plate with. Falls back to a short prompt. */
+  plateTitle?: string;
+  plateCategory?: string | null;
+  plateSource?: string | null;
   log?: (msg: string) => void;
 }): Promise<ManualImageResult> {
   const log = opts.log ?? (() => undefined);
@@ -521,10 +527,19 @@ export async function generateManualImage(opts: {
   // processImage always writes webp (and re-encodes/resizes), so the media name
   // must carry the .webp extension regardless of what the provider returned.
   const rel = randomMediaName("img", "webp");
-  await processImage(Buffer.from(result.bytes), rel, {
-    maxWidthPx: MAX_WIDTH_PX,
-    trimBottomFraction: watermarkTrimFraction(result.provider),
+  /**
+   * The editor asked for a picture "for this post", so the plate carries the
+   * post's own headline and desk: the same structure the collector applies
+   * automatically, so a manually generated hero and an automatic one are the
+   * same kind of object on the site.
+   */
+  const plate = await composeStoryPlate({
+    background: Buffer.from(result.bytes),
+    title: opts.plateTitle ?? opts.prompt.slice(0, 160),
+    category: opts.plateCategory ?? null,
+    source: opts.plateSource ?? null,
   });
+  await processImage(plate, rel, { maxWidthPx: POSTER_FRAME.width });
   mirrorMediaFile(rel);
   let pub: string | null = null;
   let warning: string | undefined;

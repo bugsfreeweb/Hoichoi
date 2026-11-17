@@ -14,7 +14,9 @@
  * no text, no logos, no identifiable people and no children.
  */
 import { randomMediaName, processImage } from "./media";
-import { buildImageBrief, generateImage, imageSizeFor, listImageProviders, watermarkTrimFraction } from "@hoichoi/llm";
+import { composeStoryPlate } from "./plate";
+import { buildImageBrief, generateImage, imageSizeFor, listImageProviders } from "@hoichoi/llm";
+import { POSTER_FRAME } from "@hoichoi/poster";
 
 /** Categories where an AI rendering of the subject would be inappropriate. */
 const SENSITIVE_AI_CATEGORIES = new Set(["child-sexual-abuse", "missing-children", "extramarital-crime"]);
@@ -79,17 +81,44 @@ export async function generateAIHero(opts: {
       },
       AbortSignal.timeout(60_000),
     );
-    const rel = randomMediaName("img", "webp");
-    await processImage(Buffer.from(result.bytes), rel, {
-      maxWidthPx: 1280,
-      // Pollinations stamps its own mark and ignores nologo; nothing watermarked
-      // by a third party may reach a story.
-      trimBottomFraction: watermarkTrimFraction(result.provider),
-    });
-    log(`[ai-img] hero ✓ ${rel} via ${result.provider} (${result.model})`);
-    return rel;
+    return await writePlate(Buffer.from(result.bytes), opts, log, `via ${result.provider} (${result.model})`);
   } catch (err) {
+    /**
+     * The model failed — quota, timeout, HTML instead of an image. The story
+     * still gets a picture: the branded plate is drawn from the headline alone,
+     * so a published card never falls back to an empty gradient.
+     */
     log(`[ai-img] generation failed: ${(err as Error).message}`);
-    return null;
+    try {
+      return await writePlate(null, opts, log, "branded plate (no model)");
+    } catch (plateErr) {
+      log(`[ai-img] plate failed: ${(plateErr as Error).message}`);
+      return null;
+    }
   }
+}
+
+/**
+ * Compose the plate around whatever we have and store it.
+ *
+ * A `null` render is a legitimate input: the plate carries the brand and the
+ * headline, which is a publishable picture and an honest one — it does not
+ * pretend a model drew the story.
+ */
+async function writePlate(
+  background: Buffer | null,
+  opts: { title: string; summary: string; category?: string | null },
+  log: (msg: string) => void,
+  via: string,
+): Promise<string> {
+  const plate = await composeStoryPlate({
+    background,
+    title: opts.title,
+    category: opts.category,
+    source: null,
+  });
+  const rel = randomMediaName("img", "webp");
+  await processImage(plate, rel, { maxWidthPx: POSTER_FRAME.width });
+  log(`[ai-img] hero ✓ ${rel} ${via}`);
+  return rel;
 }

@@ -120,7 +120,7 @@ export function ProviderForm() {
     setFetching(true);
     setFetchError("");
     setModels(null);
-    if (providerKey === "custom" && purpose === "image" && /(?:cloudflare\.com|gen\.pollinations\.ai)/i.test(baseUrl)) {
+    if (providerKey === "custom" && purpose === "image" && /cloudflare\.com/i.test(baseUrl)) {
       setFetchError("এই API-তে chat মডেলের তালিকা নেই; উপরের সাজেশন থেকে image মডেল বেছে নিন বা হাতে লিখুন।");
       setFetching(false);
       return;
@@ -301,7 +301,7 @@ export function ProviderForm() {
             {purpose === "image" && providerKey === "custom" && (
               <div className="text-[11px] leading-relaxed text-ink-soft">
                 <p className="font-bold text-ink">কাস্টম ইমেজ API-এর উদাহরণ</p>
-                <p className="mt-1">Pollinations (কী ছাড়া): <code>https://image.pollinations.ai</code> · মডেল `flux`</p>
+                <p className="mt-1">Cloudflare Workers AI: <code>https://api.cloudflare.com/client/v4/accounts/&lt;ACCOUNT_ID&gt;/ai/run/@cf/black-forest-labs/flux-1-schnell</code></p>
                 <p>Cloudflare Workers AI: <code>https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/ai/run</code> · `@cf/black-forest-labs/flux-1-schnell`</p>
                 <p>Together AI: <code>https://api.together.ai/v1</code> · `black-forest-labs/FLUX.1-schnell` (বিল হয়)</p>
               </div>

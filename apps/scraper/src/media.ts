@@ -42,32 +42,11 @@ export async function processImage(
   outRel: string,
   opts: {
     maxWidthPx: number;
-    /**
-     * Fraction of the height to shave off the bottom before resizing.
-     *
-     * Only the keyless Pollinations hosts need this: they stamp a small
-     * `pollinations.ai` mark in the bottom-right corner and ignore `nologo` even
-     * with a referrer, so a measured render came back with the logo on it. A
-     * newspaper cannot publish a third party's mark, and cropping a thin band is
-     * honest — the alternative was a watermark on every AI hero.
-     */
-    trimBottomFraction?: number;
   },
 ): Promise<{ rel: string; width: number; height: number; sizeBytes: number }> {
   ensureMediaDir();
   const outPath = mkdirForFile(localMediaPath(outRel));
   let pipeline = (await loadSharp())(input).rotate();
-  if (opts.trimBottomFraction && opts.trimBottomFraction > 0) {
-    const meta = await pipeline.metadata();
-    const h = meta.height ?? 0;
-    const keep = Math.max(1, Math.round(h * (1 - Math.min(0.25, opts.trimBottomFraction))));
-    if (h > 0) {
-      // `extract` must come after orientation so the box matches what was fetched.
-      pipeline = (await loadSharp())(input)
-        .rotate()
-        .extract({ left: 0, top: 0, width: meta.width ?? 1, height: keep });
-    }
-  }
   const meta = await pipeline
     .resize({ width: opts.maxWidthPx, withoutEnlargement: true })
     .webp({ quality: 82 })

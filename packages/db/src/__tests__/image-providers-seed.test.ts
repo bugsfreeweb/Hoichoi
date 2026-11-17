@@ -49,9 +49,13 @@ async function main(): Promise<void> {
 
     assert.ok(rows.length > 0, "a fresh database must ship at least one active image provider");
 
-    const pollinations = rows.find((r) => /pollinations/i.test(String(r.base_url)));
-    assert.ok(pollinations, "the keyless Pollinations image provider must be seeded");
-    assert.equal(pollinations!.supports_rewrite, false, "image providers must not claim rewrite support");
+    // The keyless host that used to be seeded must never come back: it stamped a
+    // third party's logo on every render and ignored the brief.
+    assert.equal(
+      rows.find((r) => /pollinations/i.test(String(r.base_url))),
+      undefined,
+      "no pollinations row may be seeded or remain active",
+    );
 
     const google = rows.find((r) => r.provider_key === "google");
     assert.ok(google, "Google Gemini image (GOOGLE_API_KEY) must be seeded");
@@ -61,25 +65,24 @@ async function main(): Promise<void> {
     assert.ok(openai, "OpenAI GPT Image (OPENAI_API_KEY) must be seeded");
 
     /**
-     * The watermark-free free tier ships with a fresh database, but inactive.
+     * Cloudflare is the default provider, and more rows may be added.
      *
-     * The keyless Pollinations host stamps its own logo on every render and
-     * ignores the brief (a measured render of a corruption story came back as a
-     * photo of papers), so an operator needs a free alternative ready. Cloudflare
      * Workers AI answers FLUX.1 schnell on a free daily Neuron allowance with no
-     * watermark, but its base URL carries the operator's own account id — so the
-     * row is seeded switched off rather than half-configured and failing health
-     * checks on every page load.
+     * watermark. Its base URL carries the operator's own account id, which is
+     * filled from CLOUDFLARE_ACCOUNT_ID or by the row editor — so the row ships
+     * active and refuses to call until that id is present, instead of failing
+     * with Cloudflare's "could not route to …ACCOUNT_ID…".
      */
     const cf = await client.execute(
-      "SELECT display_name, base_url, model_name, api_key_env_var, is_active, is_free_tier FROM llm_providers WHERE id = 'prov-cloudflare-image'",
+      "SELECT display_name, base_url, model_name, api_key_env_var, is_active, is_free_tier, priority FROM llm_providers WHERE id = 'prov-cloudflare-image'",
     );
     const cfRow = cf.rows[0];
     assert.ok(cfRow, "the watermark-free free tier must be seeded");
     assert.match(String(cfRow!.base_url), /ACCOUNT_ID/, "the account id must stay a placeholder, never a guess");
     assert.match(String(cfRow!.model_name), /flux-1-schnell/i, "it must point at a FLUX.1 schnell model");
     assert.equal(String(cfRow!.api_key_env_var), "CLOUDFLARE_API_TOKEN");
-    assert.equal(Number(cfRow!.is_active), 0, "it must not activate itself without a token");
+    assert.equal(Number(cfRow!.is_active), 1, "Cloudflare is the default image provider");
+    assert.equal(Number(cfRow!.priority), 1, "and it is first in the chain");
     assert.equal(Number(cfRow!.is_free_tier), 1);
 
     // No duplicate rows after repeated seeding.

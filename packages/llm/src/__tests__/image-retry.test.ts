@@ -2,7 +2,7 @@
  * One transient refusal must not cost the editor the picture.
  *
  * Measured on this deployment: `media generate` failed outright with
- * "Google: 429 quota exceeded | OpenAI: no credits | Pollinations: 503 the classic
+ * "Google: 429 quota exceeded | OpenAI: no credits | a shared free tier: 503 the classic
  * API is at its limit right now". The first two are real quota walls, but the
  * third is a "come back in ten seconds" — the same host answered every direct
  * request in between. Only 429 was ever retried, so a peak-load 503 turned a

@@ -21,7 +21,6 @@ import {
   pickMetaphor,
   sceneForCategory,
   editorialImagePrompt,
-  watermarkTrimFraction,
 } from "../image-prompt";
 
 let passed = 0;
@@ -202,29 +201,6 @@ check("back-compat surface", () => {
   assert.ok(Array.isArray(brief.cues));
   assert.equal(typeof brief.subject, "string");
   assert.equal(brief.negative, EDITORIAL_IMAGE_NEGATIVE);
-});
-
-// --- watermark policy -------------------------------------------------------
-//
-// Only the keyless Pollinations hosts stamp a logo. Any other provider must get
-// no trim at all: cropping a paid render is a layout decision, not a legal one.
-check("a Pollinations render is marked for a watermark trim", () => {
-  assert.equal(watermarkTrimFraction("Pollinations (keyless)"), 0.08);
-  assert.equal(watermarkTrimFraction("pollinations.ai"), 0.08);
-});
-
-check("no other provider is trimmed", () => {
-  const names: (string | null | undefined)[] = [
-    "Google Gemini Image",
-    "OpenAI GPT Image",
-    "Cloudflare Workers AI — FLUX.1 schnell",
-    "",
-    null,
-    undefined,
-  ];
-  for (const name of names) {
-    assert.equal(watermarkTrimFraction(name), 0, `nothing may be cropped from ${String(name)}`);
-  }
 });
 
 check("the medium opens the prompt", () => {

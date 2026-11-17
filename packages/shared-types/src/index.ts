@@ -166,7 +166,7 @@ export interface RawPost {
 }
 
 /** Provenance of a post's primary image. */
-export type MediaOrigin = "collector" | "ai" | "admin" | "external";
+export type MediaOrigin = "collector" | "ai" | "admin" | "external" | "plate";
 
 export type VerificationStatus = "unverified" | "single_source" | "multi_source" | "human_verified" | "corrected";
 

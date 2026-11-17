@@ -22,6 +22,8 @@ import { captureScreenshot } from "./screenshot";
 import { classifyContent, sourceCategoryCandidates } from "./classify";
 import { uploadRemote } from "./storage";
 import { aiHeroEligible, generateAIHero, hasAIImageProvider } from "./ai-image";
+import { composeStoryPlate } from "./plate";
+import { POSTER_FRAME } from "@hoichoi/poster";
 import { fetchRssPosts, isFeedPlatform } from "./rss";
 
 /** Shared fetch options for CDN media: some providers 403 on the bare Node
@@ -551,7 +553,7 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         kind: "image" | "video" | "none";
         path: string | null;
         /** Provenance written to `posts.media_origin` (see migration 023). */
-        origin?: "collector" | "ai";
+        origin?: "collector" | "ai" | "plate";
       } = { kind: "none", path: null };
       // Record why each candidate was rejected. Without this a post with
       // media that quietly fails to mirror arrives at the text check with no
@@ -703,6 +705,51 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           }
         } catch (err) {
           log(`[media] AI hero failed: ${(err as Error).message}`);
+        }
+      }
+
+      /**
+       * STEP 2.6: the plate. A published story always has a picture.
+       *
+       * Everything above can fail: the source's media is 403'd, AI generation is
+       * off, the provider is rate-limited or unconfigured. The old code then
+       * published with `media_kind = "none"` and the card fell back to a gradient
+       * — a story on a news site with no picture. This step draws the branded
+       * 16:9 plate (wordmark, desk, headline, date) over a deterministic backdrop
+       * derived from the story itself, so "no image" is no longer a publishable
+       * state. It needs no network and no key.
+       */
+      if (media.kind === "none") {
+        try {
+          const plateTitle =
+            (sp.rawText ?? "").split(/[.!?।\n]/, 1)[0]?.trim().slice(0, 160) || source.page_name;
+          const plate = await composeStoryPlate({
+            background: null,
+            title: plateTitle,
+            category: source.category,
+            source: source.page_name,
+            seed: `${source.page_name}:${plateTitle}`,
+          });
+          const rel = randomMediaName("img", "webp");
+          await processImage(plate, rel, { maxWidthPx: POSTER_FRAME.width });
+          media.kind = "image";
+          media.path = rel;
+          media.origin = "plate";
+          let pub: string | null = null;
+          try {
+            pub = await uploadRemote(rel);
+          } catch (err) {
+            log(`[plate] remote upload failed: ${(err as Error).message}`);
+          }
+          if (pub) {
+            media.path = pub;
+            log(`[plate] uploaded → ${pub}`);
+          } else {
+            const mirrored = mirrorMediaFile(rel);
+            if (mirrored.length > 0) log(`[plate] mirrored → ${mirrored[0]}`);
+          }
+        } catch (err) {
+          log(`[plate] failed: ${(err as Error).message}`);
         }
       }
 

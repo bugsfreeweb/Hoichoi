@@ -13,8 +13,14 @@ const nextConfig = {
   // patterns keep the real files in the function bundle too, for the
   // `HOICHOI_MIGRATIONS_DIR` override and for the disk-first path in
   // packages/db/src/migrations.ts.
+  /**
+   * Route bundles are traced from imports, and the poster's Bengali fonts are
+   * read from disk rather than imported — so a lambda that shipped without them
+   * would render the caption as tofu boxes. The files are tiny (two TTFs, ~400 KB)
+   * and the alternative is a picture with no readable headline.
+   */
   outputFileTracingIncludes: {
-    "/api/**": ["../../packages/db/migrations/**/*.sql"],
+    "/api/**": ["../../packages/db/migrations/**/*.sql", "../../packages/poster/fonts/**/*"],
     "/admin/**": ["../../packages/db/migrations/**/*.sql"],
   },
   serverExternalPackages: ["@libsql/client", "bcryptjs", "sharp"],

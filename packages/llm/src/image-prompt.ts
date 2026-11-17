@@ -705,20 +705,6 @@ export function buildImageBrief(input: ImageBriefInput): ImageBrief {
   };
 }
 
-/**
- * How much of the bottom of a render to shave off, by provider.
- *
- * Only the keyless Pollinations hosts need it: they stamp a small
- * `pollinations.ai` mark in the bottom-right corner and keep doing it with
- * `nologo=true` and a referrer set. A newspaper cannot publish someone else's
- * mark, so the caller trims a thin band rather than shipping a watermark. Every
- * other provider returns 0 — cropping a paid render would be a layout decision,
- * not a legal one, and this function must not become a general "crop a bit".
- */
-export function watermarkTrimFraction(provider: string | null | undefined): number {
-  return /pollinations/i.test(provider ?? "") ? 0.08 : 0;
-}
-
 /** Convenience one-liner for callers that only need the prompt string. */
 export function editorialImagePrompt(input: ImageBriefInput): string {
   return buildImageBrief(input).prompt;
