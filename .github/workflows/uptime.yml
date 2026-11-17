@@ -12,6 +12,8 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
+      # The probe script lives in the repo, so the checkout is not optional.
+      - uses: actions/checkout@v4
       - name: Skip without a site URL
         id: gate
         run: |
