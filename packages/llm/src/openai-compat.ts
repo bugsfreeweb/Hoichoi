@@ -245,7 +245,7 @@ export class OpenAICompatProvider implements LLMProvider {
     const prompt = composeImagePrompt(req);
     this.assertRoutable();
     if (this.isCloudflareWorkersAi()) {
-      return this.generateCloudflareImage(model, prompt, signal, req.size, req.aspectRatio);
+      return this.generateCloudflareImage(model, prompt, signal);
     }
     const body: Record<string, unknown> = {
       model,
@@ -301,17 +301,19 @@ export class OpenAICompatProvider implements LLMProvider {
     const basePath = this.baseUrl.replace(/\/+$/, "");
     const url = basePath.endsWith(`/${modelPath}`) ? basePath : `${basePath}/${modelPath}`;
     /**
-     * FLUX.1 schnell takes `width`/`height` directly (both a multiple of 8,
-     * 256–1920), so the brief's 16:9 is honoured at the source instead of being
-     * cropped back to landscape afterwards. `steps` must stay <= 8 on the
-     * Workers AI binding, and 4 is the tier's fast default.
+     * The Workers AI binding validates its input against the model's own schema
+     * and rejects anything the schema does not declare — this payload's first
+     * live run failed with "Additional or unevaluated properties '/width,
+     * /height' not allowed", so flux-1-schnell does **not** take dimensions
+     * (only `prompt`, `steps` and `seed`; it renders 1024×1024). Asking for a
+     * frame here was worse than useless: it made the one provider that was known
+     * to work refuse every request. The landscape frame is now guaranteed where
+     * it belongs — the plate crops the render to 16:9 (`fit: cover`,
+     * `position: attention`), which is applied to every provider's output anyway.
+     *
+     * `steps` must stay <= 8 on the Workers AI binding; 4 is the fast default.
      */
-    const frame = frameDims(size, aspectRatio);
     const payload: Record<string, unknown> = { prompt, steps: 4 };
-    if (frame) {
-      payload.width = frame.width;
-      payload.height = frame.height;
-    }
     const res = await fetch(url, {
       method: "POST",
       headers: this.headers,

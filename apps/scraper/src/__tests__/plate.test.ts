@@ -7,6 +7,7 @@
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import path from "node:path";
 import { banglaDate, deskFor, composeStoryPlate } from "../plate";
 
 let passed = 0;
@@ -52,6 +53,32 @@ async function main(): Promise<void> {
     assert.equal(meta.height, 900);
     assert.equal(meta.format, "webp");
     fs.writeFileSync(".tmp-plate-scraper.webp", bytes);
+  });
+
+  await check("a refused provider chain still produces a picture", () => {
+    /**
+     * Source-level, because the interesting behaviour is the control flow: the
+     * manual generator must catch a chain that refused and compose the plate over
+     * the branded backdrop, not rethrow. Comments are stripped first — a comment
+     * that mentions the fallback is not the fallback.
+     */
+    const source = fs
+      .readFileSync(path.resolve(import.meta.dirname, "..", "media-backfill.ts"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    assert.match(source, /catch \(err\) \{[\s\S]{0,240}renderError =/, "the render is caught, not rethrown");
+    assert.match(source, /background: rendered \? Buffer\.from\(rendered\.bytes\) : null/, "the plate is composed either way");
+    assert.match(source, /media_origin: rendered \? "ai" : "plate"/, "the badge is told the truth about the picture");
+    assert.ok(!/generateManualImage[\s\S]{0,2000}throw err/.test(source), "a provider failure does not escape the generator");
+  });
+
+  await check("Workers AI is sent no dimensions it would reject", () => {
+    const source = fs
+      .readFileSync(path.resolve(import.meta.dirname, "..", "..", "..", "..", "packages", "llm", "src", "openai-compat.ts"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    const body = source.slice(source.indexOf("const payload: Record<string, unknown> = { prompt"));
+    assert.ok(!/payload\.(width|height|size)\s*=/.test(body.slice(0, 600)), "no width/height/size is sent to Workers AI");
   });
 
   console.log(`\nplate: ${passed} checks passed`);

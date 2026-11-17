@@ -438,6 +438,24 @@ when the model answers, when the model fails (`renderPoster({background: null})`
 branded backdrop), when collection found no media at all (`pipeline.ts` STEP 2.6), and when
 an editor presses generate. A provider being rate-limited changes the background; it does
 not change whether the story ships with a picture.
+Three faults were found by *running* it rather than reading it:
+
+1. **Workers AI was sent fields its schema does not declare.** `400 AiError: Bad input:
+   Additional or unevaluated properties '/width, /height' at '/' not allowed` — flux-1-schnell
+   takes `prompt`, `steps` and `seed`, not dimensions, so asking for a 16:9 frame at the source
+   made the one provider known to work reject every request. The payload is `{prompt, steps}`
+   again and the landscape frame is guaranteed where it belongs, in the plate's `fit: cover`.
+2. **A refused chain exited 1 and left the post pictureless.** Quota, a missing key and an
+   auth failure in the same run produced `ok:false` and a red workflow. `generateManualImage`
+   and `POST /api/posts/[id]/generate-image` now catch that and compose the plate over the
+   branded backdrop, returning the provider's reason as a `warning` — and `media_origin`
+   becomes `plate`, so the badge does not claim a render that never happened.
+3. **The caption was the brief.** With no title passed, the plate's headline fell back to the
+   English illustration prompt ("Hand-drawn editorial illustration, ink and gouache on
+   paper…") and its topic chips came out as "illustration", "photograph". The generator now
+   reads `title_bn` / `category` / `source_name` from the post itself, so a CLI render and a
+   console render put the same Bangla headline and desk on the picture.
+
 
 **The console reads like the dashboard.** `reports`, `polls`, `live`, `backup` and `setup`
 moved to `PageHeading` + `Card` / `CardHead` / `StatTile`, so a queue, a poll and a live

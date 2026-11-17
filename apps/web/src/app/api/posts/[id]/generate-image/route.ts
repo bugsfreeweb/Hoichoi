@@ -264,7 +264,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     // in-process generation so a locally runnable dev setup still works.
   }
 
-  let result;
+  /**
+   * A refused render still produces a picture.
+   *
+   * Every provider in the chain can say no at once — a quota, a revoked key, a
+   * payload the model's schema does not allow — and the promise on this route is
+   * that the post does not stay pictureless. The plate is composed over the
+   * branded backdrop instead, and the provider's reason travels back as a
+   * warning so the editor learns what happened without losing the image.
+   */
+  let result: Awaited<ReturnType<typeof generateImage>> | null = null;
+  let renderError: string | null = null;
   try {
     result = await generateImage(
       {
@@ -280,7 +290,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       AbortSignal.timeout(110_000),
     );
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 502 });
+    renderError = err instanceof Error ? err.message : String(err);
   }
 
   /**
@@ -289,10 +299,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
    * content type, never the provider's claim.
    */
   let buf: Buffer;
-  let contentType = result.contentType;
+  let contentType = result?.contentType ?? "image/webp";
   try {
     const plate = await renderPoster({
-      background: Buffer.from(result.bytes),
+      background: result ? Buffer.from(result.bytes) : null,
       spec: {
         title: post.title_bn || "হৈচৈ",
         category: deskLabel(post.category),
@@ -362,7 +372,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         user.user_id,
         "post.generate_image",
         id,
-        JSON.stringify({ media_path: applied, provider: result.provider, model: result.model, prompt: result.prompt }),
+        JSON.stringify({
+          media_path: applied,
+          provider: result?.provider ?? "plate",
+          model: result?.model ?? "branded-backdrop",
+          ...(renderError ? { render_error: renderError } : {}),
+        }),
         nowIso(),
       ],
     });
@@ -373,11 +388,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     media_path: applied,
     stored,
     via: "local",
-    provider: result.provider,
-    model: result.model,
-    contentType: result.contentType,
-    bytes: result.bytes.length,
+    provider: result?.provider ?? "plate",
+    model: result?.model ?? "branded-backdrop",
+    contentType,
+    bytes: buf.length,
     attached: attach,
-    ...(remoteWarning ? { warning: remoteWarning } : {}),
+    ...(remoteWarning || renderError
+      ? { warning: [remoteWarning, renderError].filter(Boolean).join(" · ") }
+      : {}),
   });
 }

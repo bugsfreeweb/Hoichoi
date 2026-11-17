@@ -479,6 +479,40 @@ export interface ManualImageResult {
  * mirrored into the web `public/uploads` tree, pushed to the remote adapter
  * chain when configured, and written to the post's `media_path`.
  */
+/**
+ * The three facts a plate needs from the row, or nothing.
+ *
+ * Deliberately forgiving: a missing row or a database hiccup must not stop the
+ * picture being drawn, it only means the caption falls back to whatever the
+ * caller supplied.
+ *
+ * Why this exists: the caption used to fall back to `opts.prompt`, and the
+ * prompt is an English illustration brief — so a plate produced by
+ * `media generate` carried "Hand-drawn editorial illustration, ink and gouache
+ * on paper…" as its Bangla news caption, and its topic chips ("illustration",
+ * "photograph") in English. Reading the row here means every caller gets a real
+ * headline and desk without having to remember to pass them.
+ */
+async function plateFacts(
+  postId: string,
+): Promise<{ title: string | null; category: string | null; source: string | null }> {
+  try {
+    const row = (
+      await getClient().execute({
+        sql: "SELECT title_bn, category, source_name FROM posts WHERE id = ?",
+        args: [postId],
+      })
+    ).rows[0] as { title_bn?: string; category?: string; source_name?: string } | undefined;
+    return {
+      title: row?.title_bn?.trim() || null,
+      category: row?.category ?? null,
+      source: row?.source_name ?? null,
+    };
+  } catch {
+    return { title: null, category: null, source: null };
+  }
+}
+
 export async function generateManualImage(opts: {
   postId: string;
   prompt: string;
@@ -511,19 +545,36 @@ export async function generateManualImage(opts: {
     quality: opts.quality,
     negativePrompt: opts.negativePrompt,
   });
-  const result = await llmGenerateImage(
-    {
-      prompt,
-      providerId: opts.providerId,
-      size,
-      aspectRatio,
-      style: opts.style,
-      quality: opts.quality,
-      negativePrompt: opts.negativePrompt,
-      count: 1,
-    },
-    AbortSignal.timeout(110_000),
-  );
+  /**
+   * A failed render is not a failed request.
+   *
+   * When every provider in the chain refuses — quota, auth, or a payload the
+   * model does not accept — the editor still asked for a picture for this post,
+   * and the promise is that a story never ships without one. So the plate is
+   * composed anyway, over the branded backdrop instead of over a render, and the
+   * reason travels back as a warning. Before this, one bad provider turned the
+   * whole action into exit 1 and the post stayed pictureless.
+   */
+  let rendered: Awaited<ReturnType<typeof llmGenerateImage>> | null = null;
+  let renderError: string | null = null;
+  try {
+    rendered = await llmGenerateImage(
+      {
+        prompt,
+        providerId: opts.providerId,
+        size,
+        aspectRatio,
+        style: opts.style,
+        quality: opts.quality,
+        negativePrompt: opts.negativePrompt,
+        count: 1,
+      },
+      AbortSignal.timeout(110_000),
+    );
+  } catch (err) {
+    renderError = err instanceof Error ? err.message : String(err);
+    log(`[img-gen] provider chain refused, drawing the branded plate instead: ${renderError}`);
+  }
   // processImage always writes webp (and re-encodes/resizes), so the media name
   // must carry the .webp extension regardless of what the provider returned.
   const rel = randomMediaName("img", "webp");
@@ -533,11 +584,12 @@ export async function generateManualImage(opts: {
    * automatically, so a manually generated hero and an automatic one are the
    * same kind of object on the site.
    */
+  const facts = await plateFacts(opts.postId);
   const plate = await composeStoryPlate({
-    background: Buffer.from(result.bytes),
-    title: opts.plateTitle ?? opts.prompt.slice(0, 160),
-    category: opts.plateCategory ?? null,
-    source: opts.plateSource ?? null,
+    background: rendered ? Buffer.from(rendered.bytes) : null,
+    title: opts.plateTitle ?? facts.title ?? opts.prompt.slice(0, 160),
+    category: opts.plateCategory ?? facts.category ?? null,
+    source: opts.plateSource ?? facts.source ?? null,
   });
   await processImage(plate, rel, { maxWidthPx: POSTER_FRAME.width });
   mirrorMediaFile(rel);
@@ -550,19 +602,28 @@ export async function generateManualImage(opts: {
     log(`[img-gen] remote upload failed: ${warning}`);
   }
   const applied = pub ?? rel;
-  log(`[img-gen] ${opts.postId.slice(0, 8)} -> ${applied} via ${result.provider} (${result.model})`);
+  const provider = rendered?.provider ?? "plate";
+  const model = rendered?.model ?? "branded-backdrop";
+  log(
+    rendered
+      ? `[img-gen] ${opts.postId.slice(0, 8)} -> ${applied} via ${provider} (${model})`
+      : `[img-gen] ${opts.postId.slice(0, 8)} -> ${applied} via the branded plate (no render)`,
+  );
 
   const attach = opts.attach !== false;
   if (attach) {
-    await updatePost(opts.postId, { media_path: applied, media_origin: "ai" });
+    // `media_origin` tells the badge the truth: a plate carrying only our own
+    // backdrop is marked as such even when it was requested as "AI".
+    await updatePost(opts.postId, { media_path: applied, media_origin: rendered ? "ai" : "plate" });
   }
+  const notes = [warning, renderError].filter(Boolean) as string[];
   return {
     media_path: applied,
-    provider: result.provider,
-    model: result.model,
-    contentType: result.contentType,
-    bytes: result.bytes.length,
+    provider,
+    model,
+    contentType: rendered?.contentType ?? "image/webp",
+    bytes: plate.length,
     attached: attach,
-    ...(warning ? { warning } : {}),
+    ...(notes.length ? { warning: notes.join(" · ") } : {}),
   };
 }

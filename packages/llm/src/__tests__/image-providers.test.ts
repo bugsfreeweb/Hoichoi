@@ -52,13 +52,20 @@ try {
     size: "1600x900",
     aspectRatio: "16:9",
   });
-  // The plate is 16:9, so the frame must travel with the request: Workers AI
-  // takes width/height and would otherwise render the model's default square.
-  const w = Number(cloudflareRequests[0]?.body.width);
-  const h = Number(cloudflareRequests[0]?.body.height);
-  assert.ok(w > 0 && h > 0, "the frame is sent for Cloudflare renders");
-  assert.ok(Math.abs(w / h - 16 / 9) < 0.02, `the frame is 16:9, not ${w}x${h}`);
-  assert.equal(w % 8, 0, "the frame is a multiple of 8");
+  /**
+   * The frame must NOT travel to Workers AI.
+   *
+   * Its binding validates the payload against the model schema and rejects
+   * anything undeclared — the first live run failed with "Additional or
+   * unevaluated properties '/width, /height' not allowed", which made the one
+   * provider known to work refuse every request. flux-1-schnell takes `prompt`
+   * and `steps` only, and the plate crops whatever it returns to 16:9.
+   */
+  const cloudflareBody = cloudflareRequests[0]?.body ?? {};
+  assert.equal(cloudflareBody.width, undefined, "Workers AI rejects a width field");
+  assert.equal(cloudflareBody.height, undefined, "Workers AI rejects a height field");
+  assert.equal(cloudflareBody.prompt, "A train station");
+  assert.ok(!("size" in cloudflareBody), "no OpenAI-style size field either");
   assert.equal(cloudflareRequests[0]?.url, "https://api.cloudflare.com/client/v4/accounts/account123/ai/run/@cf/black-forest-labs/flux-1-schnell");
   assert.equal(cloudflareRequests[0]?.body.steps, 4);
   assert.deepEqual(Buffer.from(cloudflareResult.bytes), png);
