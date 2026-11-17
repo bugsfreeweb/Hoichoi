@@ -245,7 +245,7 @@ function topicChips(topics: string[]): string {
     .map((c, i) => {
       const w = widths[i]!;
       const chip = `<g>
-    <rect x="${Math.round(x)}" y="${y}" width="${w}" height="40" rx="20" fill="#ffffff" fill-opacity="0.10" stroke="#ffffff" stroke-opacity="0.22"/>
+    <rect x="${Math.round(x)}" y="${y}" width="${w}" height="40" rx="20" fill="#06070a" fill-opacity="0.62" stroke="#ffffff" stroke-opacity="0.18"/>
     <text x="${Math.round(x + w / 2)}" y="${y + 26}" text-anchor="middle" font-family="Noto Sans Bengali" font-size="17" font-weight="600" fill="${MUTED}">${escapeXml(c)}</text>
   </g>`;
       x += w + gap;
