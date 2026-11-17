@@ -416,8 +416,10 @@ visible text with `aria-label="বিজ্ঞাপন"`, and a 13 px blurb tha
 production build: **1.00** for `/`, `/poll` and `/about`, CLS **0** on all three. 6 checks in
 `scripts/reveal-a11y.test.ts`.
 
-The roadmap is now **98 ✅ · 6 🟡 · 0 ⬜** — the six partials are named at the top of
-`docs/roadmap.md` rather than hidden.
+The roadmap is now **102 ✅ · 7 🟡 · 0 ⬜** — the partials are named at the top of
+`docs/roadmap.md` rather than hidden, including the one open regression: the Lighthouse CLS
+assertion still trips on CI for `/poll` and `/about` while the same build against the same
+seeded database measures 0 locally.
 
 ## Second factor, device access, media that leaves with the article (v1.1.27)
 
