@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { verifyDeskToken } from "@hoichoi/db";
 import { requireApiRole } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { limitRequest, LIMITS } from "@/lib/rate-limit";
@@ -18,7 +19,12 @@ export const dynamic = "force-dynamic";
  * own rewrite path so the editorial rules and safety flags are the same ones the
  * scraper obeys.
  *
- * Roles: editor and above. Moderators review content, they do not author it.
+ * Roles: editor and above, **or** a desktop device token. The desktop runs the
+ * collector locally and needs a rewrite per collected post; holding provider keys
+ * on an operator's laptop is exactly what this endpoint exists to avoid, so a
+ * verified `hdc_` device may call it. Moderators still may not: they review
+ * content, they do not author it.
+ *
  * Every call is audited with the task and the character count — not the text,
  * because the raw material is a reader's tip.
  */
@@ -26,14 +32,41 @@ export async function GET() {
   return NextResponse.json({ ok: true, tasks: AI_TASKS });
 }
 
+/**
+ * The desktop's way in. Only a hash of the device token is stored server-side, so
+ * this cannot be replayed from a database dump, and a revoked device is refused
+ * on the next call rather than when its cookie expires.
+ */
+async function deskActor(req: Request): Promise<{ actor: string; label: string } | null> {
+  const header = req.headers.get("authorization") ?? "";
+  const token = /^Bearer\s+(.+)$/i.exec(header.trim())?.[1]?.trim() ?? "";
+  if (!token.startsWith("hdc_")) return null;
+  const verified = await verifyDeskToken(token);
+  return verified.ok && verified.device
+    ? { actor: `desk:${verified.device.label}`, label: verified.device.label }
+    : null;
+}
+
 export async function POST(req: Request) {
-  const guard = await requireApiRole("editor");
-  if ("response" in guard) return guard.response;
-  const user = guard.user;
+  // A device token is checked before the cookie guard: the desktop has no session,
+  // and an `editor` cookie must never be the only way in for the pipeline.
+  const desk = await deskActor(req);
+  const guard = desk ? null : await requireApiRole("editor");
+  if (guard && "response" in guard) return guard.response;
+  const user = guard && "user" in guard ? guard.user : null;
+  // A device has no email, so the ledger records `desk:<label>`: the label is what
+  // the console shows when a device is revoked, and it is enough to answer
+  // "which machine asked for this draft".
+  const actor = desk?.actor ?? user?.email ?? "unknown";
+  const actorRef = { email: actor, role: user?.role ?? "editor", user_id: user?.user_id };
 
   // Per-caller budget: an AI call is the most expensive thing this console does
-  // and a stuck button must not become a bill.
-  const limited = await limitRequest(req, LIMITS.aiTask);
+  // and a stuck button must not become a bill. A desk device runs the whole
+  // collector, so it gets the device budget rather than the authoring one — the
+  // same 20/hour would refuse the second source of a single run.
+  const limited = desk
+    ? await limitRequest(req, { ...LIMITS.deskAiTask, discriminator: desk.label })
+    : await limitRequest(req, LIMITS.aiTask);
   if (limited) return limited;
 
   let payload: unknown;
@@ -50,9 +83,9 @@ export async function POST(req: Request) {
   const input = check.input;
 
   try {
-    const run = await runAiTask(input);
+    const run = await runAiTask(input, { actor });
     await audit(
-      user,
+      actorRef,
       {
         action: `ai.task.${input.task}`,
         entityType: "ai_task",
@@ -98,7 +131,7 @@ export async function POST(req: Request) {
         latencyMs: 0,
         ok: false,
         errorKind: err.kind,
-        actor: user.email,
+        actor,
       }).catch(() => undefined);
       return NextResponse.json({ ok: false, error: err.message, kind: err.kind }, { status: err.status });
     }

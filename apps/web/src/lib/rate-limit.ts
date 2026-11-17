@@ -94,4 +94,9 @@ export const LIMITS = {
   // One AI generation is the most expensive request this app makes; twenty an
   // hour is generous for authoring and useless for abuse.
   aiTask: { name: "ai-task", limit: 20, windowMs: 60 * 60_000 },
+  // The collector is not a person: one run rewrites every post it collected, so
+  // the authoring budget would 429 the second source of a twenty-post run. A
+  // verified device gets its own bucket, keyed per device — revoking the device
+  // removes the caller as well as the budget.
+  deskAiTask: { name: "desk-ai-task", limit: 400, windowMs: 60 * 60_000 },
 } as const satisfies Record<string, { name: string; limit: number; windowMs: number }>;

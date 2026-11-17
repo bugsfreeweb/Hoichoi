@@ -9,4 +9,5 @@ export * from "./image-util";
 export * from "./image-resolver";
 export * from "./image-prompt";
 export * from "./task";
+export * from "./gateway";
 export * from "./pii";

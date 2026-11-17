@@ -15,8 +15,22 @@ export interface ActiveProvider {
 export interface ResolverOptions {
   /** Stronghold-backed key store (desktop). Falls back to env. */
   keyStore?: KeyStore;
+  /**
+   * When set, rewrites go to the server's AI gateway first and this machine never
+   * needs a provider key. Optional: a runner with keys of its own (CI, the cron
+   * job) behaves exactly as before.
+   */
+  gateway?: Pick<LLMProvider, "name" | "rewrite">;
   /** Cooldown after a rate-limit/network failure, default 5 minutes. */
   cooldownMs?: number;
+  /**
+   * Budget for one gateway attempt, default 60s. Deliberately larger than
+   * `rewriteAttemptTimeoutMs`: the gateway is one server round-trip that hides its
+   * own internal provider fallback, so a 15s client deadline could cut a call the
+   * server was still happily writing. A measured draft through the gateway took
+   * 17s on Gemini; the old shared timeout turned that into a silent fallback.
+   */
+  gatewayTimeoutMs?: number;
   /** Per-provider health probe timeout before a rewrite, default 10s. */
   probeTimeoutMs?: number;
   /** Maximum time for one rewrite provider before trying the next, default 15s. */
@@ -177,6 +191,22 @@ export class Resolver {
 
   async rewrite(ctx: RewriteContext, signal?: AbortSignal): Promise<{ out: ParsedRewrite; provider: string }> {
     const lastError: string[] = [];
+    // The gateway is tried first and on its own. It is the only candidate when the
+    // desktop has no keys, and a local chain still answers if it is down — but the
+    // reason is recorded either way, because "the gateway refused" and "no provider
+    // has a key" are very different fixes.
+    if (this.opts.gateway && !signal?.aborted) {
+      try {
+        const out = await this.opts.gateway.rewrite(
+          ctx,
+          withTimeout(signal, this.opts.gatewayTimeoutMs ?? 60_000),
+        );
+        return { out, provider: this.opts.gateway.name };
+      } catch (err) {
+        const e = err as ProviderError | Error;
+        lastError.push(`${this.opts.gateway.name}: ${e.message}`);
+      }
+    }
     const attemptedProviderIds = new Set<string>();
     let provider: ActiveProvider | null = null;
     const active = signal?.aborted ? [] : await this.activeProviders("rewrite");

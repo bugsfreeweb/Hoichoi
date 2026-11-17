@@ -9,7 +9,7 @@ import { runArchivePass } from "./archive";
 import { cleanupMedia, storageRegistryCount } from "./storage";
 import { backfillMissingMedia, recoverOrphanedMedia, syncExistingMediaToWeb, aiFillMissingHeroes, generateManualImage } from "./media-backfill";
 import { isVideoUrl } from "./media";
-import { buildImageBrief, newResolver } from "@hoichoi/llm";
+import { buildImageBrief, gatewayProviderFromEnv, newResolver } from "@hoichoi/llm";
 import {
   getClient,
   ensureSchema,
@@ -677,7 +677,7 @@ embeddings
         return;
       }
 
-      const resolver = newResolver({});
+      const resolver = newResolver({ gateway: gatewayProviderFromEnv() ?? undefined });
       const log = (m: string) => console.error(m);
       let embedded = 0;
       let failed = 0;

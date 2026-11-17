@@ -1,5 +1,5 @@
 import { getClient, mapCategory, mapSource, nowIso, parseAppConfig, withTx, recordSourceError, clearSourceErrors, replaceCollectorImages, reapStalePipelineRuns } from "@hoichoi/db";
-import { newResolver } from "@hoichoi/llm";
+import { gatewayProviderFromEnv, newResolver } from "@hoichoi/llm";
 import type {
   CategorySlug,
   LLMProviderRow,
@@ -288,7 +288,9 @@ export function assessRisk(
 export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineStats> {
   const log = opts.log ?? ((s: string) => console.log(s));
   const client = getClient();
-  const resolver = newResolver();
+  // A runner holding a device token has no provider keys: rewrites go to the
+  // server's gateway instead (see packages/llm/src/gateway.ts).
+  const resolver = newResolver({ gateway: gatewayProviderFromEnv() ?? undefined });
   const runId = crypto.randomUUID();
   const started = nowIso();
   const stats: PipelineStats = {

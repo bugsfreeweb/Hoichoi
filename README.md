@@ -377,6 +377,41 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 > before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
 > (latest e.g. `012_post_images.sql`).
 
+## The collector drafts without holding the keys (v1.1.29)
+
+**A laptop should not carry the newsroom's provider keys.** The desktop runs the whole
+collection pipeline locally, and until now that meant a Google or OpenRouter key sat
+encrypted on an operator's disk — billed, unrevokable from the console, and gone with the
+machine. Now a device token changes the route: `packages/llm/src/gateway.ts` sends each
+rewrite to `POST /api/ai/task` and the server, which already holds the keys and the
+editorial rules, answers. The runner still needs no prompt, no model and no key.
+
+- `ResolverOptions.gateway` is tried **before any provider row is read**, with its own
+  60-second budget. That separate budget is not decoration: a measured gateway draft took
+  17 s, and the resolver's shared 15 s attempt timeout had been cutting the call and
+  silently falling through to the local keys — the feature quietly not working while
+  looking green.
+- A gateway answer is refused if it has no headline or no body: a blank draft must never
+  reach the queue. A non-JSON reply is a `bad_output`, a 401/403 is `auth`, a 429 is
+  `rate_limit`, so cooldowns behave exactly as they do for a real provider.
+- The endpoint accepts a verified `hdc_` device **before** the cookie guard (the desktop
+  has no session) and ledgers the call as `desk:<label>` in both `ai_task_runs.actor` and
+  `admin_actions.actor_email` — "which machine asked for this" is answerable.
+- A device gets its own 400/hour bucket (`LIMITS.deskAiTask`, keyed per device) instead of
+  the 20/hour authoring budget, which would have refused the second source of a single run.
+- Both scraper entry points (`pipeline.ts`, `cli.ts`) pass `gatewayProviderFromEnv()`, and
+  a test asserts the vault's `desk_token`/`desk_base_url` env names are the ones the client
+  reads — a rename on either side would otherwise disable the gateway silently.
+- **Honest limit:** embeddings (SEM-1 vectors) still run locally and still need a key. There
+  is no embedding gateway yet; the desktop says so in the setup wizard rather than implying
+  the disk is key-free.
+
+Verified end to end on the local dev server: a device token returned a real draft
+(`provider: হৈচৈ গেটওয়ে (সার্ভার)`), a bogus token and no token both got `401`, and the
+ledger rows carried `desk:smoke-test-device`. 14 checks in
+`packages/llm/src/__tests__/gateway.test.ts`, 5 in `gateway-resolver.test.ts`, 11 wiring
+checks in `apps/web/scripts/ai-gateway-desk.test.ts`.
+
 ## Edge guards: CSRF, structured data, ad review, comment abuse (v1.1.28)
 
 **Every cookie-bearing write must prove where it came from.** `apps/web/src/middleware.ts`

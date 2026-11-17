@@ -137,7 +137,10 @@ export async function recordAiTaskRun(input: {
  * Run one task. Tries providers in priority order and stops at the first success;
  * a single provider failing must not fail the request while another can answer.
  */
-export async function runAiTask(input: AiTaskInput): Promise<AiTaskRun> {
+export async function runAiTask(
+  input: AiTaskInput,
+  opts: { actor?: string | null } = {},
+): Promise<AiTaskRun> {
   const rows = await textProviderRows();
   if (rows.length === 0) {
     throw new AiTaskError("unavailable", "কোনো সক্রিয় টেক্সট প্রোভাইডার নেই।", 503);
@@ -195,6 +198,7 @@ export async function runAiTask(input: AiTaskInput): Promise<AiTaskRun> {
         outputChars: outputCharsOf(result),
         latencyMs: ms,
         ok: true,
+        actor: opts.actor ?? null,
       }).catch(() => "");
       return { result, provider: providerName, ms, pii: scrubbed.counts, runId };
     } catch (err) {

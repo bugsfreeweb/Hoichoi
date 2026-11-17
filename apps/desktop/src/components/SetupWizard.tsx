@@ -167,6 +167,12 @@ export default function SetupWizard({ onDone }: { onDone: () => Promise<void> })
                 ডেটাবেসে কাজ করবে — ডেটাবেসের গোপন চাবি আর এই ডিস্কে থাকবে না, আর কনসোল থেকে
                 ডিভাইস বাতিল করলেই এই কম্পিউটারের অ্যাক্সেস সাথে সাথে বন্ধ।
               </p>
+              <p className="text-[13px] text-ink-soft">
+                লেখা তৈরি (rewrite) হয় সার্ভারের গেটওয়েতে, তাই টেক্সট প্রোভাইডারের কী
+                (Google/OpenRouter/Mistral…) এই কম্পিউটারে রাখতে হয় না — কী সার্ভারেই থাকে
+                এবং সেখান থেকেই বাতিল করা যায়। শুধু এমবেডিং (ভেক্টর) এখনো স্থানীয়ভাবে চলে,
+                তাই সেটির জন্য আলাদা কী লাগতে পারে।
+              </p>
               <label className="block">
                 <span className="field-label font-mono text-[10px] uppercase text-ink-soft">সাইটের ঠিকানা</span>
                 <input className="field mt-1" placeholder="https://hoichoifeed.vercel.app" value={deskBaseUrl} onChange={(e) => setDeskBaseUrl(e.target.value)} />
