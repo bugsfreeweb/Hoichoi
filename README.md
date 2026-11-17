@@ -412,7 +412,7 @@ ledger rows carried `desk:smoke-test-device`. 14 checks in
 `packages/llm/src/__tests__/gateway.test.ts`, 5 in `gateway-resolver.test.ts`, 11 wiring
 checks in `apps/web/scripts/ai-gateway-desk.test.ts`.
 
-## Every story gets a newsroom plate, and Cloudflare is the default (v1.1.31)
+## Every story gets a newsroom plate, and Cloudflare is the default
 
 **Pollinations is gone.** The dispatcher, the flavour builder, the watermark trim
 (`watermarkTrimFraction`, `apps/web/src/lib/image-trim.ts`, `trimBottomFraction`) and its
