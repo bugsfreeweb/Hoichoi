@@ -20,7 +20,7 @@
  * keeps one storage layout for desktop, local dev and production.
  */
 import { findRepoRoot, getClient, nowIso, updatePost } from "@hoichoi/db";
-import { composeImagePrompt, generateImage as llmGenerateImage, watermarkTrimFraction } from "@hoichoi/llm";
+import { imageSizeFor, composeImagePrompt, generateImage as llmGenerateImage, watermarkTrimFraction } from "@hoichoi/llm";
 import { downloadMedia, isVideoUrl, localMediaPath, mediaRoot, processImage, randomMediaName } from "./media";
 import { scrapePostUrls } from "./facebook";
 import { aiHeroEligible, generateAIHero } from "./ai-image";
@@ -490,9 +490,18 @@ export async function generateManualImage(opts: {
   log?: (msg: string) => void;
 }): Promise<ManualImageResult> {
   const log = opts.log ?? (() => undefined);
+  /**
+   * The frame is decided once and used twice: in the prompt text ("horizontal
+   * 16:9 frame") and as the pixel size the provider is asked for. They used to
+   * disagree whenever `--ratio` was omitted — the brief promised a 16:9 hero and
+   * the render came back square, so a story's picture had to be cropped by the
+   * reader's card.
+   */
+  const aspectRatio = opts.aspectRatio ?? "16:9";
+  const size = opts.size ?? imageSizeFor(aspectRatio);
   const prompt = composeImagePrompt({
     prompt: opts.prompt,
-    aspectRatio: opts.aspectRatio,
+    aspectRatio,
     quality: opts.quality,
     negativePrompt: opts.negativePrompt,
   });
@@ -500,8 +509,8 @@ export async function generateManualImage(opts: {
     {
       prompt,
       providerId: opts.providerId,
-      size: opts.size,
-      aspectRatio: opts.aspectRatio,
+      size,
+      aspectRatio,
       style: opts.style,
       quality: opts.quality,
       negativePrompt: opts.negativePrompt,

@@ -284,12 +284,17 @@ export async function generateImage(
       }
       return result;
     } catch (err) {
-      // A per-minute rate limit is worth one short retry before giving up on the
+      // A transient "not right now" is worth one retry before giving up on the
       // row: Gemini's free tier answers 429 while the same key works again a few
-      // seconds later, and failing over leaves the nicer model unused.
+      // seconds later, and the keyless Pollinations host answers 503 "the classic
+      // API is at its limit right now" during peak load even though every other
+      // request to it succeeds. Failing over on that left the desk with *no*
+      // image at all — the operator clicks again and it works, which is the
+      // definition of a bug, not a quota.
       const msg = (err as Error).message ?? "";
-      if (!opts.strict && /(^|[^0-9])429([^0-9]|$)|rate.?limit/i.test(msg)) {
-        await new Promise((r) => setTimeout(r, 4_000));
+      const retryDelayMs = retryDelayFor(msg);
+      if (!opts.strict && retryDelayMs > 0) {
+        await new Promise((r) => setTimeout(r, retryDelayMs));
         try {
           const result = await ap.provider.generateImage!(opts, signal);
           await recordProviderSuccess(healthKey(ap)).catch(() => undefined);
@@ -314,4 +319,21 @@ export async function generateImage(
     }
   }
   throw new ProviderError("network", `ছবি তৈরি ব্যর্থ [${errors.join(" | ")}]`);
+}
+
+/**
+ * How long to wait before retrying one image call, or 0 when a retry is pointless.
+ *
+ * 429 means "slow down" (4 s). A 5xx overload means "come back later": the
+ * keyless Pollinations host says so in prose ("Retry after 10s"), so that number
+ * is honoured when present and capped, because a provider must not be able to
+ * park a request for a minute.
+ */
+export function retryDelayFor(message: string): number {
+  if (/(^|[^0-9])429([^0-9]|$)|rate.?limit/i.test(message)) return 4_000;
+  const overloaded = /(^|[^0-9])50[234]([^0-9]|$)|service.?unavailable|at its limit/i.test(message);
+  if (!overloaded) return 0;
+  const advised = /retry after (\d{1,2}) ?s/i.exec(message);
+  const seconds = advised ? Number(advised[1]) : 10;
+  return Math.min(15, Math.max(2, seconds)) * 1_000;
 }

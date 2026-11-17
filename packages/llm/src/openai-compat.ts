@@ -164,7 +164,7 @@ export class OpenAICompatProvider implements LLMProvider {
     }
     const pollinations = this.pollinationsFlavor();
     if (pollinations) {
-      return this.generatePollinationsImage(pollinations, model, prompt, req.size, signal);
+      return this.generatePollinationsImage(pollinations, model, prompt, req.size, signal, req.aspectRatio);
     }
     const body: Record<string, unknown> = {
       model,
@@ -258,16 +258,17 @@ export class OpenAICompatProvider implements LLMProvider {
     prompt: string,
     size?: string,
     signal?: AbortSignal,
+    aspectRatio?: string,
   ): Promise<ImageGenResult> {
     const base = this.baseUrl.replace(/\/+$/, "");
     const segment = flavor === "classic" ? "prompt" : "image";
     const url = new URL(`${base}/${segment}/${encodeURIComponent(prompt)}`);
     url.searchParams.set("model", model);
     // `size` is the OpenAI-style "WxH"; Pollinations takes width/height.
-    const dims = /^(\d{2,5})x(\d{2,5})$/i.exec(size ?? "");
+    const dims = frameDims(size, aspectRatio);
     if (dims) {
-      url.searchParams.set("width", dims[1]!);
-      url.searchParams.set("height", dims[2]!);
+      url.searchParams.set("width", String(dims.width));
+      url.searchParams.set("height", String(dims.height));
     }
     /**
      * `nologo` is only honoured when a referrer is present, which is why the
@@ -520,4 +521,34 @@ export class OpenAICompatProvider implements LLMProvider {
     const override = (this.row.config as Record<string, unknown> | null)?.embedding_model;
     return typeof override === "string" ? override : this.row.model_name;
   }
+}
+
+/**
+ * The pixel frame to ask a free-form image host for.
+ *
+ * `size` exists for OpenAI, whose API only accepts 1024x1024, 1536x1024 and
+ * 1024x1536 — so 16:9 has to be sent as 3:2 and cropped later. Pollinations
+ * takes any width/height, and sending it the 3:2 size meant the brief promised a
+ * "horizontal 16:9 frame" while the render was 1.5:1. Here the requested ratio
+ * wins and the area of `size` is kept, rounded to a multiple of 8 because that
+ * is what diffusion pipelines want.
+ */
+export function frameDims(
+  size?: string,
+  aspectRatio?: string,
+): { width: number; height: number } | null {
+  const dims = /^(\d{2,5})x(\d{2,5})$/i.exec(size ?? "");
+  const ratio = /^(\d{1,2})[:x](\d{1,2})$/i.exec(aspectRatio ?? "");
+  if (!dims) return null;
+  const baseW = Number(dims[1]);
+  const baseH = Number(dims[2]);
+  if (!ratio) return { width: baseW, height: baseH };
+  const rw = Number(ratio[1]);
+  const rh = Number(ratio[2]);
+  if (!rw || !rh) return { width: baseW, height: baseH };
+  const area = baseW * baseH;
+  const width = Math.round(Math.sqrt((area * rw) / rh) / 8) * 8;
+  const height = Math.round(width * (rh / rw) / 8) * 8;
+  if (width < 256 || height < 256) return { width: baseW, height: baseH };
+  return { width, height };
 }

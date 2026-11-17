@@ -155,7 +155,69 @@ const CATEGORY_LABEL: Record<string, string> = {
   opinion: "opinion",
   "rural-life": "rural life",
   religion: "faith and community",
+  // Sensitive desks. The label is what the model is told the article is about;
+  // it is deliberately quiet, because these stories get a dignified still life
+  // rather than a scene (see DIGNIFIED_METAPHORS).
+  "missing-children": "a family waiting for news",
+  "child-sexual-abuse": "a case that must be handled with care",
+  "extramarital-crime": "a private matter that became a police case",
+  abuse: "a case that must be handled with care",
 };
+
+/**
+ * Categories whose subject must never be drawn.
+ *
+ * A missing child, an abused child, a private life under investigation: the
+ * article may be reported in full, but an illustration of the person is not the
+ * newspaper's to make. These briefs are still life — the objects around the
+ * absence — so the picture is specific to the story without depicting anybody.
+ */
+export const DIGNIFIED_CATEGORIES: ReadonlySet<string> = new Set([
+  "missing-children",
+  "child-sexual-abuse",
+  "extramarital-crime",
+  "abuse",
+]);
+
+/** Still lifes for the desks that must not draw a person. Selected by story seed. */
+const DIGNIFIED_METAPHORS: readonly Metaphor[] = [
+  {
+    id: "schoolbag",
+    keys: /$^/,
+    tension: "an ordinary morning that did not end ordinarily",
+    metaphor: "an empty school bag and an unlatched gate at dawn",
+    subject: "a school bag resting against a gate post, its straps loose",
+    setting: "an empty lane in front of a school gate, first light",
+    mood: "serious",
+  },
+  {
+    id: "waiting-lamp",
+    keys: /$^/,
+    tension: "a household keeping a light on for someone who has not come back",
+    metaphor: "a lit lamp on a windowsill and two empty chairs",
+    subject: "one lit lamp, a folded shawl and two empty chairs",
+    setting: "a modest room at dusk, rain on the window",
+    mood: "reflective",
+  },
+  {
+    id: "case-file",
+    keys: /$^/,
+    tension: "a private story that became a file on a desk",
+    metaphor: "a closed case file, a sealed envelope and a dim lamp",
+    subject: "a closed file tied with string and a sealed envelope beside a lamp",
+    setting: "a bare desk in a quiet room, one window",
+    mood: "serious",
+  },
+  {
+    id: "unlatched-door",
+    keys: /$^/,
+    tension: "a door left open, and the quiet after it",
+    metaphor: "a doorway with slippers at the threshold and light falling through it",
+    subject: "a pair of slippers at a threshold, the door ajar",
+    setting: "a courtyard corridor in soft evening light",
+    mood: "reflective",
+  },
+];
 
 /** Common Bengali → English clue phrases that tell an image model where/who/what. */
 const CLUE_GLOSSARY: ReadonlyArray<readonly [RegExp, string]> = [
@@ -479,6 +541,18 @@ function pick<T>(list: readonly T[], seed: number, salt: number): T {
 /** Which metaphor the article is really about, by its own words. */
 export function pickMetaphor(text: string, category?: string | null): Metaphor {
   const slug = (category ?? "").toLowerCase();
+  /**
+   * The sensitive desks get a still life, always.
+   *
+   * Before this, a missing-child story fell through to whatever word it happened
+   * to contain — "school" matched the harvest metaphor, so the render was a
+   * farmer in a paddy field. The picture must be about the story, and it must
+   * never be a person, so these categories pick from the objects instead.
+   */
+  if (DIGNIFIED_CATEGORIES.has(slug)) {
+    const seed = briefSeed(`${slug}|${text.slice(0, 200)}`);
+    return pick<Metaphor>(DIGNIFIED_METAPHORS, seed, 5);
+  }
   let best: Metaphor | null = null;
   let bestScore = 0;
   const seed = briefSeed(`${category ?? ""}|${text.slice(0, 200)}`);
@@ -581,6 +655,23 @@ export function buildImageBrief(input: ImageBriefInput): ImageBrief {
   // drawing — the style word was read, the medium was not. Leading with
   // "hand-drawn ink and gouache editorial illustration, not a photograph" is the
   // one change that reliably moves the render out of photography.
+  /**
+   * The sensitive desks name what they must not contain, not just what they must.
+   *
+   * A measured render of a missing-child brief came back as a photoreal woman
+   * standing in a doorway: the metaphor was right (slippers at a threshold) and
+   * the negative said "children, recognizable faces", but nothing forbade a
+   * person. For these categories the picture is the absence, so people are
+   * excluded outright rather than by a rule the model has to infer.
+   */
+  const dignified = DIGNIFIED_CATEGORIES.has(slug);
+  const avoidLine =
+    "Avoid: photorealism, photographs, 3d renders, depth of field, bokeh, misleading realism, " +
+    "readable text, letters, writing on documents (papers and signs must be blank), logos, " +
+    (dignified
+      ? "watermarks, clutter, extra unrelated objects, no people, no faces, no hands, no figures (objects and place only)."
+      : "watermarks, clutter, extra unrelated objects.");
+
   const prompt = [
     `Hand-drawn editorial illustration, ink and gouache on paper, not a photograph: a newspaper op-ed drawing about ${topic}.`,
     `Central idea: ${metaphor.tension}.`,
@@ -591,9 +682,7 @@ export function buildImageBrief(input: ImageBriefInput): ImageBrief {
     `Composition: ${composition}.`,
     `Color palette: ${paletteLine}.`,
     `Mood: ${mood}.`,
-    "Avoid: photorealism, photographs, 3d renders, depth of field, bokeh, misleading realism, " +
-      "readable text, letters, writing on documents (papers and signs must be blank), logos, " +
-      "watermarks, clutter, extra unrelated objects.",
+    avoidLine,
   ].join("\n");
 
   return {

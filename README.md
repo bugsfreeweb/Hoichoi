@@ -443,6 +443,29 @@ separate faults, all measured:
    `processImage(..., { trimBottomFraction })` shave the band — verified: the logo is gone
    from the stored WebP, and every other provider is trimmed by exactly 0.
 
+**Three more things that were wrong, found by running it rather than reading it.**
+A 503 from the keyless host ("the Classic API is at its limit right now, retry after
+10s") was treated as a hard failure — only 429 was retried — so a peak-load moment turned
+one click into "ছবি তৈরি ব্যর্থ" while the very next attempt succeeded;
+`retryDelayFor()` now waits for the provider's own advice (capped at 15 s) and retries
+once. `--ratio` was honoured in the prompt text but not in pixels, so a "horizontal 16:9
+frame" rendered square: `generateManualImage` now derives the size from the ratio, and a
+free-form host (`frameDims`) gets the true 16:9 frame with the same area instead of
+OpenAI's 3:2. And a missing-child story fell through to whatever word it happened to
+contain — "school" matched the harvest metaphor, so the render was a farmer in a paddy
+field. The sensitive desks (`missing-children`, `child-sexual-abuse`, `extramarital-crime`,
+`abuse`) now pick from four still lifes (an empty school bag at a gate, a lit lamp and two
+empty chairs, a closed file and a sealed envelope, slippers at a threshold) and their
+`Avoid` line excludes people outright: the picture is the absence, not the person.
+
+**Honest ceiling.** The keyless host does not follow a brief closely: three different
+briefs came back as the same romantic "woman in a doorway / papers on a table" imagery, and
+it drifted to photorealism regardless of the medium being stated first. The prompt, the
+frame and the watermark are now right; matching the *content* reliably needs a provider
+that follows instructions — which is exactly what the Cloudflare row above is for. Until
+one is enabled, the desk logs and shows the provider it used (`toast`: "ছবি তৈরি হয়েছে ·
+Pollinations (keyless)") rather than implying the picture came from the best model.
+
 **The free path that actually follows a brief is seeded but switched off.** Cloudflare
 Workers AI serves `@cf/black-forest-labs/flux-1-schnell` on a free daily Neuron allowance
 (10,000 Neurons ≈ 250 images) with **no watermark**, and `openai-compat.ts` already speaks
