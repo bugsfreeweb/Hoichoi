@@ -20,7 +20,7 @@
  * keeps one storage layout for desktop, local dev and production.
  */
 import { findRepoRoot, getClient, nowIso, updatePost } from "@hoichoi/db";
-import { composeImagePrompt, generateImage as llmGenerateImage } from "@hoichoi/llm";
+import { composeImagePrompt, generateImage as llmGenerateImage, watermarkTrimFraction } from "@hoichoi/llm";
 import { downloadMedia, isVideoUrl, localMediaPath, mediaRoot, processImage, randomMediaName } from "./media";
 import { scrapePostUrls } from "./facebook";
 import { aiHeroEligible, generateAIHero } from "./ai-image";
@@ -512,7 +512,10 @@ export async function generateManualImage(opts: {
   // processImage always writes webp (and re-encodes/resizes), so the media name
   // must carry the .webp extension regardless of what the provider returned.
   const rel = randomMediaName("img", "webp");
-  await processImage(Buffer.from(result.bytes), rel, { maxWidthPx: MAX_WIDTH_PX });
+  await processImage(Buffer.from(result.bytes), rel, {
+    maxWidthPx: MAX_WIDTH_PX,
+    trimBottomFraction: watermarkTrimFraction(result.provider),
+  });
   mirrorMediaFile(rel);
   let pub: string | null = null;
   let warning: string | undefined;

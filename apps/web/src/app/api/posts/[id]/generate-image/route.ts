@@ -9,7 +9,8 @@ import {
   updatePost,
 } from "@hoichoi/db";
 import { uploadBufferRemote, writeGeneratedMedia } from "@hoichoi/db/storage";
-import { buildImageBrief, EDITORIAL_IMAGE_NEGATIVE, extensionForMime, generateImage, listImageProviders } from "@hoichoi/llm";
+import { buildImageBrief, EDITORIAL_IMAGE_NEGATIVE, extensionForMime, generateImage, imageSizeFor, listImageProviders, watermarkTrimFraction } from "@hoichoi/llm";
+import { trimWatermark } from "@/lib/image-trim";
 import { forbidden, requireApiRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -210,8 +211,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const opts: GenerateOptions = {
     prompt,
     providerId: str(body?.providerId),
-    size: str(body?.size),
-    aspectRatio: str(body?.aspectRatio),
+    // A brief written for 16:9 is padded to a square by most hosts unless the
+    // size travels with it, and the card then crops the composition away.
+    size: str(body?.size) || imageSizeFor(str(body?.aspectRatio) || "16:9"),
+    aspectRatio: str(body?.aspectRatio) || "16:9",
     style: str(body?.style),
     quality: str(body?.quality),
     // Always send the editorial negative prompt unless the operator typed one:
@@ -277,7 +280,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: (err as Error).message }, { status: 502 });
   }
 
-  const buf = Buffer.from(result.bytes);
+  // A provider-stamped watermark never reaches a story (see lib/image-trim.ts).
+  let bytes: Uint8Array = result.bytes;
+  try {
+    bytes = await trimWatermark(result.bytes, watermarkTrimFraction(result.provider));
+  } catch {
+    /* trimming is cosmetic; the render itself is still usable */
+  }
+  const buf = Buffer.from(bytes);
   const rel = randomMediaName("img", extensionForMime(result.contentType));
 
   let applied: string | null = null;
@@ -303,7 +313,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     // here would attach a 404 to the post — which is exactly what "image does
     // not show" looked like.
     try {
-      await writeLocalMirror(rel, result.bytes);
+      await writeLocalMirror(rel, bytes);
       applied = rel;
     } catch {
       return NextResponse.json(

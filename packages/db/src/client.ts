@@ -1460,6 +1460,16 @@ VALUES
   ('prov-openai-image', 'openai', 'OpenAI GPT Image',
    'https://api.openai.com/v1', 'gpt-image-1',
    'OPENAI_API_KEY', 3, 1, 0, 0, 0,
+   strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  -- The watermark-free free tier. Seeded inactive because the base URL needs the
+  -- operator's own account id: activate it in the console after pasting the
+  -- CLOUDFLARE_API_TOKEN secret and replacing ACCOUNT_ID in the base URL. Free
+  -- allowance is 10,000 Neurons a day and a 4-step FLUX.1 schnell render costs
+  -- roughly 40, i.e. about 250 editorial images a day with no watermark.
+  ('prov-cloudflare-image', 'custom', 'Cloudflare Workers AI — FLUX.1 schnell (watermark-free, free tier)',
+   'https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/ai/run/@cf/black-forest-labs/flux-1-schnell',
+   '@cf/black-forest-labs/flux-1-schnell',
+   'CLOUDFLARE_API_TOKEN', 10, 0, 1, 0, 0,
    strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 `);
   // Image rows are seeded with purpose = 'image'. A DB created before the
@@ -1470,7 +1480,7 @@ VALUES
       SET purpose = 'image',
           supports_rewrite = 0,
           updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
-      WHERE id IN ('prov-pollinations-image', 'prov-google-image', 'prov-openai-image')
+      WHERE id IN ('prov-pollinations-image', 'prov-google-image', 'prov-openai-image', 'prov-cloudflare-image')
   `);
   await client.execute(`
     UPDATE llm_providers

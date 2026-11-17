@@ -412,6 +412,51 @@ ledger rows carried `desk:smoke-test-device`. 14 checks in
 `packages/llm/src/__tests__/gateway.test.ts`, 5 in `gateway-resolver.test.ts`, 11 wiring
 checks in `apps/web/scripts/ai-gateway-desk.test.ts`.
 
+## Pictures that belong to the story (v1.1.29)
+
+**A generated hero used to be a stock image of a mood, not a picture of the news.** Three
+separate faults, all measured:
+
+1. **The brief was a style sentence with the Bangla headline stapled on.** Models that do
+   not read Bengali rendered the style and nothing else, so every article got the same
+   illustration; models that do read Bengali sometimes drew the headline *as lettering inside
+   the drawing*. `packages/llm/src/image-prompt.ts` now builds the newspaper brief an
+   illustrator is given: Central idea → Visual metaphor → Subject → Setting → Style →
+   Composition → Colour palette → Mood → Avoid, in English, with the Bangla used only as a
+   source of meaning. A ~22-entry metaphor bank (bribery, price rises, flood, verdict, heat,
+   going-viral, aid, harvest, …) is selected from the story's own words and its category, so
+   a corruption story draws a hand and an envelope and a flood story draws a rooftop in
+   brown water.
+2. **The medium was a word in the middle of the paragraph.** Image models weight early
+   tokens hardest: a render of a corruption brief came back as *"a softly lit vintage
+   still-life photograph"* of papers — the style word was read, the medium was not. The
+   prompt now **opens** with `Hand-drawn editorial illustration, ink and gouache on paper,
+   not a photograph`, and the empty-space instruction names what the space *is*
+   ("a plain uncluttered wash of background colour" on one third) because "generous empty
+   space" was filled with props.
+3. **The only working provider stamped a logo on the render and ignored the brief.** Google
+   Gemini Image answers `429 quota exceeded` on this account and OpenAI/Agnes are not
+   configured, so the keyless Pollinations host won every fallback — and it keeps its
+   `pollinations.ai` corner mark even with `nologo=true` **and** a referrer set (verified on
+   two renders). Nothing watermarked by a third party may sit inside a story, so
+   `watermarkTrimFraction(provider)` marks the trim and `apps/web/src/lib/image-trim.ts` /
+   `processImage(..., { trimBottomFraction })` shave the band — verified: the logo is gone
+   from the stored WebP, and every other provider is trimmed by exactly 0.
+
+**The free path that actually follows a brief is seeded but switched off.** Cloudflare
+Workers AI serves `@cf/black-forest-labs/flux-1-schnell` on a free daily Neuron allowance
+(10,000 Neurons ≈ 250 images) with **no watermark**, and `openai-compat.ts` already speaks
+its shape. Its base URL has to carry the operator's own account id, so the row ships as
+`prov-cloudflare-image`, `is_active = 0`, base URL ending in `accounts/ACCOUNT_ID/ai/run/…`:
+paste `CLOUDFLARE_API_TOKEN`, replace `ACCOUNT_ID`, switch it on, and it outranks the
+watermarked host automatically (a keyless host is always tried last).
+
+18 checks in `packages/llm/src/__tests__/image-prompt.test.ts` (structure, determinism,
+variation, metaphor-by-story-word, no Bengali in the prompt, no children, sizes, trim
+policy), 6 in `apps/web/scripts/image-trim.test.ts`, plus the safety boundary in
+`apps/scraper/src/__tests__/ai-image.test.ts` and the seeded-row checks in
+`packages/db/src/__tests__/image-providers-seed.test.ts`.
+
 ## Edge guards: CSRF, structured data, ad review, comment abuse (v1.1.28)
 
 **Every cookie-bearing write must prove where it came from.** `apps/web/src/middleware.ts`

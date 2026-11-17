@@ -14,7 +14,7 @@
  * no text, no logos, no identifiable people and no children.
  */
 import { randomMediaName, processImage } from "./media";
-import { buildImageBrief, generateImage, listImageProviders } from "@hoichoi/llm";
+import { buildImageBrief, generateImage, imageSizeFor, listImageProviders, watermarkTrimFraction } from "@hoichoi/llm";
 
 /** Categories where an AI rendering of the subject would be inappropriate. */
 const SENSITIVE_AI_CATEGORIES = new Set(["child-sexual-abuse", "missing-children", "extramarital-crime"]);
@@ -27,9 +27,10 @@ export function aiHeroEligible(category: string | null | undefined): boolean {
 
 /** Editorial prompt shared by configured image-generation providers. */
 export function aiHeroPrompt(title: string, summary: string, body?: string, category?: string | null): string {
-  // Content-first prompt: the scene is derived from the article (category +
-  // extracted people/places/numbers) instead of a fixed style sentence, so two
-  // different articles no longer render as the same picture.
+  // The editorial brief is the newspaper-shaped one (central idea → metaphor →
+  // subject → setting → style → composition → palette → mood → avoid); this
+  // wrapper adds only the hard safety rules, so the pipeline, the CLI and the
+  // admin button all render from the same structure.
   const brief = buildImageBrief({ title, summary, body, category });
   return [
     brief.prompt,
@@ -70,13 +71,21 @@ export async function generateAIHero(opts: {
         // The negative prompt is part of the brief; dropping it is why a few
         // renders still came back with lettering or a watermark.
         negativePrompt: brief.negative,
-        aspectRatio: "16:9",
+        aspectRatio: brief.aspectRatio,
+        // Without an explicit size most hosts pad to a square, and the card layout
+        // then crops the centre out of a 16:9 composition.
+        size: imageSizeFor(brief.aspectRatio),
         count: 1,
       },
       AbortSignal.timeout(60_000),
     );
     const rel = randomMediaName("img", "webp");
-    await processImage(Buffer.from(result.bytes), rel, { maxWidthPx: 1280 });
+    await processImage(Buffer.from(result.bytes), rel, {
+      maxWidthPx: 1280,
+      // Pollinations stamps its own mark and ignores nologo; nothing watermarked
+      // by a third party may reach a story.
+      trimBottomFraction: watermarkTrimFraction(result.provider),
+    });
     log(`[ai-img] hero ✓ ${rel} via ${result.provider} (${result.model})`);
     return rel;
   } catch (err) {

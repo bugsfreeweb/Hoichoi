@@ -60,6 +60,28 @@ async function main(): Promise<void> {
     const openai = rows.find((r) => r.provider_key === "openai");
     assert.ok(openai, "OpenAI GPT Image (OPENAI_API_KEY) must be seeded");
 
+    /**
+     * The watermark-free free tier ships with a fresh database, but inactive.
+     *
+     * The keyless Pollinations host stamps its own logo on every render and
+     * ignores the brief (a measured render of a corruption story came back as a
+     * photo of papers), so an operator needs a free alternative ready. Cloudflare
+     * Workers AI answers FLUX.1 schnell on a free daily Neuron allowance with no
+     * watermark, but its base URL carries the operator's own account id — so the
+     * row is seeded switched off rather than half-configured and failing health
+     * checks on every page load.
+     */
+    const cf = await client.execute(
+      "SELECT display_name, base_url, model_name, api_key_env_var, is_active, is_free_tier FROM llm_providers WHERE id = 'prov-cloudflare-image'",
+    );
+    const cfRow = cf.rows[0];
+    assert.ok(cfRow, "the watermark-free free tier must be seeded");
+    assert.match(String(cfRow!.base_url), /ACCOUNT_ID/, "the account id must stay a placeholder, never a guess");
+    assert.match(String(cfRow!.model_name), /flux-1-schnell/i, "it must point at a FLUX.1 schnell model");
+    assert.equal(String(cfRow!.api_key_env_var), "CLOUDFLARE_API_TOKEN");
+    assert.equal(Number(cfRow!.is_active), 0, "it must not activate itself without a token");
+    assert.equal(Number(cfRow!.is_free_tier), 1);
+
     // No duplicate rows after repeated seeding.
     const count = await client.execute(
       "SELECT provider_key, model_name, COUNT(*) AS n FROM llm_providers WHERE purpose = 'image' GROUP BY provider_key, model_name",
