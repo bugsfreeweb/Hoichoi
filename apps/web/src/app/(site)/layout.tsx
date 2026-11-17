@@ -18,7 +18,21 @@ import ScrollToTop from "@/components/ScrollToTop";
 import ConsentBanner from "@/components/ConsentBanner";
 import { PlatformAdSlot } from "@/components/ads/PlatformAdSlot";
 import { JsonLd, siteJsonLd } from "@/components/JsonLd";
+import { preload } from "react-dom";
 import type { Metadata } from "next";
+
+/**
+ * The two faces every page paints with before anything else: the Bengali body
+ * face and the Bengali serif used for headings (one file covers 400–900, it is a
+ * variable font). Without a preload the browser only discovers them after the
+ * stylesheet is parsed, so the first lines paint in the system fallback and
+ * reflow when the real face lands — visible as a jump on a long text page, and
+ * much worse on a machine with no Bengali font installed at all.
+ */
+const PRELOAD_FONTS = [
+  "/fonts/ijwTs5juQtsyLLR5jN4cxBEoTI7ax9k0.woff2", // Hind Siliguri 400, bengali
+  "/fonts/hYkhPvggTvnzO14VSXltirUdnnkt1pwmWrprmO7RjE0a5BtdKyg8JCJZ.woff2", // Noto Serif Bengali, bengali
+];
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getSettings();
@@ -97,6 +111,10 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       </MvDataProvider>
     );
   }
+  for (const href of PRELOAD_FONTS) {
+    preload(href, { as: "font", type: "font/woff2", crossOrigin: "anonymous" });
+  }
+
   return (
     <div className="page-chrome">
       <script

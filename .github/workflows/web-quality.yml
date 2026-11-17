@@ -51,6 +51,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Install Chromium for Playwright
         run: pnpm --filter @hoichoi/web exec playwright install --with-deps chromium
+      # A bare Ubuntu image ships no Bengali font at all, so the pre-swap paint
+      # is tofu: every line box has a different height from the real face and the
+      # font swap reflows the whole page. That is a property of the runner, not of
+      # the product (every reader's phone and desktop already has a Bengali font),
+      # so install one to measure layout shift rather than the absence of fonts.
+      - name: Install a Bengali fallback font
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-bengali
+          fc-list :lang=bn | head -3
       - name: Migrate and seed a local database
         run: |
           pnpm db:migrate
