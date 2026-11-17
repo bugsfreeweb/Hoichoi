@@ -95,6 +95,21 @@ export async function pollIntegrity(pollId: number): Promise<PollIntegrityReport
   });
   const votesPerMinute = Number((peak.rows[0] as Record<string, unknown> | undefined)?.n ?? 0);
 
+  // The busiest *single* network, not the average. An average of sessions per IP
+  // hides a stuffing run that spreads across a handful of VPN exits: eight honest
+  // readers give one session each, and two stuffed networks add six each, so the
+  // average is still 2.0 and the poll reads "clean" while twelve of its twenty
+  // votes came from two machines.
+  const worst = await client.execute({
+    sql: `SELECT MAX(n) AS n FROM (
+            SELECT ip_hash, COUNT(DISTINCT session_id) AS n
+            FROM poll_votes
+            WHERE poll_id = ? AND invalidated_at IS NULL AND ip_hash IS NOT NULL
+            GROUP BY ip_hash)`,
+    args: [pollId],
+  });
+  const topNetworkSessions = Number((worst.rows[0] as Record<string, unknown> | undefined)?.n ?? 0);
+
   // Option concentration among validated votes.
   const top = await client.execute({
     sql: `SELECT MAX(n) AS n FROM (
@@ -128,6 +143,16 @@ export async function pollIntegrity(pollId: number): Promise<PollIntegrityReport
         sessionsPerIp > 2
           ? "একটি নেটওয়ার্ক থেকে গড়ে অনেক বেশি সেশন — কুকি মুছে আবার ভোট দেওয়ার ছাপ।"
           : "প্রতি নেটওয়ার্কে সামান্য সেশন।",
+    },
+    {
+      label: "শীর্ষ নেটওয়ার্কে সেশন",
+      value: topNetworkSessions,
+      unit: "sessions/ip",
+      bad: topNetworkSessions > 5,
+      note:
+        topNetworkSessions > 5
+          ? "একটি নেটওয়ার্ক থেকেই অনেক সেশন — গড়ে ধরা পড়ে না, কিন্তু এক জায়গা থেকেই ভোট এসেছে।"
+          : "কোনো এক নেটওয়ার্কে অস্বাভাবিক সেশন নেই।",
     },
     {
       label: "সবচেয়ে জনপ্রিয় অপশনের ভাগ",

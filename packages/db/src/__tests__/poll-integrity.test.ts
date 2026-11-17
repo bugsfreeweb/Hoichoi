@@ -46,9 +46,24 @@ for (const name of ["013_polls", "032_poll_integrity"]) {
 }
 
 const now = new Date().toISOString();
+// Two polls on purpose. Poll 1 is the "busy but real" case; poll 2 exists so the
+// stuffing case is measured on its own votes. Mixing them diluted the ratio to
+// 4.3 sessions/IP, which scores 27.6 — just under the 30 that means "flagged",
+// so the verdict depended on whether the votes/min signal fired, which depends on
+// how fast the machine ran the test. It passed locally and failed on CI.
 await client.execute({
   sql: `INSERT INTO polls (id, slug, topic, question, options_json, template, status, created_at, updated_at)
         VALUES (1,'p-test','রাজনীতি','প্রশ্ন?','[{"id":"a","label":"ক"},{"id":"b","label":"খ"}]','bar','open',?,?)`,
+  args: [now, now],
+});
+await client.execute({
+  sql: `INSERT INTO polls (id, slug, topic, question, options_json, template, status, created_at, updated_at)
+        VALUES (2,'p-test-2','রাজনীতি','প্রশ্ন?','[{"id":"a","label":"ক"},{"id":"b","label":"খ"}]','bar','open',?,?)`,
+  args: [now, now],
+});
+await client.execute({
+  sql: `INSERT INTO polls (id, slug, topic, question, options_json, template, status, created_at, updated_at)
+        VALUES (3,'p-test-3','রাজনীতি','প্রশ্ন?','[{"id":"a","label":"ক"},{"id":"b","label":"খ"}]','bar','open',?,?)`,
   args: [now, now],
 });
 
@@ -64,44 +79,67 @@ await check("a clean poll with a handful of votes scores clean", async () => {
 
 await check("one network raining sessions is flagged", async () => {
   for (let i = 0; i < 24; i++) {
-    await setPollVotes(1, ["a"], `stuffedsession${i}`, "samehash");
+    await setPollVotes(2, ["a"], `stuffedsession${i}`, "samehash");
   }
-  const report = await pollIntegrity(1);
+  const report = await pollIntegrity(2);
   assert.ok(report.signals.some((s) => s.bad && s.unit === "sessions/ip"), "sessions/ip must go bad");
   assert.notEqual(report.verdict, "clean");
-  const groups = await pollIpGroups(1);
+  // 24 sessions on one network is unambiguously flagged, not merely "not clean":
+  // the verdict must be reachable without depending on the votes/min signal.
+  assert.equal(report.verdict, "flagged");
+  const groups = await pollIpGroups(2);
   assert.equal(groups[0]!.ipHash, "samehash");
   assert.ok(groups[0]!.votes >= 24);
 });
 
+await check("stuffing split across a few networks is caught by the busiest one", async () => {
+  // Eight honest readers (one session each) plus two stuffed exits (six sessions
+  // each): the average is 2.0 sessions/IP, so an average-based signal reads clean.
+  // The busiest-network signal is what makes this flagged.
+  for (let i = 0; i < 8; i++) {
+    await setPollVotes(3, [i % 2 ? "a" : "b"], `honest${i}`, `honestip${i}`);
+  }
+  for (let net = 0; net < 2; net++) {
+    for (let s = 0; s < 6; s++) {
+      await setPollVotes(3, [s % 2 ? "a" : "b"], `stuffed${net}-${s}`, `exitip${net}`);
+    }
+  }
+  const report = await pollIntegrity(3);
+  const top = report.signals.find((s) => s.label === "শীর্ষ নেটওয়ার্কে সেশন");
+  assert.ok(top, "the busiest-network signal must exist");
+  assert.equal(top!.value, 6);
+  assert.equal(top!.bad, true);
+  assert.notEqual(report.verdict, "clean", "two networks carrying six sessions each must not read clean");
+});
+
 await check("invalidated votes leave the tally but stay in the table", async () => {
-  const before = await getPollVoteCount(1);
-  const removed = await invalidatePollVotes(1, {
+  const before = await getPollVoteCount(2);
+  const removed = await invalidatePollVotes(2, {
     allFromIpHash: "samehash",
     reason: "একই নেটওয়ার্ক থেকে সেশন বোমা",
     by: { email: "admin@hoichoi.io", role: "admin" },
   });
   assert.equal(removed, 24);
-  assert.equal(await getPollVoteCount(1), before - 24);
+  assert.equal(await getPollVoteCount(2), before - 24);
   const stored = await client.execute({
-    sql: "SELECT COUNT(*) AS n FROM poll_votes WHERE poll_id = 1 AND invalidated_at IS NOT NULL AND invalid_reason IS NOT NULL",
+    sql: "SELECT COUNT(*) AS n FROM poll_votes WHERE poll_id = 2 AND invalidated_at IS NOT NULL AND invalid_reason IS NOT NULL",
     args: [],
   });
   assert.equal(Number((stored.rows[0] as Record<string, unknown>).n), 24, "the record must survive");
 });
 
 await check("results and the report both use validated votes only", async () => {
-  const results = await getPollResults(1);
+  const results = await getPollResults(2);
   const total = results.reduce((sum, r) => sum + r.votes, 0);
-  assert.equal(total, 6);
-  const report = await pollIntegrity(1);
-  assert.equal(report.totalValidVotes, 6);
+  assert.equal(total, 0);
+  const report = await pollIntegrity(2);
+  assert.equal(report.totalValidVotes, 0);
   assert.equal(report.invalidated, 24);
   assert.equal(report.verdict, "clean", "the cleaned poll reads clean again");
 });
 
 await check("invalidating twice does not double-count", async () => {
-  const again = await invalidatePollVotes(1, {
+  const again = await invalidatePollVotes(2, {
     allFromIpHash: "samehash",
     reason: "আবার",
     by: { email: "admin@hoichoi.io", role: "admin" },

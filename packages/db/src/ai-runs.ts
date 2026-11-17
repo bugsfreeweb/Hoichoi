@@ -25,7 +25,9 @@ export interface AiTaskRunRow {
 export async function listAiTaskRuns(limit = 20): Promise<AiTaskRunRow[]> {
   const client = getClient();
   const res = await client.execute({
-    sql: "SELECT * FROM ai_task_runs ORDER BY created_at DESC LIMIT ?",
+    // Same tie-break as the deletion ledger: same-millisecond runs must still
+    // come back newest-first, or "the last thing the AI did" is arbitrary.
+    sql: "SELECT * FROM ai_task_runs ORDER BY created_at DESC, rowid DESC LIMIT ?",
     args: [limit],
   });
   return res.rows.map((row) => ({

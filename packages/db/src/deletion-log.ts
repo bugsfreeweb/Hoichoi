@@ -53,7 +53,11 @@ export interface DeletionLogRow {
 export async function listDeletions(limit = 200): Promise<DeletionLogRow[]> {
   const client = getClient();
   const res = await client.execute({
-    sql: "SELECT * FROM deletion_log ORDER BY created_at DESC LIMIT ?",
+    // `created_at` alone is not a total order: two deletions in the same
+    // millisecond tie, and SQLite is then free to return them in any order — which
+    // made "show me the latest deletion" a coin flip (a CI run proved it). rowid
+    // breaks the tie in true insertion order.
+    sql: "SELECT * FROM deletion_log ORDER BY created_at DESC, rowid DESC LIMIT ?",
     args: [limit],
   });
   return res.rows.map((row) => ({

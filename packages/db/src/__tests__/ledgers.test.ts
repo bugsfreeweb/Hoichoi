@@ -91,6 +91,23 @@ await check("reason is bounded so a paste cannot bloat the row", async () => {
   assert.equal(row?.reason?.length, 500);
 });
 
+await check("two deletions in the same millisecond still read newest-first", async () => {
+  // `created_at` is a millisecond string, so a burst ties; without a tie-break the
+  // "latest deletion" surface returned whichever row SQLite happened to hand back,
+  // which is how this passed locally and failed in CI.
+  const same = new Date().toISOString();
+  for (const [id, reason] of [["tie-a", "প্রথম"], ["tie-b", "দ্বিতীয়"]] as const) {
+    await client.execute({
+      sql: `INSERT INTO deletion_log (id, entity_type, entity_id, reason, actor, detail_json, created_at)
+            VALUES (?, 'comment', ?, ?, 'admin@hoichoi.io', NULL, ?)`,
+      args: [id, id, reason, same],
+    });
+  }
+  const rows = await listDeletions(2);
+  assert.equal(rows[0]?.reason, "দ্বিতীয়");
+  assert.equal(rows[1]?.reason, "প্রথম");
+});
+
 await check("an AI run is recorded with provider and output size", async () => {
   await client.execute({
     sql: `INSERT INTO ai_task_runs (id, task, provider, model, input_chars, output_chars, latency_ms, ok, actor, created_at)
