@@ -325,7 +325,9 @@ export default async function HomePage({
               <h2 className="mt-2 font-serif-bn text-[30px] font-black md:text-[42px]">
                 ফিড থেকে লাইভ — ছয় ধাপ, <span className="text-lime">শূন্য ছোঁয়া।</span>
               </h2>
-              <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-bandline/55">
+              {/* `text-bandline/55` measured 3.88:1 on paper — below AA for 13px.
+                  `ink-soft` is the palette's own small-text token (4.61:1). */}
+              <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-ink-soft">
                 আলোর বিন্দুটি রাস্তাটা দেখিয়ে দিচ্ছে — প্রতিটি রানে ডেটা ঠিক এই
                 পথ ধরে এগোয়: সোর্স থেকে শট, শট থেকে হ্যাশ, হ্যাশ পেরোলে লেখা,
                 লেখা শেষে সোজা প্রোডাকশনে।

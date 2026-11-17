@@ -60,6 +60,9 @@ export function TopBar({ pipelineHours = 2 }: { pipelineHours?: number }) {
                 <Link
                   key={href}
                   href={href}
+                  // The label is hidden below `sm`, which left an icon-only link
+                  // with no accessible name on a phone.
+                  aria-label={label}
                   className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-[11.5px] font-medium transition-all duration-300 ${
                     active
                       ? "bg-alizarin text-on-accent"

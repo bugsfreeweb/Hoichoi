@@ -21,6 +21,12 @@ export function Reveal({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
+  // Hiding is armed per element, in JS, and only for content that is actually
+  // below the fold. A global `.js .reveal` rule used to arm every section at
+  // once, which left everything off-screen at `opacity: 0` — a colour-contrast
+  // audit then measures the background and every caption "fails". Arming here
+  // also means a JS failure can only leave the *first* screen armed.
+  const [armed, setArmed] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
@@ -39,6 +45,9 @@ export function Reveal({
       setInView(true);
       return;
     }
+
+    // Below the fold: hide it now, so the observer can bring it in later.
+    setArmed(true);
 
     const io = new IntersectionObserver(
       (entries) => {
@@ -64,7 +73,7 @@ export function Reveal({
   return (
     <div
       ref={ref}
-      className={`reveal ${inView ? "reveal-in" : ""} ${className}`}
+      className={`reveal ${armed ? "reveal-armed" : ""} ${inView ? "reveal-in" : ""} ${className}`}
       style={{ transitionDelay: inView ? `${delay}ms` : "0ms" }}
     >
       {children}

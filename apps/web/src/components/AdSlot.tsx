@@ -166,7 +166,9 @@ export function AdSlot({
   return (
     <button
       onClick={onAd}
-      aria-label="বিজ্ঞাপন"
+      // No `aria-label` here on purpose: the placeholder already says
+      // "আপনার বিজ্ঞাপন এখানে" in three languages, and an aria-label that does not
+      // contain that visible text makes the accessible name contradict the label.
       className={`group relative block w-full ${variant === "infeed" ? "" : "text-center"}`}
     >
       {variant === "leaderboard" && (

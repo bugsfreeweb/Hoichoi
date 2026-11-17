@@ -405,6 +405,17 @@ at two links (bare domains included), refuses a 12+ character run of one letter,
 wall of phone numbers — each with a Bangla reason the reader can act on. Prices, emphasis and
 opinions pass untouched. 11 checks in `scripts/comment-guard.test.ts`.
 
+**The scroll reveal no longer hides the page from an audit.** `.js .reveal { opacity: 0 }`
+armed every section at once, so everything below the fold painted transparent — Lighthouse
+measured the background behind it and counted 21 colour-contrast failures (home page 0.92).
+`Reveal.tsx` now arms one element at a time and only after checking that it really starts
+below the fold; already-visible content is never hidden. Mobile nav links gained an
+`aria-label` (their text is hidden under `sm`), the ad placeholder stopped overriding its own
+visible text with `aria-label="বিজ্ঞাপন"`, and a 13 px blurb that measured 3.88:1 moved from
+`text-bandline/55` to the palette's `ink-soft` (4.61:1). Lighthouse accessibility on a
+production build: **1.00** for `/`, `/poll` and `/about`, CLS **0** on all three. 6 checks in
+`scripts/reveal-a11y.test.ts`.
+
 The roadmap is now **98 ✅ · 6 🟡 · 0 ⬜** — the six partials are named at the top of
 `docs/roadmap.md` rather than hidden.
 
