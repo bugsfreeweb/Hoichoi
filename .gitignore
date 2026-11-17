@@ -77,3 +77,6 @@ ad-management-system-mockup/
 .continue/
 .tmp-*.db
 .lighthouseci/
+
+# scratch screenshots and logs from local verification
+.tmp/
