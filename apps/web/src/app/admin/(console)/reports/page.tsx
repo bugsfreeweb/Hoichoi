@@ -3,6 +3,8 @@ import type { ReaderReportWithPost } from "@hoichoi/shared-types";
 import { Paginator } from "@/components/admin/Paginator";
 import { ReportRow } from "@/components/admin/ReportRow";
 import { ViewToggle } from "@/components/admin/ui/ViewToggle";
+import { PageHeading } from "@/components/admin/ui/PageHeader";
+import { Card, CardHead, StatTile } from "@/components/admin/ui/Card";
 import { viewFromSearch } from "@/lib/view";
 
 export const dynamic = "force-dynamic";
@@ -59,20 +61,26 @@ export default async function AdminReportsPage({
 
   return (
     <div>
-      <header>
-        <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">
-          🚩 READER REPORTS QUEUE
-        </p>
-        <h1 className="mt-1 font-serif-bn text-[34px] font-black text-ink">পাঠকের রিপোর্ট</h1>
-      </header>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[12px] text-ink-soft">রিপোর্ট করা পোস্টের ছবি ও কারণ দেখে পর্যালোচনা করুন।</p>
-        <ViewToggle labelBn="দেখার ধরন" />
+      <PageHeading
+        emoji="🚩"
+        kicker="READER REPORTS QUEUE"
+        title="পাঠকের রিপোর্ট"
+        description="রিপোর্ট করা পোস্টের ছবি ও কারণ দেখে পর্যালোচনা করুন — খোলা আর নিষ্পত্তি, আলাদা কার্ডে।"
+        actions={<ViewToggle labelBn="দেখার ধরন" />}
+      />
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <StatTile label="খোলা রিপোর্ট" value={open.total} tone={open.total > 0 ? "alarm" : "ink"} hint="পাঠক জবাবের অপেক্ষায়" />
+        <StatTile label="নিষ্পত্তি" value={done.total} tone="teal" hint="সিদ্ধান্ত হয়ে গেছে" />
+        <StatTile
+          label="এই পাতায়"
+          value={`${open.rows.length + done.rows.length}`}
+          hint="প্রতি পাতায় সর্বোচ্চ ২০টি সারি"
+        />
       </div>
-      <div className="mt-6 grid gap-10">
-        <section>
-          <QueueTitle count={open.total} label="খোলা" />
-          <div className={view === "card" ? "mt-3 space-y-3" : "mt-3 divide-y divide-ink/10 border border-ink/20"}>
+      <div className="grid gap-5">
+        <Card>
+          <CardHead emoji="🔓" title="খোলা" kicker={`${open.total} OPEN`} />
+          <div className={view === "card" ? "space-y-3 p-3" : "divide-y divide-ink/10"}>
             {open.rows.length === 0 && <Empty />}
             {open.rows.map((r) => (
               <ReportRow key={r.id} report={r} compact={view === "list"} />
@@ -86,10 +94,10 @@ export default async function AdminReportsPage({
             paramName="openPage"
             extraParams={extra}
           />
-        </section>
-        <section>
-          <QueueTitle count={done.total} label="নিষ্পত্তি" />
-          <div className={view === "card" ? "mt-3 space-y-3" : "mt-3 divide-y divide-ink/10 border border-ink/20"}>
+        </Card>
+        <Card>
+          <CardHead emoji="✅" title="নিষ্পত্তি" kicker={`${done.total} CLOSED`} />
+          <div className={view === "card" ? "space-y-3 p-3" : "divide-y divide-ink/10"}>
             {done.rows.length === 0 && <Empty />}
             {done.rows.map((r) => (
               <ReportRow key={r.id} report={r} compact={view === "list"} />
@@ -103,18 +111,9 @@ export default async function AdminReportsPage({
             paramName="donePage"
             extraParams={extra}
           />
-        </section>
+        </Card>
       </div>
     </div>
-  );
-}
-
-function QueueTitle({ count, label }: { count: number; label: string }) {
-  return (
-    <h2 className="flex items-center gap-2 font-sans-bn text-[16px] font-bold text-ink">
-      <span className="h-2 w-2 bg-alizarin"></span> {label}
-      <span className="rounded-full bg-ink px-2 py-0.5 font-mono-x text-[10px] text-paper">{count}</span>
-    </h2>
   );
 }
 

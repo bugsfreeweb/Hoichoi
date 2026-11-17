@@ -5,6 +5,8 @@ import { LiveEventForm } from "@/components/admin/live/LiveEventForm";
 import { bn, bnCompact, bnDateTime, clsx } from "@/lib/live-format";
 import { liveThemeName } from "@/lib/live-themes";
 import { changeLiveEventStatus, featureLiveEvent } from "./actions";
+import { PageHeading } from "@/components/admin/ui/PageHeader";
+import { Card, CardHead, StatTile } from "@/components/admin/ui/Card";
 
 export const dynamic = "force-dynamic";
 
@@ -28,18 +30,26 @@ export default async function AdminLiveEventsPage({
   return (
     <div>
       {deleted && <p role="status" className="mb-5 border border-lime/40 bg-lime/10 px-4 py-3 text-[13px] font-bold text-ink">ইভেন্টটি মুছে ফেলা হয়েছে।</p>}
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="eyebrow">▚ LIVE EVENTS · কন্ট্রোল রুম</p>
-          <h1 className="mt-2 font-serif-bn text-[32px] font-black text-ink md:text-[40px]">লাইভ ইভেন্ট</h1>
-          <p className="mt-1 text-[13px] text-ink-soft">শুধু এখানে তৈরি ও সংরক্ষিত আসল ইভেন্ট দেখানো হয়; কোনো নমুনা বা সিমুলেটেড ডেটা নেই।</p>
-        </div>
-        <Link href="/admin/live?new=1#new-live-event" className="flex items-center gap-2 bg-alizarin px-4 py-2.5 text-[13px] font-bold text-on-accent hover:bg-alizarin-deep">
-          <Plus size={15} /> নতুন লাইভ ইভেন্ট
-        </Link>
-      </header>
+      <PageHeading
+        emoji="📡"
+        kicker="LIVE EVENTS · কন্ট্রোল রুম"
+        title="লাইভ ইভেন্ট"
+        description="শুধু এখানে তৈরি ও সংরক্ষিত আসল ইভেন্ট দেখানো হয়; কোনো নমুনা বা সিমুলেটেড ডেটা নেই।"
+        actions={
+          <Link href="/admin/live?new=1#new-live-event" className="flex items-center gap-2 bg-alizarin px-4 py-2.5 text-[13px] font-bold text-on-accent hover:bg-alizarin-deep">
+            <Plus size={15} /> নতুন লাইভ ইভেন্ট
+          </Link>
+        }
+      />
 
-              <div className="mt-6 flex flex-wrap items-center gap-2">
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile label="মোট ইভেন্ট" value={bn(counts.all)} />
+        <StatTile label="এখন লাইভ" value={bn(counts.live)} tone={counts.live > 0 ? "alarm" : "ink"} />
+        <StatTile label="আসন্ন" value={bn(counts.scheduled)} tone="amber" />
+        <StatTile label="শেষ হয়েছে" value={bn(counts.ended)} tone="teal" />
+      </div>
+
+      <div className="mb-5 flex flex-wrap items-center gap-2">
           {([
             ["all", "সব", counts.all],
             ["live", "চলমান", counts.live],

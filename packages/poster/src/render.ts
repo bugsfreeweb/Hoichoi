@@ -1,5 +1,9 @@
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { ensurePosterFonts } from "./fonts";
 import {
+  BRAND_MARK,
   POSTER_FRAME,
   backdropSvg,
   captionSvg,
@@ -39,6 +43,47 @@ const MIME: Record<string, string> = {
   png: "image/png",
 };
 
+type SharpFactory = (input: Buffer) => import("sharp").Sharp;
+
+let markCache: Buffer | null | undefined;
+
+/**
+ * The logo mark, resized once per process.
+ *
+ * A missing asset must not fail a render — the plate is still branded by the
+ * wordmark beside it — so every failure returns `null` and the caption is drawn
+ * exactly where it was before the mark existed.
+ */
+async function brandMark(sharp: SharpFactory): Promise<Buffer | null> {
+  if (markCache !== undefined) return markCache ?? null;
+  try {
+    const here = dirname(fileURLToPath(import.meta.url));
+    // `src/` in the repo, `dist/` after a build, and the package root under the
+    // bundlers — all three resolve to `assets/logo.png` from one of these.
+    const candidates = [
+      join(here, "..", "assets", "logo.png"),
+      join(here, "assets", "logo.png"),
+      join(process.cwd(), "packages", "poster", "assets", "logo.png"),
+    ];
+    for (const path of candidates) {
+      try {
+        const bytes = await readFile(path);
+        markCache = await sharp(bytes)
+          .resize({ width: BRAND_MARK.size, height: BRAND_MARK.size, fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+          .png()
+          .toBuffer();
+        return markCache ?? null;
+      } catch {
+        continue;
+      }
+    }
+    markCache = null;
+  } catch {
+    markCache = null;
+  }
+  return markCache ?? null;
+}
+
 /**
  * Compose the story plate: landscape frame, brand lockup, caption, credit.
  *
@@ -62,7 +107,16 @@ export async function renderPoster(opts: RenderPosterOptions): Promise<RenderedP
         .resize({ width, height, fit: "cover" })
         .toBuffer();
 
-  const pipeline = sharp(plate).composite([{ input: Buffer.from(captionSvg(opts.spec)), top: 0, left: 0 }]);
+  // The mark is a raster layer, not part of the SVG: librsvg would have to load
+  // the PNG through a file: href, which does not resolve once the package is
+  // bundled into a lambda or the desktop runner.
+  const mark = await brandMark(sharp);
+  const layers: Array<{ input: Buffer; top: number; left: number }> = [
+    { input: Buffer.from(captionSvg(opts.spec)), top: 0, left: 0 },
+  ];
+  if (mark) layers.push({ input: mark, top: 64, left: 88 });
+
+  const pipeline = sharp(plate).composite(layers);
 
   const bytes =
     format === "jpeg"
@@ -80,6 +134,17 @@ export async function renderPoster(opts: RenderPosterOptions): Promise<RenderedP
   };
 }
 
-export { POSTER_FRAME, captionSvg, backdropSvg, fitCaption, wrapCaption, escapeXml, kickerLine, creditLine } from "./layout";
+export {
+  BRAND_MARK,
+  POSTER_FRAME,
+  captionSvg,
+  backdropSvg,
+  fitCaption,
+  topicCues,
+  wrapCaption,
+  escapeXml,
+  kickerLine,
+  creditLine,
+} from "./layout";
 export type { PosterSpec } from "./layout";
 export { ensurePosterFonts, fontsDir, POSTER_FONT_FAMILY } from "./fonts";

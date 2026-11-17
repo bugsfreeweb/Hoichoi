@@ -6,7 +6,7 @@ into operator-owned categories, rewrites neutrally via a multi-provider LLM
 resolver, double-approves sensitive content, and publishes on a rolling window.
 Every post is archived or purged by policy.
 
-Live site: <https://hoichoifeed.vercel.app> · Source: <https://github.com/bugsfreeweb/Hoichoi> (private)
+Live site: <https://hoichoifeed.vercel.app> · Source: <https://github.com/bugsfreeweb/Hoichoi> (public)
 
 ```
 Web (apps/web)        Next.js 15 public site (SSR feed, /sitemap, OG images, visitor
@@ -411,6 +411,46 @@ Verified end to end on the local dev server: a device token returned a real draf
 ledger rows carried `desk:smoke-test-device`. 14 checks in
 `packages/llm/src/__tests__/gateway.test.ts`, 5 in `gateway-resolver.test.ts`, 11 wiring
 checks in `apps/web/scripts/ai-gateway-desk.test.ts`.
+
+## Every story gets a newsroom plate, and Cloudflare is the default (v1.1.31)
+
+**Pollinations is gone.** The dispatcher, the flavour builder, the watermark trim
+(`watermarkTrimFraction`, `apps/web/src/lib/image-trim.ts`, `trimBottomFraction`) and its
+seed row were deleted: the mark it stamps could not be removed honestly for a provider
+that was not ours. Cloudflare Workers AI (`@cf/black-forest-labs/flux-1-schnell`) now
+ships `priority 1`, active, and default — and a second and third Cloudflare row is simply
+another provider, so a fleet of accounts shares the quota through the same fallback chain
+that already handles a timeout. A conservative migration deactivates any leftover
+`prov-pollinations-image` row instead of deleting someone's configuration.
+
+**A picture is composed, not just fetched.** `@hoichoi/poster` builds every story image
+from layers at one fixed frame — `1600×900`, 16:9, always landscape: the logo mark, the
+Bangla wordmark and the newsroom line top-left, the desk chip top-right, the headline as
+an auto-fitted caption with a kicker rule, the credit beneath it, and **related-topic
+chips** bottom-right. The chips are derived from the story itself (`topicCues`: the desk
+first, then the longest distinctive words of the headline, stopwords dropped) and are
+deterministic, so regenerating a story draws the same chips rather than a new guess.
+The mark is composited as its own layer and cached once per process; if the asset is
+missing the plate still renders, wordmark and all.
+
+**"Never miss an image" is a property of the pipeline, not a hope.** The plate is composed
+when the model answers, when the model fails (`renderPoster({background: null})` draws the
+branded backdrop), when collection found no media at all (`pipeline.ts` STEP 2.6), and when
+an editor presses generate. A provider being rate-limited changes the background; it does
+not change whether the story ships with a picture.
+
+**The console reads like the dashboard.** `reports`, `polls`, `live`, `backup` and `setup`
+moved to `PageHeading` + `Card` / `CardHead` / `StatTile`, so a queue, a poll and a live
+event all open with a kicker, a title, the numbers that matter and then cards. `appearance`
+is a redirect into Settings' ডিজাইন tab and stays one.
+
+**The sidebar is a rail now.** The collapse handle is a 24 px control on the rail's own
+edge instead of a row in the header, the active screen carries a red accent bar and
+`aria-current="page"`, `[` toggles the rail from the keyboard (ignored while typing), the
+width is remembered, and a screen filter sits under the logo — a 21-screen console should
+be searchable before it is scrollable. No label tooltip is drawn beside the icons: the nav
+is a scroll container, and `overflow-y: auto` clips anything that escapes it sideways, so
+the name is carried by `title` and `aria-label` instead of a card that never appeared.
 
 ## Provider errors, readable alerts, the console's own shape (v1.1.30)
 

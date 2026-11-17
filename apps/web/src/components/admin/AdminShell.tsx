@@ -148,6 +148,21 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
     });
   }, []);
 
+  // `[` toggles the rail, as in most editor sidebars. Ignored while typing.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "[" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      const tag = el?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select" || el?.isContentEditable) return;
+      e.preventDefault();
+      toggleCollapsed();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggleCollapsed]);
+
+
   // Close the mobile drawer whenever the route changes, so tapping a link does
   // not leave the overlay covering the destination page.
   useEffect(() => {
@@ -238,11 +253,29 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
       <div className="admin-console-main flex w-full gap-6 px-4 pt-6 md:px-6">
         {/* ============ SIDEBAR (desktop) ============ */}
         <aside
-          className={`admin-sidebar sticky top-20 hidden shrink-0 flex-col rounded-2xl border border-white/8 bg-panel/60 transition-[width] duration-300 lg:flex ${
+          className={`admin-sidebar relative sticky top-20 hidden shrink-0 flex-col rounded-2xl border border-white/8 bg-panel/60 transition-[width] duration-300 lg:flex ${
             collapsed ? "w-[70px]" : "w-60"
           }`}
         >
-          <SidebarNav variant="desktop" collapsed={collapsed} path={path} counts={counts} email={user.email} onToggleCollapse={toggleCollapsed} />
+          {/*
+            The collapse handle lives on the sidebar's own edge, not in a header
+            row: it is the control for the *column*, and putting it half outside
+            the panel is what makes it findable without hunting. It is 24px so it
+            clears the 24x24 minimum target at the rail's narrowest width.
+          */}
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? "সাইডবার প্রসারিত করুন" : "সাইডবার সংকুচিত করুন"}
+            aria-expanded={!collapsed}
+            title={`${collapsed ? "প্রসারিত করুন" : "সংকুচিত করুন"} (শর্টকাট: [ )`}
+            className="absolute -right-3 top-6 z-20 grid h-6 w-6 place-items-center rounded-full border border-white/15 bg-night text-white/70 shadow-lg transition hover:border-alizarin hover:text-white"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              {collapsed ? <path d="M9 18l6-6-6-6" /> : <path d="M15 18l-6-6 6-6" />}
+            </svg>
+          </button>
+          <SidebarNav variant="desktop" collapsed={collapsed} path={path} counts={counts} email={user.email} />
         </aside>
 
         {/* ============ SIDEBAR (mobile drawer) ============ */}
@@ -280,7 +313,6 @@ function SidebarNav({
   path,
   counts,
   email,
-  onToggleCollapse,
   onClose,
 }: {
   variant: "desktop" | "mobile";
@@ -288,9 +320,23 @@ function SidebarNav({
   path: string;
   counts: Record<CountKey, number>;
   email: string;
-  onToggleCollapse?: () => void;
   onClose?: () => void;
 }) {
+  // A 21-screen console is searchable before it is scrollable: type a word and
+  // the rail shows only the screens that match. When collapsed there is no room
+  // for the field, so the search reset with the collapse.
+  const [query, setQuery] = useState("");
+  const needle = query.trim().toLowerCase();
+  const groups = needle
+    ? NAV_GROUPS.map((g) => ({
+        ...g,
+        items: g.items.filter(
+          (n) => n.label.toLowerCase().includes(needle) || n.href.includes(needle) || g.en.toLowerCase().includes(needle),
+        ),
+      })).filter((g) => g.items.length > 0)
+    : NAV_GROUPS;
+  const nothingFound = needle.length > 0 && groups.length === 0;
+
   return (
     <>
       <div className={`flex items-center gap-3 border-b border-white/8 py-4 ${collapsed ? "justify-center px-1" : "px-3"}`}>
@@ -317,21 +363,7 @@ function SidebarNav({
             </svg>
           </button>
         ) : null}
-        {variant === "desktop" ? (
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            aria-label={collapsed ? "সাইডবার প্রসারিত করুন" : "সাইডবার সংকুচিত করুন"}
-            title={collapsed ? "প্রসারিত করুন" : "সংকুচিত করুন"}
-            className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-white/50 transition hover:bg-white/10 hover:text-white ${
-              collapsed ? "mt-2" : "ml-auto"
-            }`}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              {collapsed ? <path d="M9 18l6-6-6-6" /> : <path d="M15 18l-6-6 6-6" />}
-            </svg>
-          </button>
-        ) : null}
+
       </div>
 
       {/*
@@ -340,8 +372,45 @@ function SidebarNav({
         below its content size, which is what makes overflow-y engage instead of
         the aside growing past the viewport.
       */}
-      <nav className="mt-3 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-1.5 pb-2">
-        {NAV_GROUPS.map((group) => (
+      {!collapsed ? (
+        <div className="px-2 pt-2.5">
+          <label htmlFor="admin-nav-search" className="sr-only">
+            স্ক্রিন খুঁজুন
+          </label>
+          <div className="relative">
+            <svg
+              aria-hidden="true"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-white/35"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            <input
+              id="admin-nav-search"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="স্ক্রিন খুঁজুন…"
+              className="w-full rounded-lg border border-white/10 bg-white/[0.04] py-1.5 pl-7 pr-2 text-[11.5px] text-white placeholder:text-white/30 focus:border-alizarin/60 focus:outline-none"
+            />
+          </div>
+        </div>
+      ) : null}
+
+      <nav aria-label="কনসোল মেনু" className="mt-3 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-1.5 pb-2">
+        {nothingFound ? (
+          <p className="px-3 py-6 text-center text-[11px] leading-relaxed text-white/40">
+            “{query.trim()}” নামে কোনো স্ক্রিন নেই।
+          </p>
+        ) : null}
+        {groups.map((group) => (
           <div key={group.title}>
             {collapsed ? (
               <div className="mx-2 mb-2 border-t border-white/8" aria-hidden="true" />
@@ -358,15 +427,28 @@ function SidebarNav({
                   <li key={n.href}>
                     <Link
                       href={n.href}
+                      aria-current={active ? "page" : undefined}
+                      aria-label={collapsed ? n.label : undefined}
                       title={collapsed ? n.label : undefined}
-                      className={`flex items-center gap-3 rounded-lg py-2.5 transition-all duration-300 ${
+                      className={`group/nav relative flex items-center gap-3 rounded-lg py-2.5 transition-all duration-300 ${
                         collapsed ? "justify-center px-2" : "px-3"
                       } ${active ? "bg-white text-night" : "text-white/55 hover:bg-white/8 hover:text-white"}`}
                     >
+                      {/*
+                        In the rail the label is not rendered, so the emoji
+                        carries the meaning. The name is carried by `title` and
+                        `aria-label` rather than a CSS hover card: the nav is a
+                        scroll container, and `overflow-y: auto` clips anything
+                        that escapes it horizontally, so an absolutely-positioned
+                        label beside the rail was never actually shown.
+                      */}
+                      {active && !collapsed ? (
+                        <span className="absolute -left-1.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-alizarin" aria-hidden="true" />
+                      ) : null}
                       <span className="relative text-[15px]">
                         {n.emoji}
                         {collapsed && badge > 0 ? (
-                          <span className="absolute -right-1.5 -top-1 h-2 w-2 rounded-full bg-alizarin" />
+                          <span className="absolute -right-1.5 -top-1 h-2 w-2 rounded-full bg-alizarin ring-2 ring-panel" />
                         ) : null}
                       </span>
                       {!collapsed ? (

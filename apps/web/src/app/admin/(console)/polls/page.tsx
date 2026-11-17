@@ -8,6 +8,8 @@ import {
 import { StandalonePollForm } from "@/components/admin/polls/StandalonePollForm";
 import { PollTemplatePicker } from "@/components/admin/polls/PollTemplatePicker";
 import { PollIntegrityPanel } from "@/components/admin/PollIntegrityPanel";
+import { PageHeading } from "@/components/admin/ui/PageHeader";
+import { Card, CardHead, StatTile } from "@/components/admin/ui/Card";
 
 export const dynamic = "force-dynamic";
 
@@ -24,21 +26,45 @@ export default async function AdminPollsPage() {
 
   return (
     <div>
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="eyebrow">▚ LIVE POLLS · পাঠকের মতামত</p>
-          <h1 className="mt-2 font-serif-bn text-[32px] font-black text-ink md:text-[40px]">লাইভ পোল</h1>
-          <p className="mt-1 text-[13px] text-ink-soft">বিষয়ভিত্তিক পোল তৈরি, ডিজাইন বদল, ফলাফল ও অংশগ্রহণ।</p>
+      <PageHeading
+        emoji="🗳️"
+        kicker="LIVE POLLS · পাঠকের মতামত"
+        title="লাইভ পোল"
+        description="বিষয়ভিত্তিক পোল তৈরি, ডিজাইন বদল, ফলাফল ও অংশগ্রহণ — সব এক পাতায়।"
+      />
+
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile label="মোট পোল" value={polls.length} />
+        <StatTile label="চলমান" value={polls.filter((poll) => poll.status === "open").length} tone="teal" />
+        <StatTile
+          label="মোট ভোট"
+          value={polls.reduce(
+            (sum, poll) => sum + (resultMap.get(poll.id) ?? []).reduce((n, item) => n + item.votes, 0),
+            0,
+          )}
+        />
+        <StatTile
+          label="ইম্প্রেশন"
+          value={polls.reduce((sum, poll) => sum + poll.impressions, 0)}
+          hint="পোল দেখা হয়েছে"
+        />
+      </div>
+
+      <Card className="mb-5">
+        <CardHead emoji="➕" title="নতুন লাইভ পোল তৈরি করুন" kicker="NEW POLL" />
+        <div className="p-5 md:p-6">
+          <StandalonePollForm />
         </div>
-      </header>
+      </Card>
 
-      <section className="mt-8 border border-line bg-paper p-5 md:p-7">
-        <p className="eyebrow">▚ NEW POLL</p>
-        <h2 className="mt-1 mb-5 font-serif-bn text-[22px] font-black text-ink">নতুন লাইভ পোল তৈরি করুন</h2>
-        <StandalonePollForm />
-      </section>
-
-      <section className="mt-10 space-y-4">
+      <Card>
+        <CardHead
+          emoji="📊"
+          title="সব পোল"
+          kicker={`${polls.length} POLLS`}
+          note="প্রতিটি পোলের ফল, অংশগ্রহণ ও অখণ্ডতা এখানেই দেখা যায়।"
+        />
+      <section className="space-y-4 p-4">
         {polls.length ? (
           polls.map((poll) => {
             const res = resultMap.get(poll.id) ?? [];
@@ -101,6 +127,7 @@ export default async function AdminPollsPage() {
           <p className="text-[12.5px] text-ink-soft">এখনো কোনো পোল তৈরি করা হয়নি।</p>
         )}
       </section>
+      </Card>
     </div>
   );
 }

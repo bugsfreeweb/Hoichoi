@@ -13,7 +13,7 @@ import {
 } from "@hoichoi/db";
 import { uploadBufferRemote, writeGeneratedMedia } from "@hoichoi/db/storage";
 import { buildImageBrief, EDITORIAL_IMAGE_NEGATIVE, extensionForMime, generateImage, imageSizeFor, listImageProviders } from "@hoichoi/llm";
-import { renderPoster } from "@hoichoi/poster";
+import { renderPoster, topicCues } from "@hoichoi/poster";
 import { forbidden, requireApiRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -298,6 +298,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         category: deskLabel(post.category),
         source: post.source_name ?? null,
         dateText: post.published_at ? banglaDate(new Date(post.published_at)) : banglaDate(),
+        topics: topicCues({ category: deskLabel(post.category), title: post.title_bn || "" }),
       },
       seed: post.slug,
       accent: deskAccent(post.category),

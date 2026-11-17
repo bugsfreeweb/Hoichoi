@@ -1,20 +1,22 @@
 import { BackupManager } from "@/components/admin/BackupManager";
 import { MediaReconcilePanel } from "@/components/admin/MediaReconcilePanel";
+import { PageHeading } from "@/components/admin/ui/PageHeader";
 
 export const dynamic = "force-dynamic";
 
 export default function AdminBackupPage() {
   return (
     <div>
-      <header>
-        <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">💾 DATA CONTROL</p>
-        <h1 className="mt-1 font-serif-bn text-[34px] font-black text-ink">ব্যাকআপ, রিস্টোর ও রিসেট</h1>
-        <p className="mt-1 text-[12.5px] text-ink-soft">
-          কনটেন্ট ব্যাকআপ ডাউনলোড / পুনরুদ্ধার করুন, বা পুরো সিস্টেম fresh-install অবস্থায় ফিরিয়ে আনুন।
-        </p>
-      </header>
-      <BackupManager />
-      <MediaReconcilePanel />
+      <PageHeading
+        emoji="💾"
+        kicker="DATA CONTROL"
+        title="ব্যাকআপ, রিস্তোর ও রিসেট"
+        description="কনটেন্ট ব্যাকআপ ডাউনলোড / পুনরুদ্ধার করুন, মিডিয়া রিকনসাইল করুন, অথবা পুরো সিস্টেম fresh-install অবস্থায় ফিরিয়ে আনুন।"
+      />
+      <div className="grid gap-5">
+        <BackupManager />
+        <MediaReconcilePanel />
+      </div>
     </div>
   );
 }

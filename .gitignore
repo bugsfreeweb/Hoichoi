@@ -80,3 +80,5 @@ ad-management-system-mockup/
 
 # scratch screenshots and logs from local verification
 .tmp/
+.tmp-poster-*
+apps/scraper/.tmp-*

@@ -19,6 +19,7 @@ import {
   fontsDir,
   kickerLine,
   renderPoster,
+  topicCues,
   wrapCaption,
   POSTER_FONT_FAMILY,
 } from "../index";
@@ -140,6 +141,60 @@ async function main(): Promise<void> {
     assert.equal(out.width, 1600);
     assert.ok(out.bytes.byteLength > 5_000);
     fs.writeFileSync(path.resolve(".tmp-poster-fallback.webp"), out.bytes);
+  });
+
+  await check("topic cues name the desk and the story's own subject words", async () => {
+    const cues = topicCues({
+      category: "রাজনীতি",
+      title: "ঢাকায় নতুন মেট্রোরেল স্টেশন চালু হবে আগামী মাসে",
+    });
+    assert.equal(cues[0], "রাজনীতি", "the desk is always the first chip");
+    assert.ok(cues.length >= 2 && cues.length <= 3, "two or three chips, never a wall of them");
+    assert.ok(!cues.includes("আগামী"), "a stopword is not a topic");
+    assert.equal(new Set(cues).size, cues.length, "no chip repeats");
+  });
+
+  await check("the same story always gets the same chips", async () => {
+    const input = {
+      category: "খেলা",
+      title: "বাংলাদেশ ক্রিকেট দল সিরিজ জিতল শেষ ম্যাচে",
+    };
+    assert.deepEqual(topicCues(input), topicCues(input));
+  });
+
+  await check("chips are drawn on the plate, and only when given", async () => {
+    const svg = captionSvg({
+      title: "পরীক্ষামূলক শিরোনাম",
+      category: "প্রযুক্তি",
+      source: "একুশে",
+      topics: ["প্রযুক্তি", "মেট্রোরেল"],
+    });
+    assert.ok(svg.includes("মেট্রোরেল"), "the topic is on the plate");
+    const plain = captionSvg({ title: "পরীক্ষামূলক শিরোনাম" });
+    assert.ok(!plain.includes("fill-opacity="), "no chips when there are none");
+  });
+
+  await check("the logo mark is a real layer in the plate", async () => {
+    const out = await renderPoster({
+      background: null,
+      spec: {
+        title: "ব্রান্ড মার্ক পরীক্ষা",
+        category: "সংবাদ",
+        topics: ["সংবাদ"],
+      },
+      format: "png",
+    });
+    const sharpLib = (await import("sharp")).default;
+    const { data, info } = await sharpLib(out.bytes)
+      .extract({ left: 88, top: 64, width: 68, height: 68 })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    let bright = 0;
+    for (let i = 0; i < data.length; i += info.channels) {
+      if ((data[i] ?? 0) + (data[i + 1] ?? 0) + (data[i + 2] ?? 0) > 360) bright++;
+    }
+    assert.ok(bright > 200, "the brand mark is composited, not missing: " + bright);
+    fs.writeFileSync(path.resolve(".tmp-poster-branded.png"), out.bytes);
   });
 
   console.log(`\nposter: ${passed} checks passed`);

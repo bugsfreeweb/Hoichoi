@@ -5,6 +5,8 @@ import { evaluateSecrets } from "@hoichoi/shared-types";
 import { evaluateReadiness } from "@/lib/setup-readiness";
 import { reapStaleRuns } from "@/lib/reap-runs";
 import { SetupGuide, type SecretView } from "@/components/admin/SetupGuide";
+import { PageHeading } from "@/components/admin/ui/PageHeader";
+import { Card } from "@/components/admin/ui/Card";
 
 export const dynamic = "force-dynamic";
 
@@ -69,33 +71,30 @@ export default async function AdminSetupPage() {
 
   return (
     <div>
-      <header>
-        <p className="font-mono-x text-[10px] tracking-[0.24em] text-lime uppercase">
-          ⚙️ ONBOARDING
-        </p>
-        <h1 className="mt-1 font-serif-bn text-[34px] font-black text-white">
-          সেটআপ গাইড
-        </h1>
-        <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-white/60">
-          অটোমেশন চালু করতে কোন কোন কী লাগে, কোথায় পাবেন, এবং না দিলে কী ভাঙে — সব এক
-          জায়গায়। কোনো কী চ্যাটে বা ইমেইলে পাঠানোর দরকার নেই।
-        </p>
-      </header>
+      <PageHeading
+        emoji="🔑"
+        kicker="ONBOARDING"
+        title="সেটআপ গাইড"
+        description="অটোমেশন চালু করতে কোন কোন কী লাগে, কোথায় পাবেন, এবং না দিলে কী ভাঙে — সব এক জায়গায়। কোনো কী চ্যাটে বা ইমেইলে পাঠানোর দরকার নেই।"
+        back={{ href: "/admin", label: "ড্যাশবোর্ড" }}
+      />
 
-      <div className="mt-6">
-        <SetupGuide
-          secrets={secrets}
-          manualRun={manualRun}
-          lastRun={lastRun}
-          preflightBlocked={preflightBlocked}
-          dbUnavailable={dbUnavailable}
-        />
-      </div>
+      <Card>
+        <div className="p-4 md:p-6">
+          <SetupGuide
+            secrets={secrets}
+            manualRun={manualRun}
+            lastRun={lastRun}
+            preflightBlocked={preflightBlocked}
+            dbUnavailable={dbUnavailable}
+          />
+        </div>
+      </Card>
 
-      <p className="mt-8 text-[12.5px] text-white/45">
+      <p className="mt-5 text-[12.5px] text-ink-soft">
         পুরো ডকুমেন্টেশন:{" "}
-        <code className="font-mono-x text-white/60">docs/SECRETS.md</code> ·{" "}
-        <Link href="/admin" className="underline hover:text-lime">
+        <code className="font-mono-x text-ink">docs/SECRETS.md</code> ·{" "}
+        <Link href="/admin" className="underline hover:text-alizarin">
           ড্যাশবোর্ডে ফিরুন
         </Link>
       </p>

@@ -1,4 +1,5 @@
 export {
+  BRAND_MARK,
   POSTER_FRAME,
   backdropSvg,
   captionSvg,
@@ -9,6 +10,7 @@ export {
   fontsDir,
   kickerLine,
   renderPoster,
+  topicCues,
   wrapCaption,
   POSTER_FONT_FAMILY,
 } from "./render";

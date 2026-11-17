@@ -12,7 +12,7 @@
  *      same people as the headline.
  */
 import { banglaDate, deskFor } from "@hoichoi/db";
-import { renderPoster, type PosterSpec } from "@hoichoi/poster";
+import { renderPoster, topicCues, type PosterSpec } from "@hoichoi/poster";
 
 /** Re-exported from the database package so the collector and the web route agree. */
 export { banglaDate, deskFor } from "@hoichoi/db";
@@ -36,6 +36,9 @@ export async function composeStoryPlate(input: PlateInput): Promise<Buffer> {
     category: desk.label,
     source: input.source ?? null,
     dateText: banglaDate(input.date ?? new Date()),
+    // The chips name the desk and the story's own subject words, so the plate
+    // reads as a news card in a feed instead of a captioned photograph.
+    topics: topicCues({ category: desk.label, title: input.title }),
   };
   const rendered = await renderPoster({
     background: input.background,

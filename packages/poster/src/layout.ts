@@ -43,6 +43,15 @@ export interface PosterSpec {
   brandLine?: string;
   /** The credit at the bottom right. */
   site?: string;
+  /**
+   * Related-topic chips, drawn bottom-right.
+   *
+   * A reader scrolling a feed has the headline and nothing else; two or three
+   * topic words tell them what the story is *about* before they read a word of
+   * it, and they are what makes a plate look like a news card rather than a
+   * stock photo with a caption. Derived deterministically by `topicCues`.
+   */
+  topics?: string[];
 }
 
 /** 16:9, and nothing else. Every surface we publish into wants this ratio. */
@@ -53,6 +62,14 @@ export const CAPTION_MAX_LINES = 3;
 const CAPTION_SIZES = [62, 56, 50, 44, 40] as const;
 /** Left margin, usable width, and how far the last caption line sits above the edge. */
 const CAPTION_BOX = { x: 88, width: POSTER_FRAME.width - 176, bottom: 138 } as const;
+/**
+ * The logo mark in the brand lockup, and how far it pushes the wordmark along.
+ *
+ * The wordmark alone was accurate but anonymous — the same plate with any
+ * masthead swapped in. The mark is the one element that cannot be copied by a
+ * screenshot, so it sits first in the lockup and the wordmark follows it.
+ */
+export const BRAND_MARK = { size: 68, gap: 18 } as const;
 const ACCENT = "#e8552d";
 const INK = "#ffffff";
 const MUTED = "rgba(255,255,255,0.72)";
@@ -153,6 +170,10 @@ export function captionSvg(spec: PosterSpec): string {
   const firstBaseline = lastBaseline - blockHeight + fontSize * 0.86;
   const brand = spec.brand ?? "হৈচৈ";
   const brandLine = spec.brandLine ?? "HOICHOI · NEWSROOM";
+  // The mark is composited by `renderPoster` at exactly this origin, so the text
+  // starts where the mark ends rather than on top of it.
+  const markX = CAPTION_BOX.x + BRAND_MARK.size + BRAND_MARK.gap;
+  const MARK_X = markX;
 
   const titleSpans = lines
     .map(
@@ -177,8 +198,8 @@ export function captionSvg(spec: PosterSpec): string {
   <rect y="${Math.round(POSTER_FRAME.height * 0.34)}" width="${POSTER_FRAME.width}" height="${Math.round(POSTER_FRAME.height * 0.66)}" fill="url(#scrim)"/>
 
   <!-- brand lockup -->
-  <text x="${CAPTION_BOX.x}" y="${88 + 38}" font-family="Noto Sans Bengali" font-size="40" font-weight="700" fill="${INK}">${escapeXml(brand)}</text>
-  <text x="${CAPTION_BOX.x}" y="${88 + 62}" font-family="Noto Sans Bengali" font-size="13" font-weight="700" fill="${MUTED}" letter-spacing="3.4">${escapeXml(brandLine)}</text>
+  <text x="${MARK_X}" y="${64 + 34}" font-family="Noto Sans Bengali" font-size="40" font-weight="700" fill="${INK}">${escapeXml(brand)}</text>
+  <text x="${MARK_X}" y="${64 + 58}" font-family="Noto Sans Bengali" font-size="13" font-weight="700" fill="${MUTED}" letter-spacing="3.4">${escapeXml(brandLine)}</text>
 
   <!-- desk chip -->
   ${
@@ -197,7 +218,78 @@ export function captionSvg(spec: PosterSpec): string {
 
   <!-- credit, on its own line below the caption -->
   <text x="${CAPTION_BOX.x}" y="${POSTER_FRAME.height - 40}" font-family="Noto Sans Bengali" font-size="16" fill="${MUTED}">${escapeXml(credit)}</text>
+
+  <!-- related topics, right-aligned on the credit line so they never fight it -->
+  ${topicChips(spec.topics ?? [])}
 </svg>`;
+}
+
+/**
+ * The topic chips, right-aligned, sharing the credit's baseline.
+ *
+ * Widths are estimated from glyph count for the same reason the caption is: there
+ * is no text-metrics call available, and an over-wide chip is more visible than a
+ * slightly generous one.
+ */
+function topicChips(topics: string[]): string {
+  const chips = topics.map((t) => t.trim()).filter(Boolean).slice(0, 3);
+  if (chips.length === 0) return "";
+  const glyph = 11.5;
+  const pad = 22;
+  const gap = 14;
+  const widths = chips.map((c) => Math.max(78, Math.round(c.length * glyph) + pad * 2));
+  const total = widths.reduce((a, b) => a + b, 0) + gap * (chips.length - 1);
+  let x = POSTER_FRAME.width - CAPTION_BOX.x - total;
+  const y = POSTER_FRAME.height - 78;
+  return chips
+    .map((c, i) => {
+      const w = widths[i]!;
+      const chip = `<g>
+    <rect x="${Math.round(x)}" y="${y}" width="${w}" height="40" rx="20" fill="#ffffff" fill-opacity="0.10" stroke="#ffffff" stroke-opacity="0.22"/>
+    <text x="${Math.round(x + w / 2)}" y="${y + 26}" text-anchor="middle" font-family="Noto Sans Bengali" font-size="17" font-weight="600" fill="${MUTED}">${escapeXml(c)}</text>
+  </g>`;
+      x += w + gap;
+      return chip;
+    })
+    .join("\n  ");
+}
+
+/**
+ * Pick two or three topic words from the story itself.
+ *
+ * Deterministic, because a plate is rendered more than once for the same story
+ * (retry, manual regeneration, the web route) and two different sets of chips on
+ * two versions of the same picture is a bug an editor would report. The desk
+ * comes first — it is already known to be right — then the longest distinctive
+ * words of the headline, which is where the subject of a Bangla headline lives.
+ */
+const TOPIC_STOPWORDS = new Set([
+  "এই", "একটি", "একটা", "এবং", "কিন্তু", "থেকে", "জন্য", "সাথে", "আরো", "আরও", "যে", "যা",
+  "তার", "তিনি", "তারা", "করে", "করেছে", "হবে", "হয়", "হয়েছে", "নেই", "আছে", "বলে", "কথা",
+  "নিয়ে", "মধ্যে", "পর", "আগে", "পরে", "দিকে", "এখন", "সব", "কোনো", "একজন", "নতুন", "আজ",
+  "দিন", "বছর", "শেষ", "শুরু", "মতো", "আবার", "তবে", "কেন", "কীভাবে", "কোথায়",
+]);
+
+export function topicCues(input: { category?: string | null; title: string; extra?: string[] }): string[] {
+  const out: string[] = [];
+  const push = (value: string) => {
+    const clean = value.replace(/[.,।!?"'“”‘’()…:;]+$/g, "").trim();
+    if (clean.length < 3) return;
+    if (out.some((t) => t.toLowerCase() === clean.toLowerCase())) return;
+    out.push(clean);
+  };
+  if (input.category?.trim()) push(input.category.trim());
+  for (const item of input.extra ?? []) push(item);
+  const words = input.title
+    .split(/\s+/)
+    .map((w) => w.replace(/[.,।!?"'“”‘’()…:;]+/g, ""))
+    .filter((w) => w.length >= 4 && !TOPIC_STOPWORDS.has(w))
+    .sort((a, b) => b.length - a.length);
+  for (const word of words) {
+    if (out.length >= 3) break;
+    push(word);
+  }
+  return out.slice(0, 3);
 }
 
 /**
