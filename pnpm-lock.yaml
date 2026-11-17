@@ -90,6 +90,9 @@ importers:
       '@hoichoi/llm':
         specifier: workspace:*
         version: link:../../packages/llm
+      '@hoichoi/poster':
+        specifier: workspace:*
+        version: link:../../packages/poster
       '@hoichoi/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -128,6 +131,9 @@ importers:
       '@hoichoi/llm':
         specifier: workspace:*
         version: link:../../packages/llm
+      '@hoichoi/poster':
+        specifier: workspace:*
+        version: link:../../packages/poster
       '@hoichoi/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -267,6 +273,25 @@ importers:
       '@types/node':
         specifier: ^22.10.0
         version: 22.20.1
+      tsx:
+        specifier: ^4.19.2
+        version: 4.23.13
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
+  packages/poster:
+    dependencies:
+      sharp:
+        specifier: ^0.33.5
+        version: 0.33.5
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.1
+      '@types/sharp':
+        specifier: ^0.31.1
+        version: 0.31.1
       tsx:
         specifier: ^4.19.2
         version: 4.23.13
@@ -1535,6 +1560,9 @@ packages:
 
   '@types/react@19.2.18':
     resolution: {integrity: sha512-AnzbBERsrLKtk2XSfTbYRLjQPdy116Sty4q+T+Bp3IC4l6jNBvreVPAHmpq9qhXQM7CXZPjLVmGMw9sy+hxQ3w==}
+
+  '@types/sharp@0.31.1':
+    resolution: {integrity: sha512-5nWwamN9ZFHXaYEincMSuza8nNfOof8nmO+mcI+Agx1uMUk4/pQnNIcix+9rLPXzKrm1pS34+6WRDbDV0Jn7ag==}
 
   '@types/use-sync-external-store@0.0.6':
     resolution: {integrity: sha512-zFDAD+tlpf2r4asuHEj0XH6pY6i0g5NeAHPn+15wk3BV6JA69eERFXC1gyGThDkVa1zCyKr5jox1+2LbV/AMLg==}
@@ -3386,6 +3414,10 @@ snapshots:
   '@types/react@19.2.18':
     dependencies:
       csstype: 3.2.3
+
+  '@types/sharp@0.31.1':
+    dependencies:
+      '@types/node': 22.20.1
 
   '@types/use-sync-external-store@0.0.6': {}
 
