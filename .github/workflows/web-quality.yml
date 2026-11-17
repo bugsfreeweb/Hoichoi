@@ -75,3 +75,18 @@ jobs:
         run: npx --yes @lhci/cli@0.14.x autorun
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+      # When a budget fails, say *what* moved. The assertion only reports the
+      # score; the LHR already knows which element shifted and by how much, and on
+      # a shared runner that is the difference between a fix and a guess.
+      - name: Explain layout shift
+        if: always()
+        run: node apps/web/scripts/cls-report.mjs .lighthouseci
+      # The reports themselves, so a red run on main can be opened locally without
+      # re-running Lighthouse on a runner whose CPU made it red in the first place.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouseci
+          path: .lighthouseci
+          retention-days: 7
+          if-no-files-found: ignore
