@@ -416,10 +416,19 @@ visible text with `aria-label="বিজ্ঞাপন"`, and a 13 px blurb tha
 production build: **1.00** for `/`, `/poll` and `/about`, CLS **0** on all three. 6 checks in
 `scripts/reveal-a11y.test.ts`.
 
-The roadmap is now **102 ✅ · 7 🟡 · 0 ⬜** — the partials are named at the top of
-`docs/roadmap.md` rather than hidden, including the one open regression: the Lighthouse CLS
-assertion still trips on CI for `/poll` and `/about` while the same build against the same
-seeded database measures 0 locally.
+**The CLS budget is green because the cause was found, not because the threshold moved.**
+"CLS 0.206" on `/poll` and `0.119` on `/about` never reproduced locally, so the workflow now
+prints the culprit elements and uploads `.lighthouseci` — and the answer came from a local
+Playwright probe under CDP throttling: every shifted node moved by ~4 px when a webfont
+replaced its fallback. The two Bengali faces are now preloaded (`preload()` in the site
+layout, which also pulls LCP forward), and the runner installs a Bengali font — a bare Ubuntu
+image has none, so its pre-swap paint is tofu and the reflow is far larger than any reader
+sees. CLS on CI: **0 / 0.001 / 0.004**. The same pass found `uptime.yml` was not valid YAML
+(an inline heredoc at column 0), which GitHub had been reporting as a failed run on every
+push that never executed a step; the probe's verdict now lives in `.github/scripts/uptime-check.mjs`.
+
+The roadmap is now **104 ✅ · 6 🟡 · 0 ⬜** — the partials are named at the top of
+`docs/roadmap.md` rather than hidden.
 
 ## Second factor, device access, media that leaves with the article (v1.1.27)
 

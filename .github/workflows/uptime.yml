@@ -29,10 +29,7 @@ jobs:
             echo "::error::health endpoint returned $code"
             exit 1
           fi
-          python3 - "$body" <<'PY'
-import json, sys
-report = json.load(open(sys.argv[1]))
-if report.get("status") != "healthy":
-    bad = [p for p in report.get("probes", []) if p.get("status") in ("fail", "degraded")]
-    print("::warning::degraded:", json.dumps(bad))
-PY
+          # The parse lives in a file on purpose: a heredoc inside a `run:` block
+          # scalar starts at column 0 and makes this whole workflow file invalid,
+          # which GitHub reports as a failed run on every push.
+          node .github/scripts/uptime-check.mjs "$body"
