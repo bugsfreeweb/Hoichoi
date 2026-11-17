@@ -59,8 +59,13 @@ jobs:
       - name: Install a Bengali fallback font
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq fonts-noto-bengali
-          fc-list :lang=bn | head -3
+          # Ubuntu ships Bengali in `fonts-beng` (Lohit); Noto lives in
+          # fonts-noto-extra on newer images. Either is enough — what matters is
+          # that *some* Bengali font is present for the pre-swap paint.
+          sudo apt-get install -y -qq fonts-beng || sudo apt-get install -y -qq fonts-noto-extra
+          count=$(fc-list :lang=bn | wc -l)
+          echo "Bengali fonts installed: $count"
+          test "$count" -gt 0
       - name: Migrate and seed a local database
         run: |
           pnpm db:migrate
