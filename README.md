@@ -412,6 +412,34 @@ ledger rows carried `desk:smoke-test-device`. 14 checks in
 `packages/llm/src/__tests__/gateway.test.ts`, 5 in `gateway-resolver.test.ts`, 11 wiring
 checks in `apps/web/scripts/ai-gateway-desk.test.ts`.
 
+## Provider errors, readable alerts, the console's own shape (v1.1.30)
+
+Four reports from the admin console, each with a cause rather than a symptom:
+
+**A provider failure has to say what to do.** A Cloudflare row returned
+`404 {"code":7003,"message":"Could not route to /client/v4/accounts/ACCOUNT_ID/ai/run/…"}`
+and another returned a whole HTML interstitial inside the panel. `summarizeProviderError`
+(`packages/llm/src/openai-compat.ts`) now prefers a JSON `message`, reduces HTML to its
+title, names the Cloudflare codes in Bangla, and clamps the result to one line —
+`classifyStatus` passes that text through and maps 400/422 to `bad_output`. The seeded
+Cloudflare row keeps a placeholder nobody can be expected to hand-edit, so
+`resolveAccountPlaceholder` substitutes a 32-hex `CLOUDFLARE_ACCOUNT_ID`, the row editor
+validates and rewrites the URL, and a row that still carries the placeholder refuses the
+call with instructions instead of spending a round trip to learn it from a 404. Those two
+helpers live in `@hoichoi/shared-types`: importing `@hoichoi/llm` from a client component
+pulls `node:crypto` into the browser bundle and 500s the page.
+
+**An alert is a line, not a paragraph.** The bell rendered every notification body, so
+eight events filled the viewport and the panel grew without bound. Rows are one line —
+severity dot, title, age — with the body on demand, a per-row dismiss, and clear that
+removes only what has been read unless unread is explicitly included. `/admin/notifications`
+holds the alerts the bell cannot (`apps/web/src/components/admin/NotificationList.tsx`,
+`notify-ux.test.ts`, 8 checks).
+
+**The providers page is laid out like the dashboard it lives in.** Stat tiles, a fleet
+card, a health card and a sticky guide column; adding a provider is a modal, so no
+permanent form column can stretch the page (`ProviderAddPanel.tsx`, `ui/Card.tsx`).
+
 ## Pictures that belong to the story (v1.1.29)
 
 **A generated hero used to be a stock image of a mood, not a picture of the news.** Three
