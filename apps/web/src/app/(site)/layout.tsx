@@ -17,6 +17,7 @@ import { MvDataProvider } from "@/components/mv/ui/mv-data";
 import ScrollToTop from "@/components/ScrollToTop";
 import ConsentBanner from "@/components/ConsentBanner";
 import { PlatformAdSlot } from "@/components/ads/PlatformAdSlot";
+import { JsonLd, siteJsonLd } from "@/components/JsonLd";
 import type { Metadata } from "next";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -104,6 +105,9 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         }}
       />
       <TrafficTracker />
+      {/* Site-level structured data: one WebSite entity with the publisher, so a
+          crawler does not have to infer the organisation from every article. */}
+      <JsonLd data={siteJsonLd(settings.site_name)} />
       <TopBar pipelineHours={settings.pipeline_hours} />
       <BreakingTicker />
       <NoticeBanner notice={specialNotice} />

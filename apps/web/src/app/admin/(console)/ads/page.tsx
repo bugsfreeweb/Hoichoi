@@ -1,4 +1,13 @@
-import { getAllAdAnalytics, listAdSlots, listAllAdCreatives, listAllAdBookings, listAdClients, listAllInvoices } from "@hoichoi/db";
+import {
+  AD_POLICY_CHECKS,
+  AD_POLICY_KEYS,
+  getAllAdAnalytics,
+  listAdSlots,
+  listAllAdCreatives,
+  listAllAdBookings,
+  listAdClients,
+  listAllInvoices,
+} from "@hoichoi/db";
 import Link from "next/link";
 import { requirePageUser, requiresRole } from "@/lib/auth";
 import { updateAdBookingStatus, updateAdClientStatus } from "./actions";
@@ -100,11 +109,37 @@ export default async function AdminAdsPage() {
                   <p className="font-mono-x text-[9px] text-ink-soft">{booking.impressions} imp · {booking.clicks} clk</p>
                   {canManageClients && booking.status !== "active" && booking.status !== "rejected" && (
                     <div className="mt-2 flex justify-end gap-2">
-                      <form action={updateAdBookingStatus}>
-                        <input type="hidden" name="bookingId" value={booking.id} />
-                        <input type="hidden" name="status" value="active" />
-                        <button type="submit" className="border border-lime/40 px-2 py-1 text-[9px] font-bold text-lime hover:bg-lime/10">অনুমোদন ও চালু</button>
-                      </form>
+                      {/* Activation opens the policy checklist: the ad goes live
+                          only after a human confirms each rule, and the answers
+                          are stored against the booking. */}
+                      <details className="text-right">
+                        <summary className="cursor-pointer list-none border border-lime/40 px-2 py-1 text-[9px] font-bold text-lime hover:bg-lime/10">
+                          অনুমোদন ও চালু ▾
+                        </summary>
+                        <form action={updateAdBookingStatus} className="mt-2 w-64 border border-ink/20 bg-card p-3 text-left">
+                          <input type="hidden" name="bookingId" value={booking.id} />
+                          <input type="hidden" name="status" value="active" />
+                          <p className="font-mono-x text-[9px] uppercase tracking-[0.12em] text-ink-soft">নীতি-যাচাই</p>
+                          <ul className="mt-2 space-y-1.5">
+                            {AD_POLICY_KEYS.map((key) => (
+                              <li key={key}>
+                                <label className="flex items-start gap-2 text-[10px] leading-snug text-ink">
+                                  <input type="checkbox" name={`policy_${key}`} className="mt-0.5" required />
+                                  <span>{AD_POLICY_CHECKS[key]}</span>
+                                </label>
+                              </li>
+                            ))}
+                          </ul>
+                          <input
+                            name="policyNotes"
+                            placeholder="মন্তব্য (ঐচ্ছিক)"
+                            className="mt-2 w-full border border-ink/20 bg-paper px-2 py-1 text-[10px] text-ink"
+                          />
+                          <button type="submit" className="mt-2 w-full border border-lime/50 px-2 py-1 text-[10px] font-bold text-lime hover:bg-lime/10">
+                            নিশ্চিত করে চালু করুন
+                          </button>
+                        </form>
+                      </details>
                       <form action={updateAdBookingStatus}>
                         <input type="hidden" name="bookingId" value={booking.id} />
                         <input type="hidden" name="status" value="rejected" />

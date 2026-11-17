@@ -311,8 +311,41 @@ export async function createAdBooking(input: {
   };
 }
 
-export async function setAdBookingStatus(id: string, status: "active" | "rejected") {
+/**
+ * Activate or reject a booking.
+ *
+ * Activation requires a completed policy checklist and an actor, and records the
+ * review *before* the status changes: a booking can never be live without a
+ * review row saying who approved it and what they confirmed. Rejection needs
+ * neither — refusing an ad is not the risky direction.
+ */
+export async function setAdBookingStatus(
+  id: string,
+  status: "active" | "rejected",
+  review?: { actor: string; checks?: Partial<Record<string, boolean>>; notes?: string | null },
+) {
   const client = getClient();
+  if (status === "active") {
+    if (!review?.actor) throw new Error("বিজ্ঞাপন চালু করতে অনুমোদনকারীর পরিচয় প্রয়োজন।");
+    // Imported lazily so this module stays free of a cycle with ad-policy.
+    const { recordAdPolicyReview } = await import("./ad-policy");
+    await recordAdPolicyReview({
+      bookingId: id,
+      decision: "approved",
+      checks: review.checks,
+      notes: review.notes ?? null,
+      reviewer: review.actor,
+    });
+  } else if (review?.actor) {
+    const { recordAdPolicyReview } = await import("./ad-policy");
+    await recordAdPolicyReview({
+      bookingId: id,
+      decision: "rejected",
+      checks: review.checks,
+      notes: review.notes ?? null,
+      reviewer: review.actor,
+    });
+  }
   await client.execute({
     sql: "UPDATE ad_bookings SET status = ?, updated_at = ? WHERE id = ?",
     args: [status, new Date().toISOString(), id],

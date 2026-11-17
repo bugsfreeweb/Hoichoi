@@ -24,6 +24,7 @@ import { getLive } from "@/lib/mv/live";
 import { isMvMode } from "@/lib/mv/variant";
 import MvPost from "@/components/mv/MvPost";
 import VerificationBadge from "@/components/VerificationBadge";
+import { JsonLd, newsArticleJsonLd } from "@/components/JsonLd";
 
 export const dynamic = "force-dynamic";
 
@@ -157,8 +158,24 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     />
   );
 
+  // Structured data describes only what this page actually shows. The post is
+  // live here by definition (a removed or archived row is a 404 above), so the
+  // NewsArticle block can never outlive the story.
+  const jsonLd = newsArticleJsonLd({
+    slug,
+    headline: post.title_bn,
+    summary: post.summary_bn || post.title_bn,
+    publishedAt: post.published_at,
+    updatedAt: post.updated_at,
+    image: src,
+    category: post.category,
+    categoryBn: cat?.displayNameBn ?? post.category,
+    siteName: settings.site_name,
+  });
+
   return (
     <main className="bg-paper">
+      <JsonLd data={jsonLd} />
       <article className="mx-auto max-w-[1400px] px-4 py-10 md:px-8 md:py-14">
         {isCsa && cat?.config.content_warning_text_bn ? (
           <ContentWarningGate warningText={cat.config.content_warning_text_bn}>

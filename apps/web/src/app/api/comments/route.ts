@@ -15,6 +15,7 @@ import { limitRequest, LIMITS } from "@/lib/rate-limit";
 import { clientIp, ensureGuestId } from "@/lib/guest";
 import { identityFor } from "@hoichoi/db";
 import { assessDisplayName } from "@/lib/name-guard";
+import { assessCommentBody } from "@/lib/comment-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +86,10 @@ export async function POST(req: Request) {
   // a link into the page. Refused with the reason the reader can act on.
   const nameCheck = assessDisplayName(authorStr);
   if (!nameCheck.ok) return bad(nameCheck.reason);
+  // Body-level abuse (link spam, padding, number walls). Deliberately narrow:
+  // opinions and emphasis pass, three-link adverts do not.
+  const bodyCheck = assessCommentBody(bodyStr);
+  if (!bodyCheck.ok) return bad(bodyCheck.reason);
 
   const post = await getPostById(ref);
   if (!post) {

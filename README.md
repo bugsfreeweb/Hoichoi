@@ -377,6 +377,37 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 > before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
 > (latest e.g. `012_post_images.sql`).
 
+## Edge guards: CSRF, structured data, ad review, comment abuse (v1.1.28)
+
+**Every cookie-bearing write must prove where it came from.** `apps/web/src/middleware.ts`
+runs `lib/csrf.ts` over `/api`, `/admin` and `/portal`: a POST/PATCH/PUT/DELETE that carries
+a session cookie has to show a matching `Origin` (or `x-forwarded-host` under a proxy, or a
+same-origin `Sec-Fetch-Site`). `Origin: null` is refused outright. Bearer and desk-token
+callers are unaffected — they never send the cookie — and reads always pass. The refusal is
+a bare `403 {code:"csrf"}`; the reason goes to the `x-csrf-reason` header, not the body, so
+an attacker learns nothing. 13 checks in `scripts/csrf.test.ts`.
+
+**Search engines are told what the page is.** `components/JsonLd.tsx` emits a `NewsArticle`
+for each post (`dateModified` from the row, falling back to `datePublished`; relative images
+made absolute) and one `WebSite` for the site. The payload is escaped before it enters the
+script tag, and the article block is only rendered *after* the 404 check — a taken-down story
+carries no structured data. 7 checks in `scripts/json-ld.test.ts`.
+
+**An advert cannot go live without a recorded review.** Migration 037 adds `ad_policy_reviews`.
+"অনুমোদন ও চালু" now opens a five-point checklist (creative rights, landing page, claims,
+prohibited categories, disclosure); every box must be ticked, the reviewer and their notes are
+stored *before* the status flips, and a later rejection leaves the earlier approval in the
+history. `ad.booking.activate` / `ad.booking.reject` are audited. 11 checks in
+`packages/db/src/__tests__/ad-policy.test.ts`.
+
+**Comment abuse is refused before it reaches the queue.** `lib/comment-guard.ts` caps a comment
+at two links (bare domains included), refuses a 12+ character run of one letter, and refuses a
+wall of phone numbers — each with a Bangla reason the reader can act on. Prices, emphasis and
+opinions pass untouched. 11 checks in `scripts/comment-guard.test.ts`.
+
+The roadmap is now **98 ✅ · 6 🟡 · 0 ⬜** — the six partials are named at the top of
+`docs/roadmap.md` rather than hidden.
+
 ## Second factor, device access, media that leaves with the article (v1.1.27)
 
 **A privileged account can now carry a second factor.** `packages/db/src/totp.ts`

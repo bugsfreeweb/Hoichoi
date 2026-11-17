@@ -27,6 +27,7 @@ export * from "./post-media-cleanup";
 export * from "./totp";
 export * from "./mfa";
 export * from "./desk-devices";
+export * from "./ad-policy";
 export * from "./ai-runs";
 export * from "./provider-health";
 export * from "./media-reconcile";
