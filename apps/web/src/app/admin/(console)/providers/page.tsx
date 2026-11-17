@@ -1,9 +1,12 @@
 import { PageHeading } from "@/components/admin/ui/PageHeader";
+import { Card, CardHead, StatTile } from "@/components/admin/ui/Card";
 import { mapProvider, pageRows } from "@hoichoi/db";
 import { ProviderRow } from "@/components/admin/ProviderRow";
 import { ProviderForm } from "@/components/admin/ProviderForm";
 import { Paginator } from "@/components/admin/Paginator";
 import { ProviderHealthTable } from "@/components/admin/ProviderHealthTable";
+import { PROVIDERS_GUIDE } from "@/lib/provider-catalog";
+import { ProviderAddPanel } from "@/components/admin/ProviderAddPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +25,16 @@ const TIERS: Record<string, { order: number }> = {
   custom: { order: 10 },
 };
 
+/**
+ * The provider fleet, laid out like the dashboard rather than like a form.
+ *
+ * This page used to be a two-column grid whose left column was the "add a
+ * provider" form: the form stretched to the height of the list, the list grew
+ * sideways with the editing row, and the whole screen read as one undifferentiated
+ * wall of bordered boxes. Now the numbers that matter are tiles at the top, the
+ * fleet is a card, the health table is a card, and adding a provider is a panel
+ * that opens when you need it — so the page is a console, not a spreadsheet.
+ */
 export default async function AdminProvidersPage({
   searchParams,
 }: {
@@ -39,54 +52,128 @@ export default async function AdminProvidersPage({
     .map((r) => r)
     .sort((a, b) => (TIERS[a.provider_key]?.order ?? 9) - (TIERS[b.provider_key]?.order ?? 9));
 
+  const active = providers.filter((p) => p.is_active);
+  const text = active.filter((p) => p.purpose === "text");
+  const image = active.filter((p) => p.purpose === "image");
+  const withKey = active.filter(
+    (p) => Boolean(p.api_key) || Boolean(p.api_key_env_var && process.env[p.api_key_env_var]),
+  );
+  const imageReady = image.filter(
+    (p) => Boolean(p.api_key) || Boolean(p.api_key_env_var && process.env[p.api_key_env_var]),
+  );
+
+  /**
+   * The single sentence an operator needs when an image fails: which row would
+   * actually render, or that none would. It is derived from the same three
+   * conditions the resolver checks, so it cannot disagree with the chain.
+   */
+  const imageLine =
+    imageReady.length > 0
+      ? `ছবি এই মুহূর্তে ${imageReady.map((p) => p.display_name).join(", ")} থেকে আসবে।`
+      : image.length === 0
+        ? "ছবি তৈরির জন্য কোনো সক্রিয় প্রোভাইডার নেই — নিচের তালিকা থেকে একটি চালু করুন।"
+        : "ছবির রো আছে কিন্তু কোনোটিতে কী নেই — কী বসান, নাহলে ছবি তৈরি হবে না।";
+
   return (
-    <div>
-      <PageHeading emoji="🤖" kicker="FREE-TIER FIRST RESOLVER" title="AI প্রোভাইডার" description="লেখা ও ছবি তৈরির প্রোভাইডার যোগ করুন বা বদলান। বিনামূল্যের চেইন আগে চেষ্টা করা হয়, ব্যর্থ হলে পরেরটি।" />
-      <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-ink-soft">
-        প্রতিটি প্রোভাইডার দুটি আলাদা কাজে লাগে — <b className="text-ink">✍️ লেখা</b> আর{" "}
-        <b className="text-ink">🎨 ছবি</b>. Google ও OpenAI-এর একই কী দিয়ে দুটোই হয়, শুধু ছবির জন্য আলাদা
-        image মডেল বেছে নিতে হয়। কী ডিফল্টে এনভায়রনমেন্ট/vault থেকে পড়া হয়; আলাদা কী দিলে সেটি সেই রো-তে
-        সংরক্ষিত হয় এবং এনভায়রনমেন্টকে অগ্রাহ্য করে।
-      </p>
-      <div className="mt-3 max-w-2xl border-l-2 border-cat-teal bg-cat-teal/10 px-3 py-2 text-[12px] leading-relaxed text-ink">
-        <b>ছবি না আসলে কী দেখবেন:</b> নিচের তালিকায় অন্তত একটি রো-তে{" "}
-        <span className="font-mono-x">🎨 ছবি</span> ব্যাজ, <span className="font-mono-x">✓ কী আছে</span> আর
-        image-সক্ষম মডেল (যেমন <span className="font-mono-x">gemini-2.5-flash-image</span> বা{" "}
-        <span className="font-mono-x">gpt-image-1</span>) থাকতে হবে। তিনটির একটি না মিললে জেনারেশন ওই রো
-        এড়িয়ে যায়।
+    <div className="pb-8">
+      <PageHeading
+        emoji="🤖"
+        kicker="FREE-TIER FIRST RESOLVER"
+        title="AI প্রোভাইডার"
+        description="লেখা ও ছবি তৈরির প্রোভাইডার। বিনামূল্যের চেইন আগে চেষ্টা করা হয়, ব্যর্থ হলে পরেরটি।"
+      />
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatTile label="মোট রো" value={page.total} hint="টেক্সট + ছবি" />
+        <StatTile
+          label="সক্রিয়"
+          value={active.length}
+          tone="teal"
+          hint={`${text.length} লেখা · ${image.length} ছবি`}
+        />
+        <StatTile
+          label="কী আছে"
+          value={`${withKey.length}/${Math.max(1, active.length)}`}
+          tone={withKey.length === 0 ? "alarm" : "ink"}
+          hint="বাকিগুলো env বা vault থেকে কী খোঁজে"
+        />
+        <StatTile
+          label="ছবি তৈরি করতে পারে"
+          value={imageReady.length}
+          tone={imageReady.length === 0 ? "amber" : "teal"}
+          hint={imageLine}
+        />
       </div>
-      <ProviderHealthTable />
-      <div className="mt-6 grid gap-8 lg:grid-cols-[320px_1fr]">
-        <div className="border border-ink/20 bg-paper-deep p-5">
-          <h3 className="font-sans-bn text-[15px] font-bold text-ink">প্রোভাইডার যোগ</h3>
-          <div className="mt-4">
-            <ProviderForm />
-          </div>
-        </div>
-        <div className="space-y-2.5">
-          <p className="font-mono-x text-[10px] tracking-[0.24em] text-ink-soft uppercase">
-            PRIORITY ORDER · {providers.length} registered
-          </p>
-          {providers.map((p, i) => (
-            <ProviderRow
-              key={p.id}
-              provider={p}
-              index={i + 1}
-              // Value never leaves the server: the row only needs to know
-              // whether a key exists so "configured" and "usable" stop looking
-              // the same.
-              envKeyPresent={Boolean(p.api_key_env_var && process.env[p.api_key_env_var])}
-            />
-          ))}
-          <Paginator
-            page={page.page}
-            pageSize={page.pageSize}
-            total={page.total}
-            basePath="/admin/providers"
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <Card>
+          <CardHead
+            emoji="📚"
+            title="প্রোভাইডার তালিকা"
+            kicker={`PRIORITY ORDER · ${providers.length} shown / ${page.total} total`}
+            note="উপরের রো আগে চেষ্টা করা হয়। ✍️ লেখা আর 🎨 ছবি আলাদা কাজ — একই কী দিয়ে দুটোই হতে পারে, কিন্তু ছবির জন্য আলাদা image মডেল লাগে।"
+            actions={<ProviderAddPanel />}
           />
+          <div className="space-y-2.5 p-3">
+            {providers.map((p, i) => (
+              <ProviderRow
+                key={p.id}
+                provider={p}
+                index={(page.page - 1) * page.pageSize + i + 1}
+                // Value never leaves the server: the row only needs to know
+                // whether a key exists so "configured" and "usable" stop looking
+                // the same.
+                envKeyPresent={Boolean(p.api_key_env_var && process.env[p.api_key_env_var])}
+              />
+            ))}
+            {providers.length === 0 && (
+              <p className="px-2 py-10 text-center text-[13px] text-ink-soft">
+                এখনো কোনো প্রোভাইডার নেই — “প্রোভাইডার যোগ” দিয়ে শুরু করুন।
+              </p>
+            )}
+            <Paginator
+              page={page.page}
+              pageSize={page.pageSize}
+              total={page.total}
+              basePath="/admin/providers"
+            />
+          </div>
+        </Card>
+
+        <div className="space-y-4 xl:sticky xl:top-24 xl:self-start">
+          <Card tone="quiet">
+            <CardHead emoji="🧭" title="ছবি না এলে কী দেখবেন" kicker="CHECK THREE THINGS" />
+            <ol className="space-y-2 px-4 py-3 text-[12.5px] leading-relaxed text-ink">
+              {PROVIDERS_GUIDE.map((line) => (
+                <li key={line.bn} className="flex gap-2">
+                  <span className="mt-0.5 font-mono-x text-[10px] text-alizarin">{line.n}</span>
+                  <span>{line.bn}</span>
+                </li>
+              ))}
+            </ol>
+          </Card>
+          <Card tone="quiet">
+            <CardHead emoji="⚙️" title="কী কীভাবে পড়া হয়" kicker="KEY RESOLUTION" />
+            <p className="px-4 py-3 text-[12.5px] leading-relaxed text-ink-soft">
+              কী ডিফল্টে এনভায়রনমেন্ট বা vault থেকে পড়া হয়। রো-তে আলাদা কী দিলে সেটি সেই রো-তে
+              সংরক্ষিত হয় এবং এনভায়রনমেন্টের চেয়ে অগ্রাধিকার পায় — Demo-তে দেখা যাবে{" "}
+              <span className="font-mono-x text-[11.5px] text-ink">DB-তে সংরক্ষিত</span>।
+            </p>
+          </Card>
         </div>
       </div>
+
+      <Card className="mt-4">
+        <CardHead
+          emoji="🩺"
+          title="প্রোভাইডার স্বাস্থ্য"
+          kicker="LAST PROBE PER ROW · NEVER EMPTIES THE CHAIN"
+          note="একটি রো টানা ব্যর্থ হলে সাময়িকভাবে পিছিয়ে দেওয়া হয়, মুছে ফেলা হয় না।"
+        />
+        <div className="p-3">
+          <ProviderHealthTable />
+        </div>
+      </Card>
     </div>
   );
 }
-

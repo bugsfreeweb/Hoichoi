@@ -4,7 +4,11 @@
  * so page components can keep importing from "@/lib/provider-catalog".
  */
 export {
+  CLOUDFLARE_ACCOUNT_ENV,
+  hasAccountPlaceholder,
+  resolveAccountPlaceholder,
   PROVIDER_META,
+  PROVIDERS_GUIDE,
   metaFor,
   purposeLabelBn,
   looksLikeImageModel,

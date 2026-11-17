@@ -3,7 +3,13 @@
 import { useState } from "react";
 import type { LLMProviderRow } from "@hoichoi/shared-types";
 import { useRouter } from "next/navigation";
-import { metaFor, purposeLabelBn, looksLikeImageModel } from "@/lib/provider-catalog";
+import {
+  CLOUDFLARE_ACCOUNT_ENV,
+  hasAccountPlaceholder,
+  metaFor,
+  purposeLabelBn,
+  looksLikeImageModel,
+} from "@/lib/provider-catalog";
 import { toBn } from "@/lib/format";
 
 const fieldBase =
@@ -39,6 +45,26 @@ export function ProviderRow({
     supports_embeddings: provider.supports_embeddings,
     purpose: provider.purpose,
   });
+
+  /**
+   * The Cloudflare account id, applied to the base URL in the box above.
+   *
+   * This is the failure an operator actually hit: the token was pasted, the row
+   * was switched on, and every render came back `404 … /accounts/ACCOUNT_ID/ai/run/…`
+   * because the seeded URL still carried its placeholder. Typing 32 hex digits
+   * here rewrites the URL, so nobody has to compose one.
+   */
+  const [accountId, setAccountId] = useState("");
+  const placeholderInUrl = hasAccountPlaceholder(form.base_url);
+  function applyAccountId(): void {
+    const id = accountId.trim();
+    if (!/^[0-9a-f]{32}$/i.test(id)) {
+      setErr(`account ID ৩২ অক্ষরের hex হতে হবে (${CLOUDFLARE_ACCOUNT_ENV})`);
+      return;
+    }
+    setErr(null);
+    setForm({ ...form, base_url: form.base_url.replace(/ACCOUNT_ID/gi, id) });
+  }
 
   const meta = metaFor(provider.provider_key);
   const hasKey = Boolean(provider.api_key) || Boolean(envKeyPresent);
@@ -152,7 +178,7 @@ export function ProviderRow({
 
   if (editing) {
     return (
-      <div className="grid gap-3 border border-ink/30 bg-paper-deep px-4 py-3">
+      <div className="grid gap-3 rounded-xl border border-ink/25 bg-paper px-4 py-3">
         <p className="flex flex-wrap items-center gap-2 font-mono-x text-[10px] uppercase tracking-[0.2em] text-ink-soft">
           {provider.provider_key} · ID {provider.id.slice(0, 8)}
           <span className="rounded-full bg-ink/10 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-ink">
@@ -173,6 +199,36 @@ export function ProviderRow({
           <span className="text-[10px] uppercase tracking-wide text-ink-soft">Base URL</span>
           <input className={fieldBase} value={form.base_url} onChange={(e) => setForm({ ...form, base_url: e.target.value })} />
         </label>
+        {placeholderInUrl && (
+          <div className="rounded-lg border border-amberx/60 bg-amberx/10 px-3 py-2">
+            <p className="text-[11.5px] leading-relaxed text-ink">
+              এই URL-এ <span className="font-mono-x">ACCOUNT_ID</span> এখনো বসানো হয়নি — এভাবে কোনো ছবি
+              তৈরি হবে না (Cloudflare 7003/404 ফেরত দেয়)। নিচে আপনার account ID দিন, URL নিজেই ঠিক হয়ে যাবে।
+            </p>
+            <div className="mt-2 flex flex-wrap items-end gap-2">
+              <label className="min-w-0 flex-1">
+                <span className="text-[10px] uppercase tracking-wide text-ink-soft">Cloudflare account ID</span>
+                <input
+                  className={fieldBase}
+                  value={accountId}
+                  onChange={(e) => setAccountId(e.target.value)}
+                  placeholder="32 hex · Workers & Pages → Account ID"
+                  autoComplete="off"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={applyAccountId}
+                className="border border-ink bg-ink px-3 py-1.5 text-[12px] font-bold text-paper hover:opacity-90"
+              >
+                বসান
+              </button>
+            </div>
+            <p className="mt-1 font-mono-x text-[10px] text-ink-soft">
+              অথবা সার্ভারে <span className="font-mono-x">{CLOUDFLARE_ACCOUNT_ENV}</span> সেট করুন — কোড নিজেই বসিয়ে নেবে।
+            </p>
+          </div>
+        )}
         <div className="grid gap-2 sm:grid-cols-2">
           <label>
             <span className="text-[10px] uppercase tracking-wide text-ink-soft">API key (override)</span>
@@ -231,7 +287,7 @@ export function ProviderRow({
   }
 
   return (
-    <div className="border border-ink/20 bg-paper-deep">
+    <div className="overflow-hidden rounded-xl border border-ink/15 bg-paper-deep transition-colors hover:border-ink/30">
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
       <div className="flex items-start gap-3">
         <span className="font-grotesk text-lg font-bold text-ink-soft">{String(index).padStart(2, "0")}</span>

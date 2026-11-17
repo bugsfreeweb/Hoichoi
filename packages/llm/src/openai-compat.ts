@@ -1,5 +1,15 @@
 import type { HealthCheckResult, LLMProviderRow } from "@hoichoi/shared-types";
 import {
+  CLOUDFLARE_ACCOUNT_ENV,
+  hasAccountPlaceholder,
+  resolveAccountPlaceholder,
+} from "@hoichoi/shared-types";
+export {
+  CLOUDFLARE_ACCOUNT_ENV,
+  hasAccountPlaceholder,
+  resolveAccountPlaceholder,
+} from "@hoichoi/shared-types";
+import {
   ProviderError,
   composeImagePrompt,
   type ImageGenRequest,
@@ -72,12 +82,83 @@ function extractEmbedding(data: {
   return emb;
 }
 
+/**
+ * A provider's refusal, in one readable line.
+ *
+ * Measured failures this replaces: a Cloudflare 404 printed
+ * `{"code":7003,"message":"Could not route to /client/v4/accounts/ACCOUNT_ID/…"}`,
+ * which tells an operator nothing they can act on, and a 403 came back as a whole
+ * Cloudflare HTML interstitial (`<!DOCTYPE html>…`, kilobytes of it) rendered
+ * inside the admin panel.
+ *
+ * So: JSON `message` fields are preferred over the raw blob, known provider codes
+ * are named in Bangla, HTML is reduced to its title, and the result is clamped —
+ * a provider must not be able to paint the console with its own error page.
+ */
+export function summarizeProviderError(status: number, body: string): string {
+  const raw = (body ?? "").trim();
+  let detail = "";
+
+  const parsed = /^[{[]/.test(raw) ? safeJson(raw) : null;
+  if (parsed && typeof parsed === "object") {
+    const obj = parsed as {
+      message?: unknown;
+      code?: unknown;
+      error?: { message?: unknown };
+      errors?: Array<{ message?: unknown; code?: unknown }>;
+    };
+    const message = obj.message ?? obj.error?.message ?? obj.errors?.[0]?.message;
+    if (typeof message === "string" && message.trim()) detail = message.trim();
+    const code = obj.code ?? obj.errors?.[0]?.code;
+    const codeHint =
+      code === 7003
+        ? "Cloudflare: base URL-এর ACCOUNT_ID এখনো বদলানো হয়নি"
+        : code === 10000 || code === 10001
+          ? "Cloudflare: টোকেনে Workers AI-এর অনুমতি নেই"
+          : "";
+    if (codeHint) detail = [codeHint, detail].filter(Boolean).join(" — ");
+  }
+
+  if (!detail && /<(!doctype|html|head|body)/i.test(raw)) {
+    const title = /<title[^>]*>([^<]{1,120})<\/title>/i.exec(raw)?.[1]?.trim();
+    detail = title ? `HTML পৃষ্ঠা: ${title}` : "HTML পৃষ্ঠা ফিরেছে (কী বা হোস্ট প্রত্যাখ্যান)";
+  }
+  if (!detail && raw) detail = raw.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").slice(0, 200);
+
+  const hint =
+    status === 404
+      ? "ঠিকানাটি পাওয়া যায়নি — base URL বা মডেলের নাম দেখুন"
+      : status === 401 || status === 403
+        ? "কী প্রত্যাখ্যাত হয়েছে — টোকেন বা কী ঠিক আছে কিনা দেখুন"
+        : "";
+  const head = `${status}${
+    status === 429
+      ? " rate limited"
+      : status === 401 || status === 403
+        ? " auth error"
+        : status >= 500
+          ? " server error"
+          : ""
+  }`;
+  const shown = detail.length > 180 ? `${detail.slice(0, 177)}…` : detail;
+  return `${head}${shown ? `: ${shown}` : ""}${hint ? ` — ${hint}` : ""}`;
+}
+
+function safeJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 /** Classify HTTP status into typed ProviderError. */
 export function classifyStatus(status: number, body: string): never {
-  if (status === 429) throw new ProviderError("rate_limit", `429 rate limited: ${body.slice(0, 300)}`);
-  if (status === 401 || status === 403) throw new ProviderError("auth", `${status} auth error: ${body.slice(0, 300)}`);
-  if (status >= 500) throw new ProviderError("network", `${status} server error: ${body.slice(0, 300)}`);
-  throw new ProviderError("unknown", `${status} ${body.slice(0, 300)}`);
+  const message = summarizeProviderError(status, body);
+  if (status === 429) throw new ProviderError("rate_limit", message);
+  if (status === 401 || status === 403) throw new ProviderError("auth", message);
+  if (status >= 500) throw new ProviderError("network", message);
+  throw new ProviderError(status === 400 || status === 422 ? "bad_output" : "unknown", message);
 }
 
 /**
@@ -104,7 +185,10 @@ export class OpenAICompatProvider implements LLMProvider {
     this.supportsEmbeddings = Boolean(opts.row.supports_embeddings);
     this.key = opts.key;
     this.embedPath = opts.embedPath;
-    this.baseUrl = opts.row.base_url?.replace(/\/$/, "") ?? opts.defaultBaseUrl.replace(/\/$/, "");
+    this.baseUrl = resolveAccountPlaceholder(
+      opts.row.base_url?.replace(/\/$/, "") ?? opts.defaultBaseUrl.replace(/\/$/, ""),
+      process.env,
+    );
     this.headers = {
       "content-type": "application/json",
       ...(opts.extraHeaders ?? {}),
@@ -159,6 +243,7 @@ export class OpenAICompatProvider implements LLMProvider {
   async generateImage(req: ImageGenRequest, signal?: AbortSignal): Promise<ImageGenResult> {
     const model = req.model?.trim() || this.row.model_name;
     const prompt = composeImagePrompt(req);
+    this.assertRoutable();
     if (this.isCloudflareWorkersAi()) {
       return this.generateCloudflareImage(model, prompt, signal);
     }
@@ -177,6 +262,16 @@ export class OpenAICompatProvider implements LLMProvider {
     const tryB64 = !/gpt-image/i.test(model);
     if (tryB64) body.response_format = this.isTogether() ? "base64" : "b64_json";
     return this.postImageUntilOk(this.imageCandidates(), body, { model, prompt }, signal);
+  }
+
+  /** Refuse to call a Cloudflare row whose account placeholder was never filled. */
+  private assertRoutable(): void {
+    if (!hasAccountPlaceholder(this.baseUrl)) return;
+    throw new ProviderError(
+      "auth",
+      "base URL-এ ACCOUNT_ID এখনও বসানো হয়নি — Providers পাতায় Cloudflare account ID দিন, " +
+        `অথবা ${CLOUDFLARE_ACCOUNT_ENV} সেট করুন (Cloudflare dashboard → Workers & Pages → Account ID)।`,
+    );
   }
 
   private isCloudflareWorkersAi(): boolean {
@@ -389,6 +484,9 @@ export class OpenAICompatProvider implements LLMProvider {
   async healthCheck(signal?: AbortSignal): Promise<HealthCheckResult> {
     const started = Date.now();
     try {
+      // A row whose account id is still a placeholder cannot succeed, so say so
+      // instead of spending a round trip to learn it from a 404.
+      this.assertRoutable();
       const body = {
         model: this.row.model_name,
         messages: [{ role: "user", content: "hi" }],
@@ -415,7 +513,7 @@ export class OpenAICompatProvider implements LLMProvider {
         }
         return {
           ok: false,
-          error: `${res.status} ${(await res.text()).slice(0, 200)}`,
+          error: summarizeProviderError(res.status, await res.text()),
           latencyMs: Date.now() - started,
         };
       }

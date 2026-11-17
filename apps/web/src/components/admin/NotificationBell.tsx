@@ -2,48 +2,79 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Bell } from "lucide-react";
+import { Bell, ChevronDown, Trash2 } from "lucide-react";
 import { POLL_MS, useQueueCounts } from "./queue-counts";
 import { t } from "@/i18n";
 
 /**
- * Live queue badge in the header.
+ * Live queue badge and alert panel in the header.
  *
- * There was no notification affordance at all: the sidebar's queue rows showed a
- * literal "?" and the header had nothing, so the only way to learn that work had
- * arrived was to open each queue. The counts and this dropdown read from the
- * shell's single poll, so they cannot drift apart.
+ * Two problems this fixes, both about the same thing — a panel nobody can read:
+ *
+ *  1. Every alert rendered its full body, so eight events made a dropdown taller
+ *     than the screen, with no way to skim. Rows are now one line (severity dot,
+ *     title, age), with the body behind a chevron and per-item dismissal.
+ *  2. Reading was the only thing you could do. Old events accumulated forever, so
+ *     the panel grew monotonically and the bell stopped meaning "something needs
+ *     you now". It can now dismiss one alert or clear everything already read.
+ *
+ * The panel itself is capped and scrolls; the queue counts and alert list still
+ * come from the shell's single poll, so badge and panel cannot disagree.
  */
 
 function toBn(v: number): string {
   return String(v).replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)] ?? d);
 }
 
-const SEVERITY_STYLE: Record<string, string> = {
-  critical: "border-l-2 border-alizarin",
-  warn: "border-l-2 border-amberx",
-  info: "border-l-2 border-ink/20",
+const SEVERITY_STYLE: Record<string, { dot: string; text: string }> = {
+  critical: { dot: "bg-alizarin", text: "text-alizarin" },
+  warn: { dot: "bg-amberx", text: "text-amberx" },
+  info: { dot: "bg-cat-blue", text: "text-cat-blue" },
 };
+
+/** "৩ মিনিট" / "২ ঘণ্টা" / "৪ দিন" — a bell is about when, not what date. */
+function ageBn(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return "";
+  const mins = Math.max(0, Math.round((Date.now() - then) / 60_000));
+  if (mins < 1) return "এইমাত্র";
+  if (mins < 60) return `${toBn(mins)} মিনিট`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${toBn(hours)} ঘণ্টা`;
+  return `${toBn(Math.round(hours / 24))} দিন`;
+}
 
 export function NotificationBell() {
   const { urgent, alerts, unread, stale, refresh } = useQueueCounts();
   const [open, setOpen] = useState(false);
-  const [marking, setMarking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
-  async function markAllRead(): Promise<void> {
-    setMarking(true);
+  async function post(body: Record<string, unknown>): Promise<void> {
+    setBusy(true);
     try {
       await fetch("/api/admin/notifications", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ all: true }),
+        body: JSON.stringify(body),
       });
       refresh();
     } finally {
-      setMarking(false);
+      setBusy(false);
     }
   }
-  const wrapRef = useRef<HTMLDivElement>(null);
+
+  async function dismiss(id: string): Promise<void> {
+    setBusy(true);
+    try {
+      await fetch(`/api/admin/notifications?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      setExpanded((cur) => (cur === id ? null : cur));
+      refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   // Close on outside click and on Escape; both are expected of a dropdown.
   useEffect(() => {
@@ -65,6 +96,7 @@ export function NotificationBell() {
   // Queue depth and unread alerts are different things: a queue of 40 pending
   // posts and one "provider cooling down" both deserve a badge.
   const total = urgent.reduce((sum, i) => sum + i.count, 0) + unread;
+  const unreadAlerts = alerts.filter((a) => !a.read_at).length;
 
   return (
     <div className="relative" ref={wrapRef}>
@@ -100,75 +132,161 @@ export function NotificationBell() {
           id="queue-bell-panel"
           role="group"
           aria-label="কিউ আপডেট"
-          className="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-ink/20 bg-paper p-2 shadow-2xl text-ink"
+          className="absolute right-0 z-50 mt-2 flex w-[min(22rem,calc(100vw-2rem))] flex-col rounded-xl border border-ink/20 bg-paper shadow-2xl text-ink"
         >
-          <p className="px-2 py-1.5 font-mono-x text-[9.5px] tracking-[0.18em] text-ink-soft uppercase">
-            {t("notify.queues")}{stale ? " (অসাময়িক)" : ""}
-          </p>
-          {urgent.length === 0 && (
-            <p className="px-2 py-3 text-[12px] text-ink-soft">
-              {stale ? t("notify.stale") : "কোনো তথ্য পাওয়া যায়নি।"}
+          <div className="flex items-center justify-between gap-2 border-b border-ink/10 px-3 py-2">
+            <p className="font-mono-x text-[9.5px] tracking-[0.18em] text-ink-soft uppercase">
+              {t("notify.queues")}
+              {stale ? " (অসাময়িক)" : ""}
             </p>
-          )}
-          {urgent.map((i) => (
             <Link
-              key={i.key}
-              href={i.href}
+              href="/admin/notifications"
               onClick={() => setOpen(false)}
-              className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-ink/5"
+              className="font-mono-x text-[9.5px] text-alizarin underline"
             >
-              <span className="text-[12.5px] font-semibold text-ink">{i.label}</span>
-              <span
-                className={`rounded-full px-2 py-0.5 font-mono-x text-[10px] font-bold ${
-                  i.count > 0 ? "bg-alizarin text-on-accent" : "bg-ink/10 text-ink-soft"
-                }`}
-              >
-                {toBn(i.count)}
-              </span>
+              সব দেখুন
             </Link>
-          ))}
-          <div className="mt-1 border-t border-ink/10 pt-1.5">
-            <div className="flex items-center justify-between px-2">
-              <p className="font-mono-x text-[9.5px] tracking-[0.18em] text-ink-soft uppercase">
-                {t("notify.events")}{alerts.length ? ` · ${toBn(alerts.length)}` : ""}
+          </div>
+
+          {/* Queues first: they are the work, and they are one line each. */}
+          <div className="max-h-[30vh] overflow-y-auto px-1.5 py-1">
+            {urgent.length === 0 && (
+              <p className="px-2 py-2 text-[12px] text-ink-soft">
+                {stale ? t("notify.stale") : "কোনো তথ্য পাওয়া যায়নি।"}
               </p>
-              {unread > 0 ? (
+            )}
+            {urgent.map((i) => (
+              <Link
+                key={i.key}
+                href={i.href}
+                onClick={() => setOpen(false)}
+                className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-ink/5"
+              >
+                <span className="text-[12.5px] font-semibold text-ink">{i.label}</span>
+                <span
+                  className={`rounded-full px-2 py-0.5 font-mono-x text-[10px] font-bold ${
+                    i.count > 0 ? "bg-alizarin text-on-accent" : "bg-ink/10 text-ink-soft"
+                  }`}
+                >
+                  {toBn(i.count)}
+                </span>
+              </Link>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between gap-2 border-t border-ink/10 px-3 py-1.5">
+            <p className="font-mono-x text-[9.5px] tracking-[0.18em] text-ink-soft uppercase">
+              {t("notify.events")}
+              {alerts.length ? ` · ${toBn(alerts.length)}` : ""}
+              {unreadAlerts ? ` · ${toBn(unreadAlerts)} নতুন` : ""}
+            </p>
+            <div className="flex items-center gap-1.5">
+              {unreadAlerts > 0 && (
                 <button
                   type="button"
-                  onClick={markAllRead}
-                  disabled={marking}
-                  className="font-mono-x text-[9.5px] text-alizarin underline disabled:opacity-50"
+                  onClick={() => void post({ all: true })}
+                  disabled={busy}
+                  className="rounded-md border border-ink/25 px-1.5 py-0.5 font-mono-x text-[9px] font-bold whitespace-nowrap text-ink-soft hover:border-ink hover:text-ink disabled:opacity-50"
                 >
-                  {t("notify.markAll")}
+                  সব পড়া
                 </button>
-              ) : null}
+              )}
+              {alerts.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => void post({ clear: true })}
+                  disabled={busy}
+                  title="যেগুলো পড়া হয়েছে সেগুলো সরিয়ে ফেলুন"
+                  className="rounded-md border border-alizarin/60 px-1.5 py-0.5 font-mono-x text-[9px] font-bold whitespace-nowrap text-alizarin hover:bg-alizarin hover:text-on-accent disabled:opacity-50"
+                >
+                  পরিষ্কার
+                </button>
+              )}
             </div>
+          </div>
+
+          {/* Events: one line each, body on demand, dismiss per row. This is the
+              part that used to be a wall of text. */}
+          <div className="max-h-[45vh] overflow-y-auto px-1.5 pb-1.5">
             {alerts.length === 0 ? (
-              <p className="px-2 py-2 text-[12px] text-ink-soft">{t("notify.empty")}</p>
+              <p className="px-2 py-3 text-[12px] text-ink-soft">{t("notify.empty")}</p>
             ) : (
               alerts.map((a) => {
-                const body = (
-                  <>
-                    <p className="text-[12.5px] font-semibold text-ink">{a.title_bn}</p>
-                    {a.body_bn ? <p className="mt-0.5 text-[11.5px] text-ink-soft">{a.body_bn}</p> : null}
-                  </>
-                );
-                const cls = `mt-1 block rounded-lg px-2 py-1.5 transition-colors hover:bg-ink/5 ${
-                  SEVERITY_STYLE[a.severity] ?? SEVERITY_STYLE.info
-                } ${a.read_at ? "opacity-60" : ""}`;
-                return a.href ? (
-                  <Link key={a.id} href={a.href} onClick={() => setOpen(false)} className={cls}>
-                    {body}
-                  </Link>
-                ) : (
-                  <div key={a.id} className={cls}>
-                    {body}
+                const sev = SEVERITY_STYLE[a.severity] ?? SEVERITY_STYLE.info!;
+                const isOpen = expanded === a.id;
+                return (
+                  <div
+                    key={a.id}
+                    className={`group rounded-lg transition-colors hover:bg-ink/5 ${a.read_at ? "opacity-70" : ""}`}
+                  >
+                    {/* One line per alert: severity dot, title, age, chevron. The age
+                        sits inline rather than under the title so eight events are
+                        eight rows to skim, not sixteen lines to wade through. */}
+                    <div className="flex items-center gap-1.5 px-2 py-1.5">
+                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${sev.dot}`} aria-hidden="true" />
+                      <button
+                        type="button"
+                        onClick={() => setExpanded(isOpen ? null : a.id)}
+                        aria-expanded={isOpen}
+                        className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+                      >
+                        <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-ink">
+                          {a.title_bn}
+                        </span>
+                        <span className="shrink-0 font-mono-x text-[9.5px] whitespace-nowrap text-ink-soft">
+                          {ageBn(a.created_at)}
+                        </span>
+                        <ChevronDown
+                          size={12}
+                          className={`shrink-0 text-ink-soft transition-transform ${isOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void dismiss(a.id)}
+                        disabled={busy}
+                        title="মুছে ফেলুন"
+                        aria-label={`${a.title_bn} — মুছে ফেলুন`}
+                        className="shrink-0 rounded p-1 text-ink-soft opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 hover:text-alizarin"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                    {isOpen && (
+                      <div className="px-2 pb-2 pl-[1.35rem]">
+                        {a.body_bn ? (
+                          <p className="text-[11.5px] leading-relaxed text-ink-soft">{a.body_bn}</p>
+                        ) : null}
+                        <div className="mt-1.5 flex items-center gap-3">
+                          {a.href ? (
+                            <Link
+                              href={a.href}
+                              onClick={() => setOpen(false)}
+                              className="text-[11.5px] font-bold text-alizarin underline"
+                            >
+                              খুলুন
+                            </Link>
+                          ) : null}
+                          {!a.read_at ? (
+                            <button
+                              type="button"
+                              onClick={() => void post({ id: a.id })}
+                              disabled={busy}
+                              className="text-[11.5px] text-ink-soft underline hover:text-ink"
+                            >
+                              পড়া হয়েছে
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })
             )}
           </div>
-          <p className="border-t border-ink/10 px-2 pt-2 pb-1 font-mono-x text-[9.5px] text-ink-soft">
+
+          <p className="border-t border-ink/10 px-3 py-1.5 font-mono-x text-[9.5px] text-ink-soft">
             {stale ? "সংযোগ ফিরে এলে হালনাগাদ হবে" : `${POLL_MS / 1000}s পরপর হালনাগাদ হয়`}
           </p>
         </div>

@@ -142,6 +142,52 @@ export const PROVIDER_META: ProviderMeta[] = [
   },
 ];
 
+/**
+ * The env var that may hold a Cloudflare account id, so a pasted token can work
+ * without hand-composing a URL.
+ *
+ * It lives in shared-types (not in the LLM package) because the console's row
+ * editor needs it too, and that is a client component: importing `@hoichoi/llm`
+ * there pulls `node:crypto` into the browser bundle and the page 500s.
+ */
+export const CLOUDFLARE_ACCOUNT_ENV = "CLOUDFLARE_ACCOUNT_ID";
+
+/** True when a base URL still carries the placeholder an operator must replace. */
+export function hasAccountPlaceholder(url: string | null | undefined): boolean {
+  return /(^|[^A-Za-z0-9_])ACCOUNT_ID([^A-Za-z0-9_]|$)/i.test(url ?? "");
+}
+
+/**
+ * Fill the Cloudflare account id into a seeded base URL.
+ *
+ * The seeded row cannot know the operator's account, and asking them to edit a URL
+ * by hand is how this broke: the token was pasted, the row was switched on, and
+ * every render returned `7003 … /accounts/ACCOUNT_ID/ai/run/…`. A 32-hex
+ * `CLOUDFLARE_ACCOUNT_ID` is substituted here, so the setup is "paste two values".
+ */
+export function resolveAccountPlaceholder(
+  baseUrl: string,
+  env: Record<string, string | undefined> = {},
+): string {
+  if (!hasAccountPlaceholder(baseUrl)) return baseUrl;
+  const id = (env[CLOUDFLARE_ACCOUNT_ENV] ?? "").trim();
+  if (!/^[0-9a-f]{32}$/i.test(id)) return baseUrl;
+  return baseUrl.replace(/ACCOUNT_ID/gi, id);
+}
+
+/**
+ * The three conditions that make an image provider actually render.
+ *
+ * Written once and rendered by the console, because "why is there no image" was
+ * answered in three different places with three different wordings, and the
+ * answer is always the same three checks.
+ */
+export const PROVIDERS_GUIDE: ReadonlyArray<{ n: string; bn: string }> = [
+  { n: "১", bn: "রো-টি সক্রিয় (Active) এবং কাজ “🎨 ছবি” — লেখার রো কখনো ছবি আঁকে না।" },
+  { n: "২", bn: "কী আছে — DB-তে সংরক্ষিত, অথবা env/vault-এ থাকা ভেরিয়েবল।" },
+  { n: "৩", bn: "মডেলটি সত্যিই image মডেল (যেমন gpt-image-1, flux-1-schnell, gemini-2.5-flash-image); “টেস্ট” বোতাম দিয়ে প্রমাণ করুন।" },
+];
+
 export function metaFor(providerKey: string): ProviderMeta {
   return PROVIDER_META.find((p) => p.key === providerKey) ?? PROVIDER_META[PROVIDER_META.length - 1]!;
 }

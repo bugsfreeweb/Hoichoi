@@ -162,6 +162,43 @@ export async function markAllNotificationsRead(roleMin?: string): Promise<number
   return res.rowsAffected ?? 0;
 }
 
+/**
+ * Delete one alert.
+ *
+ * Reading and removing are different intentions: an operator who has dealt with
+ * "provider cooling down" wants the row gone, not dimmed. The bell had no way to
+ * say that, so a long-lived console accumulated every event since install and the
+ * panel became a scroll of old news.
+ */
+export async function dismissNotification(id: string): Promise<boolean> {
+  const client = getClient();
+  const res = await client.execute({
+    sql: "DELETE FROM admin_notifications WHERE id = ?",
+    args: [id],
+  });
+  return (res.rowsAffected ?? 0) > 0;
+}
+
+/**
+ * Empty the bell.
+ *
+ * `includeUnread` is opt-in on purpose: "clear" must not silently throw away
+ * something nobody has looked at. The default clears what has been read, which is
+ * the pile that makes the panel long.
+ */
+export async function clearNotifications(
+  options: { includeUnread?: boolean } = {},
+): Promise<number> {
+  const client = getClient();
+  const res = await client.execute({
+    sql: options.includeUnread
+      ? "DELETE FROM admin_notifications"
+      : "DELETE FROM admin_notifications WHERE read_at IS NOT NULL",
+    args: [],
+  });
+  return res.rowsAffected ?? 0;
+}
+
 /** Not-yet-emailed warnings and criticals, for the mail cron. */
 export async function pendingEmailNotifications(limit = 30): Promise<AdminNotification[]> {
   const client = getClient();

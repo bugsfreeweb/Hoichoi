@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { forbidden, requireApiRole } from "@/lib/auth";
 import {
+  clearNotifications,
   countReviewQueues,
   countUnreadNotifications,
+  dismissNotification,
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
@@ -104,7 +106,7 @@ export async function POST(req: Request) {
   if ("response" in guard) return guard.response;
   const user = guard.user;
 
-  let body: { id?: unknown; all?: unknown };
+  let body: { id?: unknown; all?: unknown; clear?: unknown; includeUnread?: unknown };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -115,10 +117,44 @@ export async function POST(req: Request) {
     const marked = await markAllNotificationsRead(user.role);
     return NextResponse.json({ ok: true, marked });
   }
+  /**
+   * Clearing is its own verb.
+   *
+   * "Mark all read" only dims the panel; the pile stays and the panel keeps
+   * growing, which is what made the bell unreadable. `{ clear: true }` removes
+   * what has already been read, and `{ clear: true, includeUnread: true }` is the
+   * only way to remove something nobody has seen — an explicit choice, never a
+   * side effect of tidying up.
+   */
+  if (body.clear === true) {
+    const cleared = await clearNotifications({ includeUnread: body.includeUnread === true });
+    return NextResponse.json({ ok: true, cleared });
+  }
   const id = typeof body.id === "string" ? body.id.trim() : "";
   if (!/^[0-9a-f]{18,32}$/.test(id)) {
     return NextResponse.json({ ok: false, error: "invalid id" }, { status: 400 });
   }
   const marked = await markNotificationRead(id, user.role);
   return NextResponse.json({ ok: true, marked });
+}
+
+/**
+ * DELETE /api/admin/notifications?id=… — remove one alert.
+ *
+ * A separate verb rather than another POST body key, because this deletes a row:
+ * a `POST {id}` already means "mark read", and one endpoint that sometimes reads
+ * and sometimes deletes is how an operator loses an event they meant to keep.
+ */
+export async function DELETE(req: Request) {
+  const guard = await requireApiRole("moderator");
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
+  if (user.role !== "admin" && user.role !== "editor") return forbidden();
+
+  const id = new URL(req.url).searchParams.get("id")?.trim() ?? "";
+  if (!/^[0-9a-f]{18,32}$/.test(id)) {
+    return NextResponse.json({ ok: false, error: "invalid id" }, { status: 400 });
+  }
+  const removed = await dismissNotification(id);
+  return NextResponse.json({ ok: true, removed });
 }
