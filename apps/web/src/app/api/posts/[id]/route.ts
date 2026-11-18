@@ -5,6 +5,8 @@ import {
   updatePostStatus,
   deletePost,
   getClient,
+  imagePublishConflict,
+  listPostImages,
   nowIso,
   type PostUpdateFields,
 } from "@hoichoi/db";
@@ -84,6 +86,24 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   let statusApplied: PostStatus | null = null;
   if (typeof body.status === "string") {
     const status = body.status as PostStatus;
+    if (status === "published") {
+      // A standing rejection on any image this post carries stops the publish.
+      // The operator is told which picture and who rejected it, because "cannot
+      // publish" without a subject is a wall, not an instruction.
+      const gallery = await listPostImages(id).catch(() => []);
+      const chosen = fields.media_path ?? post.media_path ?? null;
+      const conflicts = await imagePublishConflict(id, [chosen, ...gallery.map((g) => g.path)]);
+      if (conflicts.length > 0) {
+        const first = conflicts[0]!;
+        return NextResponse.json(
+          {
+            error: `ছবি অনুমোদিত নয়: ${first.path.split("/").pop() ?? first.path}${first.reason ? ` (${first.reason})` : ""} — ${first.reviewedBy}`,
+            conflicts,
+          },
+          { status: 409 },
+        );
+      }
+    }
     await updatePostStatus(id, status, { publishedAt: status === "published" });
     statusApplied = status;
   }

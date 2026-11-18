@@ -56,7 +56,7 @@ const STATE_BADGE: Record<string, { bn: string; cls: string }> = {
 
 export default async function AdminMediaPage() {
   const dash = await mediaDashboard();
-  const { totals, providers, headline } = dash;
+  const { totals, providers, formats, headline } = dash;
 
   return (
     <div>
@@ -143,6 +143,32 @@ export default async function AdminMediaPage() {
           })}
         </div>
       )}
+
+      {formats.length > 0 ? (
+        <div className="mt-5 border border-ink/20 bg-paper-deep p-3.5">
+          <p className="font-mono-x text-[9.5px] tracking-[0.2em] text-ink-soft uppercase">ফাইল ফরম্যাট</p>
+          <p className="mt-1 text-[11.5px] leading-relaxed text-ink-soft">
+            প্রতিটি ফাইলের নিজের হেডার থেকে পড়া — নাম দেখে নয়। যে ফাইলের হেডার পড়া যায়নি সেটি
+            &ldquo;অশ্রেণীবদ্ধ&rdquo;, অনুমান নয়।
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {formats.map((f) => {
+              const label = f.mime === "unknown" ? "অশ্রেণীবদ্ধ" : f.mime.replace("image/", "").toUpperCase();
+              const size = f.maxWidth && f.maxHeight ? ` · সর্বোচ্চ ${toBn(f.maxWidth)}×${toBn(f.maxHeight)}` : "";
+              return (
+                <span
+                  key={f.mime}
+                  className="border border-ink/20 bg-paper px-1.5 py-0.5 font-mono-x text-[10px] tracking-[0.1em] text-ink"
+                  title={`${f.files} ফাইল · ${bytes(f.bytes)}${size}`}
+                >
+                  {label} · {toBn(f.files)}
+                  <span className="text-ink-soft"> · {bytes(f.bytes)}</span>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <MediaReconcilePanel />
     </div>

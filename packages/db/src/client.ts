@@ -746,6 +746,9 @@ CREATE TABLE IF NOT EXISTS media_objects (
   url TEXT NOT NULL,
   post_id TEXT,
   bytes INTEGER,
+  mime TEXT,
+  width INTEGER,
+  height INTEGER,
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_media_objects_adapter ON media_objects (adapter, created_at);
@@ -756,6 +759,18 @@ CREATE INDEX IF NOT EXISTS idx_media_objects_url ON media_objects (url);
   const existing = new Set(info.rows.map((r) => String((r as Record<string, unknown>).name)));
   if (!existing.has("bytes")) {
     await client.execute("ALTER TABLE media_objects ADD COLUMN bytes INTEGER");
+  }
+  // What the blob actually is. `mime`/`width`/`height` are written from the
+  // file's own header when it is mirrored; rows recorded before this column
+  // carry NULL and every reader says "unknown" rather than guessing.
+  for (const [column, type] of [
+    ["mime", "TEXT"],
+    ["width", "INTEGER"],
+    ["height", "INTEGER"],
+  ] as const) {
+    if (!existing.has(column)) {
+      await client.execute(`ALTER TABLE media_objects ADD COLUMN ${column} ${type}`);
+    }
   }
 }
 
@@ -776,6 +791,28 @@ CREATE TABLE IF NOT EXISTS post_images (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_post_images_post ON post_images (post_id, position);
+  `);
+}
+
+/**
+ * Per-image approval records (migration 038). Created here as well so a database
+ * that predates the migration can still record a decision — a review that cannot
+ * be written is a review that did not happen.
+ */
+export async function ensureImageReviewsTable(client: Client): Promise<void> {
+  await client.executeMultiple(`
+CREATE TABLE IF NOT EXISTS image_reviews (
+  id TEXT PRIMARY KEY,
+  post_id TEXT REFERENCES posts(id) ON DELETE CASCADE,
+  path TEXT NOT NULL,
+  verdict TEXT NOT NULL,
+  reason TEXT,
+  reviewed_by TEXT NOT NULL,
+  reviewed_at TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_image_reviews_post ON image_reviews (post_id, reviewed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_image_reviews_path ON image_reviews (path);
   `);
 }
 
@@ -879,6 +916,7 @@ export async function ensureSchema(client: Client, externalUrl?: string): Promis
   await ensureMediaStorageColumn(client);
   await ensureMediaObjectsTable(client);
   await ensurePostImagesTable(client);
+  await ensureImageReviewsTable(client);
   await ensureTrafficTables(client);
   await ensureSectionsTable(client);
   await ensureDefaultVariantColumn(client);

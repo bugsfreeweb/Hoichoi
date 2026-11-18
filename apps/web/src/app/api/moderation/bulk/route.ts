@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCategory, getClient, getPostById, nowIso } from "@hoichoi/db";
 import { audit } from "@/lib/audit";
 import { requireApiRole } from "@/lib/auth";
+import { validateBody } from "@/lib/validate";
 
 /**
  * Bulk moderation, with the two-approval gate kept intact.
@@ -31,29 +32,18 @@ export async function POST(req: NextRequest) {
   if ("response" in guard) return guard.response;
   const user = guard.user;
 
-  const body = (await req.json().catch(() => null)) as
-    | { ids?: unknown; action?: unknown; note?: unknown }
-    | null;
-  const action = body?.action;
-  if (action !== "approve" && action !== "reject") {
-    return NextResponse.json(
-      { error: "action must be approve or reject — publishing is never bulk" },
-      { status: 400 },
-    );
-  }
-
-  const ids = Array.isArray(body?.ids)
-    ? [...new Set(body.ids.filter((v): v is string => typeof v === "string" && v.trim().length > 0))]
-    : [];
-  if (ids.length === 0) return NextResponse.json({ error: "no posts selected" }, { status: 400 });
-  if (ids.length > MAX_IDS) {
-    return NextResponse.json(
-      { error: `একবারে সর্বোচ্চ ${MAX_IDS}টি পোস্ট — নির্বাচন ছোট করুন।` },
-      { status: 400 },
-    );
-  }
-
-  const note = typeof body?.note === "string" && body.note.trim() ? body.note.trim().slice(0, 300) : null;
+  // The action vocabulary is closed on purpose: publishing is never bulk, so a
+  // `publish` action is refused by the same validator that refuses an unknown key.
+  const parsed = validateBody(await req.json().catch(() => null), {
+    ids: { kind: "stringArray", max: MAX_IDS, itemMax: 80, label: "নির্বাচিত পোস্ট" },
+    action: { kind: "enum", values: ["approve", "reject"] as const, label: "কাজ" },
+    note: { kind: "string", max: 300, optional: true, label: "নোট" },
+  });
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error, field: parsed.field }, { status: 400 });
+  const ids = parsed.value.ids as string[];
+  if (ids.length === 0) return NextResponse.json({ error: "কোনো পোস্ট নির্বাচন করা হয়নি।" }, { status: 400 });
+  const action = parsed.value.action as "approve" | "reject";
+  const note = (parsed.value.note as string | null) ?? null;
   const client = getClient();
 
   const approved: string[] = [];

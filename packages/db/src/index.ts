@@ -25,6 +25,7 @@ export * from "./ads";
 export * from "./ad-invoices";
 export * from "./deletion-log";
 export * from "./post-media-cleanup";
+export * from "./image-reviews";
 export * from "./totp";
 export * from "./mfa";
 export * from "./desk-devices";

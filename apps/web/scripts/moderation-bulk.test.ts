@@ -34,6 +34,7 @@ function check(name: string, fn: () => void): void {
 const route = code(read("src/app/api/moderation/bulk/route.ts"));
 const page = code(read("src/app/admin/(console)/moderation/page.tsx"));
 const grid = code(read("src/components/admin/ModerationGrid.tsx"));
+const validator = code(read("src/lib/validate.ts"));
 const card = code(read("src/components/admin/ModerationCard.tsx"));
 
 check("the batch endpoint asks for a moderator, not a guest", () => {
@@ -41,8 +42,9 @@ check("the batch endpoint asks for a moderator, not a guest", () => {
 });
 
 check("bulk approve is not bulk publish", () => {
-  // The only accepted actions are the two reversible ones.
-  assert.match(route, /action !== "approve" && action !== "reject"/);
+  // The only accepted actions are the two reversible ones. The vocabulary is
+  // closed in the shared validator, so `publish` fails as an off-list value.
+  assert.match(route, /action: \{ kind: "enum", values: \["approve", "reject"\]/);
   assert.ok(
     !/UPDATE posts SET status = 'published'/.test(route),
     "a batch must never move a post to published",
@@ -84,8 +86,10 @@ check("every post in a batch gets its own audit row", () => {
 
 check("a batch is bounded and de-duplicated", () => {
   assert.match(route, /const MAX_IDS = 100/);
-  assert.match(route, /if \(ids\.length > MAX_IDS\)/);
-  assert.match(route, /new Set\(body\.ids\.filter/);
+  // The ceiling is enforced by the shared validator, so it refuses rather than cuts.
+  assert.match(route, /ids: \{ kind: "stringArray", max: MAX_IDS/);
+  // De-duplication moved into the shared validator with the rest of the shape checks.
+  assert.match(validator, /if \(!items\.includes\(text\)\) items\.push\(text\)/);
 });
 
 check("the result is reported per post, not as a guess", () => {

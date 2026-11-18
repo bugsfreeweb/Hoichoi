@@ -947,6 +947,58 @@ crosshair, 60 rim ticks) with real queue-derived blips; a single `desk bootstrap
 spawn replaces 6+ runner calls on refresh; Ads/Settings save buttons show
 spinner → result toast with elapsed ms.
 
+## Four unfinished answers, finished (v1.1.37)
+
+**A picture states what it is, not what its name says.** The media registry
+recorded a byte count and nothing else, so the console could say "2.1 MB" about a
+2400x1600 WebP and could not notice that an "image" it had just mirrored was an
+HTML error page saved under a `.jpg` name. `media_objects` now carries `mime`,
+`width` and `height`, read from the blob's own header by a pure parser in
+`packages/shared-types/src/image-meta.ts` (PNG, JPEG, GIF, WebP VP8/VP8L/VP8X,
+BMP, AVIF/HEIC by brand) - no decoder in the hot path, no image library pulled
+into the registry. An unrecognised header records `null` and every reader says
+"unknown": a wrong MIME type written into a row outlives the guess. `/admin/media`
+shows the format mix with `অশ্রেণীবদ্ধ` as its own bucket, because a file the
+console never parsed is not a file it may imply it understands.
+
+**A claim proposal is a reading of the text, not a model's opinion.** The
+verification grade has always been derived from rows, and the rows only existed if
+an editor typed them - into a blank box, which is why most posts had none. The
+obvious shortcut ("ask a model to extract the claims") is the wrong one: a
+proposal that cannot be re-run cannot be audited, and it would carry the story's
+names to a third party a second time. So extraction is deterministic: split the
+body the row already holds, keep sentences that carry something checkable (a
+figure, a sum, a date, a named party, a quotation), drop questions, appeals and
+speculation, rank by evidence surface, and say *why* each line was offered. The
+console shows them as proposals; keeping one fills the claim form, and only then
+does a row exist. `scripts/claim-candidates.test.ts` (14 checks) pins the ranking,
+the exclusions, the digit folding (`২ কোটি` and `2 কোটি` are one claim) and that a
+candidate carries no confidence score to mistake for evidence.
+
+**An approval is per image, and a rejection is a wall with a name on it.**
+Moderation approved a *post*; a post can carry a gallery, and nothing recorded
+which picture a human had actually looked at. Migration 038 adds `image_reviews`:
+one row per decision, the newest row for a path is the standing verdict, a
+rejection at the same instant beats an approval, and history is never deleted - a
+later approval supersedes a rejection by order, so "who let this through" survives.
+No row means `unreviewed`, which is not an approval. The post editor shows each
+image with its verdict and two buttons; and publishing is refused with the
+picture's name, the reason and who rejected it - a bare "cannot publish" is a
+wall, not an instruction. Verified end to end: reject then `409 ছবি অনুমোদিত নয়:
+img_....webp (নকল/ওয়াটারমার্ক) - admin@...`, approve then publish succeeds.
+
+**One request validator, so every route answers the same way.** Hand-written
+checks were fine at five routes and are wrong at dozens: some ignored an unknown
+field, one crashed on a wrong type, and both are worse than they look - a route
+that ignores what it does not know can be talked into reading a `role` out of a
+body later, and a type crash turns a 400 into a 500. `apps/web/src/lib/validate.ts`
+is a spec in and a typed value or one Bangla sentence out, with four deliberate
+rules: unknown keys are refused rather than dropped, a wrong type is never
+coerced, a bound is a refusal rather than a silent truncation, and an error names
+the field but never the value (a value may be a secret). Bulk moderation and the
+image-review route now validate through it; `scripts/request-validator.test.ts`
+(14 checks) covers the cases that used to differ.
+
 ## The panel owns its ink, and apply means apply (v1.1.36)
 
 **Twelve templates, and every one of them readable under the pointer.** The

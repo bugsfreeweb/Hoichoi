@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Post, PostStatus, CaseStatus, CategorySlug } from "@hoichoi/shared-types";
 import { PostImageGenerator } from "./PostImageGenerator";
 import VerificationPanel from "@/components/admin/VerificationPanel";
+import ImageReviewPanel from "@/components/admin/ImageReviewPanel";
 import { AiAssistPanel } from "@/components/admin/AiAssistPanel";
 
 const CATEGORY_LABELS: Record<CategorySlug, string> = {
@@ -648,6 +649,7 @@ export function PostEditor({ post }: { post: Post }) {
       </div>
       {busy === "save" && <p className="mt-3 font-mono-x text-[11px] text-ink-soft">সংরক্ষণ হচ্ছে…</p>}
 
+      <ImageReviewPanel postId={post.id} canEdit />
       <VerificationPanel postId={post.id} canEdit />
     </div>
   );

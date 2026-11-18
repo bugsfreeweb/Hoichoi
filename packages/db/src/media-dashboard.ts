@@ -9,7 +9,7 @@
  */
 import { getClient } from "./client";
 import { listProviderHealth, providerState, type ProviderHealth, type ProviderState } from "./provider-health";
-import { mediaObjectStats } from "./media-objects";
+import { mediaFormatStats, mediaObjectStats, type MediaFormatStat } from "./media-objects";
 
 export interface MediaDayPoint {
   day: string;
@@ -50,6 +50,8 @@ export interface MediaDashboard {
     /** True only when at least one provider has a quota to compare against. */
     hasQuota: boolean;
   };
+  /** What the store actually contains, by sniffed type. */
+  formats: MediaFormatStat[];
   /** One line the UI can show without inventing anything. */
   headline: string;
 }
@@ -101,7 +103,11 @@ function seriesByAdapter(stats: Awaited<ReturnType<typeof mediaObjectStats>>): M
 }
 
 export async function mediaDashboard(now = new Date()): Promise<MediaDashboard> {
-  const [health, stats] = await Promise.all([listProviderHealth(), mediaObjectStats().catch(() => [])]);
+  const [health, stats, formats] = await Promise.all([
+    listProviderHealth(),
+    mediaObjectStats().catch(() => []),
+    mediaFormatStats().catch(() => []),
+  ]);
   const series = seriesByAdapter(stats);
 
   const providers: MediaProviderCard[] = health.map((h: ProviderHealth) => ({
@@ -133,7 +139,7 @@ export async function mediaDashboard(now = new Date()): Promise<MediaDashboard> 
     hasQuota: providers.some((p) => p.quotaBytes !== null),
   };
 
-  return { providers, totals, headline: headlineFor(totals) };
+  return { providers, totals, formats, headline: headlineFor(totals) };
 }
 
 /** Retained for callers that only need the raw counter (tests, cron logs). */

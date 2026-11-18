@@ -14,6 +14,7 @@ import {
 } from "@hoichoi/db";
 import { forbidden, requireApiRole } from "@/lib/auth";
 import { audit } from "@/lib/audit";
+import { extractClaimCandidates } from "@hoichoi/shared-types";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ const CLAIM_STATUSES: ClaimStatus[] = ["unchecked", "supported", "disputed", "fa
  * POST → one of three actions:
  *   { action: "grade",  status? }   set the grade (derived when omitted)
  *   { action: "claim",  … }         add/update a checkable claim + evidence
+ *   { action: "claim_propose" }     propose checkable sentences (writes nothing)
  *   { action: "claim_delete", id }  drop a claim
  *
  * The grade is never accepted blindly: when `status` is omitted the server asks
@@ -109,6 +111,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ postId: st
       req,
     );
     return NextResponse.json({ ok: true, claim });
+  }
+
+  if (action === "claim_propose") {
+    // A proposal is a reading of the text the row already holds: deterministic,
+    // repeatable, and it writes nothing. Only an editor who keeps one turns it
+    // into a `claims` row, through `action: "claim"` above.
+    const candidates = extractClaimCandidates(post.body_bn ?? "");
+    return NextResponse.json({ ok: true, candidates });
   }
 
   if (action === "claim_delete") {

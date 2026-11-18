@@ -10,6 +10,7 @@
 import { randomBytes } from "node:crypto";
 import { getClient } from "./client";
 import { nowIso } from "./client";
+import { describeImage } from "@hoichoi/shared-types";
 
 export interface MediaObjectRow {
   id: string;
@@ -18,7 +19,50 @@ export interface MediaObjectRow {
   url: string; // public URL the web serves
   post_id: string | null;
   bytes: number | null; // exact uploaded size (NULL on rows recorded before this column)
+  /** `image/webp` etc., sniffed from the blob's own header. */
+  mime: string | null;
+  /** Pixel dimensions when the header carries them; NULL when unknown. */
+  width: number | null;
+  height: number | null;
   created_at: string;
+}
+
+/** What kinds of files the store actually holds, from the recorded headers. */
+export interface MediaFormatStat {
+  /** `image/webp`, or `unknown` for rows recorded before the sniff existed. */
+  mime: string;
+  files: number;
+  bytes: number;
+  /** Largest width/height ever recorded for this format (NULL when unknown). */
+  maxWidth: number | null;
+  maxHeight: number | null;
+}
+
+/**
+ * Format mix across the whole store. `unknown` is a real bucket, not an omission:
+ * a file whose header we never parsed is reported as unclassified so the console
+ * never implies it knows what a blob is when it does not.
+ */
+export async function mediaFormatStats(): Promise<MediaFormatStat[]> {
+  const client = getClient();
+  try {
+    const res = await client.execute(
+      "SELECT COALESCE(mime, 'unknown') AS mime, count(*) AS files, COALESCE(sum(bytes), 0) AS bytes, max(width) AS w, max(height) AS h FROM media_objects GROUP BY 1 ORDER BY files DESC",
+    );
+    return res.rows.map((r) => {
+      const row = r as Record<string, unknown>;
+      return {
+        mime: String(row.mime),
+        files: Number(row.files ?? 0),
+        bytes: Number(row.bytes ?? 0),
+        maxWidth: row.w == null ? null : Number(row.w),
+        maxHeight: row.h == null ? null : Number(row.h),
+      };
+    });
+  } catch {
+    /* table missing on very old DBs → nothing to report */
+    return [];
+  }
 }
 
 /** Aggregate usage for one media target (a repo or an S3 bucket). */
@@ -42,8 +86,35 @@ export async function recordMediaObject(input: {
   url: string;
   post_id?: string | null;
   bytes?: number | null;
+  /** Skip sniffing when the caller already parsed the buffer. */
+  image?: { mime: string | null; width: number | null; height: number | null } | null;
 }): Promise<void> {
   const client = getClient();
+  const meta = input.image ?? null;
+  try {
+    await client.execute({
+      sql: "INSERT INTO media_objects (id, adapter, key, url, post_id, bytes, mime, width, height, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      args: [
+        randomBytes(16).toString("hex"),
+        input.adapter,
+        input.key,
+        input.url,
+        input.post_id ?? null,
+        input.bytes ?? null,
+        meta?.mime ?? null,
+        meta?.width ?? null,
+        meta?.height ?? null,
+        nowIso(),
+      ],
+    });
+    return;
+  } catch (err) {
+    // A database that has not yet been migrated to the metadata columns must
+    // still record the upload — losing the analytics row would be worse than
+    // losing two descriptive fields.
+    const message = err instanceof Error ? err.message : String(err);
+    if (!/mime|width|height|no column named/i.test(message)) throw err;
+  }
   await client.execute({
     sql: "INSERT INTO media_objects (id, adapter, key, url, post_id, bytes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
     args: [
@@ -56,6 +127,11 @@ export async function recordMediaObject(input: {
       nowIso(),
     ],
   });
+}
+
+/** Sniff a blob for its real type and dimensions, for the callers that hold bytes. */
+export function imageMetaOf(bytes: Uint8Array): { mime: string | null; width: number | null; height: number | null } {
+  return describeImage(bytes);
 }
 
 export async function listMediaObjects(olderThanIso?: string): Promise<MediaObjectRow[]> {
@@ -75,6 +151,9 @@ export async function listMediaObjects(olderThanIso?: string): Promise<MediaObje
       url: String(row.url),
       post_id: (row.post_id as string | null) ?? null,
       bytes: row.bytes == null ? null : Number(row.bytes),
+      mime: (row.mime as string | null) ?? null,
+      width: row.width == null ? null : Number(row.width),
+      height: row.height == null ? null : Number(row.height),
       created_at: String(row.created_at),
     };
   });

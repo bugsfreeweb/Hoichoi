@@ -46,6 +46,7 @@ import {
   usableNow,
 } from "./provider-health";
 import type { MediaStorageConfig } from "@hoichoi/shared-types";
+import { describeImage } from "@hoichoi/shared-types";
 import {
   recordMediaObject,
   listMediaObjects,
@@ -614,7 +615,16 @@ export async function uploadRemote(rel: string, postId?: string | null): Promise
       const key = adapterKey(a, rel);
       const url =
         a.id === "github" ? await ghUpload(ghConfig(a), key, body) : await s3Upload(a, key, body);
-      await recordMediaObject({ adapter: a.tag, key, url, post_id: postId ?? null, bytes: body.length });
+      await recordMediaObject({
+        adapter: a.tag,
+        key,
+        url,
+        post_id: postId ?? null,
+        bytes: body.length,
+        // The registry states what the blob *is*, not what its name suggests:
+        // an out-of-range or unknown header records NULLs and says "unknown".
+        image: describeImage(body),
+      });
       await reportAttempt(a, true, "", body.length);
       anyOk = true;
       if (firstUrl == null) firstUrl = url;
@@ -665,7 +675,16 @@ export async function uploadBufferRemote(
       const key = adapterKey(a, rel);
       const url =
         a.id === "github" ? await ghUpload(ghConfig(a), key, body) : await s3Upload(a, key, body);
-      await recordMediaObject({ adapter: a.tag, key, url, post_id: postId ?? null, bytes: body.length });
+      await recordMediaObject({
+        adapter: a.tag,
+        key,
+        url,
+        post_id: postId ?? null,
+        bytes: body.length,
+        // The registry states what the blob *is*, not what its name suggests:
+        // an out-of-range or unknown header records NULLs and says "unknown".
+        image: describeImage(body),
+      });
       await reportAttempt(a, true, "", body.length);
       if (firstUrl == null) firstUrl = url;
       if (!mirror) {

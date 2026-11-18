@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, RefreshCw, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
+import { ListChecks, Plus, RefreshCw, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
+import type { ClaimCandidate } from "@hoichoi/shared-types";
 
 /**
  * যাচাই প্যানেল — গ্রেড, দাবি ও সংশোধনের রেকর্ড।
@@ -59,6 +60,7 @@ export default function VerificationPanel({ postId, canEdit }: { postId: string;
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [note, setNote] = useState("");
   const [claim, setClaim] = useState({ claim_bn: "", status: "unchecked", evidence_url: "", evidence_note: "" });
+  const [proposals, setProposals] = useState<ClaimCandidate[] | null>(null);
 
   const flash = (type: "ok" | "err", text: string) => {
     setMsg({ type, text });
@@ -96,6 +98,30 @@ export default function VerificationPanel({ postId, canEdit }: { postId: string;
       if (!res.ok) throw new Error(json.error ?? "ব্যর্থ");
       await load();
       flash("ok", json.clamped ? `রেকর্ড অনুযায়ী গ্রেড ${json.status} (দাবি করা হয়েছিল ${json.derived} এর উপরে)` : "সংরক্ষণ হয়েছে");
+    } catch (e) {
+      flash("err", (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * Ask the server which sentences in this post are checkable. It reads the
+   * stored body only and writes nothing — a proposal is not a record, so the
+   * grade cannot move because a suggestion appeared.
+   */
+  const propose = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/verification/${encodeURIComponent(postId)}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "claim_propose" }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { candidates?: ClaimCandidate[]; error?: string };
+      if (!res.ok) throw new Error(json.error ?? "ব্যর্থ");
+      setProposals(json.candidates ?? []);
+      flash("ok", `লেখা থেকে ${json.candidates?.length ?? 0}টি যাচাইযোগ্য বাক্য পাওয়া গেছে।`);
     } catch (e) {
       flash("err", (e as Error).message);
     } finally {
@@ -173,6 +199,41 @@ export default function VerificationPanel({ postId, canEdit }: { postId: string;
         )}
       </div>
 
+      {canEdit && proposals && proposals.length > 0 && (
+        <div className="mt-3 border border-ink/20 bg-paper-deep p-3">
+          <p className="font-mono-x text-[10.5px] font-bold uppercase tracking-[0.16em] text-ink-soft">
+            প্রস্তাব — লেখা থেকে, অনুমান নয়
+          </p>
+          <p className="mt-1 font-mono-x text-[10px] text-ink-soft">
+            বাক্যগুলো পোস্টের নিজের লেখা থেকেই বাছা হয়েছে (সংখ্যা, তারিখ, নামকরা পক্ষ, উদ্ধৃতি)। কোনো
+            প্রস্তাব নিজে থেকে রেকর্ড হয় না — যেটি রাখবেন, সেটিই দাবি হবে।
+          </p>
+          <div className="mt-2 space-y-1">
+            {proposals.map((p) => (
+              <div key={p.text} className="flex flex-wrap items-start justify-between gap-2 border border-ink/15 bg-paper px-2 py-1.5">
+                <span className="min-w-0 font-sans-bn text-[12px] text-ink">{p.text}</span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <span className="font-mono-x text-[9.5px] tracking-[0.08em] text-ink-soft uppercase">{p.reason}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClaim({ claim_bn: p.text, status: "unchecked", evidence_url: "", evidence_note: "" });
+                      flash("ok", "ফর্মে বসানো হয়েছে — প্রমাণের লিংক দিয়ে যোগ করুন।");
+                    }}
+                    className="border border-ink/25 px-1.5 py-0.5 font-mono-x text-[9.5px] tracking-[0.1em] text-ink uppercase"
+                  >
+                    ফর্মে নিন
+                  </button>
+                </span>
+              </div>
+            ))}
+          </div>
+          {proposals.length === 0 && (
+            <p className="mt-1 font-mono-x text-[10.5px] text-ink-soft">লেখায় যাচাইযোগ্য বাক্য পাওয়া যায়নি।</p>
+          )}
+        </div>
+      )}
+
       {canEdit && (
         <div className="mt-3 grid gap-2 border border-ink/20 bg-paper-deep p-3 md:grid-cols-4">
           <label className={labelCls}>
@@ -191,7 +252,16 @@ export default function VerificationPanel({ postId, canEdit }: { postId: string;
             প্রমাণের লিংক
             <input className={inputCls} value={claim.evidence_url} onChange={(e) => setClaim({ ...claim, evidence_url: e.target.value })} placeholder="https://…" />
           </label>
-          <div className="flex items-end">
+          <div className="flex items-end gap-1.5">
+            <button
+              type="button"
+              onClick={() => void propose()}
+              disabled={busy}
+              className="inline-flex w-full items-center justify-center gap-1.5 border border-ink/25 px-2 py-1.5 font-mono-x text-[10.5px] font-bold text-ink disabled:opacity-50"
+              title="পোস্টের লেখা থেকে যাচাইযোগ্য বাক্য বের করুন"
+            >
+              <ListChecks className="h-3.5 w-3.5" /> প্রস্তাব
+            </button>
             <button
               type="button"
               onClick={async () => {
