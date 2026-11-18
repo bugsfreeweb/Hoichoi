@@ -128,6 +128,36 @@ export const PROVIDER_META: ProviderMeta[] = [
     noteBn: "GitHub Models ক্যাটালগ — লেখার কাজে।",
   },
   {
+    /**
+     * Cloudflare Workers AI is a first-class provider now, not a "custom" row.
+     *
+     * It has been the default image provider since v1.1.31, but the console's
+     * "add a provider" form did not list it: an operator who wanted a *second*
+     * Cloudflare account (a second quota pool) had to pick "custom" and hand-
+     * compose `…/accounts/<32 hex>/ai/run/@cf/black-forest-labs/flux-1-schnell`.
+     * A typo there is not a visible typo — the row saves, the test comes back
+     * 7003/404, and the fix looks like a broken integration. Selecting
+     * Cloudflare now asks for the account ID and the token, and the URL is
+     * composed, so a second account is two values, not a URL edit.
+     */
+    key: "cloudflare",
+    label: "Cloudflare Workers AI",
+    envVar: "CLOUDFLARE_API_TOKEN",
+    kinds: ["image"],
+    models: {
+      text: [],
+      image: [
+        "@cf/black-forest-labs/flux-1-schnell",
+        "@cf/stabilityai/stable-diffusion-xl-base-1.0",
+        "@cf/lykon/dreamshaper-8-lcm",
+      ],
+    },
+    baseUrl: "https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/ai/run",
+    freeTier: true,
+    noteBn:
+      "ছবি আঁকার ডিফল্ট প্রোভাইডার — ওয়াটারমার্ক নেই, দিনে ১০,০০০ নিউরন ফ্রি। প্রতিটি অ্যাকাউন্টের জন্য আলাদা রো যোগ করলে কোটা বাড়ে।",
+  },
+  {
     key: "custom",
     label: "কাস্টম / অন্য API",
     envVar: "CUSTOM_API_KEY",
@@ -173,6 +203,121 @@ export function resolveAccountPlaceholder(
   const id = (env[CLOUDFLARE_ACCOUNT_ENV] ?? "").trim();
   if (!/^[0-9a-f]{32}$/i.test(id)) return baseUrl;
   return baseUrl.replace(/ACCOUNT_ID/gi, id);
+}
+
+export const CLOUDFLARE_ACCOUNT_ID_RE = /^[0-9a-f]{32}$/i;
+
+/**
+ * One declarative field of the "add a provider" form.
+ *
+ * Selecting a provider shows exactly this list — no generic "Key / URL" pair
+ * that turns a Cloudflare setup into a guessing game. The field set is data,
+ * shared between the web console and the desktop settings panel, so a provider
+ * that needs an account id cannot be described with a URL field.
+ */
+export interface ProviderFieldSpec {
+  key: "accountId" | "apiToken" | "baseUrl";
+  labelBn: string;
+  placeholder: string;
+  /** Password input; never render the value back. */
+  secret?: boolean;
+  /** Skipped (not just optional) when false, so Ollama never asks for a key. */
+  required?: boolean;
+  /** One-line instruction under the input. */
+  hintBn?: string;
+  /** True when the box shows a value derived from the account id. */
+  composed?: boolean;
+}
+
+/**
+ * The fields the "add a provider" panel shows for a chosen provider.
+ *
+ * Cloudflare is the complete story: account id + token, and the base URL is
+ * composed from the account id so a typo cannot quietly break the row. Ollama
+ * has no key at all. Every other provider gets key + optional base URL.
+ */
+export function providerFields(providerKey: string): ProviderFieldSpec[] {
+  if (providerKey === "cloudflare") {
+    return [
+      {
+        key: "accountId",
+        labelBn: "Cloudflare account ID",
+        placeholder: "32 hex অক্ষর · Cloudflare → Workers & Pages → Account ID",
+        required: true,
+        hintBn: "৩২ অক্ষরের hex — যেমন 1a2b3c…f0। ওয়েবসাইটের URL নয়।",
+      },
+      {
+        key: "apiToken",
+        labelBn: "API টোকেন",
+        placeholder: "হলি রাখলে CLOUDFLARE_API_TOKEN env ব্যবহার হবে",
+        secret: true,
+        hintBn: "টোকেনে Workers AI লেখার অনুমতি (Account → Workers AI → Edit) থাকতে হবে।",
+      },
+      {
+        key: "baseUrl",
+        labelBn: "API base URL (অটো-তৈরি)",
+        placeholder: "—",
+        composed: true,
+        hintBn: "আপনার account ID দিয়ে নিজে থেকেই তৈরি হবে — এখানে হাতলেখার দরকার নেই।",
+      },
+    ];
+  }
+  if (providerKey === "ollama") {
+    return [
+      {
+        key: "baseUrl",
+        labelBn: "Ollama base URL",
+        placeholder: "http://localhost:11434/v1",
+        required: true,
+        hintBn: "কোনো API কী লাগে না — লোকাল সার্ভারের ঠিকানা।",
+      },
+    ];
+  }
+  return [
+    {
+      key: "apiToken",
+      labelBn: "API কী",
+      placeholder: "হলি রাখলে env-এর কী ব্যবহার হবে (কোড নিচে দেখায় কোনটা)",
+      secret: true,
+    },
+    {
+      key: "baseUrl",
+      labelBn: "API base URL",
+      placeholder: "খালি রাখলে ডিফল্ট",
+    },
+  ];
+}
+
+/** Base URL for a Cloudflare Workers AI row, composed from a valid account id. */
+export function composeCloudflareBaseUrl(accountId: string): string {
+  const id = accountId.trim();
+  if (!CLOUDFLARE_ACCOUNT_ID_RE.test(id)) return "";
+  return `https://api.cloudflare.com/client/v4/accounts/${id}/ai/run`;
+}
+
+/**
+ * Validate a draft before it reaches the API — one Bangla message per problem,
+ * in the order an operator would meet them (account id before token).
+ */
+export function validateProviderSetup(draft: {
+  providerKey: string;
+  accountId?: string;
+  apiToken?: string;
+  baseUrl?: string;
+}): { ok: true } | { ok: false; errorBn: string } {
+  if (draft.providerKey === "cloudflare") {
+    const id = (draft.accountId ?? "").trim();
+    if (!CLOUDFLARE_ACCOUNT_ID_RE.test(id)) {
+      return {
+        ok: false,
+        errorBn: "Cloudflare account ID ৩২ অক্ষরের hex হতে হবে — Cloudflare → Workers & Pages → Account ID থেকে নিন।",
+      };
+    }
+  }
+  if (draft.providerKey === "custom" && !(draft.baseUrl ?? "").trim()) {
+    return { ok: false, errorBn: "স্বনির্মিত প্রোভাইডারের জন্য base URL আবশ্যক।" };
+  }
+  return { ok: true };
 }
 
 /**

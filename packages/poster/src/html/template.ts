@@ -187,9 +187,35 @@ function body(content: PosterContent, plan: PosterPlan): string {
     plan.theme === "light-paper"
       ? `radial-gradient(120% 90% at 78% 30%, ${plan.accent}33 0%, ${plan.accent}14 44%, rgba(0,0,0,0) 74%), linear-gradient(160deg, #EFEBE2 0%, #E4DFD3 58%, #D9D3C6 100%)`
       : `radial-gradient(120% 90% at 78% 30%, ${plan.accent}55 0%, ${plan.accent}18 42%, rgba(0,0,0,0) 72%), linear-gradient(160deg, #171B24 0%, #0C0F16 60%, #090B10 100%)`;
+  /**
+   * The wash is always drawn, and the photograph is drawn on top of it.
+   *
+   * A structural promise, not a fallback: a picture that fails to paint (a data
+   * URL the browser refuses, a corrupt upload) used to leave nothing but the
+   * theme's near-black page colour behind the headline — a poster that looks
+   * like a black rectangle with text on it. With the wash underneath, the worst
+   * case is a branded poster without a photograph.
+   */
+  const washLayer = `<div class="photo photo--wash" style="background:${wash}"></div>`;
+  /**
+   * With no photograph the plate is still a designed surface, not empty space.
+   *
+   * A single dark gradient is technically "a graphic" and reads as a void: the
+   * reported symptom was "only the headline is there, the rest is black". Three
+   * quiet layers fix that at no cost — measured grid rules, a large low-opacity
+   * wordmark in the picture area, and a corner accent. They live under the type,
+   * so legibility is unchanged.
+   */
+  const motif = bg
+    ? ""
+    : `<div class="motif">
+        <div class="motif-grid"></div>
+        <div class="motif-mark">${content.logoDataUrl ? `<img src="${content.logoDataUrl}" alt="" />` : `<span>${escapeHtml(content.brand ?? "হৈচৈ")}</span>`}</div>
+        <div class="motif-corner" style="background:${plan.accent}"></div>
+      </div>`;
   const photo = bg
-    ? `<div class="photo" style="background-image:url('${bg}')"></div>`
-    : `<div class="photo photo--wash" style="background:${wash}"></div>`;
+    ? `${washLayer}<div class="photo" style="background-image:url('${bg}')"></div>`
+    : `${washLayer}${motif}`;
 
   switch (plan.layout) {
     case "split-right":
@@ -251,6 +277,15 @@ function styles(plan: PosterPlan): string {
   html,body{width:${POSTER_HTML_FRAME.width}px;height:${POSTER_HTML_FRAME.height}px;overflow:hidden;background:var(--bg);}
   body{font-family:"Noto Sans Bengali",sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;}
   .photo{position:absolute;inset:0;background-size:cover;background-position:center right;filter:blur(2px) saturate(0.92) contrast(0.98);transform:scale(1.04);transform-origin:center;}
+  /* The wash is a graphic, not a photograph: blurring it would smear the accent
+     glow into a brown smudge, and the blur exists to soften a photo behind type. */
+  .photo--wash{filter:none;transform:none;}
+  .motif{position:absolute;inset:0;overflow:hidden;}
+  .motif-grid{position:absolute;inset:36px;background-image:repeating-linear-gradient(90deg,${dark ? "rgba(255,255,255,0.045)" : "rgba(20,22,26,0.05)"} 0 1px,rgba(0,0,0,0) 1px 120px),repeating-linear-gradient(0deg,${dark ? "rgba(255,255,255,0.03)" : "rgba(20,22,26,0.035)"} 0 1px,rgba(0,0,0,0) 1px 120px);}
+  .motif-mark{position:absolute;right:96px;top:50%;transform:translateY(-50%) rotate(-6deg);display:grid;place-items:center;opacity:${dark ? "0.1" : "0.08"};}
+  .motif-mark img{width:340px;height:340px;object-fit:contain;filter:grayscale(1);}
+  .motif-mark span{font-family:"Noto Serif Bengali",serif;font-size:300px;font-weight:700;line-height:1;color:${dark ? "#FFFFFF" : "#14161A"};}
+  .motif-corner{position:absolute;right:0;bottom:0;width:420px;height:8px;opacity:0.75;}
   .scrim{position:absolute;inset:0;background:${t.scrim};}
   .scrim--right{background:${t.scrimRight};}
   .scrim--bottom{background:${t.scrimBottom};}

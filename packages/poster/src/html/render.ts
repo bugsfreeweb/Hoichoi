@@ -22,6 +22,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { POSTER_HTML_FRAME, posterHtml, type PosterContent } from "./template";
+import { dataUrlForImage } from "./image";
 import { planPoster, type PosterLayout, type PosterPlan, type PosterTheme } from "./select";
 
 export interface EditorialPosterOptions {
@@ -181,7 +182,7 @@ export async function renderEditorialPoster(opts: EditorialPosterOptions): Promi
     brand: opts.brand ?? "হৈচৈ",
     site: opts.site ?? "hoichoifeed.vercel.app",
     seed: opts.seed ?? opts.title,
-    backgroundDataUrl: opts.background ? `data:image/png;base64,${opts.background.toString("base64")}` : null,
+    backgroundDataUrl: opts.background ? dataUrlForImage(opts.background) : null,
     logoDataUrl: logo,
     fonts,
     kicker: withAccent.layout === "breaking-banner" ? "ব্রেকিং নিউজ" : null,

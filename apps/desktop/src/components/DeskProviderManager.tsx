@@ -9,7 +9,16 @@ import {
   type DeskProvider,
   type DeskProviderModel,
 } from "../lib/tauri";
-import { PROVIDER_META, metaFor, looksLikeImageModel, purposeLabelBn, type ProviderPurpose } from "@hoichoi/shared-types";
+import {
+  PROVIDER_META,
+  metaFor,
+  looksLikeImageModel,
+  purposeLabelBn,
+  providerFields,
+  composeCloudflareBaseUrl,
+  validateProviderSetup,
+  type ProviderPurpose,
+} from "@hoichoi/shared-types";
 import { getRunEnv } from "../lib/vault";
 import { autoPush } from "../lib/autosync";
 
@@ -21,6 +30,8 @@ interface Form {
   baseUrl: string;
   envVar: string;
   apiKey: string;
+  /** Cloudflare (account-scoped providers): composed into baseUrl. */
+  accountId: string;
   priority: number;
   free: boolean;
   embed: boolean;
@@ -35,6 +46,7 @@ const EMPTY: Form = {
   baseUrl: "",
   envVar: "",
   apiKey: "",
+  accountId: "",
   priority: 100,
   free: true,
   embed: false,
@@ -118,6 +130,12 @@ export default function DeskProviderManager() {
       baseUrl: p.base_url ?? "",
       envVar: p.api_key_env_var ?? "",
       apiKey: p.api_key ?? "",
+      /**
+       * Editing an existing Cloudflare row shows its account id (pulled back out
+       * of the URL) instead of asking for it again — re-entering it would
+       * rebuild the URL and quietly rewrite a working row.
+       */
+      accountId: (/\/accounts\/([0-9a-f]{32})\//i.exec(p.base_url ?? "") ?? [])[1] ?? "",
       priority: p.priority,
       free: p.is_free_tier,
       embed: p.supports_embeddings,
@@ -161,6 +179,22 @@ export default function DeskProviderManager() {
       flash("err", "মডেল নাম আবশ্যক");
       return;
     }
+    /**
+     * The same validation the web console calls, from the same module — so the
+     * desk cannot save a Cloudflare row the server would refuse, and the URL is
+     * composed from the account id instead of typed into a text box.
+     */
+    const cloudflareUrl = form.providerKey === "cloudflare" ? composeCloudflareBaseUrl(form.accountId) : "";
+    const setup = validateProviderSetup({
+      providerKey: form.providerKey,
+      accountId: form.accountId,
+      apiToken: form.apiKey,
+      baseUrl: form.providerKey === "cloudflare" ? cloudflareUrl : form.baseUrl,
+    });
+    if (!setup.ok) {
+      flash("err", setup.errorBn);
+      return;
+    }
     setBusy(true);
     try {
       await deskUpsertProvider(await getRunEnv(), {
@@ -168,7 +202,7 @@ export default function DeskProviderManager() {
         providerKey: form.providerKey,
         displayName: form.displayName.trim() || form.providerKey,
         modelName: form.modelName.trim(),
-        baseUrl: form.baseUrl.trim() || undefined,
+        baseUrl: (form.providerKey === "cloudflare" ? cloudflareUrl : form.baseUrl.trim()) || undefined,
         envVar: form.envVar.trim() || undefined,
         apiKey: form.apiKey.trim() || undefined,
         priority: Number(form.priority),
@@ -332,15 +366,35 @@ export default function DeskProviderManager() {
                 placeholder="খালি রাখলে provider_key"
               />
             </label>
-            <label className="block">
-              <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">Base URL</span>
-              <input
-                className="field mt-1 w-full font-mono text-[10.5px]"
-                value={form.baseUrl}
-                onChange={(e) => setForm({ ...form, baseUrl: e.target.value })}
-                placeholder="খালি রাখলে প্রিসেট"
-              />
-            </label>
+            {/* The fields this provider actually needs: Cloudflare asks for an
+                account ID and composes the URL, everything else takes a URL. */}
+            {providerFields(form.providerKey).some((f) => f.key === "accountId") && (
+              <label className="block">
+                <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                  Cloudflare account ID *
+                </span>
+                <input
+                  className="field mt-1 w-full font-mono text-[10.5px]"
+                  value={form.accountId}
+                  onChange={(e) => setForm({ ...form, accountId: e.target.value })}
+                  placeholder="32 hex · Workers & Pages → Account ID"
+                />
+                <span className="mt-1 block font-mono text-[9.5px] leading-snug break-all text-white/40">
+                  {composeCloudflareBaseUrl(form.accountId) || "account ID দিলে URL এখানে তৈরি হবে"}
+                </span>
+              </label>
+            )}
+            {providerFields(form.providerKey).some((f) => f.key === "baseUrl" && !f.composed) && (
+              <label className="block">
+                <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">Base URL</span>
+                <input
+                  className="field mt-1 w-full font-mono text-[10.5px]"
+                  value={form.baseUrl}
+                  onChange={(e) => setForm({ ...form, baseUrl: e.target.value })}
+                  placeholder="খালি রাখলে প্রিসেট"
+                />
+              </label>
+            )}
             <label className="block">
               <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
                 ৪ · Env var (কী কোথা থেকে পড়বে)

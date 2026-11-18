@@ -21,6 +21,8 @@ import {
   type CredentialName,
 } from "./lib/vault";
 import { SITE_URL } from "./lib/site";
+import { getDeskSidebarStyle, onDeskSidebarStyle } from "./lib/desk-ui-prefs";
+import type { SidebarStyleId } from "@hoichoi/shared-types";
 import { bnClock, toBn } from "./lib/format";
 import SetupWizard from "./components/SetupWizard";
 import Dashboard from "./screens/Dashboard";
@@ -173,6 +175,13 @@ function MTabsButton({ id, label, active, onClick }: {
 export default function App() {
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem(ONBOARD_KEY) === "1");
   const [view, setView] = useState<View>("dashboard");
+  /**
+   * The desk's sidebar template. Read synchronously from the local mirror so the
+   * first paint already has the chosen panel, then kept in sync with the picker
+   * in Settings (which also writes the shared site config).
+   */
+  const [sidebarStyle, setSidebarStyle] = useState<SidebarStyleId>(() => getDeskSidebarStyle());
+  useEffect(() => onDeskSidebarStyle(setSidebarStyle), []);
   const [configured, setConfigured] = useState<Partial<Record<CredentialName, boolean>>>({});
   /** Set when the server refused a session grant (revoked device, wrong URL). */
   const [grantError, setGrantError] = useState<string | null>(null);
@@ -682,7 +691,7 @@ export default function App() {
         />
 
         <div className="winbody">
-          <aside className="side">
+          <aside className="side" data-sidebar-style={sidebarStyle}>
             <nav className="sidenav" id="sideNav">
               {VIEW_ORDER.map((v, i) => (
                 <TabButton

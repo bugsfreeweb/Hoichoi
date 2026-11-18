@@ -26,6 +26,7 @@ export {
   type EditorialPosterResult,
 } from "./html/render";
 export { posterHtml, escapeHtml, barcodeBars, POSTER_HTML_FRAME, type PosterContent } from "./html/template";
+export { dataUrlForImage, sniffMime } from "./html/image";
 export {
   planPoster,
   headlineSizeFor,

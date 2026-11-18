@@ -23,6 +23,7 @@ import {
   wrapCaption,
   POSTER_FONT_FAMILY,
   barcodeBars,
+  dataUrlForImage,
   headlineSizeFor,
   planPoster,
   posterHtml,
@@ -301,6 +302,55 @@ async function main(): Promise<void> {
     assert.equal(out.contentType, "image/png");
     assert.ok(out.bytes.length > 40_000, `suspiciously small render: ${out.bytes.length}`);
     fs.writeFileSync(path.resolve(".tmp-poster-editorial.png"), out.bytes);
+  });
+
+  check("a photograph is labelled with its real type, not assumed PNG", () => {
+    /**
+     * The black-poster bug: every background was sent as `data:image/png` no
+     * matter what it was. A WebP photograph — what the media store writes and
+     * what most providers return — is refused by Chromium under that label, so
+     * the picture never painted and the plate was a black rectangle with a
+     * headline on it. Sniffing the magic bytes is the fix; these are the formats
+     * that matter in production.
+     */
+    const webp = Buffer.concat([
+      Buffer.from("RIFF"),
+      Buffer.from([0x24, 0x00, 0x00, 0x00]),
+      Buffer.from("WEBPVP8 "),
+      Buffer.alloc(8),
+    ]);
+    const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(8)]);
+    const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(8)]);
+    assert.match(dataUrlForImage(webp), /^data:image\/webp;base64,/);
+    assert.match(dataUrlForImage(png), /^data:image\/png;base64,/);
+    assert.match(dataUrlForImage(jpeg), /^data:image\/jpeg;base64,/);
+  });
+
+  check("the wash is drawn under the photograph, so a picture can never paint black", () => {
+    const base = {
+      title: "মিরপুরে ভবন ধস",
+      summary: null,
+      category: "অর্থনীতি",
+      dateText: "১৮ নভেম্বর ২০২৬",
+      logoDataUrl: null,
+      fonts: [{ family: "Noto Serif Bengali", weight: 700, dataUrl: "data:font/ttf;base64,AA==" }],
+    };
+    const plan = planPoster({ category: "economy", title: "মিরপুরে ভবন ধস" });
+    const withPhoto = posterHtml({ ...base, backgroundDataUrl: "data:image/webp;base64,AAAA" }, plan);
+    const washAt = withPhoto.indexOf("photo--wash");
+    const photoAt = withPhoto.indexOf("background-image:url(");
+    assert.ok(washAt > 0, "the wash layer is present with a photograph");
+    assert.ok(photoAt > washAt, "the photograph is stacked above the wash, not instead of it");
+
+    // Without a photograph the plate gets a motif — rules, a large faint mark and
+    // an accent corner — because one dark gradient reads as empty space.
+    const noPhoto = posterHtml({ ...base, backgroundDataUrl: null }, plan);
+    assert.match(noPhoto, /class="motif"/);
+    assert.match(noPhoto, /class="motif-grid"/);
+    assert.match(noPhoto, /class="motif-mark"/);
+    assert.match(noPhoto, /class="motif-corner"/);
+    // The wash is a graphic, not a photograph: it must not inherit the blur.
+    assert.match(noPhoto, /\.photo--wash\{filter:none;transform:none;\}/);
   });
 
   console.log(`\nposter: ${passed} checks passed`);

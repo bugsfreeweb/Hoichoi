@@ -44,6 +44,7 @@ import {
   DEFAULT_APP_CONFIG,
   DEFAULT_VARIANT,
   SECTION_REGISTRY,
+  sidebarStyleOr,
   type MaintenanceSiteConfig,
   type SectionRow,
   type SectionState,
@@ -229,6 +230,10 @@ export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
         if (typeof v === "string" && allowed.includes(v)) {
           merged.hero_scene_style = v as SiteAppConfig["hero_scene_style"];
         }
+      } else if (k === "admin_sidebar_style") {
+        // Twelve known templates, one DOM: an unknown value is the default, never
+        // "no style" (which would render an unstyled sidebar with no error).
+        merged.admin_sidebar_style = sidebarStyleOr(v);
       } else if (k === "hero_effects") {
         if (v && typeof v === "object") {
           const he = v as Partial<HeroEffects>;

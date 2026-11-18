@@ -1175,3 +1175,176 @@ html[data-theme="light"] .titlebar {
 @media (prefers-reduced-motion: reduce) {
   .radar-blip, .radar-blip-fresh, .radar-blip-ring { animation: none !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Desk sidebar — twelve templates, one DOM.
+
+   Same catalogue as the web console (`SIDEBAR_STYLES` in @hoichoi/shared-types),
+   so an operator who picks "অবসিডিয়ান গ্লাস" in the browser sees it here too.
+   Only variables are overridden, so the navigation markup, the keyboard order
+   and the shortcut numbers cannot drift between templates.
+   ══════════════════════════════════════════════════════════════════════════ */
+.side[data-sidebar-style] {
+  border-right-color: var(--side-line, var(--color-bd));
+}
+.side[data-sidebar-style="classic"] {
+  --side-line: #1e293b;
+  --tk-hover: rgba(255, 255, 255, 0.07);
+  --active-bg: #f8e9dd;
+  --active-tx: #a0351c;
+}
+.side[data-sidebar-style="obsidian"] {
+  --side-line: #304137;
+  --tk-hover: #22352a;
+  --active-bg: #3b291f;
+  --active-tx: #ffb49b;
+  background: radial-gradient(ellipse at 10% 0, #24392e, transparent 52%), linear-gradient(180deg, #111b15 0%, #0c140f 100%);
+  border-right-color: #304137;
+}
+.side[data-sidebar-style="obsidian"] .sidenav button.active {
+  box-shadow: inset 2px 0 0 #ef6d47;
+}
+.side[data-sidebar-style="floating"] {
+  --side-line: transparent;
+  --tk-hover: rgba(255, 255, 255, 0.07);
+  --active-bg: #fdeee8;
+  --active-tx: #a0351c;
+  margin: 10px 0 10px 10px;
+  border-radius: 16px;
+  border-right: 0;
+  box-shadow: 0 24px 50px -22px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+.side[data-sidebar-style="rail"] {
+  width: 70px;
+  --side-line: #334e40;
+  --tk-hover: rgba(255, 255, 255, 0.07);
+  --active-bg: rgba(155, 192, 166, 0.16);
+  --active-tx: #cfe6d3;
+  background: #16231b;
+  border-right-color: #334e40;
+}
+/* The rail keeps its icons and hides the words; the tab order is unchanged. */
+.side[data-sidebar-style="rail"] .sidenav button span,
+.side[data-sidebar-style="rail"] .sidenav kbd,
+.side[data-sidebar-style="rail"] .side-foot {
+  display: none;
+}
+.side[data-sidebar-style="rail"] .sidenav button {
+  justify-content: center;
+  padding-inline: 0;
+}
+.side[data-sidebar-style="rail"] .sidenav button.active {
+  box-shadow: inset 3px 0 0 #9bc0a6;
+}
+.side[data-sidebar-style="editorial"] {
+  --side-line: #17231b;
+  --tk-hover: transparent;
+  --active-bg: transparent;
+  --active-tx: #ffffff;
+  background: #14161a;
+  border-right: 3px double #5b5e53;
+}
+.side[data-sidebar-style="editorial"] .sidenav button {
+  border-radius: 0;
+  border-bottom: 1px solid #2c2f2a;
+}
+.side[data-sidebar-style="editorial"] .sidenav button.active {
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
+  text-decoration-color: #df6038;
+}
+.side[data-sidebar-style="dock"] {
+  --side-line: #2d4035;
+  --tk-hover: rgba(255, 255, 255, 0.08);
+  --active-bg: #f4f7ef;
+  --active-tx: #1c2a21;
+  background: #1c2a21;
+}
+.side[data-sidebar-style="dock"] .sidenav button {
+  border-radius: 999px;
+  padding-inline: 14px;
+}
+.side[data-sidebar-style="neon"] {
+  --side-line: rgba(255, 107, 61, 0.45);
+  --tk-hover: rgba(255, 107, 61, 0.09);
+  --active-bg: rgba(255, 107, 61, 0.14);
+  --active-tx: #ff9c7b;
+  background: #07090a;
+  border-right: 1px solid rgba(255, 107, 61, 0.45);
+  box-shadow: 1px 0 0 rgba(255, 107, 61, 0.18), 16px 0 40px -20px rgba(255, 107, 61, 0.25);
+}
+.side[data-sidebar-style="neon"] .sidenav button.active {
+  box-shadow: inset 3px 0 0 #ff6b3d, 0 0 24px -6px rgba(255, 107, 61, 0.45);
+}
+.side[data-sidebar-style="minimal"] {
+  --side-line: #1f2620;
+  --tk-hover: rgba(255, 255, 255, 0.05);
+  --active-bg: transparent;
+  --active-tx: #ffffff;
+  background: #151c18;
+}
+.side[data-sidebar-style="minimal"] .sidenav button {
+  border-radius: 0;
+}
+.side[data-sidebar-style="minimal"] .sidenav button.active {
+  font-weight: 600;
+  box-shadow: inset 4px 0 0 -1px #9fb8a5;
+}
+.side[data-sidebar-style="aurora"] {
+  --side-line: rgba(255, 255, 255, 0.08);
+  --tk-hover: rgba(255, 255, 255, 0.08);
+  --active-bg: rgba(127, 224, 192, 0.17);
+  --active-tx: #9ff0d2;
+  background: linear-gradient(165deg, #14302a 0%, #1f1c3f 55%, #111a2b 100%);
+  border-right-color: rgba(255, 255, 255, 0.08);
+}
+.side[data-sidebar-style="aurora"] .sidenav button {
+  border-radius: 12px;
+}
+.side[data-sidebar-style="aurora"] .sidenav button.active {
+  box-shadow: inset 0 0 0 1px rgba(127, 224, 192, 0.35);
+}
+.side[data-sidebar-style="ledger"] {
+  --side-line: #d6c7ad;
+  --tk-hover: rgba(138, 75, 42, 0.12);
+  --active-bg: #2a2118;
+  --active-tx: #e8d9bd;
+  background: #2b2219 repeating-linear-gradient(0deg, transparent 0 27px, rgba(200, 170, 130, 0.05) 27px 28px);
+  border-right-color: #4a3a29;
+}
+.side[data-sidebar-style="ledger"] .sidenav button {
+  border-radius: 0;
+}
+.side[data-sidebar-style="ledger"] .sidenav button.active {
+  box-shadow: inset 3px 0 0 #c08a5a;
+}
+.side[data-sidebar-style="split"] {
+  --side-line: #22342a;
+  --tk-hover: rgba(255, 255, 255, 0.06);
+  --active-bg: rgba(239, 109, 71, 0.16);
+  --active-tx: #ffb49b;
+  background: #121a14;
+}
+.side[data-sidebar-style="split"] .sidenav button {
+  border-radius: 10px;
+}
+.side[data-sidebar-style="cards"] {
+  --side-line: #2a3830;
+  --tk-hover: #1e2822;
+  --active-bg: #24352b;
+  --active-tx: #bfe3c8;
+  background: #141a16;
+}
+.side[data-sidebar-style="cards"] .sidenav {
+  gap: 6px;
+}
+.side[data-sidebar-style="cards"] .sidenav button {
+  background: #10150f;
+  border: 1px solid #2a3830;
+  border-radius: 10px;
+}
+.side[data-sidebar-style="cards"] .sidenav button.active {
+  border-color: #3d5c49;
+}

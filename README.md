@@ -532,6 +532,51 @@ Verified by rendering all four layouts in both themes with a real photograph and
 branded wash (`1920×1080`, zero clipping, Bangla shaped correctly at every size), and by
 `pnpm typecheck` 8/8, `pnpm test` 6/6, `pnpm build` green.
 
+## Twelve ways to draw the same menu, and one place that decides (v1.1.34)
+
+The console's sidebar had one look, and the design prototype had twelve. Porting the
+twelve as twelve components would have been twelve chances for the navigation to drift
+apart — a shortcut number missing from one template, a group caption renamed in another.
+So the templates are variables, not components. `packages/shared-types/src/sidebar-templates.ts`
+is the only list: `classic, obsidian, floating, rail, editorial, dock, neon, minimal,
+aurora, ledger, split, cards`, each with a Bangla name, a latin line, a one-sentence note
+and a swatch for the picker. The default is `obsidian`, the prototype's own dark newsroom
+glass.
+
+`AdminShell` sets `data-sidebar-style` on the panel and puts `adm-nav-link`,
+`adm-nav-caption`, `adm-nav-group` and `adm-collapsed` on the markup it already had, and
+one scoped stylesheet paints all twelve from those hooks. Nothing about the menu changed
+— same rows, same order, same keyboard shortcuts, same `aria-current`. Choosing a
+template is a colour-and-shape decision, and the shape of a decision is all it can be.
+
+The picker lives in `সেটিংস → ডিজাইন` and writes `admin_sidebar_style` into the site
+config. The admin layout reads that value **on the server**, so the panel is right on the
+first paint; a client fetch would show the default and then swap on every navigation. An
+unknown or hand-edited value is parsed through `sidebarStyleOr` and becomes the default
+rather than an unstyled panel — "no style" is indistinguishable from a broken build.
+
+The desktop app reads the same value, mirrored into local storage by
+`apps/desktop/src/lib/desk-ui-prefs.ts` so the desk is right instantly and right with no
+network, and its Settings picker writes both the mirror and the shared config. When that
+save fails the desk says so instead of leaving the operator believing the browser console
+agrees with it. Its twelve `[data-sidebar-style]` blocks override variables only, so the
+same navigation component and the same shortcuts survive.
+
+The hero picker was describing the same twelve scenes in its own words. `HERO_SCENE_STYLES`
+now maps the twelve existing renderers onto the prototype's twelve template identities, in
+the prototype's order, with the prototype's Bangla notes — `obsidian, pipeline, editorial,
+mosaic, radar, kinetic, tilt, terminal, spotlight, constellation, waveform, timeline`. The
+scene *keys* are untouched, so every saved `hero_scene_style` still resolves; only the
+names and the explanation the editor reads changed.
+
+Verified by rendering all twelve styles in a browser harness and reading the result (every
+template legible, every template visibly different, the rail's labels hidden only when
+collapsed by width and not by a second component), by `apps/web/scripts/sidebar-templates.test.ts`
+(6 checks: twelve unique templates, the prototype's names, the default, the unknown-value
+fallback through `parseAppConfig`, a real CSS block for every id in **both** stylesheets,
+and that neither surface keeps its own hand-typed list), and by `pnpm typecheck` 8/8,
+`pnpm test` 6/6.
+
 ## The queues are a wall of covers, and a backlog clears in one decision (v1.1.32)
 
 **Six across, and the picture owns its frame.** Both the post editor and the moderation

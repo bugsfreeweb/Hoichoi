@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ensureSchema, getClient } from "@hoichoi/db";
+import { ensureSchema, getClient, mapProvider } from "@hoichoi/db";
+import { CLOUDFLARE_ACCOUNT_ENV, hasAccountPlaceholder, metaFor } from "@hoichoi/shared-types";
 import { generateImage } from "@hoichoi/llm";
 import { forbidden, requireApiRole } from "@/lib/auth";
 
@@ -30,6 +31,38 @@ export async function POST(req: NextRequest) {
 
   try {
     await ensureSchema(getClient());
+    /**
+     * Name the missing piece before spending a round trip on it.
+     *
+     * A Cloudflare row saved without its account id comes back from the API as
+     * `7003 … /accounts/ACCOUNT_ID/ai/run/…`, which reads like a broken
+     * integration. Two local checks — is the placeholder still there, is there a
+     * token at all — turn that into a sentence that says what to paste where.
+     */
+    const rowRes = await getClient().execute({
+      sql: "SELECT * FROM llm_providers WHERE id = ? LIMIT 1",
+      args: [id],
+    });
+    const row = rowRes.rows[0] ? mapProvider(rowRes.rows[0] as Record<string, unknown>) : null;
+    if (row && row.provider_key === "cloudflare") {
+      if (hasAccountPlaceholder(row.base_url)) {
+        return NextResponse.json({
+          ok: false,
+          error:
+            "base URL-এ ACCOUNT_ID এখনো বসানো হয়নি — এই রো-টি সম্পাদনা করে আপনার ৩২-অক্ষরের account ID দিন " +
+            `(Cloudflare → Workers & Pages → Account ID), অথবা সার্ভারে ${CLOUDFLARE_ACCOUNT_ENV} সেট করুন।`,
+        });
+      }
+      if (!row.api_key && !process.env[row.api_key_env_var || "CLOUDFLARE_API_TOKEN"]) {
+        return NextResponse.json({
+          ok: false,
+          error:
+            "কোনো API টোকেন নেই — রো-তে টোকেন লিখুন বা সার্ভারে CLOUDFLARE_API_TOKEN সেট করুন " +
+            "(অনুমতি: Workers AI → Edit)।",
+        });
+      }
+    }
+    const meta = metaFor(row?.provider_key ?? "custom");
     const started = Date.now();
     const result = await generateImage(
       {
@@ -47,6 +80,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       provider: result.provider,
+      label: meta.label,
       model: result.model,
       contentType: result.contentType,
       bytes: result.bytes.length,

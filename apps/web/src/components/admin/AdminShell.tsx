@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AdminUser } from "@hoichoi/shared-types";
+import type { AdminUser, SidebarStyleId } from "@hoichoi/shared-types";
+import { DEFAULT_SIDEBAR_STYLE } from "@hoichoi/shared-types";
+/*
+ * One DOM, twelve sidebar templates. Plain CSS (not utilities) because these are
+ * twelve alternative looks of the same element — see the file header.
+ */
+import "./sidebar-styles.css";
 import { adminLogout } from "@/lib/auth-actions";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/admin/NotificationBell";
@@ -101,7 +107,16 @@ const NAV: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
 
 const SIDEBAR_KEY = "hoichoi-admin-sidebar-collapsed";
 
-export function AdminShell({ user, children }: { user: AdminUser; children: React.ReactNode }) {
+export function AdminShell({
+  user,
+  sidebarStyle = DEFAULT_SIDEBAR_STYLE,
+  children,
+}: {
+  user: AdminUser;
+  /** Admin-owned sidebar template (সেটিংস → ডিজাইন). Applied, never guessed. */
+  sidebarStyle?: SidebarStyleId;
+  children: React.ReactNode;
+}) {
   // Polled once here so the sidebar badges and the header bell read from the
   // same numbers rather than each counting separately.
   const counts = useQueueCountsPolling();
@@ -111,13 +126,23 @@ export function AdminShell({ user, children }: { user: AdminUser; children: Reac
       {/* Every console action reports through these toasts, so a busy request
           and a failed one never look the same as a click that did nothing. */}
       <ToastProvider>
-        <AdminChrome user={user}>{children}</AdminChrome>
+        <AdminChrome user={user} sidebarStyle={sidebarStyle}>
+          {children}
+        </AdminChrome>
       </ToastProvider>
     </QueueCountsProvider>
   );
 }
 
-function AdminChrome({ user, children }: { user: AdminUser; children: React.ReactNode }) {
+function AdminChrome({
+  user,
+  sidebarStyle,
+  children,
+}: {
+  user: AdminUser;
+  sidebarStyle: SidebarStyleId;
+  children: React.ReactNode;
+}) {
   const path = usePathname();
   const { counts } = useQueueCounts();
   const footerRef = useRef<HTMLElement>(null);
@@ -253,7 +278,8 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
       <div className="admin-console-main flex w-full gap-6 px-4 pt-6 md:px-6">
         {/* ============ SIDEBAR (desktop) ============ */}
         <aside
-          className={`admin-sidebar relative sticky top-20 hidden shrink-0 flex-col rounded-2xl border border-white/8 bg-panel/60 transition-[width] duration-300 lg:flex ${
+          data-sidebar-style={sidebarStyle}
+          className={`admin-sidebar ${collapsed ? "adm-collapsed" : ""} relative sticky top-20 hidden shrink-0 flex-col rounded-2xl border border-white/8 bg-panel/60 transition-[width] duration-300 lg:flex ${
             collapsed ? "w-[70px]" : "w-60"
           }`}
         >
@@ -287,7 +313,10 @@ function AdminChrome({ user, children }: { user: AdminUser; children: React.Reac
               onClick={() => setMobileOpen(false)}
               className="absolute inset-0 bg-black/55 backdrop-blur-sm"
             />
-            <aside className="absolute left-0 top-0 flex h-full w-72 max-w-[85vw] flex-col overflow-y-auto border-r border-white/10 bg-panel shadow-2xl">
+            <aside
+              data-sidebar-style={sidebarStyle}
+              className="admin-sidebar absolute left-0 top-0 flex h-full w-72 max-w-[85vw] flex-col overflow-y-auto border-r border-white/10 bg-panel shadow-2xl"
+            >
               <SidebarNav variant="mobile" collapsed={false} path={path} counts={counts} email={user.email} onClose={() => setMobileOpen(false)} />
             </aside>
           </div>
@@ -411,11 +440,11 @@ function SidebarNav({
           </p>
         ) : null}
         {groups.map((group) => (
-          <div key={group.title}>
+          <div key={group.title} className="adm-nav-group">
             {collapsed ? (
               <div className="mx-2 mb-2 border-t border-white/8" aria-hidden="true" />
             ) : (
-              <p className="mb-1 px-2.5 font-mono-x text-[8.5px] tracking-[0.22em] text-white/30 uppercase">
+              <p className="adm-nav-caption mb-1 px-2.5 font-mono-x text-[8.5px] tracking-[0.22em] text-white/30 uppercase">
                 {group.title} · {group.en}
               </p>
             )}
@@ -430,7 +459,7 @@ function SidebarNav({
                       aria-current={active ? "page" : undefined}
                       aria-label={collapsed ? n.label : undefined}
                       title={collapsed ? n.label : undefined}
-                      className={`group/nav relative flex items-center gap-3 rounded-lg py-2.5 transition-all duration-300 ${
+                      className={`adm-nav-link group/nav relative flex items-center gap-3 rounded-lg py-2.5 transition-all duration-300 ${
                         collapsed ? "justify-center px-2" : "px-3"
                       } ${active ? "bg-white text-night" : "text-white/55 hover:bg-white/8 hover:text-white"}`}
                     >
@@ -453,7 +482,7 @@ function SidebarNav({
                       </span>
                       {!collapsed ? (
                         <>
-                          <span className="flex-1">{n.label}</span>
+                          <span className="adm-nav-label flex-1">{n.label}</span>
                           {badge > 0 && (
                             <span className="rounded-full bg-alizarin px-1.5 py-0.5 font-mono-x text-[9px] font-bold text-on-accent">
                               {toBn(badge)}

@@ -2,7 +2,13 @@
 
 import { Field, Section, TextArea, TextInput, NumberInput } from "./ui";
 import { useSettings } from "./state";
-import { HERO_HEADLINE_MOTIONS, HERO_SCENE_STYLES, type BrandAnimation, type FooterSocialLink } from "@hoichoi/shared-types";
+import {
+  HERO_HEADLINE_MOTIONS,
+  HERO_SCENE_STYLES,
+  SIDEBAR_STYLES,
+  type BrandAnimation,
+  type FooterSocialLink,
+} from "@hoichoi/shared-types";
 import { HeroScene } from "@hoichoi/dash";
 
 const SOCIAL_ICONS = [
@@ -252,12 +258,17 @@ export function SiteSection() {
                     <HeroScene style={st.key} stats={PREVIEW_STATS} feature={null} preview />
                   </div>
                 </div>
-                <div className={`flex items-baseline justify-between gap-2 px-2.5 py-1.5 ${active ? "bg-alizarin/[0.06]" : ""}`}>
-                  <span className={`text-[11.5px] font-bold ${active ? "text-alizarin" : "text-ink"}`}>{st.bn}</span>
-                  <span className="font-mono-x text-[9px] tracking-[0.1em] text-ink-soft uppercase">
-                    {active ? "✓ " : ""}
-                    {st.en}
-                  </span>
+                <div className={`px-2.5 py-1.5 ${active ? "bg-alizarin/[0.06]" : ""}`}>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className={`text-[11.5px] font-bold ${active ? "text-alizarin" : "text-ink"}`}>{st.bn}</span>
+                    <span className="font-mono-x text-[9px] tracking-[0.1em] text-ink-soft uppercase">
+                      {active ? "✓ " : ""}
+                      {st.en}
+                    </span>
+                  </div>
+                  {/* The prototype's own one-line note, so the picker explains
+                      what each template is for instead of only naming it. */}
+                  <p className="mt-0.5 line-clamp-2 text-[10.5px] leading-snug text-ink-soft">{st.noteBn}</p>
                 </div>
               </button>
             );
@@ -271,6 +282,56 @@ export function SiteSection() {
             <HeroScene style={cfg.hero_scene_style} stats={PREVIEW_STATS} feature={null} preview />
           </div>
         </div>
+      </Section>
+
+      <Section
+        kicker="Admin sidebar template"
+        title="সাইডবার টেমপ্লেট"
+        hint="কনসোলের বাম মেনুর চেহারা — বারোটি টেমপ্লেট, একই মেনু ও একই শর্টকাট। মেনুর ক্রম, নাম বা লিংক বদলায় না, শুধু প্যানেলের রূপ; ডেস্কটপ অ্যাপও এই একই পছন্দ পড়ে।"
+      >
+        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          {SIDEBAR_STYLES.map((st) => {
+            const active = cfg.admin_sidebar_style === st.id;
+            return (
+              <button
+                key={st.id}
+                type="button"
+                onClick={() => setCfg((c) => ({ ...c, admin_sidebar_style: st.id }))}
+                aria-pressed={active}
+                className={`flex items-start gap-2.5 border p-2.5 text-left transition-colors ${
+                  active ? "border-alizarin bg-alizarin/[0.06]" : "border-ink/20 hover:border-ink/50"
+                }`}
+              >
+                {/* The swatch is decoration for the picker only. The real panel
+                    is the sidebar itself, so a swatch can never promise a look
+                    the CSS does not produce. */}
+                <span
+                  aria-hidden="true"
+                  className="grid h-[46px] w-[62px] shrink-0 content-start gap-[3px] p-[6px]"
+                  style={{ background: st.swatch.bg, borderRadius: st.swatch.radius, border: `1px solid ${st.swatch.bar}` }}
+                >
+                  <span style={{ background: st.swatch.accent, height: 4, width: "52%", borderRadius: st.swatch.radius }} />
+                  <span style={{ background: st.swatch.bar, height: 3, width: "92%", opacity: 0.85 }} />
+                  <span style={{ background: st.swatch.bar, height: 3, width: "78%", opacity: 0.6 }} />
+                  <span style={{ background: st.swatch.bar, height: 3, width: "86%", opacity: 0.45 }} />
+                </span>
+                <span className="min-w-0">
+                  <span className={`block text-[12px] font-bold ${active ? "text-alizarin" : "text-ink"}`}>
+                    {st.name}
+                    {active ? " · নির্বাচিত" : ""}
+                  </span>
+                  <span className="block font-mono-x text-[9px] tracking-[0.12em] text-ink-soft uppercase">
+                    {st.latin} · {st.tone === "dark" ? "গাঢ়" : "হালকা"}
+                  </span>
+                  <span className="mt-0.5 block text-[10.5px] leading-snug text-ink-soft">{st.note}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-[11.5px] leading-snug text-ink-soft">
+          পছন্দ সংরক্ষণ করার পর কনসোলের প্যানেল সঙ্গে সঙ্গে বদলে যাবে — এই পাতায় থাকতেই।
+        </p>
       </Section>
 
       <Section

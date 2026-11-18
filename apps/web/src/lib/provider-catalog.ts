@@ -5,12 +5,16 @@
  */
 export {
   CLOUDFLARE_ACCOUNT_ENV,
+  CLOUDFLARE_ACCOUNT_ID_RE,
   hasAccountPlaceholder,
   resolveAccountPlaceholder,
+  composeCloudflareBaseUrl,
+  providerFields,
+  validateProviderSetup,
   PROVIDER_META,
   PROVIDERS_GUIDE,
   metaFor,
   purposeLabelBn,
   looksLikeImageModel,
 } from "@hoichoi/shared-types";
-export type { ProviderMeta, ProviderPurpose } from "@hoichoi/shared-types";
+export type { ProviderMeta, ProviderPurpose, ProviderFieldSpec } from "@hoichoi/shared-types";

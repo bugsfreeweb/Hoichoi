@@ -22,6 +22,8 @@ const TIERS: Record<string, { order: number }> = {
   mistral: { order: 7 },
   github: { order: 8 },
   "github-models": { order: 9 },
+  /** The default image provider — grouped with the image fleet, not "custom". */
+  cloudflare: { order: 0 },
   custom: { order: 10 },
 };
 

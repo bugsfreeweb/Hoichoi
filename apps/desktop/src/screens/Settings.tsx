@@ -61,7 +61,8 @@ import DeskProviderManager from "../components/DeskProviderManager";
 import DeskNoticeManager from "../components/DeskNoticeManager";
 import MediaStoragePanel from "../components/MediaStoragePanel";
 import { SITE_URL } from "../lib/site";
-import { DEFAULT_APP_CONFIG, HERO_SCENE_STYLES, type SiteAppConfig } from "@hoichoi/shared-types";
+import { DEFAULT_APP_CONFIG, HERO_SCENE_STYLES, SIDEBAR_STYLES, type SiteAppConfig, type SidebarStyleId } from "@hoichoi/shared-types";
+import { getDeskSidebarStyle, setDeskSidebarStyle } from "../lib/desk-ui-prefs";
 import { HeroScene } from "@hoichoi/dash";
 
 const TABS = [
@@ -254,6 +255,8 @@ export default function Settings({
   const [adSlotsErr, setAdSlotsErr] = useState<string | null>(null);
 
   const [vis, setVis] = useState<SiteAppConfig>(VIS_DEFAULTS);
+  /** Local mirror of the shared sidebar choice, so the picker shows the live one. */
+  const [sidebarStyle, setSidebarStyle] = useState<SidebarStyleId>(() => getDeskSidebarStyle());
   const [visLoaded, setVisLoaded] = useState(false);
   const [visMsg, setVisMsg] = useState<string | null>(null);
   const [visErr, setVisErr] = useState<string | null>(null);
@@ -1351,6 +1354,75 @@ export default function Settings({
                           <span className={`text-[10.5px] font-bold ${active ? "text-lime" : "text-white/80"}`}>{st.bn}</span>
                           {active && <span className="text-[10px] text-lime">✓</span>}
                         </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/*
+                The sidebar template picker.
+
+                Same twelve templates as the web console, from the same shared
+                catalogue. Choosing here writes the shared site config (so the
+                browser console follows) and the desk's local mirror (so this
+                window restyles immediately, even offline).
+              */}
+              <div className="mt-4 border-t border-white/10 pt-3">
+                <p className="text-[11.5px] font-bold text-white">সাইডবার টেমপ্লেট</p>
+                <p className="mt-1 text-[10.5px] leading-relaxed text-white/40">
+                  বাম মেনুর চেহারা — বারোটি টেমপ্লেট, একই মেনু ও একই শর্টকাট। মেনুর ক্রম বা নাম
+                  বদলায় না, শুধু প্যানেলের রূপ; ওয়েব কনসোলও এই একই পছন্দ দেখে।
+                </p>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {SIDEBAR_STYLES.map((st) => {
+                    const active = sidebarStyle === st.id;
+                    return (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() => {
+                          // One decision, two places: the local mirror restyles
+                          // this window now, the shared config tells the browser
+                          // console. A failed save leaves the desk styled but
+                          // says so, instead of pretending both agree.
+                          setVis({ ...vis, admin_sidebar_style: st.id });
+                          setSidebarStyle(st.id);
+                          setDeskSidebarStyle(st.id);
+                          void (async () => {
+                            try {
+                              await settingsSet(await getRunEnv(), {
+                                app_config_json: JSON.stringify({ ...vis, admin_sidebar_style: st.id }),
+                              });
+                              setVisErr(null);
+                            } catch {
+                              setVisErr("সাইডবার পছন্দ সার্ভারে সংরক্ষণ করা যায়নি — শুধু এই ডেস্কে প্রয়োগ হয়েছে।");
+                            }
+                          })();
+                        }}
+                        aria-pressed={active}
+                        className={`flex items-start gap-2 rounded-lg border p-2 text-left transition-colors ${
+                          active ? "border-lime bg-lime/10" : "border-white/12 hover:border-white/35"
+                        }`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="grid h-[42px] w-[54px] shrink-0 content-start gap-[3px] p-[5px]"
+                          style={{ background: st.swatch.bg, borderRadius: st.swatch.radius, border: `1px solid ${st.swatch.bar}` }}
+                        >
+                          <span style={{ background: st.swatch.accent, height: 4, width: "52%", borderRadius: st.swatch.radius }} />
+                          <span style={{ background: st.swatch.bar, height: 3, width: "92%", opacity: 0.85 }} />
+                          <span style={{ background: st.swatch.bar, height: 3, width: "78%", opacity: 0.6 }} />
+                        </span>
+                        <span className="min-w-0">
+                          <span className={`block text-[11px] font-bold ${active ? "text-lime" : "text-white/85"}`}>
+                            {st.name}
+                            {active ? " ✓" : ""}
+                          </span>
+                          <span className="mt-0.5 block font-mono-x text-[9px] tracking-[0.1em] text-white/35 uppercase">
+                            {st.latin}
+                          </span>
+                        </span>
                       </button>
                     );
                   })}

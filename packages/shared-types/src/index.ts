@@ -1,4 +1,7 @@
 export * from "./provider-catalog";
+export * from "./sidebar-templates";
+import { DEFAULT_SIDEBAR_STYLE } from "./sidebar-templates";
+import type { SidebarStyleId } from "./sidebar-templates";
 /**
  * Shared domain types for হৈচৈ (Hoichoi).
  * These map 1:1 to the Turso/libSQL schema (see packages/db/migrations/).
@@ -51,6 +54,7 @@ export type ProviderKey =
   | "mistral"
   | "github"
   | "github-models"
+  | "cloudflare"
   | "custom";
 
 /** Canonical env var each provider key maps to when no explicit env is set. */
@@ -64,6 +68,7 @@ export const PROCESSOR_ENV_DEFAULTS: Record<ProviderKey, string> = {
   mistral: "MISTRAL_API_KEY",
   github: "GITHUB_COPILOT_TOKEN",
   "github-models": "GITHUB_COPILOT_TOKEN",
+  cloudflare: "CLOUDFLARE_API_TOKEN",
   custom: "MANIFEST_API_KEY",
 };
 
@@ -1239,6 +1244,14 @@ export interface SiteAppConfig {  /** Masthead "newsroom in numbers" hero sectio
    * desktop desk; both write the same key.
    */
   hero_scene_style: HeroSceneStyle;
+  /**
+   * The admin console's sidebar template (twelve styles, one DOM).
+   *
+   * Stored with the rest of the site config so the web console and the desktop
+   * app render the same navigation shape; `SIDEBAR_STYLES` in
+   * `sidebar-templates.ts` is the only list of allowed values.
+   */
+  admin_sidebar_style: SidebarStyleId;
 }
 
 export type LiveThemeKey = "stage" | "broadsheet" | "scoreboard" | "timeline" | "compact" | "studio";
@@ -1278,19 +1291,127 @@ export type HeroSceneStyle =
   | "isometric"
   | "blueprint";
 
-export const HERO_SCENE_STYLES: Array<{ key: HeroSceneStyle; bn: string; en: string }> = [
-  { key: "rail", bn: "অ্যাঙ্গেলড রেল", en: "Angled rail" },
-  { key: "orbit", bn: "অরবিট রিং", en: "Orbit ring" },
-  { key: "stack", bn: "কার্ড স্ট্যাক", en: "Card stack" },
-  { key: "timeline", bn: "টাইমলাইন", en: "Timeline" },
-  { key: "conveyor", bn: "কনভেয়ার বেল্ট", en: "Conveyor belt" },
-  { key: "radar", bn: "রাডার স্ক্যান", en: "Radar sweep" },
-  { key: "mosaic", bn: "মোজাইক গ্রিড", en: "Mosaic grid" },
-  { key: "glass", bn: "গ্লাস প্যানেল", en: "Glass panels" },
-  { key: "terminal", bn: "লাইভ টার্মিনাল", en: "Live terminal" },
-  { key: "deck", bn: "কার্ড ডেক", en: "Card deck" },
-  { key: "isometric", bn: "আইসোমেট্রিক", en: "Isometric plates" },
-  { key: "blueprint", bn: "ব্লুপ্রিন্ট", en: "Blueprint wireframe" },
+/**
+ * The twelve hero templates, named as the design prototype names them.
+ *
+ * The prototype (`hero-mockup/src/components/hero/templateCatalog.ts`) defines
+ * twelve hero templates by identity — অবসিডিয়ান সিগন্যাল, পাইপলাইন বোর্ড, … —
+ * and the console should present the same twelve names, notes and tones rather
+ * than a parallel vocabulary. The `key` stays the scene key the renderer draws
+ * (so saved settings keep working); `template` records which prototype template
+ * that scene stands for, and the mapping is by closest visual intent, not a claim
+ * that the two are the same drawing.
+ */
+export interface HeroSceneStyleMeta {
+  key: HeroSceneStyle;
+  /** Bangla template name, as the prototype writes it. */
+  bn: string;
+  /** Latin template name, shown as the small uppercase line. */
+  en: string;
+  /** Which prototype template this scene stands for. */
+  template: string;
+  /** One line on what the scene shows, from the prototype catalogue. */
+  noteBn: string;
+  tone: "dark" | "light";
+}
+
+export const HERO_SCENE_STYLES: HeroSceneStyleMeta[] = [
+  {
+    key: "rail",
+    bn: "অবসিডিয়ান সিগন্যাল",
+    en: "OBSIDIAN SIGNAL",
+    template: "obsidian",
+    noteBn: "প্রধান প্রতিবেদন, এক নজরে পাঠ ও নিউজরুমের নমুনা লাইভ প্রবাহ।",
+    tone: "dark",
+  },
+  {
+    key: "conveyor",
+    bn: "পাইপলাইন বোর্ড",
+    en: "PIPELINE BOARD",
+    template: "pipeline",
+    noteBn: "সংগ্রহ থেকে প্রকাশ—ছয়টি ধাপ চলমান কনভেয়ারে; পাঠক প্রক্রিয়াটিও দেখতে পান।",
+    tone: "dark",
+  },
+  {
+    key: "blueprint",
+    bn: "এডিটোরিয়াল স্প্লিট",
+    en: "EDITORIAL SPLIT",
+    template: "editorial",
+    noteBn: "ক্লাসিক সংবাদপত্রের মাস্তুল, বড় শিরোনাম, ছবি ও পাশের ফিড।",
+    tone: "light",
+  },
+  {
+    key: "mosaic",
+    bn: "বেন্টো মোজাইক",
+    en: "BENTO MOSAIC",
+    template: "mosaic",
+    noteBn: "বড়-ছোট ট্যাইলে গল্প, সোর্স স্বাস্থ্য ও লাইভ সংখ্যা একসঙ্গে।",
+    tone: "light",
+  },
+  {
+    key: "radar",
+    bn: "রাডার স্ক্যান",
+    en: "RADAR SCAN",
+    template: "radar",
+    noteBn: "ঘূর্ণায়মান স্ক্যানারে গল্পগুলো ধরা পড়ে; পাশে শক্তির মাত্রা।",
+    tone: "dark",
+  },
+  {
+    key: "glass",
+    bn: "কাইনেটিক টাইপ",
+    en: "KINETIC TYPE",
+    template: "kinetic",
+    noteBn: "সংগ্রহ, যাচাই, সম্পাদনা ও প্রকাশ—শব্দে গতি ও নাটকীয় টাইপোগ্রাফি।",
+    tone: "dark",
+  },
+  {
+    key: "stack",
+    bn: "টিল্ট স্ট্যাক",
+    en: "TILT STACK",
+    template: "tilt",
+    noteBn: "গভীরতায় সরে যাওয়া তিনটি গল্পের স্তর ও উৎসের ট্যাগ।",
+    tone: "light",
+  },
+  {
+    key: "terminal",
+    bn: "টার্মিনাল ফিড",
+    en: "TERMINAL FEED",
+    template: "terminal",
+    noteBn: "ডেস্কটপ কন্ট্রোল সেন্টারের মতো টাইপ হওয়া কাজের লগ ও স্ট্যাটাস।",
+    tone: "dark",
+  },
+  {
+    key: "deck",
+    bn: "স্টুডিও স্পটলাইট",
+    en: "STUDIO SPOTLIGHT",
+    template: "spotlight",
+    noteBn: "সিনেমাটিক কভার, ধীর জুম ও পূর্ণাঙ্গ স্লাইড-তালিকা; হভারে থামে।",
+    tone: "dark",
+  },
+  {
+    key: "orbit",
+    bn: "কনস্টেলেশন",
+    en: "CONSTELLATION",
+    template: "constellation",
+    noteBn: "সম্পর্কিত গল্পের নক্ষত্রমণ্ডল, চলমান কণা ও ক্লাস্টার-অন্তর্দৃষ্টি।",
+    tone: "dark",
+  },
+  {
+    key: "isometric",
+    bn: "সিগন্যাল ওয়েভফর্ম",
+    en: "SIGNAL WAVEFORM",
+    template: "waveform",
+    noteBn: "শেষ ১৪ পর্যায়ের সংগ্রহের গতি; ডেটা-সাংবাদিকতার মতো করে।",
+    tone: "light",
+  },
+  {
+    key: "timeline",
+    bn: "টাইমলাইন স্ক্রাবার",
+    en: "TIMELINE SCRUBBER",
+    template: "timeline",
+    noteBn: "দিনের যেকোনো ঘণ্টা বেছে সেই সময়ের গল্প পড়ুন; ফিল্মস্ট্রিপ ঘর।",
+    tone: "light",
+  },
 ];
 
 /** Masthead / brand-name motion. `none` keeps the static wordmark. */
@@ -1372,6 +1493,7 @@ export const DEFAULT_APP_CONFIG: SiteAppConfig = {
   },
   hero_headline_motion: "sheen",
   hero_scene_style: "rail",
+  admin_sidebar_style: DEFAULT_SIDEBAR_STYLE,
 };
 
 /** Tone of an announcement. `alert` is the most urgent (used by the special

@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { PROVIDER_META, metaFor, type ProviderPurpose } from "@/lib/provider-catalog";
+import {
+  PROVIDER_META,
+  metaFor,
+  providerFields,
+  composeCloudflareBaseUrl,
+  validateProviderSetup,
+  type ProviderPurpose,
+} from "@/lib/provider-catalog";
 
 interface ModelPick {
   id: string;
@@ -30,6 +37,8 @@ export function ProviderForm() {
   const [providerKey, setProviderKey] = useState("google");
   const [displayName, setDisplayName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
+  /** Cloudflare (and any account-scoped provider) — composed into baseUrl. */
+  const [accountId, setAccountId] = useState("");
   const [modelName, setModelName] = useState("gemini-2.5-flash");
   const [apiKey, setApiKey] = useState("");
   const [priority, setPriority] = useState(100);
@@ -46,6 +55,14 @@ export function ProviderForm() {
   const canImage = meta.kinds.includes("image");
   const suggestions = meta.models[purpose];
   const needsBaseUrl = providerKey === "custom";
+  /**
+   * The fields this provider actually needs. Rendering a generic "key + URL"
+   * pair for everybody is what made a Cloudflare row a guessing game: the
+   * operator had to hand-compose `/accounts/<32 hex>/ai/run/…` and only found
+   * out it was wrong from a 7003 on the first render.
+   */
+  const fields = providerFields(providerKey);
+  const composedBaseUrl = providerKey === "cloudflare" ? composeCloudflareBaseUrl(accountId) : "";
 
   /** Switching work type keeps the provider but retargets the model. */
   function pickPurpose(next: ProviderPurpose) {
@@ -94,6 +111,7 @@ export function ProviderForm() {
           baseUrl: baseUrl || undefined,
           modelName,
           api_key: apiKey || undefined,
+          accountId: providerKey === "cloudflare" ? accountId.trim() : undefined,
           priority: Number(priority),
           isFreeTier: free,
           purpose,
@@ -248,21 +266,98 @@ export function ProviderForm() {
         )}
       </div>
 
-      {/* 4 — key */}
+      {/* 4 — the fields this provider actually needs */}
       <div>
-        <p className="font-mono-x text-[10px] tracking-[0.18em] text-ink-soft uppercase">৪ · API কী</p>
-        <p className="mt-1.5 border border-cat-teal/40 bg-cat-teal/10 px-2.5 py-2 text-[11.5px] leading-snug text-ink">
-          GitHub/Vercel-এ <span className="font-mono-x font-bold">{meta.envVar}</span> আগেই সেট থাকলে এখানে কিছু
-          লিখতে হবে না — খালি রাখলেই সেই কী ব্যবহার হবে। শুধু আলাদা কী ব্যবহার করতে চাইলে লিখুন।
+        <p className="font-mono-x text-[10px] tracking-[0.18em] text-ink-soft uppercase">
+          ৪ · {meta.label} — যা লাগবে
         </p>
-        <input
-          type="password"
-          autoComplete="new-password"
-          className={field}
-          placeholder="খালি = এনভায়রনমেন্টের কী ব্যবহার হবে"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-        />
+        <dl className="mt-2 grid gap-2.5">
+          {fields.map((f) => {
+            if (f.key === "accountId") {
+              return (
+                <div key={f.key}>
+                  <dt className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                    {f.labelBn} <span className="text-alizarin">*</span>
+                  </dt>
+                  <dd className="mt-1">
+                    <input
+                      required
+                      className={`${field} font-mono-x`}
+                      placeholder={f.placeholder}
+                      value={accountId}
+                      onChange={(e) => setAccountId(e.target.value)}
+                      aria-describedby={f.hintBn ? `f-${f.key}-hint` : undefined}
+                    />
+                    {f.hintBn && (
+                      <p id={`f-${f.key}-hint`} className="mt-1 text-[10.5px] leading-snug text-ink-soft">
+                        {f.hintBn}
+                      </p>
+                    )}
+                  </dd>
+                </div>
+              );
+            }
+            if (f.key === "apiToken") {
+              return (
+                <div key={f.key}>
+                  <dt className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">{f.labelBn}</dt>
+                  <dd className="mt-1">
+                    <p className="border border-cat-teal/40 bg-cat-teal/10 px-2.5 py-2 text-[11.5px] leading-snug text-ink">
+                      সার্ভারে <span className="font-mono-x font-bold">{meta.envVar}</span> সেট থাকলে এখানে কিছু
+                      লিখতে হবে না — খালি রাখলেই সেই কী ব্যবহার হবে। আলাদা কী (যেমন দ্বিতীয় অ্যাকাউন্ট) হলে লিখুন।
+                    </p>
+                    <input
+                      type={f.secret ? "password" : "text"}
+                      autoComplete="new-password"
+                      className={`${field} font-mono-x`}
+                      placeholder={f.placeholder}
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      aria-describedby={f.hintBn ? `f-${f.key}-hint` : undefined}
+                    />
+                    {f.hintBn && (
+                      <p id={`f-${f.key}-hint`} className="mt-1 text-[10.5px] leading-snug text-ink-soft">
+                        {f.hintBn}
+                      </p>
+                    )}
+                  </dd>
+                </div>
+              );
+            }
+            // baseUrl — composed for Cloudflare, typed for everyone else
+            return (
+              <div key={f.key}>
+                <dt className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">{f.labelBn}</dt>
+                <dd className="mt-1">
+                  {f.composed ? (
+                    <p
+                      className={`${field} overflow-x-auto font-mono-x text-[11.5px] whitespace-nowrap ${
+                        composedBaseUrl ? "text-ink" : "text-ink-soft"
+                      }`}
+                      aria-live="polite"
+                    >
+                      {composedBaseUrl || "account ID দিলে এখানে URL তৈরি হবে"}
+                    </p>
+                  ) : (
+                    <input
+                      className={`${field} font-mono-x`}
+                      required={f.required || needsBaseUrl}
+                      placeholder={f.placeholder}
+                      value={baseUrl}
+                      onChange={(e) => setBaseUrl(e.target.value)}
+                    />
+                  )}
+                  {f.hintBn && <p className="mt-1 text-[10.5px] leading-snug text-ink-soft">{f.hintBn}</p>}
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+        {providerKey === "cloudflare" && (
+          <p className="mt-2 text-[10.5px] leading-snug text-ink-soft">
+            প্রতিটি অ্যাকাউন্টের জন্য আলাদা রো যোগ করুন — প্রতিটি অ্যাকাউন্টের নিজের দৈনিক ফ্রি কোটা।
+          </p>
+        )}
       </div>
 
       {/* advanced */}
@@ -272,20 +367,10 @@ export function ProviderForm() {
           onClick={() => setShowAdvanced((v) => !v)}
           className="text-[11.5px] font-bold text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
         >
-          {showAdvanced ? "− উন্নত সেটিংস লুকান" : "+ উন্নত সেটিংস (Base URL, অগ্রাধিকার, ফ্রি টিয়ার)"}
+          {showAdvanced ? "− উন্নত সেটিংস লুকান" : "+ উন্নত সেটিংস (নাম, অগ্রাধিকার, ফ্রি টিয়ার)"}
         </button>
         {showAdvanced && (
           <div className="mt-2 grid gap-2 border border-ink/15 bg-ink/[0.03] p-3">
-            <label className="block">
-              <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">Base URL</span>
-              <input
-                className={field}
-                required={needsBaseUrl}
-                placeholder={needsBaseUrl ? "https://api.example.com/v1" : "খালি রাখলে ডিফল্ট"}
-                value={baseUrl}
-                onChange={(e) => setBaseUrl(e.target.value)}
-              />
-            </label>
             <label className="block">
               <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">চালু নাম (ঐচ্ছিক)</span>
               <input className={field} placeholder={meta.label} value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
