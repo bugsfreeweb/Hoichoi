@@ -72,7 +72,7 @@ export default function ContentQueue({
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-panel">
       <div className="flex flex-wrap items-center gap-3 border-b border-white/8 px-5 py-4">
         <p className="font-serif-bn text-[17px] font-bold text-white">কনটেন্ট সারি</p>
-        <span className="font-mono-x text-[10px] tracking-[0.2em] text-white/35 uppercase">
+        <span className="font-mono-x text-[10px] tracking-[0.2em] text-white/55 uppercase">
           CONTENT QUEUE · AUTO-FEED
         </span>
 
@@ -96,7 +96,7 @@ export default function ContentQueue({
           {q && (
             <Link
               href={tabHref(tab)}
-              className="rounded-lg px-2 py-1.5 text-[11.5px] text-white/45 transition-colors hover:text-white"
+              className="rounded-lg px-2 py-1.5 text-[11.5px] text-white/60 transition-colors hover:text-white"
             >
               মুছুন
             </Link>
@@ -115,7 +115,7 @@ export default function ContentQueue({
             }`}
           >
             {TAB_LABEL[t]}{" "}
-            <span className={`font-mono-x text-[9.5px] ${tab === t ? "text-night/60" : "text-white/35"}`}>
+            <span className={`font-mono-x text-[9.5px] ${tab === t ? "text-night/60" : "text-white/55"}`}>
               {toBn(counts[t])}
             </span>
           </Link>
@@ -130,7 +130,7 @@ export default function ContentQueue({
       <div className="scroll-slim overflow-x-auto">
         <table className="w-full min-w-[860px] text-left">
           <thead>
-            <tr className="font-mono-x text-[9.5px] tracking-[0.18em] text-white/35 uppercase">
+            <tr className="font-mono-x text-[9.5px] tracking-[0.18em] text-white/55 uppercase">
               <th className="px-5 py-3 font-medium"># আইটেম</th>
               <th className="px-3 py-3 font-medium">সোর্স</th>
               <th className="px-3 py-3 font-medium">সংগ্রহ</th>
@@ -145,7 +145,7 @@ export default function ContentQueue({
                 <tr key={r.id} className="group transition-colors duration-200 hover:bg-white/[0.035]">
                   <td className="max-w-[340px] px-5 py-3.5">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono-x text-[10px] text-white/30">
+                      <span className="font-mono-x text-[10px] text-white/55">
                         {String(r.id).slice(0, 6)}
                       </span>
                       <div className="min-w-0">
@@ -196,7 +196,7 @@ export default function ContentQueue({
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-5 py-14 text-center text-[12.5px] text-white/35">
+                <td colSpan={5} className="px-5 py-14 text-center text-[12.5px] text-white/55">
                   {q ? `“${q}” — এই সারিতে কিছু মেলেনি।` : "কোনো আইটেম নেই — ফিল্টার বদলে দেখুন।"}
                 </td>
               </tr>

@@ -73,7 +73,7 @@ export default function LoginLogViewer() {
             AUTH · AUDIT
           </p>
           <h1 className="mt-1 font-serif-bn text-[34px] font-black text-[#e9e6da]">লগইন লগ</h1>
-          <p className="mt-1 text-[12.5px] text-white/45">
+          <p className="mt-1 text-[12.5px] text-white/60">
             ওয়েব অ্যাডমিনের প্রতিটি সাইন-ইন attempt (সফল + ব্যর্থ)।
           </p>
         </div>
@@ -117,7 +117,7 @@ export default function LoginLogViewer() {
       <div className="scroll-x overflow-x-auto rounded-xl border border-white/8 bg-panel/40">
         <table className="w-full min-w-[720px] text-left">
           <thead>
-            <tr className="border-b border-white/8 font-mono-x text-[9.5px] tracking-[0.16em] text-white/35 uppercase">
+            <tr className="border-b border-white/8 font-mono-x text-[9.5px] tracking-[0.16em] text-white/55 uppercase">
               <th className="px-4 py-3">স্টেট</th>
               <th className="px-4 py-3">ইমেইল</th>
               <th className="px-4 py-3">IP</th>
@@ -139,7 +139,7 @@ export default function LoginLogViewer() {
                 <td className="px-4 py-3 font-medium text-white/85">{row.email}</td>
                 <td className="px-4 py-3 font-mono-x text-[11px] text-white/55">{row.ip ?? "—"}</td>
                 <td className="px-4 py-3 text-white/55">{row.message ?? "—"}</td>
-                <td className="px-4 py-3 font-mono-x text-[11px] text-white/45">
+                <td className="px-4 py-3 font-mono-x text-[11px] text-white/60">
                   {new Date(row.created_at).toLocaleString("bn-BD")}
                 </td>
                 <td className="px-4 py-3 text-right">

@@ -618,6 +618,12 @@ html[data-theme="light"] .theme-toggle .t-moon {
   flex-direction: column;
   gap: 2px;
 }
+/* A template decides its own panel ink. `--t3`/`--t1` are the *window* theme's
+   text tokens: on a template whose panel is dark (obsidian, rail, dock, neon,
+   split, aurora) the light theme's near-black `--t3` was painted on a dark
+   panel, and hover turned the label `--t1` — same colour as the panel. Each
+   template below declares `--side-fg` and `--side-mute`, so the words follow
+   the panel they sit on rather than the window behind it. */
 .sidenav button {
   display: flex;
   align-items: center;
@@ -627,18 +633,22 @@ html[data-theme="light"] .theme-toggle .t-moon {
   border-radius: 8px;
   font-size: 12.5px;
   font-weight: 500;
-  color: var(--t3);
+  color: var(--side-mute, var(--t3));
   background: none;
   border: none;
   transition: background 0.2s, color 0.2s;
 }
 .sidenav button:hover {
   background: var(--tk-hover);
-  color: var(--t1);
+  color: var(--side-fg, var(--t1));
 }
 .sidenav button.active {
   background: var(--active-bg);
   color: var(--active-tx);
+}
+.sidenav button:focus-visible {
+  outline: 2px solid var(--active-tx, var(--t1));
+  outline-offset: 1px;
 }
 .sidenav .ic {
   width: 14px;
@@ -651,15 +661,16 @@ html[data-theme="light"] .theme-toggle .t-moon {
 .sidenav kbd {
   font-family: var(--fm);
   font-size: 9px;
-  color: var(--t6);
+  color: var(--side-mute, var(--t6));
 }
 .sidenav button.active kbd {
   color: var(--active-tx);
   opacity: 0.4;
 }
 .side-foot {
-  border-top: 1px solid var(--color-bd);
+  border-top: 1px solid var(--side-line, var(--color-bd));
   padding: 12px;
+  color: var(--side-mute, var(--t4));
 }
 .online {
   font-family: var(--fm);
@@ -1188,12 +1199,16 @@ html[data-theme="light"] .titlebar {
   border-right-color: var(--side-line, var(--color-bd));
 }
 .side[data-sidebar-style="classic"] {
+  --side-fg: #e2e8f0;
+  --side-mute: #94a3b8;
   --side-line: #1e293b;
   --tk-hover: rgba(255, 255, 255, 0.07);
   --active-bg: #f8e9dd;
   --active-tx: #a0351c;
 }
 .side[data-sidebar-style="obsidian"] {
+  --side-fg: #eef3ea;
+  --side-mute: #b0c3b6;
   --side-line: #304137;
   --tk-hover: #22352a;
   --active-bg: #3b291f;
@@ -1205,6 +1220,8 @@ html[data-theme="light"] .titlebar {
   box-shadow: inset 2px 0 0 #ef6d47;
 }
 .side[data-sidebar-style="floating"] {
+  --side-fg: #e2e8f0;
+  --side-mute: #94a3b8;
   --side-line: transparent;
   --tk-hover: rgba(255, 255, 255, 0.07);
   --active-bg: #fdeee8;
@@ -1215,6 +1232,8 @@ html[data-theme="light"] .titlebar {
   box-shadow: 0 24px 50px -22px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 .side[data-sidebar-style="rail"] {
+  --side-fg: #e7efe4;
+  --side-mute: #a5beb0;
   width: 70px;
   --side-line: #334e40;
   --tk-hover: rgba(255, 255, 255, 0.07);
@@ -1237,6 +1256,8 @@ html[data-theme="light"] .titlebar {
   box-shadow: inset 3px 0 0 #9bc0a6;
 }
 .side[data-sidebar-style="editorial"] {
+  --side-fg: #f2f0e8;
+  --side-mute: #b3b2a8;
   --side-line: #17231b;
   --tk-hover: transparent;
   --active-bg: transparent;
@@ -1248,6 +1269,12 @@ html[data-theme="light"] .titlebar {
   border-radius: 0;
   border-bottom: 1px solid #2c2f2a;
 }
+.side[data-sidebar-style="editorial"] .sidenav button:hover {
+  color: var(--side-fg);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: #df6038;
+}
 .side[data-sidebar-style="editorial"] .sidenav button.active {
   font-weight: 800;
   text-decoration: underline;
@@ -1256,6 +1283,8 @@ html[data-theme="light"] .titlebar {
   text-decoration-color: #df6038;
 }
 .side[data-sidebar-style="dock"] {
+  --side-fg: #f4f7ef;
+  --side-mute: #9bb2a2;
   --side-line: #2d4035;
   --tk-hover: rgba(255, 255, 255, 0.08);
   --active-bg: #f4f7ef;
@@ -1267,6 +1296,8 @@ html[data-theme="light"] .titlebar {
   padding-inline: 14px;
 }
 .side[data-sidebar-style="neon"] {
+  --side-fg: #d8ffe9;
+  --side-mute: #a9c5b5;
   --side-line: rgba(255, 107, 61, 0.45);
   --tk-hover: rgba(255, 107, 61, 0.09);
   --active-bg: rgba(255, 107, 61, 0.14);
@@ -1279,6 +1310,8 @@ html[data-theme="light"] .titlebar {
   box-shadow: inset 3px 0 0 #ff6b3d, 0 0 24px -6px rgba(255, 107, 61, 0.45);
 }
 .side[data-sidebar-style="minimal"] {
+  --side-fg: #edf1e8;
+  --side-mute: #a7b6aa;
   --side-line: #1f2620;
   --tk-hover: rgba(255, 255, 255, 0.05);
   --active-bg: transparent;
@@ -1293,6 +1326,8 @@ html[data-theme="light"] .titlebar {
   box-shadow: inset 4px 0 0 -1px #9fb8a5;
 }
 .side[data-sidebar-style="aurora"] {
+  --side-fg: #eafff7;
+  --side-mute: #8fb9ab;
   --side-line: rgba(255, 255, 255, 0.08);
   --tk-hover: rgba(255, 255, 255, 0.08);
   --active-bg: rgba(127, 224, 192, 0.17);
@@ -1307,6 +1342,8 @@ html[data-theme="light"] .titlebar {
   box-shadow: inset 0 0 0 1px rgba(127, 224, 192, 0.35);
 }
 .side[data-sidebar-style="ledger"] {
+  --side-fg: #f1e6d2;
+  --side-mute: #c3b49a;
   --side-line: #d6c7ad;
   --tk-hover: rgba(138, 75, 42, 0.12);
   --active-bg: #2a2118;
@@ -1321,6 +1358,8 @@ html[data-theme="light"] .titlebar {
   box-shadow: inset 3px 0 0 #c08a5a;
 }
 .side[data-sidebar-style="split"] {
+  --side-fg: #e7efe4;
+  --side-mute: #8fa595;
   --side-line: #22342a;
   --tk-hover: rgba(255, 255, 255, 0.06);
   --active-bg: rgba(239, 109, 71, 0.16);
@@ -1331,6 +1370,8 @@ html[data-theme="light"] .titlebar {
   border-radius: 10px;
 }
 .side[data-sidebar-style="cards"] {
+  --side-fg: #e8eee6;
+  --side-mute: #93a598;
   --side-line: #2a3830;
   --tk-hover: #1e2822;
   --active-bg: #24352b;

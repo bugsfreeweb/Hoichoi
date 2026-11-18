@@ -1087,6 +1087,37 @@ html[data-theme="light"] .admin-console .text-ink\/70 { color: #3a3225; }
 html[data-theme="light"] .admin-console .text-ink\/85 { color: rgba(26, 20, 13, 0.85); }
 html[data-theme="light"] .admin-console .text-ink-soft { color: #655c4a; }
 html[data-theme="light"] .admin-console .text-alizarin { color: #d2202c; }
+/* A dark chip is dark in *both* themes. The `bg-ink` above pins the surface to
+   the ink colour, but the label on those chips was `text-paper` — and paper is
+   #f3eee1 in the light theme and #0a0c10 in the dark one. So every pinned chip
+   (`bg-ink text-paper`: the active tab, the active filter, "টোকেন তৈরি করুন",
+   "পোল সংরক্ষণ করুন") turned into dark text on a dark pill the moment the
+   operator switched to the dark console. The pair is defined here once, so a
+   chip cannot half-apply in one theme. */
+.admin-console .bg-ink.text-paper,
+.admin-console .bg-ink .text-paper,
+.admin-console .bg-ink\/80.text-paper,
+.admin-console .bg-ink\/80 .text-paper,
+.admin-console .bg-ink\/95.text-paper,
+.admin-console .bg-ink\/95 .text-paper {
+  color: #f2efe6;
+}
+.admin-console .hover\:bg-ink:hover.hover\:text-paper:hover,
+.admin-console .group:hover .group-hover\:bg-ink.group-hover\:text-paper {
+  color: #f2efe6;
+}
+/* FREE-tier badge. `bg-lime text-ink` inverted itself: lime is a dark olive in
+   the light palette (3.14:1 against ink) and an acid green in the dark one
+   (1.03:1 against the dark theme's ink, i.e. invisible). The badge keeps the
+   lime family but names both ends of its own contrast. */
+.badge-free {
+  background: #c8f65d;
+  color: #16220a;
+}
+html[data-theme="light"] .badge-free {
+  background: #dff2bb;
+  color: #24400a;
+}
 html[data-theme="light"] .admin-console .bg-ink { background-color: #1a140d; }
 html[data-theme="light"] .admin-console .bg-ink\/25 { background-color: rgba(26, 20, 13, 0.28); }
 html[data-theme="light"] .admin-console .bg-ink\/80 { background-color: rgba(26, 20, 13, 0.82); }

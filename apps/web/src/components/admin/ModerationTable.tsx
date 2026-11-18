@@ -96,7 +96,7 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-400/15 text-[15px]">💬</span>
         <div>
           <p className="font-serif-bn text-[17px] font-bold text-white">মন্তব্য মডারেশন</p>
-          <p className="font-mono-x text-[9px] tracking-[0.22em] text-white/35 uppercase">
+          <p className="font-mono-x text-[9px] tracking-[0.22em] text-white/55 uppercase">
             PUBLIC COMMENTS · QUEUE → LIVE
           </p>
         </div>
@@ -115,7 +115,7 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
             }`}
           >
             {TAB_BN[t]}{" "}
-            <span className={`font-mono-x text-[9.5px] ${tab === t ? "text-night/60" : "text-white/35"}`}>
+            <span className={`font-mono-x text-[9.5px] ${tab === t ? "text-night/60" : "text-white/55"}`}>
               {bn(counts[t])}
             </span>
           </button>
@@ -123,7 +123,7 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/8 px-5 py-2.5">
-        <p className="font-mono-x text-[9px] tracking-[0.18em] text-white/30 uppercase">
+        <p className="font-mono-x text-[9px] tracking-[0.18em] text-white/55 uppercase">
           {view === "card" ? "কার্ড ভিউ · ছবি ও শিরোনামসহ" : "লিস্ট ভিউ · দ্রুত স্ক্যান"}
         </p>
         <div className="flex border border-white/12">
@@ -149,14 +149,14 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
             <CommentCard key={r.id} row={r} busy={busy === r.id} onAct={act} />
           ))}
           {shown.length === 0 && (
-            <p className="col-span-full py-12 text-center text-[12.5px] text-white/35">এই সারিতে কোনো মন্তব্য নেই।</p>
+            <p className="col-span-full py-12 text-center text-[12.5px] text-white/55">এই সারিতে কোনো মন্তব্য নেই।</p>
           )}
         </div>
       ) : (
       <div className="scroll-slim overflow-x-auto">
         <table className="w-full min-w-[900px] text-left">
           <thead>
-            <tr className="font-mono-x text-[9.5px] tracking-[0.18em] text-white/35 uppercase">
+            <tr className="font-mono-x text-[9.5px] tracking-[0.18em] text-white/55 uppercase">
               <th className="px-5 py-3 font-medium">মন্তব্য</th>
               <th className="px-3 py-3 font-medium">প্রতিবেদন</th>
               <th className="px-3 py-3 font-medium">সময়</th>
@@ -177,7 +177,7 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
                       {r.postTitle}
                     </Link>
                   ) : (
-                    <span className="text-[11.5px] text-white/35">—</span>
+                    <span className="text-[11.5px] text-white/55">—</span>
                   )}
                 </td>
                 <td className="whitespace-nowrap px-3 py-3.5 font-mono-x text-[11px] text-white/50">
@@ -212,7 +212,7 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
             ))}
             {shown.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-5 py-14 text-center text-[12.5px] text-white/35">এই সারিতে কোনো মন্তব্য নেই।</td>
+                <td colSpan={5} className="px-5 py-14 text-center text-[12.5px] text-white/55">এই সারিতে কোনো মন্তব্য নেই।</td>
               </tr>
             )}
           </tbody>
@@ -220,7 +220,7 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
       </div>
       )}
 
-      <div className="border-t border-white/8 px-5 py-3 font-mono-x text-[9px] tracking-[0.18em] text-white/30 uppercase">
+      <div className="border-t border-white/8 px-5 py-3 font-mono-x text-[9px] tracking-[0.18em] text-white/55 uppercase">
         অনুমোদিত মন্তব্যই শুধু পাবলিক প্রতিবেদনে দেখা যায় · pending → approved → live
       </div>
     </div>
@@ -252,7 +252,7 @@ function CommentCard({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={img} alt="" loading="lazy" className="h-11 w-16 shrink-0 rounded border border-white/12 object-cover" />
         ) : (
-          <span className="flex h-11 w-16 shrink-0 items-center justify-center rounded border border-dashed border-white/15 text-[9px] text-white/30">
+          <span className="flex h-11 w-16 shrink-0 items-center justify-center rounded border border-dashed border-white/15 text-[9px] text-white/55">
             ছবি নেই
           </span>
         )}
@@ -265,9 +265,9 @@ function CommentCard({
               {row.postTitle}
             </Link>
           ) : (
-            <span className="text-[11.5px] text-white/35">পোস্ট পাওয়া যায়নি</span>
+            <span className="text-[11.5px] text-white/55">পোস্ট পাওয়া যায়নি</span>
           )}
-          <p className="font-mono-x text-[9px] tracking-[0.1em] text-white/30 uppercase">
+          <p className="font-mono-x text-[9px] tracking-[0.1em] text-white/55 uppercase">
             {row.postCategory ?? "—"} · {timeAgo(row.created_at)}
           </p>
         </div>

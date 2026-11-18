@@ -66,7 +66,7 @@ export default function Countdown({
           <span className={`font-mono-x leading-none font-bold ${size > 80 ? "text-[15px]" : "text-[11px]"}`}>
             {toBn(pad(hh))}:{toBn(pad(mm))}:{toBn(pad(ss))}
           </span>
-          <span className="mt-1 font-mono-x text-[8px] tracking-[0.2em] text-white/45 uppercase">
+          <span className="mt-1 font-mono-x text-[8px] tracking-[0.2em] text-white/60 uppercase">
             NEXT SYNC
           </span>
         </div>

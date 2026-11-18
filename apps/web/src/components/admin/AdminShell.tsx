@@ -13,7 +13,11 @@ import "./sidebar-styles.css";
 import { adminLogout } from "@/lib/auth-actions";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/admin/NotificationBell";
-import { QueueCountsProvider, useQueueCounts, useQueueCountsPolling } from "@/components/admin/queue-counts";
+import {
+  QueueCountsProvider,
+  useQueueCounts,
+  useQueueCountsPolling,
+} from "@/components/admin/queue-counts";
 import { SITE_BUILD } from "@/lib/build";
 import { ToastProvider } from "@/components/admin/ui/toast";
 import { SystemStatusBar } from "@/components/admin/ui/SystemStatusBar";
@@ -57,9 +61,7 @@ const NAV_GROUPS: Array<{ title: string; en: string; items: NavItem[] }> = [
   {
     title: "ওভারভিউ",
     en: "Overview",
-    items: [
-      { href: "/admin", icon: "dashboard", label: "ড্যাশবোর্ড" },
-    ],
+    items: [{ href: "/admin", icon: "dashboard", label: "ড্যাশবোর্ড" }],
   },
   {
     title: "কনটেন্ট",
@@ -87,10 +89,30 @@ const NAV_GROUPS: Array<{ title: string; en: string; items: NavItem[] }> = [
         // operator has to act on, so showing only the first gate under-reports.
         countKeys: ["pending_review", "approved"],
       },
-      { href: "/admin/comments", icon: "comments", label: "মন্তব্য মডারেশন", countKeys: ["pending_comments"] },
-      { href: "/admin/submissions", icon: "submissions", label: "সাবমিশন", countKeys: ["new_submissions"] },
-      { href: "/admin/removals", icon: "removals", label: "রিমুভাল রিকোয়েস্ট", countKeys: ["open_removals"] },
-      { href: "/admin/reports", icon: "reports", label: "পাঠকের রিপোর্ট", countKeys: ["open_reports"] },
+      {
+        href: "/admin/comments",
+        icon: "comments",
+        label: "মন্তব্য মডারেশন",
+        countKeys: ["pending_comments"],
+      },
+      {
+        href: "/admin/submissions",
+        icon: "submissions",
+        label: "সাবমিশন",
+        countKeys: ["new_submissions"],
+      },
+      {
+        href: "/admin/removals",
+        icon: "removals",
+        label: "রিমুভাল রিকোয়েস্ট",
+        countKeys: ["open_removals"],
+      },
+      {
+        href: "/admin/reports",
+        icon: "reports",
+        label: "পাঠকের রিপোর্ট",
+        countKeys: ["open_reports"],
+      },
     ],
   },
   {
@@ -184,14 +206,19 @@ function AdminChrome({
       if (e.key !== "[" || e.metaKey || e.ctrlKey || e.altKey) return;
       const el = e.target as HTMLElement | null;
       const tag = el?.tagName?.toLowerCase();
-      if (tag === "input" || tag === "textarea" || tag === "select" || el?.isContentEditable) return;
+      if (
+        tag === "input" ||
+        tag === "textarea" ||
+        tag === "select" ||
+        el?.isContentEditable
+      )
+        return;
       e.preventDefault();
       toggleCollapsed();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [toggleCollapsed]);
-
 
   // Close the mobile drawer whenever the route changes, so tapping a link does
   // not leave the overlay covering the destination page.
@@ -210,7 +237,10 @@ function AdminChrome({
     const apply = () => {
       const h = Math.ceil(el.getBoundingClientRect().height);
       if (h > 0) {
-        document.documentElement.style.setProperty("--admin-footer-h", `${h}px`);
+        document.documentElement.style.setProperty(
+          "--admin-footer-h",
+          `${h}px`,
+        );
       }
     };
     apply();
@@ -296,7 +326,15 @@ function AdminChrome({
                 aria-expanded={mobileOpen}
                 className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-ink/20 text-ink transition hover:bg-ink/5 lg:hidden"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
                   <path d="M3 6h18M3 12h18M3 18h18" />
                 </svg>
               </button>
@@ -304,7 +342,9 @@ function AdminChrome({
                 হ
               </span>
               <div className="min-w-0">
-                <p className="truncate text-[14px] leading-tight font-bold text-ink">হৈচৈ কন্ট্রোল</p>
+                <p className="truncate text-[14px] leading-tight font-bold text-ink">
+                  হৈচৈ কন্ট্রোল
+                </p>
                 <p className="font-mono-x text-[8.5px] tracking-[0.2em] text-ink-soft uppercase">
                   WEB TWIN · DESK IS PRIMARY
                 </p>
@@ -334,7 +374,9 @@ function AdminChrome({
         </header>
 
         {/* ============ MAIN ============ */}
-        <main className="admin-console-main min-w-0 flex-1 px-4 pt-6 md:px-6">{children}</main>
+        <main className="admin-console-main min-w-0 flex-1 px-4 pt-6 md:px-6">
+          {children}
+        </main>
 
         {/* ============ FOOTER ============ */}
         <AdminFooter path={path} email={user.email} footerRef={footerRef} />
@@ -374,7 +416,10 @@ function SidebarNav({
     ? NAV_GROUPS.map((g) => ({
         ...g,
         items: g.items.filter(
-          (n) => n.label.toLowerCase().includes(needle) || n.href.includes(needle) || g.en.toLowerCase().includes(needle),
+          (n) =>
+            n.label.toLowerCase().includes(needle) ||
+            n.href.includes(needle) ||
+            g.en.toLowerCase().includes(needle),
         ),
       })).filter((g) => g.items.length > 0)
     : NAV_GROUPS;
@@ -389,23 +434,35 @@ function SidebarNav({
         has on every screen. What is left is the two controls that belong to the
         column itself: the three-line toggle, and (on the drawer) close.
       */}
-      <div className={`flex shrink-0 items-center border-b border-white/8 py-2.5 ${collapsed ? "justify-center px-1" : "justify-between px-2"}`}>
+      <div
+        className={`adm-nav-head flex shrink-0 items-center border-b py-2.5 ${collapsed ? "justify-center px-1" : "justify-between px-2"}`}
+      >
         {onToggle ? (
           <button
             type="button"
             onClick={onToggle}
-            aria-label={collapsed ? "সাইডবার প্রসারিত করুন" : "সাইডবার সংকুচিত করুন"}
+            aria-label={
+              collapsed ? "সাইডবার প্রসারিত করুন" : "সাইডবার সংকুচিত করুন"
+            }
             aria-expanded={!collapsed}
             title={`${collapsed ? "প্রসারিত করুন" : "সংকুচিত করুন"} (শর্টকাট: [ )`}
-            className="adm-nav-toggle grid h-8 w-8 shrink-0 place-items-center rounded-lg text-white/70 transition hover:bg-white/10 hover:text-white"
+            className="adm-nav-toggle grid h-8 w-8 shrink-0 place-items-center rounded-lg transition"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
               <path d="M3 6h18M3 12h18M3 18h18" />
             </svg>
           </button>
         ) : null}
         {!collapsed && variant === "desktop" ? (
-          <span className="adm-nav-caption pr-1 font-mono-x text-[8px] tracking-[0.2em] text-white/30 uppercase">
+          <span className="adm-nav-kicker pr-1 font-mono-x text-[8px] tracking-[0.2em] uppercase">
             মেনু
           </span>
         ) : null}
@@ -414,9 +471,17 @@ function SidebarNav({
             type="button"
             onClick={onClose}
             aria-label="বন্ধ করুন"
-            className="ml-auto grid h-8 w-8 place-items-center rounded-lg text-white/60 transition hover:bg-white/10 hover:text-white"
+            className="adm-nav-toggle ml-auto grid h-8 w-8 place-items-center rounded-lg transition"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>
           </button>
@@ -444,7 +509,7 @@ function SidebarNav({
               stroke="currentColor"
               strokeWidth="2.5"
               strokeLinecap="round"
-              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-white/35"
+              className="adm-nav-search-icon pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2"
             >
               <circle cx="11" cy="11" r="7" />
               <path d="m20 20-3.5-3.5" />
@@ -455,7 +520,7 @@ function SidebarNav({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="স্ক্রিন খুঁজুন…"
-              className="w-full rounded-lg border border-white/10 bg-white/[0.04] py-1.5 pl-7 pr-2 text-[11.5px] text-white placeholder:text-white/30 focus:border-alizarin/60 focus:outline-none"
+              className="adm-nav-search w-full rounded-lg border py-1.5 pl-7 pr-2 text-[11.5px] focus:outline-none"
             />
           </div>
         </div>
@@ -468,25 +533,33 @@ function SidebarNav({
         hidden, not removed — so nothing becomes unreachable to keep the rail
         looking tidy.
       */}
-      <nav aria-label="কনসোল মেনু" className="adm-nav mt-2 min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-1.5 pb-2">
+      <nav
+        aria-label="কনসোল মেনু"
+        className="adm-nav mt-2 min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-1.5 pb-2"
+      >
         {nothingFound ? (
-          <p className="px-3 py-6 text-center text-[11px] leading-relaxed text-white/40">
+          <p className="adm-nav-empty px-3 py-6 text-center text-[11px] leading-relaxed">
             “{query.trim()}” নামে কোনো স্ক্রিন নেই।
           </p>
         ) : null}
         {groups.map((group) => (
           <div key={group.title} className="adm-nav-group">
             {collapsed ? (
-              <div className="mx-2 mb-2 border-t border-white/8" aria-hidden="true" />
+              <div
+                className="adm-nav-rule mx-2 mb-2 border-t"
+                aria-hidden="true"
+              />
             ) : (
-              <p className="adm-nav-caption mb-[3px] px-2.5 font-mono-x text-[8.5px] tracking-[0.22em] text-white/30 uppercase">
+              <p className="adm-nav-kicker mb-[3px] px-2.5 font-mono-x text-[8.5px] tracking-[0.22em] uppercase">
                 {group.title} · {group.en}
               </p>
             )}
             <ul className="space-y-[1px] font-sans-bn text-[12.5px] font-medium">
               {group.items.map((n) => {
                 const active = path === n.href || path.startsWith(`${n.href}/`);
-                const badge = n.countKeys?.reduce((sum, k) => sum + (counts[k] ?? 0), 0) ?? 0;
+                const badge =
+                  n.countKeys?.reduce((sum, k) => sum + (counts[k] ?? 0), 0) ??
+                  0;
                 return (
                   <li key={n.href}>
                     <Link
@@ -496,7 +569,7 @@ function SidebarNav({
                       title={collapsed ? n.label : undefined}
                       className={`adm-nav-link group/nav relative flex items-center gap-3 rounded-lg py-[6px] transition-all duration-200 ${
                         collapsed ? "justify-center px-2" : "px-3"
-                      } ${active ? "bg-white text-night" : "text-white/55 hover:bg-white/8 hover:text-white"}`}
+                      } ${active ? "is-active" : ""}`}
                     >
                       {/*
                         In the rail the label is not rendered, so the glyph
@@ -507,7 +580,10 @@ function SidebarNav({
                         label beside the rail was never actually shown.
                       */}
                       {active && !collapsed ? (
-                        <span className="absolute -left-1.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-alizarin" aria-hidden="true" />
+                        <span
+                          className="adm-nav-marker absolute -left-1.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full"
+                          aria-hidden="true"
+                        />
                       ) : null}
                       <span className="relative" data-icon-host>
                         <NavIcon
@@ -522,13 +598,17 @@ function SidebarNav({
                       </span>
                       {!collapsed ? (
                         <>
-                          <span className="adm-nav-label flex-1">{n.label}</span>
+                          <span className="adm-nav-label flex-1">
+                            {n.label}
+                          </span>
                           {badge > 0 && (
                             <span className="rounded-full bg-alizarin px-1.5 py-0.5 font-mono-x text-[9px] font-bold text-on-accent">
                               {toBn(badge)}
                             </span>
                           )}
-                          {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-alizarin" />}
+                          {active && (
+                            <span className="adm-nav-marker ml-auto h-1.5 w-1.5 rounded-full" />
+                          )}
                         </>
                       ) : null}
                     </Link>
@@ -547,8 +627,12 @@ function SidebarNav({
         /admin/security, where someone can also act on it.
       */}
 
-      <div className={`shrink-0 border-t border-white/8 py-3 ${collapsed ? "px-1" : "px-3"}`}>
-        <div className={`flex items-center gap-1.5 text-[10.5px] text-white/70 ${collapsed ? "justify-center" : ""}`}>
+      <div
+        className={`adm-nav-head shrink-0 border-t py-3 ${collapsed ? "px-1" : "px-3"}`}
+      >
+        <div
+          className={`adm-nav-identity flex items-center gap-1.5 text-[10.5px] ${collapsed ? "justify-center" : ""}`}
+        >
           <span className="cat-dot bg-lime"></span>
           {!collapsed ? <span className="truncate">{email}</span> : null}
         </div>
@@ -571,7 +655,9 @@ function AdminFooter({
   email: string;
   footerRef: React.RefObject<HTMLElement | null>;
 }) {
-  const active = NAV.find((n) => path === n.href || path.startsWith(`${n.href}/`));
+  const active = NAV.find(
+    (n) => path === n.href || path.startsWith(`${n.href}/`),
+  );
   return (
     <footer ref={footerRef} className="admin-footer">
       {/*
@@ -584,8 +670,10 @@ function AdminFooter({
         <span className="min-w-0 truncate font-mono-x text-[9.5px] tracking-[0.16em] text-white/70 uppercase">
           {active ? active.label : "হৈচৈ কন্ট্রোল"}
         </span>
-        <span className="min-w-0 truncate text-[10.5px] text-white/45 sm:text-right">{email}</span>
-        <span className="flex items-center gap-3 font-mono-x text-[9.5px] tracking-[0.16em] text-white/35 uppercase lg:justify-self-end">
+        <span className="min-w-0 truncate text-[10.5px] text-white/60 sm:text-right">
+          {email}
+        </span>
+        <span className="flex items-center gap-3 font-mono-x text-[9.5px] tracking-[0.16em] text-white/55 uppercase lg:justify-self-end">
           <span>ASIA/DHAKA</span>
           <span aria-hidden="true">·</span>
           <span className="whitespace-nowrap">BUILD {SITE_BUILD}</span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   DEFAULT_APP_CONFIG,
   type SiteAppConfig,
@@ -8,7 +9,12 @@ import {
   type SectionState,
 } from "@hoichoi/shared-types";
 import type { RecentPipelineRun } from "@hoichoi/db";
-import { SettingsCtx, type AdsForm, type IdentityForm, type MaintenanceInbox } from "./state";
+import {
+  SettingsCtx,
+  type AdsForm,
+  type IdentityForm,
+  type MaintenanceInbox,
+} from "./state";
 import { SiteSection } from "./SiteSection";
 import { AdsSection } from "./AdsSection";
 import { VisibilitySection } from "./VisibilitySection";
@@ -92,17 +98,26 @@ export function SettingsConsole({
   initialTab?: string;
   liveEventCount: number;
 }) {
+  // The sidebar template and the hero's server-side defaults are read in a
+  // server component; without this the console kept the old panel until the
+  // page was reloaded by hand. `router.refresh()` re-renders the current route
+  // in place, which is what "apply" has to mean.
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>(() =>
     TABS.some((t) => t.key === initialTab) ? (initialTab as Tab) : "site",
   );
-  const [identity, setIdentityRaw] = useState<IdentityForm>(() => toIdentity(initial));
+  const [identity, setIdentityRaw] = useState<IdentityForm>(() =>
+    toIdentity(initial),
+  );
   const [ads, setAdsRaw] = useState<AdsForm>(() => toAds(initial));
   const [cfg, setCfgRaw] = useState<SiteAppConfig>(() => {
     try {
       const parsed = initial.app_config_json
         ? (JSON.parse(initial.app_config_json) as Partial<SiteAppConfig>)
         : {};
-      const base: SiteAppConfig = JSON.parse(JSON.stringify(DEFAULT_APP_CONFIG));
+      const base: SiteAppConfig = JSON.parse(
+        JSON.stringify(DEFAULT_APP_CONFIG),
+      );
       return {
         ...base,
         ...parsed,
@@ -157,6 +172,7 @@ export function SettingsConsole({
       if (!res.ok) return setStatus("err");
       setDirty(false);
       setStatus("ok");
+      router.refresh();
       setTimeout(() => setStatus(null), 4000);
     } catch {
       setStatus("err");
@@ -166,7 +182,12 @@ export function SettingsConsole({
   };
 
   const resetDefaults = async () => {
-    if (!window.confirm("visibility ও maintenance কনফিগ সব ডিফল্টে ফিরে যাবে — Nনিশ্চিত?")) return;
+    if (
+      !window.confirm(
+        "visibility ও maintenance কনফিগ সব ডিফল্টে ফিরে যাবে — Nনিশ্চিত?",
+      )
+    )
+      return;
     const base: SiteAppConfig = JSON.parse(JSON.stringify(DEFAULT_APP_CONFIG));
     setCfgRaw(base);
     setSaving(true);
@@ -181,6 +202,7 @@ export function SettingsConsole({
       if (!res.ok) return setStatus("err");
       setDirty(false);
       setStatus("ok");
+      router.refresh();
       setTimeout(() => setStatus(null), 4000);
     } catch {
       setStatus("err");
@@ -198,16 +220,24 @@ export function SettingsConsole({
               key={t.key}
               onClick={() => setTab(t.key)}
               className={`flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] font-bold transition-all ${
-                tab === t.key ? "bg-ink text-paper" : "text-ink-soft hover:bg-ink/8 hover:text-ink"
+                tab === t.key
+                  ? "bg-ink text-paper"
+                  : "text-ink-soft hover:bg-ink/8 hover:text-ink"
               }`}
             >
               <span>{t.emoji}</span>
               <span>{t.bn}</span>
               {t.key === "maintenance" && cfg.maintenance_mode && (
-                <span className="h-1.5 w-1.5 rounded-full bg-alizarin" title="মেইনটেন্যান্স চালু" />
+                <span
+                  className="h-1.5 w-1.5 rounded-full bg-alizarin"
+                  title="মেইনটেন্যান্স চালু"
+                />
               )}
               {t.key === "visibility" && dirty && (
-                <span className="h-1.5 w-1.5 rounded-full bg-lime" title="অসংরক্ষিত পরিবর্তন" />
+                <span
+                  className="h-1.5 w-1.5 rounded-full bg-lime"
+                  title="অসংরক্ষিত পরিবর্তন"
+                />
               )}
             </button>
           ))}
@@ -216,16 +246,21 @@ export function SettingsConsole({
         <div className="mt-4">
           {tab === "site" && <SiteSection />}
           {tab === "visibility" && <VisibilitySection />}
-          {tab === "live-events" && <LiveEventsSettings eventCount={liveEventCount} />}
+          {tab === "live-events" && (
+            <LiveEventsSettings eventCount={liveEventCount} />
+          )}
           {tab === "ads" && <AdsSection />}
           {tab === "design" && (
             <div className="border border-ink/15 bg-paper-deep/40 p-2 sm:p-4">
               <div className="mb-4">
-                <h3 className="font-sans-bn text-[17px] font-bold text-ink">নকশা ও ভ্যারিয়েন্ট</h3>
+                <h3 className="font-sans-bn text-[17px] font-bold text-ink">
+                  নকশা ও ভ্যারিয়েন্ট
+                </h3>
                 <p className="mt-1 max-w-4xl text-[12.5px] leading-relaxed text-ink-soft">
-                  পুরো সাইটের নকশা এখান থেকেই বাছুন, প্রয়োগের আগে লাইভ প্রিভিউ দেখুন এবং যেকোনো সময় ডিফল্টে
-                  ফিরে যান। এই ট্যাবের পরিবর্তনগুলো আলাদাভাবে সাথে সাথে সংরক্ষিত হয় — নিচের “সংরক্ষণ করুন”
-                  বোতাম এর জন্য প্রয়োজন নেই।
+                  পুরো সাইটের নকশা এখান থেকেই বাছুন, প্রয়োগের আগে লাইভ প্রিভিউ দেখুন
+                  এবং যেকোনো সময় ডিফল্টে ফিরে যান। এই ট্যাবের পরিবর্তনগুলো আলাদাভাবে
+                  সাথে সাথে সংরক্ষিত হয় — নিচের “সংরক্ষণ করুন” বোতাম এর জন্য প্রয়োজন
+                  নেই।
                 </p>
               </div>
               <VariantSwitcher
@@ -277,9 +312,21 @@ export function SettingsConsole({
             >
               ⟲ ডিফল্টে রিসেট
             </button>
-            {status === "ok" && <span className="text-[12.5px] font-bold text-ink">সব সেটিংস সংরক্ষিত — পাবলিক সাইট এখনই নতুন কনফিগ অনুসরণ করবে।</span>}
-            {status === "err" && <span className="text-[12.5px] font-bold text-alizarin">ব্যর্থ — আবার চেষ্টা করুন।</span>}
-            {status === "denied" && <span className="text-[12.5px] font-bold text-alizarin">অনুমতি নেই — admin প্রয়োজন।</span>}
+            {status === "ok" && (
+              <span className="text-[12.5px] font-bold text-ink">
+                সব সেটিংস সংরক্ষিত — পাবলিক সাইট এখনই নতুন কনফিগ অনুসরণ করবে।
+              </span>
+            )}
+            {status === "err" && (
+              <span className="text-[12.5px] font-bold text-alizarin">
+                ব্যর্থ — আবার চেষ্টা করুন।
+              </span>
+            )}
+            {status === "denied" && (
+              <span className="text-[12.5px] font-bold text-alizarin">
+                অনুমতি নেই — admin প্রয়োজন।
+              </span>
+            )}
           </div>
         )}
       </div>

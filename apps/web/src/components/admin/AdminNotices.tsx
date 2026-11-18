@@ -246,7 +246,7 @@ export function AdminNotices({ notices }: { notices: Notice[] }) {
 
       <div className="mt-5 space-y-2.5">
         {notices.length === 0 && !open && (
-          <div className="rounded-xl border border-dashed border-white/15 py-12 text-center text-white/35">
+          <div className="rounded-xl border border-dashed border-white/15 py-12 text-center text-white/55">
             কোনো নোটিশ নেই। "নতুন নোটিশ" দিয়ে একটি তৈরি করুন।
           </div>
         )}
@@ -350,7 +350,7 @@ export function AdminNotices({ notices }: { notices: Notice[] }) {
                       {n.expires_at ? ` · মেয়াদ ${n.expires_at.slice(0, 10)}` : ""}
                     </p>
                     {n.body && <p className="mt-1 line-clamp-2 text-[12px] leading-snug text-white/50">{n.body}</p>}
-                    {n.url && <p className="mt-0.5 truncate font-mono-x text-[10px] text-white/35">{n.url}</p>}
+                    {n.url && <p className="mt-0.5 truncate font-mono-x text-[10px] text-white/55">{n.url}</p>}
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     <button

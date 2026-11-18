@@ -65,7 +65,7 @@ export function RunTrendChart({ series }: { series: RunDayPoint[] }) {
     <section className="rounded-2xl border border-white/10 bg-panel p-6">
       <div className="flex flex-wrap items-baseline gap-3">
         <h2 className="font-serif-bn text-[17px] font-bold text-white">পাইপলাইন থ্রেন্ড</h2>
-        <p className="font-mono-x text-[9.5px] tracking-[0.2em] text-white/45 uppercase">
+        <p className="font-mono-x text-[9.5px] tracking-[0.2em] text-white/60 uppercase">
           LAST {toBn(series.length)} DAYS · DAILY
         </p>
         <div className="ml-auto flex flex-wrap items-center gap-3">
@@ -79,7 +79,7 @@ export function RunTrendChart({ series }: { series: RunDayPoint[] }) {
       </div>
 
       {!hasData ? (
-        <p className="py-16 text-center text-[12.5px] text-white/45">
+        <p className="py-16 text-center text-[12.5px] text-white/60">
           এই সময়সীমায় কোনো পাইপলাইন রান নেই।
         </p>
       ) : (
@@ -166,7 +166,7 @@ export function RunTrendChart({ series }: { series: RunDayPoint[] }) {
           ] as const
         ).map(([label, value]) => (
           <div key={label}>
-            <p className="text-[11px] text-white/45">{label}</p>
+            <p className="text-[11px] text-white/60">{label}</p>
             <p className="mt-0.5 font-serif-bn text-[20px] leading-none font-black text-white">
               {toBn(value)}
             </p>
@@ -199,7 +199,7 @@ export function CategoryFunnel({ radar }: { radar: RadarSnapshot }) {
     <section className="rounded-2xl border border-white/10 bg-panel p-6">
       <div className="flex flex-wrap items-baseline gap-3">
         <h2 className="font-serif-bn text-[17px] font-bold text-white">ক্যাটাগরি ফানেল</h2>
-        <p className="font-mono-x text-[9.5px] tracking-[0.2em] text-white/45 uppercase">
+        <p className="font-mono-x text-[9.5px] tracking-[0.2em] text-white/60 uppercase">
           COLLECTED → PUBLISHED
         </p>
         <p className="ml-auto text-[11.5px] text-white/60">
@@ -208,7 +208,7 @@ export function CategoryFunnel({ radar }: { radar: RadarSnapshot }) {
       </div>
 
       {totalCollected === 0 ? (
-        <p className="py-12 text-center text-[12.5px] text-white/45">এখনো কোনো রকল পোস্ট সংগৃহীত হয়নি।</p>
+        <p className="py-12 text-center text-[12.5px] text-white/60">এখনো কোনো রকল পোস্ট সংগৃহীত হয়নি।</p>
       ) : (
         <ul className="mt-5 space-y-4">
           {rows.map((r) => (

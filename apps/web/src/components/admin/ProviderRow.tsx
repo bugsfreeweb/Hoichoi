@@ -304,7 +304,7 @@ export function ProviderRow({
               {isImage ? "🎨 ছবি" : "✍️ লেখা"}
             </span>
             {provider.is_free_tier && (
-              <span className="rounded-full bg-lime px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-ink">FREE</span>
+              <span className="badge-free rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide">FREE</span>
             )}
             {provider.purpose && provider.provider_key && !canImage && isImage && (
               <span className="rounded-full bg-amberx/20 px-2 py-0.5 text-[9.5px] font-bold text-ink">⚠ এই প্রোভাইডার ছবি পারে না</span>

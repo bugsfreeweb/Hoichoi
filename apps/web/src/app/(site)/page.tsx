@@ -1,5 +1,16 @@
 import Link from "next/link";
-import { windowPosts, countWindowPosts, categoriesWithCounts, parseAppConfig, listCategories, getFeaturedPoll, getPollResults, pollResultsVisible, getAdSlot } from "@hoichoi/db";
+import {
+  windowPosts,
+  countWindowPosts,
+  categoriesWithCounts,
+  parseAppConfig,
+  listCategories,
+  getFeaturedPoll,
+  getPollResults,
+  pollResultsVisible,
+  getAdSlot,
+  dashboardSources,
+} from "@hoichoi/db";
 import { ScrollProgress } from "@/components/ScrollProgress";
 import Hero from "@/components/home/Hero";
 import LiveAnalytics from "@/components/home/live-analytics";
@@ -46,17 +57,27 @@ export default async function HomePage({
   const cfg = parseAppConfig(settings.app_config_json);
   const PAGE_SIZE = pageSize(cfg.home_post_count);
   const offset = (page - 1) * PAGE_SIZE;
-  const [postsRaw, total, catStats, catRows, featuredPoll, infeedSlot] = await Promise.all([
+  const [
+    postsRaw,
+    total,
+    catStats,
+    catRows,
+    featuredPoll,
+    infeedSlot,
+    heroSourceRows,
+  ] = await Promise.all([
     windowPosts({ limit: PAGE_SIZE, offset }),
     countWindowPosts(),
     categoriesWithCounts(),
     listCategories(),
     cfg.show_live_polls ? getFeaturedPoll() : Promise.resolve(null),
     cfg.show_ads ? getAdSlot("home_infeed") : Promise.resolve(null),
+    dashboardSources().catch(() => []),
   ]);
-  const pollResults = featuredPoll && pollResultsVisible(featuredPoll, false)
-    ? await getPollResults(featuredPoll.id)
-    : [];
+  const pollResults =
+    featuredPoll && pollResultsVisible(featuredPoll, false)
+      ? await getPollResults(featuredPoll.id)
+      : [];
   // Fill any image-less post with the admin-configured default image so the
   // featured card, hero and grid all render a picture instead of a text tile.
   const posts = withDefaultImages(postsRaw, cfg.default_post_image);
@@ -70,40 +91,57 @@ export default async function HomePage({
       <ScrollProgress />
 
       {cfg.show_hero && featured && (
-      <Hero
-        lastRunIso={featured?.created_at ?? null}
-        collected={total}
-        published={posts.filter((p) => p.status === "published").length}
-        dups={0}
-        featuredImg={featured ? mediaUrl(featured) : null}
-        featuredTitle={featured?.title_bn ?? null}
-        featuredCategory={featured ? categoryLabel(featured.category, catRows) : null}
-        showLiveGraph={cfg.show_live_graph}
-        siteName={settings.site_name}
-        logoUrl={settings.logo_url}
-        brandAnimation={cfg.brand_animation}
-        heroEffects={cfg.hero_effects}
-        headlineMotion={cfg.hero_headline_motion}
-        sceneStyle={cfg.hero_scene_style}
-        sceneFeature={
-          featured
-            ? {
-                image: mediaUrl(featured),
-                title: featured.title_bn,
-                summary: featured.summary_bn,
-                sourceName: featured.source_name,
-                sourceUrl: featured.source_url,
-                category: categoryLabel(featured.category, catRows),
-              }
-            : null
-        }
-      />
+        <Hero
+          lastRunIso={featured?.created_at ?? null}
+          collected={total}
+          published={posts.filter((p) => p.status === "published").length}
+          dups={0}
+          featuredImg={featured ? mediaUrl(featured) : null}
+          featuredTitle={featured?.title_bn ?? null}
+          featuredCategory={
+            featured ? categoryLabel(featured.category, catRows) : null
+          }
+          showLiveGraph={cfg.show_live_graph}
+          siteName={settings.site_name}
+          logoUrl={settings.logo_url}
+          brandAnimation={cfg.brand_animation}
+          heroEffects={cfg.hero_effects}
+          headlineMotion={cfg.hero_headline_motion}
+          sceneStyle={cfg.hero_scene_style}
+          heroPosts={posts.slice(0, 4).map((p) => ({
+            id: p.id,
+            slug: p.slug,
+            title: p.title_bn,
+            category: categoryLabel(p.category, catRows),
+            source: p.source_name,
+            image: mediaUrl(p),
+            summary: p.summary_bn ?? "",
+            minutes: Number(
+              readMinutesBn(`${p.title_bn} ${p.summary_bn ?? ""}`),
+            ),
+            hash: shortId(String(p.id)),
+            at: p.created_at,
+          }))}
+          heroEvents={posts.slice(0, 6).map((p) => ({
+            id: String(p.id),
+            at: p.created_at,
+            text: p.title_bn,
+            kind: "article" as const,
+          }))}
+          heroSources={heroSourceRows
+            .slice(0, 6)
+            .map((s) => ({ name: s.name, ok: s.active }))}
+        />
       )}
 
       {cfg.show_ads && (
         <>
           <div className="mx-auto max-w-[1400px] px-4 pt-8 md:px-8">
-            <UnifiedAdPlacement slotKey="home_leaderboard" variant="leaderboard" html={settings.ad_leaderboard_html} />
+            <UnifiedAdPlacement
+              slotKey="home_leaderboard"
+              variant="leaderboard"
+              html={settings.ad_leaderboard_html}
+            />
           </div>
         </>
       )}
@@ -111,40 +149,47 @@ export default async function HomePage({
       {cfg.show_live_graph && <LiveAnalytics />}
 
       {cfg.show_categories && (
-      <section className="border-y border-ink/15 bg-ink/12 dark:bg-paper-deep/40">
-        <div className="mx-auto max-w-[1400px] px-4 py-7 md:px-8">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="mr-1 font-mono-x text-[10px] tracking-[0.28em] text-ink-soft uppercase">
-              ▚ বিভাগসমূহ
-            </span>
-            {catStats.map(({ category, count }) => (
-              <Link
-                key={category.slug}
-                href={`/category/${category.slug}`}
-                className="group flex items-center gap-2 border border-ink/20 bg-paper px-3.5 py-1.5 text-[12.5px] font-bold text-ink transition-all duration-300 hover:border-ink hover:bg-ink hover:text-paper"
-              >
-                <span
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{ background: categoryTint(category.slug, [category]) }}
-                />
-                {category.displayNameBn}
-                <span className="font-mono-x text-[9.5px] font-medium text-ink-soft group-hover:text-paper/60">
-                  {bnNum(count)}
-                </span>
-              </Link>
-            ))}
-            {catStats.length === 0 && (
-              <span className="text-[12px] text-ink-soft">
-                কোনো প্রকাশিত বিভাগ নেই।
+        <section className="border-y border-ink/15 bg-ink/12 dark:bg-paper-deep/40">
+          <div className="mx-auto max-w-[1400px] px-4 py-7 md:px-8">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="mr-1 font-mono-x text-[10px] tracking-[0.28em] text-ink-soft uppercase">
+                ▚ বিভাগসমূহ
               </span>
-            )}
+              {catStats.map(({ category, count }) => (
+                <Link
+                  key={category.slug}
+                  href={`/category/${category.slug}`}
+                  className="group flex items-center gap-2 border border-ink/20 bg-paper px-3.5 py-1.5 text-[12.5px] font-bold text-ink transition-all duration-300 hover:border-ink hover:bg-ink hover:text-paper"
+                >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{
+                      background: categoryTint(category.slug, [category]),
+                    }}
+                  />
+                  {category.displayNameBn}
+                  <span className="font-mono-x text-[9.5px] font-medium text-ink-soft group-hover:text-paper/60">
+                    {bnNum(count)}
+                  </span>
+                </Link>
+              ))}
+              {catStats.length === 0 && (
+                <span className="text-[12px] text-ink-soft">
+                  কোনো প্রকাশিত বিভাগ নেই।
+                </span>
+              )}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
       )}
 
-      <LiveEventSection enabled={cfg.show_live_events} settings={cfg.live_events} />
-      {cfg.show_live_polls && <HomePollSection poll={featuredPoll} results={pollResults} />}
+      <LiveEventSection
+        enabled={cfg.show_live_events}
+        settings={cfg.live_events}
+      />
+      {cfg.show_live_polls && (
+        <HomePollSection poll={featuredPoll} results={pollResults} />
+      )}
 
       {cfg.show_hero && featured && (
         <section className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
@@ -159,7 +204,8 @@ export default async function HomePage({
                 </h2>
               </div>
               <span className="font-mono-x text-[10px] tracking-[0.2em] text-ink-soft uppercase">
-                SYNCED {timeBn(featured.created_at ?? new Date().toISOString())} · AUTO-FEATURED
+                SYNCED {timeBn(featured.created_at ?? new Date().toISOString())}{" "}
+                · AUTO-FEATURED
               </span>
             </div>
           </Reveal>
@@ -179,13 +225,29 @@ export default async function HomePage({
                       ) : (
                         <div className="flex h-full items-center justify-center px-6">
                           <p className="text-center font-serif-bn text-[15px] font-bold leading-relaxed text-ink/40">
-                            {featured.summary_bn?.slice(0, 80) ?? featured.title_bn.slice(0, 60)}…
+                            {featured.summary_bn?.slice(0, 80) ??
+                              featured.title_bn.slice(0, 60)}
+                            …
                           </p>
                         </div>
                       )}
                     </div>
                     <span className="absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full bg-ink/80 px-3 py-1.5 font-mono-x text-[9.5px] tracking-[0.16em] text-paper uppercase backdrop-blur-sm">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="9.5" height="9.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="9.5"
+                        height="9.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M4 11a9 9 0 0 1 9 9" />
+                        <path d="M4 4a16 16 0 0 1 16 16" />
+                        <circle cx="5" cy="19" r="1" />
+                      </svg>
                       SOURCE · {featured.source_name}
                     </span>
                     {/* This used to read FACT-CHECKED, which nothing in the pipeline proves.
@@ -197,7 +259,10 @@ export default async function HomePage({
                   </div>
                 </TiltCard>
                 <p className="mt-3 flex items-center justify-between text-[10.5px] text-ink-soft">
-                  <span>ছবি: {featured.media_path ? "সংগৃহীত" : "কেবল টেক্সট"} · প্রতীকী</span>
+                  <span>
+                    ছবি: {featured.media_path ? "সংগৃহীত" : "কেবল টেক্সট"} ·
+                    প্রতীকী
+                  </span>
                   <span className="font-mono-x tracking-wide">
                     SHOT_{shortId(featured.id).toUpperCase()} · PLAYWRIGHT
                     1440×900
@@ -208,38 +273,202 @@ export default async function HomePage({
 
             <div className="lg:col-span-5">
               <Reveal delay={100}>
-              <div className="flex flex-wrap items-center gap-3">
-                {(() => {
-                  const tint = categoryTint(featured.category, catStats.map((s) => s.category));
-                  return (
-                    <span
-                      className="flex items-center gap-1.5 px-3 py-1 text-[11.5px] font-bold"
-                      style={{ background: tint, color: readableOn(tint) }}
+                <div className="flex flex-wrap items-center gap-3">
+                  {(() => {
+                    const tint = categoryTint(
+                      featured.category,
+                      catStats.map((s) => s.category),
+                    );
+                    return (
+                      <span
+                        className="flex items-center gap-1.5 px-3 py-1 text-[11.5px] font-bold"
+                        style={{ background: tint, color: readableOn(tint) }}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="11"
+                          height="11"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M7 4.5l13 7.5-13 7.5z" />
+                        </svg>
+                        {categoryLabel(
+                          featured.category,
+                          catStats.map((s) => s.category),
+                        )}
+                      </span>
+                    );
+                  })()}
+                  <span className="flex items-center gap-1 text-[12px] text-ink-soft">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="11.5"
+                      height="11.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>
-                      {categoryLabel(featured.category, catStats.map((s) => s.category))}
-                    </span>
-                  );
-                })()}
-                <span className="flex items-center gap-1 text-[12px] text-ink-soft">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0"/><circle cx="12" cy="10" r="3"/></svg>
-                  {featured.source_name}
-                </span>
-              </div>
-              <Link href={`/post/${featured.slug}`} className="mt-4 block">
-                <h3 className="link-sweep inline font-serif-bn text-[26px] leading-[1.32] font-extrabold text-ink md:text-[32px]">
-                  {featured.title_bn}
-                </h3>
-              </Link>
-              <p className="mt-4 text-[14.5px] leading-relaxed text-ink-soft">
-                {featured.summary_bn ?? featured.body_bn}
-              </p>
-              <div className="mt-6 flex flex-wrap items-center gap-4">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    {featured.source_name}
+                  </span>
+                </div>
+                <Link href={`/post/${featured.slug}`} className="mt-4 block">
+                  <h3 className="link-sweep inline font-serif-bn text-[26px] leading-[1.32] font-extrabold text-ink md:text-[32px]">
+                    {featured.title_bn}
+                  </h3>
+                </Link>
+                <p className="mt-4 text-[14.5px] leading-relaxed text-ink-soft">
+                  {featured.summary_bn ?? featured.body_bn}
+                </p>
+                <div className="mt-6 flex flex-wrap items-center gap-4">
+                  <Link
+                    href={`/post/${featured.slug}`}
+                    className="group flex items-center gap-2 bg-ink px-5 py-3 text-[13px] font-bold text-on-accent transition-colors duration-300 hover:bg-alizarin"
+                  >
+                    পুরোটা পড়ুন
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="transition-transform duration-300 group-hover:translate-x-1"
+                    >
+                      <path d="M5 12h14" />
+                      <path d="m12 5 7 7-7 7" />
+                    </svg>
+                  </Link>
+                  <span className="flex items-center gap-1.5 font-mono-x text-[10.5px] text-ink-soft">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="11"
+                      height="11"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M9 3L7 21M17 3l-2 18M4 8h17M3 16h17" />
+                    </svg>
+                    {shortId(featured.id)}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[11.5px] text-ink-soft">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 6v6l4 2" />
+                    </svg>
+                    {bnNum(readMinutesBn(featured.body_bn))} মিনিট
+                  </span>
+                </div>
+
+                <div className="mt-8 border-t-2 border-ink pt-4">
+                  <p className="font-serif-bn text-[16px] font-extrabold">
+                    সর্বাধিক পঠিত
+                  </p>
+                  <ol className="mt-1 divide-y divide-ink/12">
+                    {topPicks.map((a, i) => (
+                      <li key={a.id}>
+                        <Link
+                          href={`/post/${a.slug}`}
+                          className="group flex items-start gap-4 py-3.5"
+                        >
+                          <span className="text-outline-ink mt-0.5 font-serif-bn text-2xl leading-none font-black">
+                            {bnNum(i + 1)}
+                          </span>
+                          <div>
+                            <h4 className="link-sweep inline font-serif-bn text-[14.5px] leading-snug font-bold">
+                              {a.title_bn}
+                            </h4>
+                            <p className="mt-1 flex items-center gap-2 text-[10.5px] text-ink-soft">
+                              {(() => {
+                                const meta = catStats.map((s) => s.category);
+                                return (
+                                  <>
+                                    <span
+                                      className="inline-block h-1.5 w-1.5 rounded-full"
+                                      style={{
+                                        background: categoryTint(
+                                          a.category,
+                                          meta,
+                                        ),
+                                      }}
+                                    />
+                                    {categoryLabel(a.category, meta)} ·{" "}
+                                  </>
+                                );
+                              })()}
+                              {agoBn(a.published_at ?? a.created_at)}
+                            </p>
+                          </div>
+                        </Link>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </Reveal>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ad · lead-sponsor — native row directly under the lead story */}
+      {cfg.show_ads && (
+        <div className="mx-auto max-w-[1400px] px-4 pt-4 md:px-8">
+          <UnifiedAdPlacement
+            slotKey="home_lead_sponsor"
+            variant="leaderboard"
+          />
+        </div>
+      )}
+
+      {cfg.show_rewrite_engine && (
+        <section className="bg-band text-bandline">
+          <div className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
+            <Reveal>
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <p className="font-mono-x text-[10.5px] tracking-[0.26em] text-lime uppercase">
+                    AUTOMATION PIPELINE · EVERY 2 HOURS
+                  </p>
+                  <h2 className="mt-2 font-serif-bn text-[30px] font-black md:text-[42px]">
+                    ফিড থেকে লাইভ — ছয় ধাপ,{" "}
+                    <span className="text-lime">শূন্য ছোঁয়া।</span>
+                  </h2>
+                  {/* `text-bandline/55` measured 3.88:1 on paper — below AA for 13px.
+                  `ink-soft` is the palette's own small-text token (4.61:1). */}
+                  <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-ink-soft">
+                    আলোর বিন্দুটি রাস্তাটা দেখিয়ে দিচ্ছে — প্রতিটি রানে ডেটা ঠিক এই
+                    পথ ধরে এগোয়: সোর্স থেকে শট, শট থেকে হ্যাশ, হ্যাশ পেরোলে লেখা,
+                    লেখা শেষে সোজা প্রোডাকশনে।
+                  </p>
+                </div>
                 <Link
-                  href={`/post/${featured.slug}`}
-                  className="group flex items-center gap-2 bg-ink px-5 py-3 text-[13px] font-bold text-on-accent transition-colors duration-300 hover:bg-alizarin"
+                  href="/system"
+                  className="group flex items-center gap-2 border-b border-lime pb-1 text-[13px] font-bold text-lime"
                 >
-                  পুরোটা পড়ুন
+                  পুরো ব্লুপ্রিন্ট
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="14"
@@ -256,139 +485,54 @@ export default async function HomePage({
                     <path d="m12 5 7 7-7 7" />
                   </svg>
                 </Link>
-                <span className="flex items-center gap-1.5 font-mono-x text-[10.5px] text-ink-soft">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3L7 21M17 3l-2 18M4 8h17M3 16h17"/></svg>
-                  {shortId(featured.id)}
-                </span>
-                <span className="flex items-center gap-1.5 text-[11.5px] text-ink-soft">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                  {bnNum(readMinutesBn(featured.body_bn))} মিনিট
-                </span>
               </div>
-
-              <div className="mt-8 border-t-2 border-ink pt-4">
-                <p className="font-serif-bn text-[16px] font-extrabold">সর্বাধিক পঠিত</p>
-                <ol className="mt-1 divide-y divide-ink/12">
-                  {topPicks.map((a, i) => (
-                    <li key={a.id}>
-                      <Link href={`/post/${a.slug}`} className="group flex items-start gap-4 py-3.5">
-                        <span className="text-outline-ink mt-0.5 font-serif-bn text-2xl leading-none font-black">
-                          {bnNum(i + 1)}
-                        </span>
-                        <div>
-                          <h4 className="link-sweep inline font-serif-bn text-[14.5px] leading-snug font-bold">
-                            {a.title_bn}
-                          </h4>
-                          <p className="mt-1 flex items-center gap-2 text-[10.5px] text-ink-soft">
-                            {(() => {
-                              const meta = catStats.map((s) => s.category);
-                              return (
-                                <>
-                                  <span
-                                    className="inline-block h-1.5 w-1.5 rounded-full"
-                                    style={{ background: categoryTint(a.category, meta) }}
-                                  />
-                                  {categoryLabel(a.category, meta)} ·{" "}
-                                </>
-                              );
-                            })()}
-                            {agoBn(a.published_at ?? a.created_at)}
-                          </p>
-                        </div>
-                      </Link>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-              </Reveal>
+            </Reveal>
+            <div className="mt-12">
+              <PulseFlow />
             </div>
           </div>
         </section>
-      )}
-
-      {/* ad · lead-sponsor — native row directly under the lead story */}
-      {cfg.show_ads && (
-        <div className="mx-auto max-w-[1400px] px-4 pt-4 md:px-8">
-          <UnifiedAdPlacement slotKey="home_lead_sponsor" variant="leaderboard" />
-        </div>
-      )}
-
-      {cfg.show_rewrite_engine && (
-      <section className="bg-band text-bandline">
-        <div className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
-          <Reveal>
-            <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="font-mono-x text-[10.5px] tracking-[0.26em] text-lime uppercase">
-                AUTOMATION PIPELINE · EVERY 2 HOURS
-              </p>
-              <h2 className="mt-2 font-serif-bn text-[30px] font-black md:text-[42px]">
-                ফিড থেকে লাইভ — ছয় ধাপ, <span className="text-lime">শূন্য ছোঁয়া।</span>
-              </h2>
-              {/* `text-bandline/55` measured 3.88:1 on paper — below AA for 13px.
-                  `ink-soft` is the palette's own small-text token (4.61:1). */}
-              <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-ink-soft">
-                আলোর বিন্দুটি রাস্তাটা দেখিয়ে দিচ্ছে — প্রতিটি রানে ডেটা ঠিক এই
-                পথ ধরে এগোয়: সোর্স থেকে শট, শট থেকে হ্যাশ, হ্যাশ পেরোলে লেখা,
-                লেখা শেষে সোজা প্রোডাকশনে।
-              </p>
-            </div>
-            <Link
-              href="/system"
-              className="group flex items-center gap-2 border-b border-lime pb-1 text-[13px] font-bold text-lime"
-            >
-              পুরো ব্লুপ্রিন্ট
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="transition-transform duration-300 group-hover:translate-x-1"
-              >
-                <path d="M5 12h14" />
-                <path d="m12 5 7 7-7 7" />
-              </svg>
-            </Link>
-            </div>
-          </Reveal>
-          <div className="mt-12">
-            <PulseFlow />
-          </div>
-        </div>
-      </section>
       )}
 
       {cfg.show_rewrite_engine && featured && (
         <section className="border-y-2 border-ink bg-ink/12 dark:bg-paper-deep/60">
           <div className="mx-auto max-w-[1400px] px-4 py-16 md:px-8 md:py-20">
             <Reveal>
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="font-mono-x text-[10.5px] tracking-[0.26em] text-alizarin uppercase">
-                  REWRITE ENGINE · BANGLA STYLE GUIDE v2.4
-                </p>
-                <h2 className="mt-2 font-serif-bn text-[32px] font-black md:text-[42px]">
-                  একই ঘটনা — <span className="text-alizarin">দুই জগত।</span>
-                </h2>
-                <p className="mt-3 max-w-xl text-[13.5px] leading-relaxed text-ink-soft">
-                  বামে: ফিডের কাঁচা অবস্থা — হুটোপাটো ক্যাপশন, বানান-ভুল, আধমাথা
-                  তথ্য। ডানে: হৈচৈর ফ্যাক্ট-গেট পার হওয়া পুনর্লিখন। হাতলটি ধরে
-                  টেনে নিজেই বিচার করুন।
-                </p>
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <p className="font-mono-x text-[10.5px] tracking-[0.26em] text-alizarin uppercase">
+                    REWRITE ENGINE · BANGLA STYLE GUIDE v2.4
+                  </p>
+                  <h2 className="mt-2 font-serif-bn text-[32px] font-black md:text-[42px]">
+                    একই ঘটনা — <span className="text-alizarin">দুই জগত।</span>
+                  </h2>
+                  <p className="mt-3 max-w-xl text-[13.5px] leading-relaxed text-ink-soft">
+                    বামে: ফিডের কাঁচা অবস্থা — হুটোপাটো ক্যাপশন, বানান-ভুল, আধমাথা
+                    তথ্য। ডানে: হৈচৈর ফ্যাক্ট-গেট পার হওয়া পুনর্লিখন। হাতলটি ধরে টেনে
+                    নিজেই বিচার করুন।
+                  </p>
+                </div>
+                <Link
+                  href={`/post/${featured.slug}`}
+                  className="link-sweep flex items-center gap-2 text-[13px] font-bold text-ink"
+                >
+                  সম্পূর্ণ প্রতিবেদন
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M5 12h14" />
+                    <path d="m12 5 7 7-7 7" />
+                  </svg>
+                </Link>
               </div>
-              <Link
-                href={`/post/${featured.slug}`}
-                className="link-sweep flex items-center gap-2 text-[13px] font-bold text-ink"
-              >
-                সম্পূর্ণ প্রতিবেদন
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-              </Link>
-            </div>
             </Reveal>
             <div>
               <RewriteSlider
@@ -403,31 +547,44 @@ export default async function HomePage({
         </section>
       )}
 
-      <section id="latest" className="mx-auto max-w-[1400px] scroll-mt-24 px-4 py-16 md:px-8 md:py-20">
+      <section
+        id="latest"
+        className="mx-auto max-w-[1400px] scroll-mt-24 px-4 py-16 md:px-8 md:py-20"
+      >
         <Reveal>
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="font-mono-x text-[10.5px] tracking-[0.26em] text-alizarin uppercase">
-              ▚ TODAY'S COLLECTION · AUTO-CURATED
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="font-mono-x text-[10.5px] tracking-[0.26em] text-alizarin uppercase">
+                ▚ TODAY'S COLLECTION · AUTO-CURATED
+              </p>
+              <h2 className="mt-2 font-serif-bn text-[34px] font-black text-ink md:text-[44px]">
+                আজকের সংগ্রহ
+              </h2>
+            </div>
+            <p className="max-w-sm text-[12.5px] leading-relaxed text-ink-soft">
+              প্রতিটি কার্ডের হ্যাশ স্ট্যাম্প দেখুন — এটাই এর জন্মসনদ। একই খবর দুইবার
+              এখানে জায়গা পায় না; পায় শুধু যাচাই করা, পুনর্লিখিত সংস্করণ।
             </p>
-            <h2 className="mt-2 font-serif-bn text-[34px] font-black text-ink md:text-[44px]">
-              আজকের সংগ্রহ
-            </h2>
           </div>
-          <p className="max-w-sm text-[12.5px] leading-relaxed text-ink-soft">
-            প্রতিটি কার্ডের হ্যাশ স্ট্যাম্প দেখুন — এটাই এর জন্মসনদ। একই খবর দুইবার
-            এখানে জায়গা পায় না; পায় শুধু যাচাই করা, পুনর্লিখিত সংস্করণ।
-          </p>
-        </div>
         </Reveal>
-        <ArticleGrid posts={rest} ads={cfg.show_ads} adInfeedHtml={settings.ad_infeed_html} adDeliveryMode={infeedSlot?.deliveryMode ?? "both"} categories={catRows} />
+        <ArticleGrid
+          posts={rest}
+          ads={cfg.show_ads}
+          adInfeedHtml={settings.ad_infeed_html}
+          adDeliveryMode={infeedSlot?.deliveryMode ?? "both"}
+          categories={catRows}
+        />
         <Pagination page={page} pageCount={pageCount} base="/" />
       </section>
 
       {cfg.show_ads && (
         <>
           <div className="mx-auto max-w-[1400px] px-4 pb-12 md:px-8">
-            <UnifiedAdPlacement slotKey="home_strip" variant="strip" html={settings.ad_strip_html} />
+            <UnifiedAdPlacement
+              slotKey="home_strip"
+              variant="strip"
+              html={settings.ad_strip_html}
+            />
           </div>
         </>
       )}

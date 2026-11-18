@@ -947,6 +947,65 @@ crosshair, 60 rim ticks) with real queue-derived blips; a single `desk bootstrap
 spawn replaces 6+ runner calls on refresh; Ads/Settings save buttons show
 spinner → result toast with elapsed ms.
 
+## The panel owns its ink, and apply means apply (v1.1.36)
+
+**Twelve templates, and every one of them readable under the pointer.** The
+sidebar had been "themed" by swapping CSS variables, but the row's colour was
+still a Tailwind utility (`text-white/55`, `hover:text-white`) — invisible on a
+light template in the dark console, and outranked by the console's light-theme
+utility override on the obsidian panel, which painted dark-brown text on dark
+green. The nav markup now carries no colour utilities at all; `.admin-sidebar`
+owns its ink, and each of the twelve templates declares `--sb-fg`, `--sb-mute`
+and its active pair. `scripts/sidebar-contrast.test.ts` parses both the web and
+the desktop stylesheets and asserts 4.5:1 for every pair a row actually shows —
+worst recorded 5.46:1. Two specific fixes worth naming: editorial's hover was
+the accent (3.3:1 on cream, so the words vanished under the pointer — it now
+keeps the ink and marks itself with an underlined accent rule), and a "current
+page" row in the dark editorial theme inherited a light-theme value and hit
+1.11:1.
+
+**The dark-chips bug, and it was everywhere.** Inside the console, `bg-ink` is
+deliberately pinned to a dark chip in *both* themes, but the label on those
+chips was `text-paper` — which is #f3eee1 in light mode and #0a0c10 in dark
+mode. So the active tab ("আমার ডিভাইস"), the active filter ("সব"), and buttons
+like "টোকেন তৈরি করুন" and "পোল সংরক্ষণ করুন" all became dark text on a dark
+pill the moment the operator switched to the dark console. The pair is now
+defined exactly once in `globals.css` (`color: #f2efe6`) instead of re-argued
+per component.
+
+**Providers, honed to the label you can actually read.** The FREE badge flipped
+its own contrast with the theme (`bg-lime text-ink`, 3.14:1 light / 1.03:1 dark
+— invisible); it now has a fixed two-end pair via `.badge-free`. Muted labels at
+30–40% white on dark cards measured 2.7:1 and were raised to 55–60%. And the
+**desktop** app mirrored the same mistake — its templates swapped hover and
+active colours but the words still used the *window's* text token, so every dark
+panel showed near-black labels in the light theme. Each desktop template now
+declares `--side-fg` / `--side-mute` and the nav reads them.
+
+**Settings → Site was one scroll; now it is four views.** The tab held every
+section in one column, so the save button was a scroll away from the edit and
+the hero preview box was escaping its section. Site splits into পরিচয় /
+ব্র্যান্ড ও মিডিয়া / হিরো / সেটআপ ও অপারেশন (same sections, grouped), the
+hero picker cells are div-with-button-semantics (the old `<button>` wrapped
+panels that themselves contain links and tabs, which React refuses to hydrate —
+that was the visible console error), and every preview is clipped by `contain:
+paint` and a fixed aspect so no template paints past its own card.
+
+**Apply is no longer "refresh by hand."** `SettingsConsole` re-renders the
+current route after a successful save (`router.refresh()`), so the new sidebar
+template appears in place and the hero's server-side defaults update without a
+manual reload. The public side already revalidated `/` on save.
+
+**The hero panels, ported from the prototype.** The mockup's twelve hero
+instruments are now the real home-page right column (driven by the same
+`hero_scene_style` setting), and they are bound to real rows: the lead stories,
+the collected/published/duplicate counts, the event stream and the source
+switches all come from the database — a panel with nothing to show says so rather
+than drawing a decorative number. Links go to `/post/<slug>`, timestamps are
+absolute clock times (a relative string differs between the server and client
+passes and trips hydration), and all motion is CSS that switches off under
+`prefers-reduced-motion`.
+
 ## One rail, one icon set, one honest fleet view (v1.1.35)
 
 **The sidebar is a rail again.** The console used to draw its navigation as a card

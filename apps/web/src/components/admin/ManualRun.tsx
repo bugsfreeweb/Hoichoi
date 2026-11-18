@@ -178,7 +178,7 @@ export function ManualRun({ initialRuns }: { initialRuns: RecentPipelineRun[] })
               style={{ animation: "hc-run-shimmer 1.4s linear infinite" }}
             />
           </div>
-          <p className="mt-2 font-mono-x text-[10px] text-white/45">শুরু: {bnTime(latest?.started_at)}</p>
+          <p className="mt-2 font-mono-x text-[10px] text-white/60">শুরু: {bnTime(latest?.started_at)}</p>
         </div>
       )}
 

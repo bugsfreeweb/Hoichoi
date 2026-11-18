@@ -40,7 +40,7 @@ const BADGE: Record<
 function SecretCard({ s, unknown = false }: { s: SecretView; unknown?: boolean }) {
   const badge = BADGE[s.requirement];
   const dotCls = unknown
-    ? "bg-white/8 text-white/45"
+    ? "bg-white/8 text-white/60"
     : s.present
       ? "bg-lime/20 text-lime"
       : s.requirement === "required"
@@ -77,7 +77,7 @@ function SecretCard({ s, unknown = false }: { s: SecretView; unknown?: boolean }
           </span>
           <span className="mt-0.5 block text-[12.5px] text-white/55">{s.labelBn}</span>
         </span>
-        <span className="shrink-0 font-mono-x text-[11px] text-white/30 group-open:rotate-90">
+        <span className="shrink-0 font-mono-x text-[11px] text-white/55 group-open:rotate-90">
           ▸
         </span>
       </summary>
@@ -214,7 +214,7 @@ export function SetupGuide({
           <div className="shrink-0 text-right">
             <p className="font-mono-x text-[34px] leading-none font-black text-white">
               {dbUnavailable ? "—" : presentCount}
-              {!dbUnavailable && <span className="text-white/30">/{secrets.length}</span>}
+              {!dbUnavailable && <span className="text-white/55">/{secrets.length}</span>}
             </p>
             <p className="font-mono-x text-[9.5px] tracking-[0.18em] text-white/70 uppercase">
               secrets ready
@@ -238,7 +238,7 @@ export function SetupGuide({
               </span>
               <span className="text-white/55">সর্বশেষ পাইপলাইন রান</span>
               {lastRun.started_at && (
-                <span className="font-mono-x text-[11px] text-white/35">
+                <span className="font-mono-x text-[11px] text-white/55">
                   {new Date(lastRun.started_at).toLocaleString("bn-BD")}
                 </span>
               )}
@@ -250,7 +250,7 @@ export function SetupGuide({
               </p>
             )}
             {lastRun.error && !preflightBlocked && (
-              <p className="mt-2 border-l-2 border-white/20 pl-3 font-mono-x text-[11.5px] break-all text-white/45">
+              <p className="mt-2 border-l-2 border-white/20 pl-3 font-mono-x text-[11.5px] break-all text-white/60">
                 {lastRun.error}
               </p>
             )}

@@ -56,6 +56,70 @@
   color: var(--sb-accent);
 }
 
+/* ── The surface owns its own ink ─────────────────────────────────────────
+   Everything inside the rail draws its colour from the template's tokens, not
+   from a Tailwind utility. That matters twice: a utility such as white-with-
+   alpha is invisible on a light template (ledger, cards, editorial) once the
+   page is in dark mode, and the console's light-theme utility override in
+   `globals.css` then wins by specificity over the token rule and paints
+   dark-brown text on the obsidian panel. One owner, one cascade. */
+.admin-sidebar .adm-nav-link.is-active {
+  background: var(--sb-active-bg);
+  color: var(--sb-active-fg);
+}
+.admin-sidebar .adm-nav-head {
+  border-color: var(--sb-line);
+}
+.admin-sidebar .adm-nav-kicker,
+.admin-sidebar .adm-nav-empty,
+.admin-sidebar .adm-nav-search-icon {
+  color: var(--sb-mute);
+}
+.admin-sidebar .adm-nav-rule {
+  border-color: var(--sb-line);
+}
+.admin-sidebar .adm-nav-marker {
+  background: var(--sb-accent);
+}
+.admin-sidebar .adm-nav-identity {
+  color: var(--sb-fg);
+}
+.admin-sidebar .adm-nav-toggle {
+  color: var(--sb-mute);
+}
+.admin-sidebar .adm-nav-toggle:hover {
+  background: var(--sb-hover);
+  color: var(--sb-fg);
+}
+.admin-sidebar .adm-nav-search {
+  border-color: var(--sb-line);
+  background: color-mix(in srgb, var(--sb-fg) 8%, transparent);
+  color: var(--sb-fg);
+}
+.admin-sidebar .adm-nav-search::placeholder {
+  color: var(--sb-mute);
+}
+.admin-sidebar .adm-nav-search:focus {
+  border-color: var(--sb-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sb-accent) 26%, transparent);
+}
+/* A template without a hover wash (editorial is a ledger, not a card grid) still
+   has to answer the pointer and the keyboard. */
+.admin-sidebar[data-sidebar-style="editorial"] .adm-nav-link:hover {
+  /* The accent (#df6038 on cream) is 3.3:1 — an ok colour for a rule, not for
+     a word. The row text stays ink and gains the underline. */
+  color: var(--sb-fg);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--sb-accent);
+}
+.admin-sidebar .adm-nav-link:focus-visible {
+  outline: 2px solid var(--sb-accent);
+  outline-offset: 1px;
+}
+
+
 /* ── 01 · Classic ────────────────────────────────────────────────────────── */
 .admin-sidebar[data-sidebar-style="classic"] {
   --sb-bg: #fdfefa;
@@ -72,7 +136,7 @@
   --sb-bg: #0b1220;
   --sb-fg: #e2e8f0;
   --sb-mute: #94a3b8;
-  --sb-hover: #0f172a;
+  --sb-hover: #182742;
   --sb-active-bg: rgba(231, 102, 66, 0.16);
   --sb-active-fg: #ffb49b;
   --sb-line: #1e293b;
@@ -80,7 +144,11 @@
 
 /* ── 02 · Obsidian Glass (default) ───────────────────────────────────────── */
 .admin-sidebar[data-sidebar-style="obsidian"] {
+  /* A solid under-colour, not only the gradient: a measurement, a print, or a
+     browser that drops the gradient still gets the obsidian panel instead of
+     whatever is behind it. */
   --sb-bg: radial-gradient(ellipse at 10% 0, #24392e, transparent 52%), linear-gradient(180deg, #111b15 0%, #0c140f 100%);
+  background-color: #0c140f;
   --sb-fg: #eef3ea;
   --sb-mute: #b0c3b6;
   --sb-hover: #22352a;
@@ -151,7 +219,9 @@
 .admin-sidebar[data-sidebar-style="editorial"] {
   --sb-bg: #f7f7f2;
   --sb-fg: #17231b;
-  --sb-mute: #6d766e;
+  /* 6.0:1 on the paper, not 4.37:1 — the ledger's small caps are read at 13.5px
+     and the row text sits on ruled lines, which costs a little legibility. */
+  --sb-mute: #5f6862;
   --sb-hover: transparent;
   --sb-active-bg: transparent;
   --sb-active-fg: #17231b;
@@ -175,7 +245,13 @@
 :root[data-theme="dark"] .admin-sidebar[data-sidebar-style="editorial"] {
   --sb-bg: #14161a;
   --sb-fg: #f2f0e8;
-  --sb-mute: #a9a89f;
+  --sb-mute: #b3b2a8;
+  /* The ledger keeps its undecorated row, but the current page still needs a
+     wash in the dark: inheriting the light `--sb-active-fg` painted #17231b on
+     #14161a (1.1:1 — the page name was there and unreadable). */
+  --sb-hover: rgba(255, 255, 255, 0.06);
+  --sb-active-bg: #24272c;
+  --sb-active-fg: #f7f5ec;
   --sb-line: #3a3d36;
   border-right-color: #5b5e53;
 }
@@ -257,6 +333,7 @@
 /* ── 09 · Aurora Gradient ────────────────────────────────────────────────── */
 .admin-sidebar[data-sidebar-style="aurora"] {
   --sb-bg: linear-gradient(165deg, #14302a 0%, #1f1c3f 55%, #111a2b 100%);
+  background-color: #111a2b;
   --sb-fg: #eafff7;
   --sb-mute: #8fb9ab;
   --sb-hover: rgba(255, 255, 255, 0.08);
@@ -305,7 +382,9 @@
 .admin-sidebar[data-sidebar-style="cards"] {
   --sb-bg: #f1f3ee;
   --sb-fg: #1f2d24;
-  --sb-mute: #667a6c;
+  /* 4.12:1 on #f1f3ee was under the AA floor for 12.5px rows; the hue is
+     untouched, only the lightness moves. */
+  --sb-mute: #5b6d60;
   --sb-hover: #e6ebe2;
   --sb-active-bg: #dfe9dd;
   --sb-active-fg: #2f5a3d;
