@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+// The frame vocabulary, not the renderer: this is a client component and
+// `@hoichoi/poster` carries sharp and playwright.
+import { POSTER_LAYOUTS, POSTER_THEMES } from "@hoichoi/shared-types";
 
 interface ImageProvider {
   id: string;
@@ -58,6 +61,15 @@ export function PostImageGenerator({
   const [style, setStyle] = useState("");
   const [quality, setQuality] = useState("");
   const [negativePrompt, setNegativePrompt] = useState("");
+  /**
+   * The plate's frame, when the operator wants to overrule the desk.
+   *
+   * Empty is the default and the honest one: the layout is a function of the desk
+   * (a breaking story is a banner), so this is the escape hatch for the story
+   * where that reads wrong — a profile that would look like a wire bulletin.
+   */
+  const [layout, setLayout] = useState("");
+  const [theme, setTheme] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -121,6 +133,8 @@ export function PostImageGenerator({
           style: style || undefined,
           quality: quality || undefined,
           negativePrompt: negativePrompt || undefined,
+          layout: layout || undefined,
+          theme: theme || undefined,
           attach: true,
         }),
       });
@@ -315,6 +329,30 @@ export function PostImageGenerator({
             {(opts?.qualities ?? []).map((q) => (
               <option key={q} value={q}>
                 {q}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">পোস্টার লেআউট</span>
+          <select className={field} value={layout} onChange={(e) => setLayout(e.target.value)}>
+            <option value="">— ডেস্ক অনুযায়ী —</option>
+            {POSTER_LAYOUTS.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">পোস্টার থিম</span>
+          <select className={field} value={theme} onChange={(e) => setTheme(e.target.value)}>
+            <option value="">— ডেস্ক অনুযায়ী —</option>
+            {POSTER_THEMES.map((t) => (
+              <option key={t} value={t}>
+                {t}
               </option>
             ))}
           </select>

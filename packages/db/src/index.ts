@@ -30,6 +30,7 @@ export * from "./mfa";
 export * from "./desk-devices";
 export * from "./ad-policy";
 export * from "./ai-runs";
+export * from "./ai-provider-status";
 export * from "./provider-health";
 export * from "./media-reconcile";
 export * from "./media-dashboard";

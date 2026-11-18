@@ -13,7 +13,20 @@ import {
 } from "@hoichoi/db";
 import { uploadBufferRemote, writeGeneratedMedia } from "@hoichoi/db/storage";
 import { buildImageBrief, EDITORIAL_IMAGE_NEGATIVE, extensionForMime, generateImage, imageSizeFor, listImageProviders } from "@hoichoi/llm";
-import { planPoster, renderEditorialPoster, renderPoster, topicCues } from "@hoichoi/poster";
+import {
+  planPoster,
+  renderEditorialPoster,
+  renderPoster,
+  topicCues,
+} from "@hoichoi/poster";
+import {
+  POSTER_LAYOUTS,
+  POSTER_THEMES,
+  isPosterLayout,
+  isPosterTheme,
+  type PosterLayout,
+  type PosterTheme,
+} from "@hoichoi/shared-types";
 import { forbidden, requireApiRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +64,32 @@ interface GenerateOptions {
   style: string;
   quality: string;
   negativePrompt: string;
+  /** Admin overrides. Empty means the desk decides (see `planPoster`). */
+  layout: string;
+  theme: string;
+}
+
+/**
+ * A layout/theme the operator asked for, or empty for "the desk decides".
+ *
+ * Only values the poster renderer actually has are accepted. Checking against
+ * `@hoichoi/poster`'s own list (rather than trusting a string) is what keeps the
+ * console's picker and the renderer from drifting apart.
+ */
+class BadOverride extends Error {}
+function posterLayoutOverride(v: unknown): string {
+  if (v === undefined || v === null || v === "") return "";
+  if (!isPosterLayout(v)) {
+    throw new BadOverride(`অজানা পোস্টার লেআউট — ${POSTER_LAYOUTS.join(" / ")} এর একটি দিন।`);
+  }
+  return v;
+}
+function posterThemeOverride(v: unknown): string {
+  if (v === undefined || v === null || v === "") return "";
+  if (!isPosterTheme(v)) {
+    throw new BadOverride(`অজানা পোস্টার থিম — ${POSTER_THEMES.join(" / ")} এর একটি দিন।`);
+  }
+  return v;
 }
 
 /**
@@ -76,6 +115,8 @@ async function dispatchToRunner(postId: string, opts: GenerateOptions): Promise<
         style: opts.style || undefined,
         quality: opts.quality || undefined,
         negative: opts.negativePrompt || undefined,
+        layout: opts.layout || undefined,
+        theme: opts.theme || undefined,
       },
     }),
     signal: AbortSignal.timeout(15_000),
@@ -211,7 +252,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: "প্রম্পট প্রয়োজন (অথবা useTitle পাঠান)" }, { status: 400 });
   }
 
-  const opts: GenerateOptions = {
+  let opts: GenerateOptions;
+  try {
+    opts = {
     prompt,
     providerId: str(body?.providerId),
     // A brief written for 16:9 is padded to a square by most hosts unless the
@@ -223,7 +266,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     // Always send the editorial negative prompt unless the operator typed one:
     // without it some providers still render lettering or a corner watermark.
     negativePrompt: str(body?.negativePrompt) || EDITORIAL_IMAGE_NEGATIVE,
+    // A hand-picked frame is validated here, not in the workflow: an unknown
+    // value must be refused while the caller is still listening, rather than
+    // silently replaced by the desk default an hour later in a runner log.
+    layout: posterLayoutOverride(body?.layout),
+    theme: posterThemeOverride(body?.theme),
   };
+  } catch (err) {
+    if (err instanceof BadOverride) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+    throw err;
+  }
   const attach = body ? bool(body.attach) || body.attach === undefined : true;
 
   // Hosted deployments hand generation to the Actions runner: it is the only
@@ -314,6 +368,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       dateText: post.published_at ? banglaDate(new Date(post.published_at)) : banglaDate(),
       seed: post.slug ?? post.id,
       accent: deskAccent(post.category),
+      layout: (opts.layout || null) as PosterLayout | null,
+      theme: (opts.theme || null) as PosterTheme | null,
       format: "webp",
     });
     buf = editorial.bytes;

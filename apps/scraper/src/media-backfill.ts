@@ -22,6 +22,7 @@
 import { findRepoRoot, getClient, nowIso, updatePost } from "@hoichoi/db";
 import { imageSizeFor, composeImagePrompt, generateImage as llmGenerateImage } from "@hoichoi/llm";
 import { POSTER_FRAME } from "@hoichoi/poster";
+import type { PosterLayout, PosterTheme } from "@hoichoi/poster";
 import { composeStoryPlate } from "./plate";
 import { downloadMedia, isVideoUrl, localMediaPath, mediaRoot, processImage, randomMediaName } from "./media";
 import { scrapePostUrls } from "./facebook";
@@ -527,6 +528,13 @@ export async function generateManualImage(opts: {
   plateTitle?: string;
   plateCategory?: string | null;
   plateSource?: string | null;
+  /**
+   * Admin overrides for the frame. Null means "the desk decides", which is what
+   * the automatic path uses; a value here is a human having looked at this story
+   * and wanting a different shape.
+   */
+  layout?: PosterLayout | null;
+  theme?: PosterTheme | null;
   log?: (msg: string) => void;
 }): Promise<ManualImageResult> {
   const log = opts.log ?? (() => undefined);
@@ -590,6 +598,8 @@ export async function generateManualImage(opts: {
     title: opts.plateTitle ?? facts.title ?? opts.prompt.slice(0, 160),
     category: opts.plateCategory ?? facts.category ?? null,
     source: opts.plateSource ?? facts.source ?? null,
+    layout: opts.layout ?? null,
+    theme: opts.theme ?? null,
   });
   await processImage(plate, rel, { maxWidthPx: POSTER_FRAME.width });
   mirrorMediaFile(rel);

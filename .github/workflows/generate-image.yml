@@ -20,6 +20,16 @@ on:
         description: What to draw (defaults to the post title + summary)
         required: false
         default: ""
+      # Admin overrides for the plate's frame. Empty means "the desk decides",
+      # which is the same default the automatic pipeline uses.
+      layout:
+        description: Poster layout (split-left | split-right | editorial-card | breaking-banner)
+        required: false
+        default: ""
+      theme:
+        description: Poster theme (dark | light-paper)
+        required: false
+        default: ""
 
 # Shares the scrape's concurrency group on purpose: both jobs push media commits
 # to the same branch from different runners, so they must not interleave.
@@ -91,6 +101,8 @@ jobs:
           IMG_STYLE: ${{ github.event.client_payload.style || '' }}
           IMG_QUALITY: ${{ github.event.client_payload.quality || '' }}
           IMG_NEGATIVE: ${{ github.event.client_payload.negative || '' }}
+          IMG_LAYOUT: ${{ github.event.client_payload.layout || '' }}
+          IMG_THEME: ${{ github.event.client_payload.theme || '' }}
         # Every option travels through an env var so a multi-line Bangla prompt
         # never has to survive shell quoting inside `run:`.
         run: |
@@ -106,6 +118,8 @@ jobs:
           [ -n "$IMG_STYLE" ] && args+=( --style "$IMG_STYLE" )
           [ -n "$IMG_QUALITY" ] && args+=( --quality "$IMG_QUALITY" )
           [ -n "$IMG_NEGATIVE" ] && args+=( --negative "$IMG_NEGATIVE" )
+          [ -n "$IMG_LAYOUT" ] && args+=( --layout "$IMG_LAYOUT" )
+          [ -n "$IMG_THEME" ] && args+=( --theme "$IMG_THEME" )
           set +e
           pnpm --filter @hoichoi/scraper exec tsx src/cli.ts media generate "${args[@]}"
           code=$?

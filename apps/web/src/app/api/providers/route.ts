@@ -4,6 +4,7 @@ import {
   PROCESSOR_ENV_DEFAULTS,
   PROVIDER_META,
   composeCloudflareBaseUrl,
+  normalizeCloudflareModel,
   validateProviderSetup,
   type ProviderKey,
 } from "@hoichoi/shared-types";
@@ -71,11 +72,30 @@ export async function POST(req: NextRequest) {
     }
     baseUrl = composed;
   }
+  /**
+   * The model id is composed the same way the URL is. Workers AI routes are
+   * `…/ai/run/@cf/<vendor>/<model>`; a row saved as `flux-1-schnell` produces
+   * `400 No route for that URI`, which looks like a broken account. The known
+   * short names are expanded here, so what is stored is routable.
+   */
+  const modelName =
+    body.providerKey === "cloudflare" ? normalizeCloudflareModel(body.modelName) : body.modelName.trim();
+  if (body.providerKey === "cloudflare" && !modelName) {
+    return NextResponse.json(
+      {
+        error:
+          `Cloudflare-এ “${body.modelName}” নামে কোনো মডেল নেই — পুরো আইডি দিন, যেমন ` +
+          `@cf/black-forest-labs/flux-1-schnell।`,
+      },
+      { status: 400 },
+    );
+  }
   const setup = validateProviderSetup({
     providerKey: body.providerKey,
     accountId: body.accountId,
     apiToken: body.api_key,
     baseUrl,
+    model: modelName,
   });
   if (!setup.ok) return NextResponse.json({ error: setup.errorBn }, { status: 400 });
   if (body.providerKey === "custom" && !baseUrl) {
@@ -97,7 +117,7 @@ export async function POST(req: NextRequest) {
         body.providerKey,
         body.displayName?.trim() || body.providerKey,
         baseUrl || null,
-        body.modelName,
+        modelName,
         body.apiKeyEnvVar?.trim() || PROCESSOR_ENV_DEFAULTS[body.providerKey],
         body.api_key?.trim() || null,
         Number(body.priority ?? 100),

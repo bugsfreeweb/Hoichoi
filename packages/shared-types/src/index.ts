@@ -1,5 +1,6 @@
 export * from "./provider-catalog";
 export * from "./sidebar-templates";
+export * from "./poster-frames";
 import { DEFAULT_SIDEBAR_STYLE } from "./sidebar-templates";
 import type { SidebarStyleId } from "./sidebar-templates";
 /**

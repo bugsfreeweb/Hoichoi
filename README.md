@@ -947,6 +947,53 @@ crosshair, 60 rim ticks) with real queue-derived blips; a single `desk bootstrap
 spawn replaces 6+ runner calls on refresh; Ads/Settings save buttons show
 spinner → result toast with elapsed ms.
 
+## One rail, one icon set, one honest fleet view (v1.1.35)
+
+**The sidebar is a rail again.** The console used to draw its navigation as a card
+sitting under a header, so the list stopped 140 px short of the window, the
+masthead appeared twice, and the whole left edge read as a boxed-in panel. It is
+now a full-height `<aside>` flush to the left edge with the header, working area
+and footer sharing the column beside it; the drawer opener and the rail toggle are
+the same three-line gesture. The masthead and the build stamp live in that top bar
+and the footer, and the "keys are encrypted" claim moved to `/admin/security`
+where it belongs. Two CSS facts had to be written down rather than remembered:
+`.admin-console` is a *column* (so the sticky footer works) and the shell is the
+one element that is a row — a stale column put the rail above the page — and the
+sidebar's `max-height` still subtracted a header it is no longer under.
+
+**One icon vocabulary, three surfaces.** Navigation glyphs were emoji: the same
+row was a colour photograph on Windows, a flat blob on Android and an outline
+elsewhere, and none of it responded to the theme. The desk had the opposite
+problem — hand-drawn SVGs at four different stroke weights, one of which was
+literally the wrong icon. `packages/icons` is now the only source: a
+`NAV_ICONS` catalogue, one `NavIcon` component that decides size and stroke
+weight (1.75) once, `aria-hidden` so an icon never joins the accessibility tree
+twice, and a motion layer that is a transform and switches fully off under
+`prefers-reduced-motion`. The desk's tab strip draws from the same catalogue, so
+"traffic" is the same shape in both apps.
+
+**Provider status for the fleet, not the page.** The tiles and the health panel
+were computed from the twenty rows on screen, so the headline numbers moved when
+an operator turned the page, and a dead provider on page two was invisible.
+`listAiProviderStatus()` now reads every row once and reports what was *measured*:
+success rate, p50/p95 latency and a 24-hour bar chart from `ai_task_runs`, the
+resolver's own `last_ok_at / last_error_at / error_count`, and the declared
+`rate_limit_rpm` compared with the calls the ledger recorded in the last minute
+(remaining = ceiling − actual; "ঘোষিত নয়" when no ceiling is declared). Each
+provider carries a verdict — জীবিত / ব্যর্থ হচ্ছে / কল হয়নি / বন্ধ — as a green or
+red strip, glow and tinted pill, with the reason in Bangla underneath, and TEXT
+and IMAGE are drawn in their own groups. A provider that has never been called
+says so instead of showing a reassuring 100% over an empty sample, and an hour
+with no calls is a faint baseline rather than a healthy-looking bar.
+
+**A Cloudflare model is an id, not a word.** A row saved as `flux-1-schnell`
+produced `400 No route for that URI` — a message that reads like a broken account
+and is neither. Workers AI routes are `…/ai/run/@cf/<vendor>/<model>`, so the
+short names are mapped (`normalizeCloudflareModel`), the API refuses to store a
+name it cannot route, the console's pre-flight names the model before spending a
+round trip, and the call itself expands what an existing row already stores — so
+the broken row starts working without anyone editing it.
+
 ## Recovery, parity and pipeline honesty (v1.1.23)
 
 **Advertiser entry point + global socials.** `/portal/login` is now reachable

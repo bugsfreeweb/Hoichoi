@@ -5,6 +5,8 @@ import { ProviderRow } from "@/components/admin/ProviderRow";
 import { ProviderForm } from "@/components/admin/ProviderForm";
 import { Paginator } from "@/components/admin/Paginator";
 import { ProviderHealthTable } from "@/components/admin/ProviderHealthTable";
+import { ProviderStatusBoard } from "@/components/admin/ProviderStatusBoard";
+import { listAiProviderStatus } from "@hoichoi/db";
 import { PROVIDERS_GUIDE } from "@/lib/provider-catalog";
 import { ProviderAddPanel } from "@/components/admin/ProviderAddPanel";
 
@@ -54,14 +56,24 @@ export default async function AdminProvidersPage({
     .map((r) => r)
     .sort((a, b) => (TIERS[a.provider_key]?.order ?? 9) - (TIERS[b.provider_key]?.order ?? 9));
 
-  const active = providers.filter((p) => p.is_active);
+  /**
+   * The tiles and the status board describe the *fleet*, not the page in view.
+   * They used to be computed from the twenty rows on screen, so the headline
+   * numbers moved when an operator turned the page — and a dead provider that sat
+   * on page two was never counted at all.
+   */
+  const fleet = await listAiProviderStatus().catch(() => []);
+
+  const active = fleet.filter((p) => p.isActive);
   const text = active.filter((p) => p.purpose === "text");
   const image = active.filter((p) => p.purpose === "image");
-  const withKey = active.filter(
-    (p) => Boolean(p.api_key) || Boolean(p.api_key_env_var && process.env[p.api_key_env_var]),
-  );
-  const imageReady = image.filter(
-    (p) => Boolean(p.api_key) || Boolean(p.api_key_env_var && process.env[p.api_key_env_var]),
+  const keyPresent = (p: { hasStoredKey: boolean; keyEnvVar: string }) =>
+    p.hasStoredKey || Boolean(p.keyEnvVar && process.env[p.keyEnvVar]);
+  const withKey = active.filter(keyPresent);
+  const imageReady = image.filter(keyPresent);
+  /** env names that are actually set here — never the values. */
+  const envKeys = Object.keys(process.env).filter(
+    (k) => k.endsWith("_API_KEY") || k === "CLOUDFLARE_API_TOKEN",
   );
 
   /**
@@ -71,7 +83,7 @@ export default async function AdminProvidersPage({
    */
   const imageLine =
     imageReady.length > 0
-      ? `ছবি এই মুহূর্তে ${imageReady.map((p) => p.display_name).join(", ")} থেকে আসবে।`
+      ? `ছবি এই মুহূর্তে ${imageReady.map((p) => p.name).join(", ")} থেকে আসবে।`
       : image.length === 0
         ? "ছবি তৈরির জন্য কোনো সক্রিয় প্রোভাইডার নেই — নিচের তালিকা থেকে একটি চালু করুন।"
         : "ছবির রো আছে কিন্তু কোনোটিতে কী নেই — কী বসান, নাহলে ছবি তৈরি হবে না।";
@@ -165,12 +177,16 @@ export default async function AdminProvidersPage({
         </div>
       </div>
 
+      <div className="mt-4">
+        <ProviderStatusBoard envKeys={envKeys} />
+      </div>
+
       <Card className="mt-4">
         <CardHead
           emoji="🩺"
-          title="প্রোভাইডার স্বাস্থ্য"
-          kicker="LAST PROBE PER ROW · NEVER EMPTIES THE CHAIN"
-          note="একটি রো টানা ব্যর্থ হলে সাময়িকভাবে পিছিয়ে দেওয়া হয়, মুছে ফেলা হয় না।"
+          title="মিডিয়া আপলোড স্বাস্থ্য"
+          kicker="MEDIA TARGETS · LAST PROBE PER TARGET"
+          note="এটি ছবি/ভিডিও ফাইল কোথায় রাখা হচ্ছে তার হিসাব — AI মডেল নয়। উপরের বোর্ডটি AI প্রোভাইডারের।"
         />
         <div className="p-3">
           <ProviderHealthTable />

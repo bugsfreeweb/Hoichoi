@@ -340,3 +340,65 @@
     transition: none !important;
   }
 }
+
+/* ── Scrolling behaviour ───────────────────────────────────────────────────
+   Twenty-one rows in four groups. On a tall window they all fit and no
+   scrollbar exists at all (`overflow-y: auto` only draws one when the content
+   is taller than the box). On a laptop, a zoomed page or a short window they do
+   not, and the honest answer there is a *thin, themed* scrollbar rather than a
+   clipped list: a navigation that silently hides its last four screens is worse
+   than one that admits it scrolls.
+
+   The bar is drawn from the template's own tokens, so it is pale in a light
+   template and dark in a dark one, and it never appears as a bright OS stripe
+   across a dark panel. */
+.admin-sidebar .adm-nav {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sb-line) transparent;
+}
+.admin-sidebar .adm-nav::-webkit-scrollbar {
+  width: 6px;
+}
+.admin-sidebar .adm-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.admin-sidebar .adm-nav::-webkit-scrollbar-thumb {
+  background: var(--sb-line);
+  border-radius: 999px;
+}
+.admin-sidebar .adm-nav::-webkit-scrollbar-thumb:hover {
+  background: var(--sb-mute);
+}
+
+/* The icon rail never needs a bar — it is 70 px of glyphs and the keyboard, the
+   tooltips and the shortcut numbers all still work without scrolling it. */
+.admin-sidebar.adm-collapsed .adm-nav {
+  scrollbar-width: none;
+}
+.admin-sidebar.adm-collapsed .adm-nav::-webkit-scrollbar {
+  width: 0;
+}
+
+/* The toggle is a control, so it moves like one and dims when the drawer is
+   open instead of vanishing (a vanished control is a control you hunt for). */
+.admin-sidebar .adm-nav-toggle {
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms cubic-bezier(0.22, 0.68, 0.35, 1);
+}
+.admin-sidebar .adm-nav-toggle:hover {
+  transform: translateY(-1px);
+}
+.admin-sidebar .adm-nav-toggle:active {
+  transform: scale(0.94);
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-sidebar .adm-nav-toggle {
+    transition: none;
+  }
+  .admin-sidebar .adm-nav-toggle:hover,
+  .admin-sidebar .adm-nav-toggle:active {
+    transform: none;
+  }
+}

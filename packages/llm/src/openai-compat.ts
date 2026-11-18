@@ -2,6 +2,7 @@ import type { HealthCheckResult, LLMProviderRow } from "@hoichoi/shared-types";
 import {
   CLOUDFLARE_ACCOUNT_ENV,
   hasAccountPlaceholder,
+  normalizeCloudflareModel,
   resolveAccountPlaceholder,
 } from "@hoichoi/shared-types";
 export {
@@ -294,7 +295,24 @@ export class OpenAICompatProvider implements LLMProvider {
     size?: string,
     aspectRatio?: string,
   ): Promise<ImageGenResult> {
-    const modelPath = model
+    /**
+     * A Workers AI route is `…/ai/run/@cf/<vendor>/<model>`.
+     *
+     * A row saved with the short name (`flux-1-schnell`) used to be sent as
+     * `…/ai/run/flux-1-schnell`, and Cloudflare answered `400 No route for that
+     * URI` — a message that reads like a broken account or a wrong base URL and
+     * is neither. The known short names are mapped here so an existing row starts
+     * working without anyone editing it, and an unknown one is refused with the
+     * shape it should have had instead of spending a round trip on a 400.
+     */
+    const routed = normalizeCloudflareModel(model);
+    if (!routed) {
+      throw new ProviderError(
+        "bad_output",
+        `Cloudflare-এ “${model}” নামে কোনো মডেল নেই — পুরো আইডি দিন, যেমন @cf/black-forest-labs/flux-1-schnell।`,
+      );
+    }
+    const modelPath = routed
       .split("/")
       .map((segment) => encodeURIComponent(segment).replace(/%40/gi, "@"))
       .join("/");

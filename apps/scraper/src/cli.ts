@@ -8,6 +8,7 @@ import { parsePipelineLimit, runPipeline, type PipelineOptions } from "./pipelin
 import { runArchivePass } from "./archive";
 import { cleanupMedia, storageRegistryCount } from "./storage";
 import { backfillMissingMedia, recoverOrphanedMedia, syncExistingMediaToWeb, aiFillMissingHeroes, generateManualImage } from "./media-backfill";
+import { POSTER_LAYOUTS, POSTER_THEMES, isPosterLayout, isPosterTheme } from "@hoichoi/poster";
 import { isVideoUrl } from "./media";
 import { buildImageBrief, gatewayProviderFromEnv, newResolver } from "@hoichoi/llm";
 import {
@@ -593,6 +594,8 @@ media
   .option("--style <name>", "style hint (natural | vivid)")
   .option("--quality <name>", "quality (standard | hd | low | medium | high)")
   .option("--negative <text>", "what to avoid")
+  .option("--layout <name>", "force a poster layout: split-left | split-right | editorial-card | breaking-banner")
+  .option("--theme <name>", "force a poster theme: dark | light-paper")
   .option("--no-attach", "generate and store but leave the post's media_path unchanged")
   .action(async (opts: {
     id: string;
@@ -603,6 +606,8 @@ media
     style?: string;
     quality?: string;
     negative?: string;
+    layout?: string;
+    theme?: string;
     attach?: boolean;
   }) => {
     try {
@@ -627,6 +632,17 @@ media
         category: row.category ?? "",
       });
       const prompt = opts.prompt?.trim() || brief.prompt;
+      // A hand-typed frame is validated, not passed through: a typo would
+      // otherwise render the default silently and the operator would believe the
+      // override applied.
+      const layout = opts.layout ?? null;
+      const theme = opts.theme ?? null;
+      if (layout !== null && !isPosterLayout(layout)) {
+        throw new Error(`unknown --layout "${layout}" (expected ${POSTER_LAYOUTS.join(" | ")})`);
+      }
+      if (theme !== null && !isPosterTheme(theme)) {
+        throw new Error(`unknown --theme "${theme}" (expected ${POSTER_THEMES.join(" | ")})`);
+      }
       const result = await generateManualImage({
         postId: opts.id,
         prompt,
@@ -636,6 +652,8 @@ media
         style: opts.style,
         quality: opts.quality,
         negativePrompt: opts.negative ?? brief.negative,
+        layout,
+        theme,
         attach: opts.attach !== false,
         log: (m) => console.error(m),
       });

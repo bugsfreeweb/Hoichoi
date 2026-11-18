@@ -439,6 +439,17 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+/* The shell is the one exception: a rail on the left, and everything else in a
+   column beside it. `.admin-console` is a column so the footer can stick; if the
+   shell inherited that, the rail would sit *above* the page instead of beside it
+   (which is exactly what a stale column did to the first version of this
+   layout). Declared as a rule rather than a utility so it cannot be reordered
+   away by the utility layer. */
+.admin-console.admin-shell {
+  flex-direction: row;
+  align-items: stretch;
+}
 /* The growing middle: pushes the footer down on short pages and leaves it
    sticking to the bottom edge once the content overflows the viewport. */
 .admin-console-main {
@@ -464,12 +475,16 @@ body {
   backdrop-filter: blur(10px);
 }
 
-/* The sticky sidebar stops above the sticky footer instead of running under it.
-   --admin-footer-h is measured from the live footer by AdminShell (see the
-   ResizeObserver there); the 2.25rem fallback matches a single-row footer so
-   the layout is still correct before hydration. */
+/* The rail is the full height of the window.
+
+   It used to stop above a fixed header and above the sticky footer, because the
+   sidebar was a card that sat *under* the top bar. The header, the working area
+   and the footer now share the column beside the rail, so a rail that shrank to
+   fit a footer it is no longer above would simply end early — 863px of a 1000px
+   window, with a band of nothing underneath. */
 .admin-sidebar {
-  max-height: calc(100vh - 5rem - var(--admin-footer-h, 2.25rem) - 1.5rem);
+  height: 100dvh;
+  max-height: 100dvh;
 }
 /* Scoped off `.admin-console` on purpose: theme-audit.test.ts locates the light
    console token block by the first indexOf hit on the light-console selector

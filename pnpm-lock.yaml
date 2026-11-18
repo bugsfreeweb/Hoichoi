@@ -20,6 +20,9 @@ importers:
       '@hoichoi/dash':
         specifier: workspace:*
         version: link:../../packages/dash
+      '@hoichoi/icons':
+        specifier: workspace:*
+        version: link:../../packages/icons
       '@hoichoi/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -128,6 +131,9 @@ importers:
       '@hoichoi/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@hoichoi/icons':
+        specifier: workspace:*
+        version: link:../../packages/icons
       '@hoichoi/llm':
         specifier: workspace:*
         version: link:../../packages/llm
@@ -261,6 +267,22 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  packages/icons:
+    dependencies:
+      lucide-react:
+        specifier: ^1.42.0
+        version: 1.42.0(react@19.2.8)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.8
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.18
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   packages/llm:
     dependencies:
       '@hoichoi/db':
@@ -282,6 +304,9 @@ importers:
 
   packages/poster:
     dependencies:
+      '@hoichoi/shared-types':
+        specifier: workspace:*
+        version: link:../shared-types
       playwright-core:
         specifier: ^1.49.1
         version: 1.63.0

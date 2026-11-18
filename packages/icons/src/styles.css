@@ -1,0 +1,85 @@
+/* ============================================================================
+   Icon motion — one gesture, every surface.
+   ----------------------------------------------------------------------------
+   The console, the desk and the public site all draw from `@hoichoi/icons`, so
+   the *motion* has to live in one place too: an icon that lifts on hover in the
+   sidebar and sits still in the tab strip reads as two different products.
+
+   Three rules:
+     1. movement is a transform only (no layout, no paint of the row);
+     2. it is short enough to read as feedback, not as animation;
+     3. `prefers-reduced-motion` removes all of it, not just shortens it.
+
+   Classes:
+     .ic          — base: inherits colour, keeps its own box
+     .ic-lift     — interactive target: lift + accent on the parent's hover
+     .ic-active   — the current screen: a second of "settle" when it is reached
+   ============================================================================ */
+
+.ic {
+  display: block;
+  flex: none;
+  /* Geometric crispness: the stroke keeps its weight instead of being thinned by
+     a fractional scale, which is what made the old hand-rolled SVGs look soft
+     next to the text. */
+  shape-rendering: geometricPrecision;
+}
+
+.ic-lift {
+  transition:
+    transform 180ms cubic-bezier(0.22, 0.68, 0.35, 1),
+    color 180ms ease,
+    opacity 180ms ease;
+  will-change: transform;
+}
+
+/* Hover lives on the row, not the glyph: hovering anywhere in the target moves
+   the icon, so the pointer never has to find a 16 px box. */
+[data-icon-host]:hover .ic-lift,
+[data-icon-host]:focus-visible .ic-lift {
+  transform: translateY(-1px) scale(1.09);
+}
+
+/* The current screen keeps a permanent, subtle emphasis — the row is already
+   highlighted, and a static "larger" glyph is what makes the pair read as one
+   state instead of a highlight with an unrelated icon inside it. */
+.ic-active {
+  transform: scale(1.04);
+}
+
+/* A one-shot settle when a row becomes the current one. Deliberately 1.6 s and
+   non-repeating: a looping pulse on the active row would be a thing the eye
+   cannot ignore while reading the page beside it. */
+@keyframes ic-settle {
+  0% {
+    transform: scale(0.86);
+    opacity: 0.4;
+  }
+  55% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+.ic-settle {
+  animation: ic-settle 420ms cubic-bezier(0.22, 0.68, 0.35, 1) both;
+}
+
+/* A press is feedback, not a bounce. */
+[data-icon-host]:active .ic-lift {
+  transform: scale(0.94);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ic-lift,
+  .ic-active,
+  .ic-settle {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
+}

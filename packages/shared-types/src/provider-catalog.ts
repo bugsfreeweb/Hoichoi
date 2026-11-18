@@ -288,6 +288,49 @@ export function providerFields(providerKey: string): ProviderFieldSpec[] {
   ];
 }
 
+/**
+ * A bare model name is not a Workers AI model id.
+ *
+ * The route is `…/ai/run/@cf/<vendor>/<model>`; sending `flux-1-schnell` alone
+ * makes Cloudflare answer `400 No route for that URI`, which reads like an auth
+ * or account problem and is neither. The console used to let a row be saved with
+ * the short name, so rows like that are in the wild: this maps the known short
+ * names to their real ids, and anything else is refused with a reason instead of
+ * a 400 from the network.
+ */
+export const CLOUDFLARE_MODEL_PREFIX = "@cf/";
+
+const CLOUDFLARE_MODEL_ALIASES: Readonly<Record<string, string>> = {
+  "flux-1-schnell": "@cf/black-forest-labs/flux-1-schnell",
+  "flux-schnell": "@cf/black-forest-labs/flux-1-schnell",
+  "black-forest-labs/flux-1-schnell": "@cf/black-forest-labs/flux-1-schnell",
+  "stable-diffusion-xl-base-1.0": "@cf/stabilityai/stable-diffusion-xl-base-1.0",
+  "sdxl": "@cf/stabilityai/stable-diffusion-xl-base-1.0",
+  "dreamshaper-8-lcm": "@cf/lykon/dreamshaper-8-lcm",
+};
+
+/** `flux-1-schnell` → `@cf/black-forest-labs/flux-1-schnell`; null when unknown. */
+export function normalizeCloudflareModel(model: string | null | undefined): string | null {
+  // A whole endpoint is sometimes pasted into the model box. Everything after
+  // `/ai/run/` is the model id; a bare host is dropped. Both are the operator
+  // pasting what Cloudflare's dashboard showed them, not a different request.
+  const input = (model ?? "").trim();
+  const afterRun = input.includes("/ai/run/") ? input.slice(input.indexOf("/ai/run/") + "/ai/run/".length) : input;
+  const raw = afterRun.replace(/^https?:\/\/[^/]+/i, "").replace(/\/+$/, "");
+  if (!raw) return null;
+  if (raw.startsWith(CLOUDFLARE_MODEL_PREFIX)) return raw;
+  const alias = CLOUDFLARE_MODEL_ALIASES[raw.toLowerCase()];
+  if (alias) return alias;
+  // `black-forest-labs/flux-1-schnell` — a vendor path without the `@cf/` prefix.
+  if (/^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/i.test(raw)) return `${CLOUDFLARE_MODEL_PREFIX}${raw}`;
+  return null;
+}
+
+/** True when a model id can be routed by Workers AI at all. */
+export function isCloudflareModel(model: string | null | undefined): boolean {
+  return normalizeCloudflareModel(model) !== null;
+}
+
 /** Base URL for a Cloudflare Workers AI row, composed from a valid account id. */
 export function composeCloudflareBaseUrl(accountId: string): string {
   const id = accountId.trim();
@@ -304,6 +347,7 @@ export function validateProviderSetup(draft: {
   accountId?: string;
   apiToken?: string;
   baseUrl?: string;
+  model?: string | null;
 }): { ok: true } | { ok: false; errorBn: string } {
   if (draft.providerKey === "cloudflare") {
     const id = (draft.accountId ?? "").trim();
@@ -311,6 +355,17 @@ export function validateProviderSetup(draft: {
       return {
         ok: false,
         errorBn: "Cloudflare account ID ৩২ অক্ষরের hex হতে হবে — Cloudflare → Workers & Pages → Account ID থেকে নিন।",
+      };
+    }
+    // A model Cloudflare does not have is the failure that reads like an outage:
+    // `400 No route for that URI`. Refuse it here, where the operator can fix it.
+    if (draft.model !== undefined && !isCloudflareModel(draft.model)) {
+      const first = metaFor("cloudflare").models.image[0] ?? "@cf/black-forest-labs/flux-1-schnell";
+      return {
+        ok: false,
+        errorBn:
+          `Cloudflare-এ “${(draft.model ?? "").trim() || "(খালি)"}” নামে কোনো মডেল নেই — ` +
+          `পুরো আইডি দিন, যেমন ${first}।`,
       };
     }
   }

@@ -21,6 +21,8 @@ import {
   type CredentialName,
 } from "./lib/vault";
 import { SITE_URL } from "./lib/site";
+import { NavIcon, type NavIconName } from "@hoichoi/icons";
+import "@hoichoi/icons/styles.css";
 import { getDeskSidebarStyle, onDeskSidebarStyle } from "./lib/desk-ui-prefs";
 import type { SidebarStyleId } from "@hoichoi/shared-types";
 import { bnClock, toBn } from "./lib/format";
@@ -77,16 +79,16 @@ const VIEW_ORDER: View[] = [
   "ads",
 ];
 
-const TAB_LABELS: Record<View, { icon: string; label: string }> = {
-  dashboard: { icon: "dash", label: "মনিটর" },
-  traffic: { icon: "chart", label: "ট্রাফিক" },
-  watchlist: { icon: "radio", label: "ওয়াচলিস্ট" },
-  queue: { icon: "list", label: "কনটেন্ট সারি" },
-  collector: { icon: "term", label: "কালেক্টর" },
-  vault: { icon: "key", label: "API ভল্ট" },
-  settings: { icon: "gear", label: "সেটিংস" },
-  moderation: { icon: "shield", label: "মন্তব্য মডারেশন" },
-  ads: { icon: "mega", label: "বিজ্ঞাপন" },
+const TAB_LABELS: Record<View, { icon: NavIconName; label: string }> = {
+  dashboard: { icon: "dashboard", label: "মনিটর" },
+  traffic: { icon: "traffic", label: "ট্রাফিক" },
+  watchlist: { icon: "watchlist", label: "ওয়াচলিস্ট" },
+  queue: { icon: "queue", label: "কনটেন্ট সারি" },
+  collector: { icon: "collector", label: "কালেক্টর" },
+  vault: { icon: "setup", label: "API ভল্ট" },
+  settings: { icon: "settings", label: "সেটিংস" },
+  moderation: { icon: "moderation", label: "মন্তব্য মডারেশন" },
+  ads: { icon: "ads", label: "বিজ্ঞাপন" },
 };
 
 function StatusClock() {
@@ -120,24 +122,20 @@ function deskWin(): Promise<typeof _win> {
 
 function TabButton({ id, icon, label, active, onClick, shortcut }: {
   id: View;
-  icon: string;
+  icon: NavIconName;
   label: string;
   active: boolean;
   onClick: () => void;
   shortcut: string;
 }) {
-  const icons: Record<string, React.ReactNode> = {
-    dash: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>,
-    radio: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>,
-    list: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 6h11M10 12h11M10 18h11"/><path d="M4 6h1v4M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>,
-    term: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3a2 2 0 0 0-2 2"/><path d="M19 3a2 2 0 0 1 2 2"/><path d="M21 19a2 2 0 0 1-2 2"/><path d="M5 21a2 2 0 0 1-2-2"/><path d="M9 7h1M9 11h6M9 15h3"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>,
-    key: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="15" r="4.5"/><path d="M11.5 11.5L21 2M16.5 6.5l3 3M13.5 9.5l2.5 2.5"/></svg>,
-    gear: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
-    shield: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 6h11M10 12h11M10 18h11"/><path d="M4 6h1v4M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>,
-    mega: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 13z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>,
-    chart: <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M7 15l3.5-4 3 2.5L20 6"/></svg>,
-  };
-
+  /*
+   * The glyph comes from `@hoichoi/icons` — the same catalogue the web console
+   * draws from — instead of a hand-drawn SVG per tab. The old map had drifted:
+   * the "shield" entry was a list icon, "term" was a rectangle with three lines,
+   * and every path had been tuned at a different stroke weight, so the strip had
+   * no consistent rhythm. One grid, one weight: the same screen is the same shape
+   * in both apps.
+   */
   return (
     <button
       onClick={onClick}
@@ -146,7 +144,7 @@ function TabButton({ id, icon, label, active, onClick, shortcut }: {
       }`}
       data-tab={id}
     >
-      {icons[icon]}
+      <NavIcon name={icon} size={15} active={active} settle={active} />
       <span className="flex-1 text-left">{label}</span>
       <kbd className="font-mono-x text-[9px]">{shortcut}</kbd>
     </button>

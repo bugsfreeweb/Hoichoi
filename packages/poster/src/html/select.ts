@@ -18,8 +18,21 @@
  * understanding). Only the *frame* is derived.
  */
 
-export type PosterLayout = "split-left" | "split-right" | "editorial-card" | "breaking-banner";
-export type PosterTheme = "dark" | "light-paper";
+import {
+  POSTER_LAYOUTS,
+  POSTER_THEMES,
+  isPosterLayout,
+  isPosterTheme,
+  type PosterLayout,
+  type PosterTheme,
+} from "@hoichoi/shared-types";
+
+// The frame vocabulary and its guard live in `@hoichoi/shared-types`: the admin
+// picker is a client component and must not import a renderer that pulls native
+// image libraries. They are re-exported here so the renderer's own API surface is
+// unchanged.
+export { POSTER_LAYOUTS, POSTER_THEMES, isPosterLayout, isPosterTheme };
+export type { PosterLayout, PosterTheme };
 
 export interface PosterPlan {
   layout: PosterLayout;
