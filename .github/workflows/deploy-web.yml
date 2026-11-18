@@ -35,7 +35,7 @@ jobs:
           fi
       - uses: actions/checkout@v4
         if: steps.creds.outputs.configured == 'true'
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         if: steps.creds.outputs.configured == 'true'
         with:
           version: 11.18.0
