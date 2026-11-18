@@ -1,6 +1,6 @@
 import { PageHeading } from "@/components/admin/ui/PageHeader";
-import { mapPost, pageRows } from "@hoichoi/db";
-import { ModerationCard } from "@/components/admin/ModerationCard";
+import { listCategories, mapPost, pageRows } from "@hoichoi/db";
+import { ModerationGrid } from "@/components/admin/ModerationGrid";
 import { ModerationListRow } from "@/components/admin/ModerationListRow";
 import { ViewToggle } from "@/components/admin/ui/ViewToggle";
 import { viewFromSearch } from "@/lib/view";
@@ -27,7 +27,7 @@ export default async function AdminModerationPage({
   // The review queues now page. Rendering every pending_review post at once meant
   // a backlog of any size loaded in full, and there was no indication that more
   // were waiting beyond what fit on screen.
-  const [pending, approved] = await Promise.all([
+  const [pending, approved, categories] = await Promise.all([
     pageRows({
       sql: "SELECT * FROM posts",
       where: "status = 'pending_review'",
@@ -44,7 +44,21 @@ export default async function AdminModerationPage({
       pageSize: PAGE_SIZE,
       map: mapPost,
     }),
+    listCategories({ includeInactive: true }),
   ]);
+
+  /**
+   * Which posts a checkbox may not approve.
+   *
+   * A desk with `requires_double_approval` needs a second human signature, and a
+   * bulk tick is not that signature. The set is computed here and enforced again
+   * in `/api/moderation/bulk`: the UI explains, the server refuses.
+   */
+  const doubleDesks = new Set(
+    categories.filter((c) => c.config.requires_double_approval).map((c) => c.slug),
+  );
+  const lockedIds = (rows: typeof pending.rows): string[] =>
+    rows.filter((p) => doubleDesks.has(p.category)).map((p) => p.id);
   // Reader comments live on their own moderation page (/admin/comments) — the
   // comment queue was split out of this content page so a post editor looking
   // at article queues does not scroll past reader-submitted text to do their job.
@@ -67,11 +81,11 @@ export default async function AdminModerationPage({
       <div className="mt-6 grid gap-10">
         <section>
           <QueueTitle color="amberx" count={pending.total} label="অনুমোদনের অপেক্ষায়" />
-          <div className="mt-3 space-y-3">
+          <div className="mt-3">
             {pending.rows.length === 0 && <Empty msg="অনুমোদনের অপেক্ষায় কোনো পোস্ট নেই। চমৎকার!" />}
-            {view === "card" ? (
-              pending.rows.map((p) => <ModerationCard key={p.id} post={p} queue="pending" />)
-            ) : (
+            {view === "card" && pending.rows.length > 0 ? (
+              <ModerationGrid posts={pending.rows} queue="pending" lockedIds={lockedIds(pending.rows)} />
+            ) : view === "card" ? null : (
               <div className="divide-y divide-ink/10 border border-ink/20">
                 {pending.rows.map((p) => (
                   <ModerationListRow key={p.id} post={p} queue="pending" />
@@ -93,11 +107,11 @@ export default async function AdminModerationPage({
           <p className="mt-1 text-[12.5px] text-ink-soft">
             child-sexual-abuse বিভাগের জন্য চার-স্তরের (fact+editor+human+legal) যাচাই - প্রকাশের আগে approver লিখে স্বাক্ষর করতে হয়
           </p>
-          <div className="mt-3 space-y-3">
+          <div className="mt-3">
             {approved.rows.length === 0 && <Empty msg="কোনো পোস্ট নেই।" />}
-            {view === "card" ? (
-              approved.rows.map((p) => <ModerationCard key={p.id} post={p} queue="approved" />)
-            ) : (
+            {view === "card" && approved.rows.length > 0 ? (
+              <ModerationGrid posts={approved.rows} queue="approved" lockedIds={lockedIds(approved.rows)} />
+            ) : view === "card" ? null : (
               <div className="divide-y divide-ink/10 border border-ink/20">
                 {approved.rows.map((p) => (
                   <ModerationListRow key={p.id} post={p} queue="approved" />

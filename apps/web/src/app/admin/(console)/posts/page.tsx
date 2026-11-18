@@ -6,6 +6,7 @@ import { mapPost, pageRows } from "@hoichoi/db";
 import type { Post, PostStatus } from "@hoichoi/shared-types";
 import { Paginator } from "@/components/admin/Paginator";
 import { AdminThumb, OriginBadge } from "@/components/admin/AdminThumb";
+import { OriginMark, PostCover } from "@/components/admin/PostCover";
 import { QuickImageButton } from "@/components/admin/QuickImageButton";
 import { imageOrigin } from "@/lib/image-origin";
 
@@ -67,7 +68,7 @@ export default async function AdminPostsPage({
       )}
 
       {view === "card" ? (
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {result.rows.map((p) => (
             <PostCard key={p.id} post={p} />
           ))}
@@ -116,54 +117,45 @@ function StatusPill({ status }: { status: PostStatus }) {
 function PostCard({ post }: { post: Post }) {
   const o = imageOrigin(post);
   return (
-    <div className="group flex flex-col border border-ink/20 bg-paper-deep transition-colors hover:border-alizarin/50">
-      <Link href={`/admin/posts/${post.id}`} className="block">
-        {/* Image area keeps a fixed ratio so a missing picture does not make the
-            card shorter than its neighbours. */}
-        <div className="relative aspect-[16/9] overflow-hidden border-b border-ink/15 bg-ink/[0.04]">
-          {post.media_path && post.media_kind !== "none" ? (
-            <AdminThumb post={post} size="lg" />
-          ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-ink-soft">
-              <span className="text-[18px]">🖼</span>
-              <span className="text-[10.5px] font-bold">ছবি নেই</span>
-            </div>
-          )}
-          <span className="absolute top-2 left-2">
-            <StatusPill status={post.status} />
-          </span>
-          {/* Solid strip behind the badge: a translucent utility had no
-              light-theme override (the console audits for that), and an alpha
-              background on the badge itself would lose to the category tint it
-              already carries. */}
-          <span className="absolute top-2 right-2 bg-paper px-1 py-1">
-            <OriginBadge post={post} />
-          </span>
-        </div>
-        <div className="px-3 pt-2.5">
-          <p className="line-clamp-2 font-serif-bn text-[14.5px] font-extrabold leading-snug text-ink">
-            {post.title_bn}
-          </p>
-          <p className="mt-1 line-clamp-2 text-[11.5px] leading-relaxed text-ink-soft">
-            {post.summary_bn ?? post.body_bn}
-          </p>
-        </div>
-      </Link>
-      <div className="mt-auto flex flex-wrap items-center gap-1.5 px-3 pt-2 pb-3">
-        <span className="rounded-full border border-ink/20 px-2 py-0.5 text-[9.5px] font-bold text-ink-soft">
-          {post.category}
+    <div className="group flex flex-col overflow-hidden border border-ink/20 bg-paper-deep transition-colors hover:border-alizarin/60">
+      <Link href={`/admin/posts/${post.id}`} className="relative block">
+        {/* The cover fills its box: the old fixed-size thumbnail inside a 16:9
+            frame letterboxed every picture, which is what made the card view
+            look unfinished. */}
+        <PostCover post={post} />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#0b0e14]/90 via-[#0b0e14]/45 to-transparent" />
+        <span className="absolute top-1.5 left-1.5">
+          <StatusPill status={post.status} />
         </span>
-        <span className="font-mono-x text-[9.5px] text-ink-soft">{date(post.updated_at)}</span>
-        <span className="ml-auto flex items-center gap-1.5">
+        <span className="absolute top-1.5 right-1.5">
+          <OriginMark origin={o} />
+        </span>
+        <span className="absolute bottom-1.5 left-1.5">
+          {/* Solid paper chip: a translucent one lost the category against a
+              bright photo, and the console has no light-theme override for it. */}
+          <span className="rounded-sm bg-paper px-1.5 py-0.5 text-[9px] font-bold text-ink">{post.category}</span>
+        </span>
+      </Link>
+      <div className="flex flex-1 flex-col px-2 pt-1.5">
+        <Link href={`/admin/posts/${post.id}`} className="line-clamp-2 font-serif-bn text-[13px] font-extrabold leading-snug text-ink hover:text-alizarin">
+          {post.title_bn}
+        </Link>
+        <p className="mt-0.5 line-clamp-1 text-[10.5px] leading-relaxed text-ink-soft">
+          {post.summary_bn ?? post.body_bn}
+        </p>
+        <div className="mt-auto flex items-center justify-between gap-1 pt-1.5 pb-2">
+          {/* The date lives here rather than on the picture: 9px over an unknown
+              photograph was the one line an operator could not read. */}
+          <span className="font-mono-x text-[9px] text-ink-soft">{date(post.updated_at)}</span>
           <QuickImageButton postId={post.id} hasImage={Boolean(post.media_path)} compact />
           <Link
             href={`/admin/posts/${post.id}`}
-            className="border border-ink/25 bg-paper px-2 py-1 text-[10.5px] font-bold text-ink hover:border-ink"
+            className="border border-ink/25 bg-paper px-1.5 py-0.5 text-[10px] font-bold text-ink hover:border-ink"
             title={o.hint}
           >
             এডিট →
           </Link>
-        </span>
+        </div>
       </div>
     </div>
   );

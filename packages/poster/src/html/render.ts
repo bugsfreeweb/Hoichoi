@@ -203,7 +203,13 @@ export async function renderEditorialPoster(opts: EditorialPosterOptions): Promi
   });
 
   {
-    const sharp = (await import("sharp")).default;
+    // Callable on either set of sharp typings: 0.33 and 0.35 disagree on whether
+    // the module type itself carries a call signature.
+    type SharpFn = (input: Buffer) => import("sharp").Sharp;
+    const mod: unknown = await import("sharp");
+    const sharp =
+      typeof mod === "function" ? (mod as SharpFn) : (mod as { default?: SharpFn }).default;
+    if (!sharp) throw new Error("sharp module exposes no callable export");
     const format = opts.format ?? "webp";
     const pipeline = sharp(png).resize({ width: POSTER_HTML_FRAME.width, height: POSTER_HTML_FRAME.height });
     const bytes =

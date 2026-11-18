@@ -19,9 +19,22 @@ const UA =
 
 // sharp is loaded lazily (its native prebuild is heavy and clogs webpack
 // bundles for consumers that only need mediaRoot / downloadMedia).
-async function loadSharp(): Promise<typeof import("sharp")> {
-  const { default: sharp } = await import("sharp");
-  return sharp;
+//
+// The shape of the module is checked rather than assumed. sharp 0.35 moved its
+// type declarations so that `typeof import("sharp")` describes a namespace whose
+// call signature is no longer present, and the previous `Promise<typeof
+// import("sharp")>` return type failed to compile on it (`Property 'sharp' is
+// missing`, `This expression is not callable`). A local factory type says what
+// this file actually needs — "something I can call with a Buffer" — and works on
+// both.
+type SharpFactory = (input: Buffer) => import("sharp").Sharp;
+
+async function loadSharp(): Promise<SharpFactory> {
+  const mod: unknown = await import("sharp");
+  const factory =
+    typeof mod === "function" ? (mod as SharpFactory) : (mod as { default?: SharpFactory }).default;
+  if (!factory) throw new Error("sharp module exposes no callable export");
+  return factory;
 }
 
 /** Download a remote media file to the local store. */

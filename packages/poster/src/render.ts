@@ -45,6 +45,21 @@ const MIME: Record<string, string> = {
 
 type SharpFactory = (input: Buffer) => import("sharp").Sharp;
 
+/**
+ * sharp as a callable, on any version of its typings.
+ *
+ * sharp 0.35 changed its declarations so `typeof import("sharp")` no longer
+ * carries a call signature; asking for the shape this file needs keeps the same
+ * code compiling on both sides of that change.
+ */
+async function loadSharp(): Promise<SharpFactory> {
+  const mod: unknown = await import("sharp");
+  const factory =
+    typeof mod === "function" ? (mod as SharpFactory) : (mod as { default?: SharpFactory }).default;
+  if (!factory) throw new Error("sharp module exposes no callable export");
+  return factory;
+}
+
 let markCache: Buffer | null | undefined;
 
 /**
@@ -94,7 +109,7 @@ async function brandMark(sharp: SharpFactory): Promise<Buffer | null> {
  */
 export async function renderPoster(opts: RenderPosterOptions): Promise<RenderedPoster> {
   ensurePosterFonts();
-  const sharp = (await import("sharp")).default;
+  const sharp = await loadSharp();
   const { width, height } = POSTER_FRAME;
   const format = opts.format ?? "webp";
 

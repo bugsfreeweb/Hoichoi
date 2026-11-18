@@ -532,6 +532,40 @@ Verified by rendering all four layouts in both themes with a real photograph and
 branded wash (`1920×1080`, zero clipping, Bangla shaped correctly at every size), and by
 `pnpm typecheck` 8/8, `pnpm test` 6/6, `pnpm build` green.
 
+## The queues are a wall of covers, and a backlog clears in one decision (v1.1.32)
+
+**Six across, and the picture owns its frame.** Both the post editor and the moderation
+queue put a fixed-size thumbnail (`h-28 w-44`) inside a 16:9 box, so every photograph was
+letterboxed in a frame that was sometimes wider and sometimes narrower than the image —
+which is what made card view look unfinished. A card is now a cover: `object-cover` at the
+box's own ratio, a solid paper chip for the desk, a status pill and a provenance glyph on
+top of it, then the Bangla headline, one line of standfirst, and the two actions. The grid
+is `2 → 3 → 4 → 5 → 6` columns, six up on a wide console, the same on both pages.
+
+**One detail moved because it could not be read.** The updated-at stamp used to sit on the
+photograph at 9 px, in whatever colour the photo happened to be. It lives in the card's
+footer next to the regenerate button now.
+
+**A backlog clears in one decision, without becoming a bypass.** The review queue rendered
+one card, two buttons and one reload per draft, which is why a backlog stayed a backlog.
+`ModerationGrid` holds a whole queue's selection and sends it once to
+`POST /api/moderation/bulk`. Three promises survive the shortcut:
+
+1. **Bulk approve is not bulk publish.** The endpoint accepts `approve` and `reject` only;
+   nothing in it can write `published`.
+2. **A desk that needs a second signature is skipped, not folded in.** A checkbox is not a
+   signature, so those cards cannot be selected, and the server refuses them as well with
+   `দ্বিতীয় অনুমোদন প্রয়োজন — কার্ডে আলাদাভাবে স্বাক্ষর করুন`. The UI explains, the server
+   enforces.
+3. **Every post in a batch gets its own audit row** (`details.bulk = true`), so the log
+   answers "who approved these twenty" with twenty rows, not one summary.
+
+A batch is capped at 100 ids and de-duplicated, and the response is per post —
+`approved`, `skipped` (with a reason), `failed` (with an error) — so the toast says
+"৩টি সম্পন্ন · ১টি বাদ" instead of reloading and letting the operator infer it. Verified
+against the running console: three `economy` drafts approved in one call with three audit
+rows, and a `child-sexual-abuse` draft refused with the Bangla reason and left untouched.
+
 ## Provider errors, readable alerts, the console's own shape (v1.1.30)
 
 Four reports from the admin console, each with a cause rather than a symptom:
