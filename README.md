@@ -427,7 +427,8 @@ that already handles a timeout. A conservative migration deactivates any leftove
 from layers at one fixed frame — `1600×900`, 16:9, always landscape: the logo mark, the
 Bangla wordmark and the newsroom line top-left, the desk chip top-right, the headline as
 an auto-fitted caption with a kicker rule, the credit beneath it, and **related-topic
-chips** bottom-right. The chips are derived from the story itself (`topicCues`: the desk
+chips** bottom-right. (Superseded below by the browser-drawn `1920×1080` broadsheet; the
+SVG plate survives as the no-browser fallback.) The chips are derived from the story itself (`topicCues`: the desk
 first, then the longest distinctive words of the headline, stopwords dropped) and are
 deterministic, so regenerating a story draws the same chips rather than a new guess.
 The mark is composited as its own layer and cached once per process; if the asset is
@@ -469,6 +470,67 @@ width is remembered, and a screen filter sits under the logo — a 21-screen con
 be searchable before it is scrollable. No label tooltip is drawn beside the icons: the nav
 is a scroll container, and `overflow-y: auto` clips anything that escapes it sideways, so
 the name is carried by `title` and `aria-label` instead of a card that never appeared.
+
+## The poster is a broadsheet now (v1.1.31)
+
+**The old plate was mis-shaping Bengali, and that is measurable.** The plate drew its
+headline as `<text>` inside an SVG and let librsvg shape it. Reading the output was not
+enough to see the fault; rendering the same sentence twice was. `ক্ষুদ্র`, `ব্যান্ড`,
+`স্ট্রাইক`, `রাষ্ট্রপক্ষ` came back from librsvg with conjuncts broken apart and vowel
+signs adrift, while Chromium (HarfBuzz) shaped every one of them correctly. Measured, not
+argued: the identical 100 px cluster set advances to `110.4 / 165.4 / 174.7 px` in
+Chromium and `96.9 / 137.6 / 164.2 px` in the Skia canvas — the ratios are not even
+proportional, so it is shaping, not scale. **SVG `<text>` and node-canvas are both out.
+The typography is HTML/CSS, drawn by Chromium.**
+
+**One frame, four shapes, two papers.** `planPoster` is a pure function of the desk, so a
+story's poster is reproducible and testable with no provider in the loop:
+
+| desk | layout | theme | accent |
+| --- | --- | --- | --- |
+| breaking, politics, crime, disaster | `breaking-banner` (red bar, full-bleed, bottom-left type) | dark | `#DC2626` |
+| economy, technology, science | `split-left` (type on the left 45 %, subject right) | dark | `#1D4ED8` / `#0D9488` |
+| sports | `split-right` (picture leads, type on the right 45 %) | dark | `#EA580C` |
+| culture, literature, opinion, local | `editorial-card` (warm paper, framed photograph, column rule) | light-paper | `#B45309` |
+
+**The layout moves the picture, not just the CSS.** The same plan returns `subjectSide`,
+which is handed to the image brief, so a `breaking-banner` story asks for its subject away
+from the bottom-left corner where the headline will sit — instead of discovering the
+collision after the render.
+
+**Dynamic, but not by asking a model.** The brief proposed an LLM art-director returning
+JSON (`layout`, `theme`, `accentColor`, `imagePrompt`). The image prompt does need
+understanding and is still written per story; the *frame* does not. A desk map cannot drift
+between two renders of one story, cannot return invalid JSON, costs no round trip and is
+unit-testable, and "invalid JSON → default to `split-left` + `dark`" is already what the
+map does. Headline size is the one dynamic number that genuinely depends on the words:
+`64 px` under 35 characters, `54 px` to 60, `46 px` above.
+
+**The Bengali line box is a contract, not a taste.** Every headline carries
+`line-height: 1.38` and `padding-top: 6px` so `ি ী ু ৃ` and the reph never clip against a
+tight box. Fonts are bundled (`Noto Serif Bengali` 600/700 for headlines, `Noto Sans
+Bengali` 400/700 for the rest) and base64-inlined into the page — no CDN request, no
+network flake, and `document.fonts.ready` is awaited before the screenshot so the capture
+can never beat the font and land in a fallback face.
+
+**Two engines, one promise.** A runtime with no Chromium (the deployed serverless
+function) keeps the SVG plate instead of shipping nothing; `composeStoryPlateDetailed`
+returns which engine drew the picture and `POST /api/posts/[id]/generate-image` reports it
+as `plate_engine`. The renderers that matter — the collector, CI, the desktop runner — get
+the browser.
+
+**The medium changed too.** The image brief used to open "Hand-drawn editorial
+illustration, ink and gouache on paper, not a photograph" so a render could never be
+mistaken for a record of an event. The art direction is now front-page photography, and
+the objection is answered differently: every subject is a *symbolic* scene (a shuttered
+shopfront, a half-built span, two empty podiums), never an identifiable person or a
+reconstruction of a specific event, the negative bans `cartoon`, `illustration`, `comic`
+and `plastic 3d render` by name, and the finished poster carries a masthead and a barcode
+that no wire photograph has.
+
+Verified by rendering all four layouts in both themes with a real photograph and with the
+branded wash (`1920×1080`, zero clipping, Bangla shaped correctly at every size), and by
+`pnpm typecheck` 8/8, `pnpm test` 6/6, `pnpm build` green.
 
 ## Provider errors, readable alerts, the console's own shape (v1.1.30)
 

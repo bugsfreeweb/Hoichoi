@@ -22,6 +22,12 @@ import {
   topicCues,
   wrapCaption,
   POSTER_FONT_FAMILY,
+  barcodeBars,
+  headlineSizeFor,
+  planPoster,
+  posterHtml,
+  renderEditorialPoster,
+  PosterBrowserUnavailable,
 } from "../index";
 
 let passed = 0;
@@ -195,6 +201,106 @@ async function main(): Promise<void> {
     }
     assert.ok(bright > 200, "the brand mark is composited, not missing: " + bright);
     fs.writeFileSync(path.resolve(".tmp-poster-branded.png"), out.bytes);
+  });
+
+  // -------------------------------------------------------------------------
+  // The editorial poster: layout choice, Bengali line box, browser rendering.
+  // -------------------------------------------------------------------------
+  check("every desk gets its own shape and paper", () => {
+    const culture = planPoster({ category: "culture", title: "শহরের শেষ বইয়ের দোকান" });
+    assert.equal(culture.layout, "editorial-card");
+    assert.equal(culture.theme, "light-paper");
+    assert.equal(culture.accent, "#B45309");
+    const crime = planPoster({ category: "crime", title: "মিরপুরে ভবন ধস" });
+    assert.equal(crime.layout, "breaking-banner");
+    assert.equal(crime.theme, "dark");
+    assert.equal(crime.accent, "#DC2626");
+    const tech = planPoster({ category: "technology", title: "সাইবার হামলা" });
+    assert.equal(tech.layout, "split-left");
+    assert.equal(tech.theme, "dark");
+    // An unknown desk must land somewhere deliberate, not crash.
+    const unknown = planPoster({ category: "no-such-desk", title: "ঘটনা" });
+    assert.equal(unknown.layout, "breaking-banner");
+    assert.equal(unknown.subjectSide, "bottom-left");
+  });
+
+  check("the subject sits opposite the type", () => {
+    // The image prompt reserves the side the headline will occupy, so a layout
+    // change must move the picture, not just the CSS.
+    assert.equal(planPoster({ category: "economy", title: "x" }).subjectSide, "right");
+    assert.equal(planPoster({ category: "sports", title: "x" }).subjectSide, "left");
+    assert.equal(planPoster({ category: "culture", title: "x" }).subjectSide, "center");
+    assert.equal(planPoster({ category: "politics", title: "x" }).subjectSide, "bottom-left");
+  });
+
+  check("headline size steps down with length", () => {
+    assert.equal(headlineSizeFor("মিরপুরে ভবন ধস"), 64);
+    assert.equal(headlineSizeFor("নিত্যপণ্যের বাজারে দাম বেড়েছে টানা তৃতীয় সপ্তাহে"), 54);
+    assert.equal(
+      headlineSizeFor(
+        "বাজেট ঘোষণার পর নিত্যপণ্যের বাজারে দাম বেড়েছে টানা তৃতীয় সপ্তাহে, সরকারি হিসাবে মূল্যস্ফীতি কিছুটা কমেছে কিন্তু বাজারে চাল ও ডালের দাম কমেনি",
+      ),
+      46,
+    );
+  });
+
+  check("the HTML keeps the Bengali line box open and never ships text as SVG", () => {
+    const html = posterHtml(
+      {
+        title: "ক্ষুদ্র ব্যাংক রাষ্ট্রপক্ষ স্ট্রাইক",
+        summary: "সংক্ষিপ্ত সারাংশ",
+        category: "অর্থনীতি",
+        dateText: "১৮ নভেম্বর ২০২৬",
+        backgroundDataUrl: null,
+        logoDataUrl: null,
+        fonts: [{ family: "Noto Serif Bengali", weight: 700, dataUrl: "data:font/ttf;base64,AA==" }],
+      },
+      planPoster({ category: "economy", title: "ক্ষুদ্র ব্যাংক" }),
+    );
+    // The 1.38 line-height and the 6px top padding are what keep ি ী ু ৃ and the
+    // reph from clipping; they are a contract with the font, not a taste.
+    assert.match(html, /line-height:1\.38/);
+    assert.match(html, /padding-top:6px/);
+    assert.match(html, /font-family:"Noto Serif Bengali"/);
+    assert.ok(html.includes("ক্ষুদ্র ব্যাংক রাষ্ট্রপক্ষ স্ট্রাইক"), "the Bangla headline is in the markup");
+    assert.ok(!/<text/.test(html), "no SVG text: librsvg mis-shapes Bengali conjuncts");
+  });
+
+  check("the barcode is decoration with a stable pattern", () => {
+    const a = barcodeBars("story-one");
+    const b = barcodeBars("story-one");
+    const c = barcodeBars("story-two");
+    assert.deepEqual(a, b);
+    assert.notDeepEqual(a, c);
+    assert.equal(a.length, 34);
+  });
+
+  check("a browser draws the poster when one is available", async () => {
+    let out;
+    try {
+      out = await renderEditorialPoster({
+        background: null,
+        title: "মিরপুরে ভবন ধস, উদ্ধার কাজ চলছে",
+        summary: "ফায়ার সার্ভিসের ছয় ইউনিট ঘটনাস্থলে।",
+        category: "রাজনীতি",
+        dateText: "১৮ নভেম্বর ২০২৬",
+        seed: "test",
+        format: "png",
+      });
+    } catch (err) {
+      if (err instanceof PosterBrowserUnavailable) {
+        // A machine without Chromium keeps the SVG net; that is a supported state.
+        console.log("  skip browser render: no chromium on this machine");
+        return;
+      }
+      throw err;
+    }
+    assert.equal(out.width, 1920);
+    assert.equal(out.height, 1080);
+    assert.equal(out.layout, "breaking-banner");
+    assert.equal(out.contentType, "image/png");
+    assert.ok(out.bytes.length > 40_000, `suspiciously small render: ${out.bytes.length}`);
+    fs.writeFileSync(path.resolve(".tmp-poster-editorial.png"), out.bytes);
   });
 
   console.log(`\nposter: ${passed} checks passed`);

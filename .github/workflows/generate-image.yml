@@ -77,6 +77,10 @@ jobs:
           if [ ${#img[@]} -eq 0 ]; then
             echo "::warning::No image-capable key is set (GOOGLE_API_KEY / OPENAI_API_KEY / MISTRAL_API_KEY / OPENROUTER_API_KEY / GROQ_API_KEY). Generation will fail in the next step. See docs/SECRETS.md."
           fi
+      - name: Install the poster's browser
+        # The plate's typography is drawn by Chromium so Bengali conjuncts shape
+        # correctly; with no browser the command falls back to the SVG plate.
+        run: pnpm --filter @hoichoi/scraper exec playwright install --with-deps chromium
       - name: Generate image for the post
         env:
           POST_ID: ${{ github.event.client_payload.post_id || inputs.post_id }}

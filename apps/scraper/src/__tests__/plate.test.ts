@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { banglaDate, deskFor, composeStoryPlate } from "../plate";
+import { banglaDate, deskFor, composeStoryPlate, composeStoryPlateDetailed } from "../plate";
 
 let passed = 0;
 function check(name: string, fn: () => void | Promise<void>): Promise<void> {
@@ -40,19 +40,27 @@ async function main(): Promise<void> {
   });
 
   await check("a story with no render still gets a landscape plate", async () => {
-    const bytes = await composeStoryPlate({
+    const plate = await composeStoryPlateDetailed({
       background: null,
       title: "বাজেট ঘোষণার পর বাজারে দাম বাড়ল",
       category: "economy",
       source: "প্রথম আলো",
     });
-    assert.ok(bytes.byteLength > 4_000, "a real plate");
+    assert.ok(plate.bytes.byteLength > 4_000, "a real plate");
     const sharp = (await import("sharp")).default;
-    const meta = await sharp(bytes).metadata();
-    assert.equal(meta.width, 1600);
-    assert.equal(meta.height, 900);
+    const meta = await sharp(plate.bytes).metadata();
+    // 1920×1080 is the poster frame the browser renderer draws; the SVG net keeps
+    // its own 1600×900. Both are 16:9 and both are a picture.
+    if (plate.engine === "html") {
+      assert.equal(meta.width, 1920);
+      assert.equal(meta.height, 1080);
+    } else {
+      assert.equal(meta.width, 1600);
+      assert.equal(meta.height, 900);
+    }
     assert.equal(meta.format, "webp");
-    fs.writeFileSync(".tmp-plate-scraper.webp", bytes);
+    assert.equal(plate.usedFallbackBackdrop, true, "no provider bytes means the branded backdrop");
+    fs.writeFileSync(".tmp-plate-scraper.webp", plate.bytes);
   });
 
   await check("a refused provider chain still produces a picture", () => {

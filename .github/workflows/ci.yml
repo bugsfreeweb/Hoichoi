@@ -33,6 +33,11 @@ jobs:
         env:
           TURSO_DATABASE_URL: file:${{ github.workspace }}/data/ci-hoichoi.db
       - run: pnpm typecheck
+      - name: Install the poster's browser
+        # The poster draws Bengali with a real engine (HarfBuzz via Chromium).
+        # Without this the render check reports "skipped" and CI stops noticing
+        # whether that path still works.
+        run: pnpm --filter @hoichoi/scraper exec playwright install --with-deps chromium
       - run: pnpm test
       - run: pnpm build
         env:

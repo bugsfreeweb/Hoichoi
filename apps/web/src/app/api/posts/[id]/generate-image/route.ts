@@ -13,7 +13,7 @@ import {
 } from "@hoichoi/db";
 import { uploadBufferRemote, writeGeneratedMedia } from "@hoichoi/db/storage";
 import { buildImageBrief, EDITORIAL_IMAGE_NEGATIVE, extensionForMime, generateImage, imageSizeFor, listImageProviders } from "@hoichoi/llm";
-import { renderPoster, topicCues } from "@hoichoi/poster";
+import { planPoster, renderEditorialPoster, renderPoster, topicCues } from "@hoichoi/poster";
 import { forbidden, requireApiRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -300,7 +300,26 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
    */
   let buf: Buffer;
   let contentType = result?.contentType ?? "image/webp";
+  let plateEngine: "html" | "svg" = "html";
   try {
+    // The browser renderer is the primary path: it shapes Bengali with HarfBuzz.
+    // A function with no Chromium (the deployed default) keeps the SVG plate and
+    // still gets a branded picture — it just says which engine drew it.
+    const editorial = await renderEditorialPoster({
+      background: result ? Buffer.from(result.bytes) : null,
+      title: post.title_bn || "হৈচৈ",
+      summary: post.summary_bn ?? null,
+      category: deskLabel(post.category),
+      source: post.source_name ?? null,
+      dateText: post.published_at ? banglaDate(new Date(post.published_at)) : banglaDate(),
+      seed: post.slug ?? post.id,
+      accent: deskAccent(post.category),
+      format: "webp",
+    });
+    buf = editorial.bytes;
+    contentType = editorial.contentType;
+  } catch {
+    plateEngine = "svg";
     const plate = await renderPoster({
       background: result ? Buffer.from(result.bytes) : null,
       spec: {
@@ -316,8 +335,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     });
     buf = plate.bytes;
     contentType = plate.contentType;
-  } catch (plateErr) {
-    return NextResponse.json({ error: `প্লেট তৈরি ব্যর্থ: ${(plateErr as Error).message}` }, { status: 500 });
   }
   const rel = randomMediaName("img", extensionForMime(contentType));
 

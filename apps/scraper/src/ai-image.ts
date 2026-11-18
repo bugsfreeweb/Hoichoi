@@ -16,6 +16,7 @@
 import { randomMediaName, processImage } from "./media";
 import { composeStoryPlate } from "./plate";
 import { buildImageBrief, generateImage, imageSizeFor, listImageProviders } from "@hoichoi/llm";
+import { planPoster } from "@hoichoi/poster";
 import { POSTER_FRAME } from "@hoichoi/poster";
 
 /** Categories where an AI rendering of the subject would be inappropriate. */
@@ -28,7 +29,13 @@ export function aiHeroEligible(category: string | null | undefined): boolean {
 }
 
 /** Editorial prompt shared by configured image-generation providers. */
-export function aiHeroPrompt(title: string, summary: string, body?: string, category?: string | null): string {
+export function aiHeroPrompt(
+  title: string,
+  summary: string,
+  body?: string,
+  category?: string | null,
+  reservedSide?: "left" | "right" | "center" | "bottom-left",
+): string {
   // The editorial brief is the newspaper-shaped one (central idea → metaphor →
   // subject → setting → style → composition → palette → mood → avoid); this
   // wrapper adds only the hard safety rules, so the pipeline, the CLI and the
@@ -61,15 +68,19 @@ export async function generateAIHero(opts: {
 }): Promise<string | null> {
   const log = opts.log ?? (() => undefined);
   try {
+    // The layout decides which part of the frame stays empty; a picture that
+    // ignored it would put its subject exactly where the headline will go.
+    const reservedSide = planPoster({ category: opts.category, title: opts.title }).subjectSide;
     const brief = buildImageBrief({
       title: opts.title,
       summary: opts.summary,
       body: opts.body,
       category: opts.category,
+      reservedSide,
     });
     const result = await generateImage(
       {
-        prompt: aiHeroPrompt(opts.title, opts.summary, opts.body, opts.category),
+        prompt: aiHeroPrompt(opts.title, opts.summary, opts.body, opts.category, reservedSide),
         // The negative prompt is part of the brief; dropping it is why a few
         // renders still came back with lettering or a watermark.
         negativePrompt: brief.negative,

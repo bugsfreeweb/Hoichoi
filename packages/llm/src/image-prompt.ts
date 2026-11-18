@@ -30,6 +30,11 @@
  */
 
 export interface ImageBriefInput {
+  /**
+   * Where the poster will set its type. The picture keeps that side quiet.
+   * "top" and "bottom" exist for the portrait frame.
+   */
+  reservedSide?: "left" | "right" | "center" | "bottom-left" | "top" | "bottom";
   title?: string | null;
   summary?: string | null;
   body?: string | null;
@@ -509,11 +514,11 @@ const METAPHORS: readonly Metaphor[] = [
  * named.
  */
 const STYLES = [
-  "gouache painting with visible brush edges and flat opaque shapes",
-  "ink line work with loose watercolour washes",
-  "flat vector shapes with a printed-paper grain and no gradients",
-  "hand-drawn line art with a visible pencil underlayer",
-  "cut-paper collage with hard cut edges and paper shadows",
+  "cinematic photojournalism with soft directional window light and controlled shadow",
+  "wide-angle documentary photograph with deep focus and natural contrast",
+  "editorial still life lit from one side on a plain matte surface",
+  "golden-hour street photograph with long shadows and muted film colour",
+  "overcast documentary photograph, flat diffuse light, restrained colour",
 ] as const;
 
 /** Muted, professional 3–4 colour sets. */
@@ -602,9 +607,10 @@ export interface ImageBrief {
 
 /** What a render must never contain. Also handed to providers that take a negative. */
 export const EDITORIAL_IMAGE_NEGATIVE =
-  "photorealism, photograph, photographic, 3d render, depth of field, bokeh, misleading realism, " +
-  "readable text, letters, words, numbers, captions, headlines, writing on documents, logos, " +
-  "watermarks, brand marks, clutter, extra unrelated objects, recognizable faces, children. " +
+  "readable text, letters, words, numbers, captions, headlines, signage with legible lettering, logos, " +
+  "brand marks, watermarks, identifiable faces, portraits of specific people, children, " +
+  "crowds of recognisable people, deformed hands, extra limbs, cartoon, 2d sketch, clip art, " +
+  "illustration, comic, plastic 3d render, oversaturated colours, clutter, unrelated objects. " +
   "no text, no letters, no words, no captions, no logos, no watermarks, no recognisable faces, no children.";
 
 /**
@@ -639,15 +645,23 @@ export function buildImageBrief(input: ImageBriefInput): ImageBrief {
   // The empty-space clause names what the space *is* (a plain wash) as well as
   // where it is; "generous empty space" alone was filled with props.
   const composition =
-    `${frameFor(aspectRatio)}, clear focal point, generous empty space on the ${side} for the headline ` +
-    "(a plain uncluttered wash of background colour), main subject on the opposite side";
-  // "Not a photograph" is stated twice on purpose: once as the medium, once as a
-  // negative, because an image model reads "illustration" as a subject and then
-  // renders a photo of one.
+    `${frameFor(aspectRatio)}, single clear focal point, the ${side} of the frame kept as quiet negative ` +
+    "space (out-of-focus background, even tone, no clutter) where the headline will be set, " +
+    "the subject filling the rest of the frame";
+  // The medium is now a photograph, and the brief says which kind.
+  //
+  // This reverses an earlier decision. The brief used to open "Hand-drawn
+  // editorial illustration, ink and gouache…, not a photograph", chosen so a
+  // render could never be mistaken for a record of the event. The art direction
+  // has since asked for front-page photography, and the objection is answered a
+  // different way: the subject of these prompts is a *symbolic* scene (a
+  // shuttered shopfront, a half-built span, two empty podiums), never an
+  // identifiable person or a reconstruction of a specific event, and the
+  // finished poster carries a masthead and a barcode that no wire photograph has.
   const styleLine =
-    `modern editorial illustration, ${style}, simplified but expressive figures, ` +
-    "drawn by hand rather than photographed";
-  const paletteLine = `${palette}, muted and professional, subtle paper texture`;
+    `editorial news photograph, ${style}, shot as a symbolic scene for a news page ` +
+    "rather than a record of a specific event, sharp focus, natural colour, fine film grain";
+  const paletteLine = `${palette}, muted and professional, restrained contrast`;
 
   // The medium leads. Image models weight early tokens hardest, and a measured
   // render with the medium only in the middle of the prompt (and nothing before
@@ -666,14 +680,15 @@ export function buildImageBrief(input: ImageBriefInput): ImageBrief {
    */
   const dignified = DIGNIFIED_CATEGORIES.has(slug);
   const avoidLine =
-    "Avoid: photorealism, photographs, 3d renders, depth of field, bokeh, misleading realism, " +
-    "readable text, letters, writing on documents (papers and signs must be blank), logos, " +
+    "Avoid: readable text, letters, writing on documents or signage (every sign stays blank), logos, " +
+    "watermarks, identifiable faces, crowds of recognisable people, deformed hands, cartoon, " +
+    "flat vector art, comic style, plastic 3d render, oversaturated colour, clutter, unrelated objects" +
     (dignified
-      ? "watermarks, clutter, extra unrelated objects, no people, no faces, no hands, no figures (objects and place only)."
-      : "watermarks, clutter, extra unrelated objects.");
+      ? ", and no people at all — no faces, no hands, no figures: objects and place only."
+      : ".");
 
   const prompt = [
-    `Hand-drawn editorial illustration, ink and gouache on paper, not a photograph: a newspaper op-ed drawing about ${topic}.`,
+    `Editorial news photograph, not an illustration and not a drawing: a symbolic front-page image about ${topic}.`,
     `Central idea: ${metaphor.tension}.`,
     `Visual metaphor: ${metaphor.metaphor}.`,
     `Subject: ${metaphor.subject}.`,

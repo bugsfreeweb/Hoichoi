@@ -37,12 +37,12 @@ const politics = buildImageBrief({ title: "সংসদে বাজেট প�
 
 check("the prompt is the full editorial structure", () => {
   const ordered = [
-    "Hand-drawn editorial illustration, ink and gouache on paper, not a photograph",
+    "Editorial news photograph, not an illustration and not a drawing",
     "Central idea:",
     "Visual metaphor:",
     "Subject:",
     "Setting:",
-    "Style: modern editorial illustration",
+    "Style: editorial news photograph",
     "Composition:",
     "Color palette:",
     "Mood:",
@@ -96,18 +96,18 @@ check("variation: different headlines do not collapse to one picture", () => {
     buildImageBrief({ title, category: ["national", "weather", "sports", "economy", "health", "technology"][i] }).prompt);
   assert.ok(new Set(prompts).size >= 5, `only ${new Set(prompts).size} distinct briefs from 6 stories`);
   // The deterministic variant engine spreads the mediums too.
-  const styles = new Set(prompts.map((p) => /Style: modern editorial illustration, ([^,]+)/.exec(p)?.[1]));
+  const styles = new Set(prompts.map((p) => /Style: editorial news photograph, ([^,]+)/.exec(p)?.[1]));
   assert.ok(styles.size >= 2, `all six stories used one medium: ${[...styles]}`);
 });
 
 check("the composition reserves headline space on a specific side", () => {
   const h = buildImageBrief({ title: "ঘটনা", category: "national" });
-  assert.match(h.prompt, /generous empty space on the (?:left|right) for the headline/);
+  assert.match(h.prompt, /the (?:left|right) of the frame kept as quiet negative/);
   assert.equal(h.aspectRatio, "16:9");
   assert.equal(h.size, "1536x1024");
   const v = buildImageBrief({ title: "ঘটনা", category: "national", aspectRatio: "9:16" });
   assert.match(v.prompt, /vertical 9:16 frame/);
-  assert.match(v.prompt, /generous empty space on the (?:top|bottom)/);
+  assert.match(v.prompt, /the (?:top|bottom) of the frame kept as quiet negative/);
   assert.equal(v.size, "1024x1536");
 });
 
@@ -141,8 +141,8 @@ check("unextracted categories fall back gracefully", () => {
   assert.match(sceneForCategory("no-such-category"), /editorial news scene/i);
   // The medium must open the prompt: models weight early tokens hardest, and a
   // medium placed after the subject produced photographs of drawings.
-  assert.ok(editorialImagePrompt({}).startsWith("Hand-drawn editorial illustration, ink and gouache on paper, not a photograph"));
-  assert.match(editorialImagePrompt({}), /Avoid: photorealism/);
+  assert.ok(editorialImagePrompt({}).startsWith("Editorial news photograph, not an illustration and not a drawing"));
+  assert.match(editorialImagePrompt({}), /Avoid: readable text/);
 });
 
 // ---------------------------------------------------------------------------
@@ -155,10 +155,12 @@ check("the negative prompt bans text, brands, people we can identify and clutter
   assert.match(neg, /no watermarks/i);
   assert.match(neg, /no recognisable faces/i);
   assert.match(neg, /no children/i);
-  assert.match(neg, /photorealism/);
+  assert.match(neg, /cartoon/);
   assert.match(neg, /readable text/);
   assert.match(neg, /clutter/);
-  assert.match(neg, /extra unrelated objects/);
+  assert.match(neg, /unrelated objects/);
+  // The new medium bans the old one by name.
+  assert.match(neg, /illustration/);
 });
 
 check("every renderable line avoids children and identifiable people", () => {
@@ -206,10 +208,10 @@ check("back-compat surface", () => {
 check("the medium opens the prompt", () => {
   const prompt = editorialImagePrompt({ title: "ঘুষ কেলেঙ্কারি", category: "corruption" });
   assert.ok(
-    prompt.startsWith("Hand-drawn editorial illustration, ink and gouache on paper, not a photograph"),
-    "image models weight early tokens hardest; a medium placed after the subject produced photographs",
+    prompt.startsWith("Editorial news photograph, not an illustration and not a drawing"),
+    "image models weight early tokens hardest; the medium leads every brief",
   );
-  assert.match(prompt, /not a photograph/i);
+  assert.match(prompt, /not an illustration/i);
 });
 
 console.log(`\nimage-prompt: ${passed} checks passed`);

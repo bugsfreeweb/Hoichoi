@@ -29,7 +29,8 @@
     "@hoichoi/poster": "workspace:*",
     "@hoichoi/shared-types": "workspace:*",
     "commander": "^12.1.0",
-    "sharp": "^0.33.5"
+    "sharp": "^0.33.5",
+    "playwright": "^1.49.1"
   },
   "optionalDependencies": {
     "ffmpeg-static": "^5.2.0",

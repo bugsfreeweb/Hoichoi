@@ -13,7 +13,8 @@
     "test": "tsx src/__tests__/poster.test.ts"
   },
   "dependencies": {
-    "sharp": "^0.33.5"
+    "sharp": "^0.33.5",
+    "playwright-core": "^1.49.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
