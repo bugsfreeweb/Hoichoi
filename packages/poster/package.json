@@ -13,14 +13,14 @@
     "test": "tsx src/__tests__/poster.test.ts"
   },
   "dependencies": {
-    "sharp": "^0.33.5",
-    "playwright-core": "^1.49.1",
+    "sharp": "^0.35.5",
+    "playwright-core": "^1.65.1",
     "@hoichoi/shared-types": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
-    "@types/sharp": "^0.31.1",
-    "tsx": "^4.19.2",
+    "@types/sharp": "^0.32.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.3"
   }
 }
