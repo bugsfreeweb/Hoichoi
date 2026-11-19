@@ -46,6 +46,9 @@ import {
   deskLoginLog,
   deskLoginLogDelete,
   deskLoginLogClear,
+  deskSessions,
+  deskSessionRevoke,
+  type DeskSessionRow,
   deskProviders,
   type DeskLoginLogPage,
   type AdminLoginCode,
@@ -54,7 +57,7 @@ import {
 } from "../lib/tauri";
 import { actionsSecretName, listGithubSecrets, pushGithubSecret } from "../lib/github";
 import { autoPull, autoPush } from "../lib/autosync";
-import { toBn } from "../lib/format";
+import { bnTime, toBn } from "../lib/format";
 import DeskCategoryManager from "../components/DeskCategoryManager";
 import DeskSourceManager from "../components/DeskSourceManager";
 import DeskProviderManager from "../components/DeskProviderManager";
@@ -608,6 +611,7 @@ export default function Settings({
   useEffect(() => {
     void loadBrand();
     void loadAdminCodes();
+    void loadSessions();
     void loadAdSlots();
     void loadLoginLog();
     void loadProviderKeys();
@@ -637,6 +641,37 @@ export default function Settings({
       setAdmErr(null);
     } catch {
       setAdmCodes([]);
+    }
+  };
+
+  /**
+   * Sessions are the devices the *web* console is signed in from; the desk can
+   * revoke one so a lost laptop is cut off without needing a browser. Loaded
+   * lazily through the same runner passthrough as everything else here.
+   */
+  const [sessions, setSessions] = useState<DeskSessionRow[]>([]);
+  const [sessBusy, setSessBusy] = useState<string | null>(null);
+  const loadSessions = async () => {
+    try {
+      setSessions(await deskSessions(await getRunEnv()));
+    } catch {
+      setSessions([]);
+    }
+  };
+
+  const revokeSession = async (row: DeskSessionRow) => {
+    const who = row.device_name ?? row.device_os ?? row.email;
+    if (!window.confirm(`${who} — এই সেশনটি বাতিল করবেন? ওই ডিভাইসে আবার কোড দিয়ে ঢুকতে হবে।`)) return;
+    setSessBusy(row.id);
+    setAdmErr(null);
+    try {
+      await deskSessionRevoke(await getRunEnv(), row.id);
+      setAdmMsg(`সেশন বাতিল হয়েছে — ${who}`);
+      await loadSessions();
+    } catch (e) {
+      setAdmErr(e instanceof Error ? e.message : "সেশন বাতিল করা যায়নি");
+    } finally {
+      setSessBusy(null);
     }
   };
 
@@ -1622,6 +1657,69 @@ export default function Settings({
               <button className="btn-ghost" onClick={() => void logoutAllWebSessions()}>
                 ⏻ সব ওয়েব সেশন লগ আউট
               </button>
+            </div>
+            <div className="mt-5 border-t border-ink/10 pt-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-ink-soft">
+                  ডিভাইস ও সেশন · {toBn(sessions.filter((x) => !x.revoked_at).length)} টি সক্রিয়
+                </p>
+                <button className="btn-ghost" onClick={() => void loadSessions()}>
+                  ↻ refresh
+                </button>
+              </div>
+              {sessions.length === 0 ? (
+                <p className="mt-2 text-[11.5px] text-ink-soft">
+                  কোনো সেশন নেই — ওয়েব অ্যাডমিনে কেউ লগইন করেনি।
+                </p>
+              ) : (
+                <div className="mt-2 overflow-x-auto">
+                  <table className="w-full text-left text-[11.5px]">
+                    <thead className="text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+                      <tr>
+                        <th className="py-1 pr-3">ডিভাইস</th>
+                        <th className="py-1 pr-3">অ্যাডমিন</th>
+                        <th className="py-1 pr-3">শেষ ব্যবহার</th>
+                        <th className="py-1 pr-3">অবস্থা</th>
+                        <th className="py-1" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sessions.map((row) => (
+                        <tr key={row.id} className="border-t border-ink/10">
+                          <td className="py-1.5 pr-3 font-semibold text-ink">
+                            {row.device_name ?? "—"}
+                            <span className="ml-1 text-[10px] text-ink-soft">{row.device_os ?? ""}</span>
+                          </td>
+                          <td className="py-1.5 pr-3 text-ink-soft">{row.email}</td>
+                          <td className="py-1.5 pr-3 text-ink-soft">
+                            {row.last_used_at ? bnTime(row.last_used_at) : "—"}
+                          </td>
+                          <td className="py-1.5 pr-3">
+                            {row.revoked_at ? (
+                              <span className="text-[10px] font-bold uppercase text-ink-soft">
+                                বাতিল · {row.revoked_by ?? "—"}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold uppercase text-lime">সক্রিয়</span>
+                            )}
+                          </td>
+                          <td className="py-1.5">
+                            {!row.revoked_at && (
+                              <button
+                                className="btn-ghost"
+                                disabled={sessBusy === row.id}
+                                onClick={() => void revokeSession(row)}
+                              >
+                                ⏻ বাতিল
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
             {newCode && (
               <div className="mt-3 border-2 border-dashed border-lime bg-paper-deep px-4 py-3">

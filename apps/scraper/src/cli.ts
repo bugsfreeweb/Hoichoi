@@ -263,6 +263,45 @@ program
   });
 
 program
+  .command("sessions:list")
+  .description("admin sessions / devices (JSON) — the desks the web console signs in from")
+  .option("--email <email>", "only this admin's sessions")
+  .option("--limit <n>", "how many rows", "100")
+  .action(async (opts: { email?: string; limit?: string }) => {
+    try {
+      await ensureSchema(getClient());
+      const { listAdminSessions } = await import("@hoichoi/db");
+      const rows = await listAdminSessions({
+        email: opts.email,
+        limit: Number(opts.limit ?? 100) || 100,
+      });
+      console.log(JSON.stringify({ ok: true, sessions: rows }, null, 2));
+    } catch (err) {
+      console.error(JSON.stringify({ ok: false, error: (err as Error).message }));
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("sessions:revoke")
+  .description("cut off one admin session by its public id")
+  .requiredOption("--id <id>", "session id (token-hash prefix)")
+  .option("--by <name>", "who revoked it", "desk")
+  .option("--reason <text>", "why", "desk revoke")
+  .action(async (opts: { id: string; by?: string; reason?: string }) => {
+    try {
+      await ensureSchema(getClient());
+      const { revokeAdminSessionById } = await import("@hoichoi/db");
+      const affected = await revokeAdminSessionById(opts.id, opts.by ?? "desk", opts.reason ?? "desk revoke");
+      if (affected === 0) throw new Error("session not found or already revoked");
+      console.log(JSON.stringify({ ok: true, revoked: affected }));
+    } catch (err) {
+      console.error(JSON.stringify({ ok: false, error: (err as Error).message }));
+      process.exitCode = 1;
+    }
+  });
+
+program
   .command("purge")
   .description("hard-delete archived content past archive_retention_days")
   .action(async () => {
@@ -2362,6 +2401,25 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
           await archivePurge(flags["older-than"] ? Number(flags["older-than"]) : undefined, flags.actor ?? "desk"),
         ),
       );
+      return;
+    }
+    case "sessions:list": {
+      const { flags } = parseArgs(args.slice(1));
+      const { listAdminSessions } = await import("@hoichoi/db");
+      const rows = await listAdminSessions({
+        email: flags.email,
+        limit: Number(flags.limit ?? 100) || 100,
+      });
+      console.log(JSON.stringify({ ok: true, sessions: rows }, null, 2));
+      return;
+    }
+    case "sessions:revoke": {
+      const { flags } = parseArgs(args.slice(1));
+      if (!flags.id) throw new Error("--id is required");
+      const { revokeAdminSessionById } = await import("@hoichoi/db");
+      const affected = await revokeAdminSessionById(flags.id, flags.by ?? "desk", flags.reason ?? "desk revoke");
+      if (affected === 0) throw new Error("session not found or already revoked");
+      console.log(JSON.stringify({ ok: true, revoked: affected }));
       return;
     }
     case "moderation": {

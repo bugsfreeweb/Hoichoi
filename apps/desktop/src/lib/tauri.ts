@@ -704,6 +704,47 @@ export async function deskModeration(
   return (res.comments as DeskComment[]) ?? [];
 }
 
+/** One admin session (a browser/device signed in to the web console). */
+export interface DeskSessionRow {
+  id: string;
+  user_id: string;
+  email: string;
+  display_name: string | null;
+  role: string;
+  device_name: string | null;
+  device_os: string | null;
+  app_version: string | null;
+  ip_hash: string | null;
+  user_agent_hash: string | null;
+  created_at: string;
+  expires_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+  revoked_by: string | null;
+  revoked_reason: string | null;
+}
+
+/**
+ * The admin sessions on the shared database — what the web console is signed in
+ * from. The desk shows them so a lost laptop can be cut off without a browser,
+ * which is the one time you cannot rely on a browser.
+ */
+export async function deskSessions(
+  env: Record<string, string>,
+  email?: string,
+): Promise<DeskSessionRow[]> {
+  const args = ["sessions:list", "--limit", "100"];
+  if (email) args.push("--email", email);
+  const res = await deskCall(args, env);
+  return (res.sessions as DeskSessionRow[]) ?? [];
+}
+
+/** Cut off one session by its public id. Throws when the id is stale. */
+export async function deskSessionRevoke(env: Record<string, string>, id: string): Promise<number> {
+  const res = await deskCall(["sessions:revoke", "--id", id, "--by", "desk", "--reason", "desk revoke"], env);
+  return Number(res.revoked ?? 0);
+}
+
 /** One archived row, as the runner reports it. */
 export interface DeskArchiveRow {
   id: string;

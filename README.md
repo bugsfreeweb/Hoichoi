@@ -459,6 +459,19 @@ ledger row, a held post is never purged, and a full pass reports what it did.
 `/api/health` also stops reporting `1.1.26` from a hard-coded fallback; it now
 reports the version that is deployed (`1.1.42`).
 
+**One more door.** C3 promised a "Security & devices" screen on the desk and
+delivered it only on the web, which left the desk able to drop *every* session of
+an email at once and none individually. `sessions:list` and `sessions:revoke` now
+run through the same runner passthrough, and Settings gains a **ডিভাইস ও সেশন**
+block — device, admin, last used, `সক্রিয়` or `বাতিল · <who>`, and one revoke per
+row with a confirmation that names the device. That is the one situation where a
+browser is not available: the laptop you are trying to cut off.
+
+**The scheduler was lying too.** After the migration, `rolling-archive.yml` was
+dispatched by hand and finished `success` in 58 s with `rolledOver: 0`,
+`purged: 0` — the honest answer for a database already rolled over — where for a
+month it had said exactly the same thing while nothing at all had rolled over.
+
 ## The collector drafts without holding the keys (v1.1.29)
 
 **A laptop should not carry the newsroom's provider keys.** The desktop runs the whole
