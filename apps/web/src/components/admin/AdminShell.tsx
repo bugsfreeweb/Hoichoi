@@ -66,14 +66,18 @@ const NAV_GROUPS: Array<{ title: string; en: string; items: NavItem[] }> = [
   {
     title: "কনটেন্ট",
     en: "Content",
+    /**
+     * One row per *area*, not per screen. Sources and categories are the same
+     * job (what we fetch, where it is filed); live events, notices and polls are
+     * the same job (what sits beside the feed). Each row opens a screen whose tab
+     * strip reaches its siblings, so the sidebar stays short without hiding a
+     * feature behind a second click that has no visible name.
+     */
     items: [
-      { href: "/admin/sources", icon: "sources", label: "সোর্স" },
-      { href: "/admin/categories", icon: "categories", label: "বিভাগ" },
+      { href: "/admin/sources", icon: "sources", label: "সোর্স ও বিভাগ" },
       { href: "/admin/posts", icon: "posts", label: "পোস্ট এডিটর" },
-      { href: "/admin/live", icon: "live", label: "লাইভ ইভেন্ট" },
-      { href: "/admin/notices", icon: "notices", label: "নোটিশ" },
+      { href: "/admin/live", icon: "live", label: "লাইভ, নোটিশ ও পোল" },
       { href: "/admin/ads", icon: "ads", label: "বিজ্ঞাপন" },
-      { href: "/admin/polls", icon: "polls", label: "পোল" },
       { href: "/admin/archive", icon: "archive", label: "আর্কাইভ" },
     ],
   },
@@ -84,34 +88,18 @@ const NAV_GROUPS: Array<{ title: string; en: string; items: NavItem[] }> = [
       {
         href: "/admin/moderation",
         icon: "moderation",
-        label: "কনটেন্ট মডারেশন",
-        // Both gates: an item waiting on the second approval is still an item an
-        // operator has to act on, so showing only the first gate under-reports.
-        countKeys: ["pending_review", "approved"],
-      },
-      {
-        href: "/admin/comments",
-        icon: "comments",
-        label: "মন্তব্য মডারেশন",
-        countKeys: ["pending_comments"],
+        label: "মডারেশন",
+        // Both gates and both subjects: an item waiting on the second approval is
+        // still an item an operator has to act on, and a pending comment is a
+        // queue nobody sees unless it is counted here.
+        countKeys: ["pending_review", "approved", "pending_comments"],
       },
       {
         href: "/admin/submissions",
         icon: "submissions",
-        label: "সাবমিশন",
-        countKeys: ["new_submissions"],
-      },
-      {
-        href: "/admin/removals",
-        icon: "removals",
-        label: "রিমুভাল রিকোয়েস্ট",
-        countKeys: ["open_removals"],
-      },
-      {
-        href: "/admin/reports",
-        icon: "reports",
-        label: "পাঠকের রিপোর্ট",
-        countKeys: ["open_reports"],
+        label: "ইনবক্স ও রিপোর্ট",
+        // Three inboxes, one number: whichever of them is non-empty is work.
+        countKeys: ["new_submissions", "open_removals", "open_reports"],
       },
     ],
   },
@@ -131,6 +119,45 @@ const NAV_GROUPS: Array<{ title: string; en: string; items: NavItem[] }> = [
 ];
 
 const NAV: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
+
+/**
+ * Sibling screens that share one sidebar row.
+ *
+ * `/admin/categories` is a tab under `/admin/sources`, so matching the sidebar
+ * on `href` alone left the rail with nothing highlighted — the console looked
+ * like it had lost the page you were on. Every screen in a group highlights the
+ * row that owns the group.
+ */
+const SECTION_OF: Record<string, string> = {
+  "/admin/categories": "/admin/sources",
+  "/admin/notices": "/admin/live",
+  "/admin/polls": "/admin/live",
+  "/admin/comments": "/admin/moderation",
+  "/admin/removals": "/admin/submissions",
+  "/admin/reports": "/admin/submissions",
+};
+
+/**
+ * Does this row own the current path?
+ *
+ * The dashboard's href is `/admin`, which is a prefix of every console URL — so
+ * a plain `startsWith` marked "ড্যাশবোর্ড" active on all twenty-one screens and
+ * the row you were actually on shared the highlight. It is an exact match; every
+ * other row owns its own subtree.
+ */
+function rowOwns(n: NavItem, here: string): boolean {
+  if (n.href === "/admin") return here === "/admin";
+  return here === n.href || here.startsWith(`${n.href}/`);
+}
+
+/** The sidebar row a path belongs to, or `undefined` for an unlisted page. */
+function ownerHref(path: string): string {
+  if (NAV.some((n) => rowOwns(n, path))) return path;
+  for (const [sibling, owner] of Object.entries(SECTION_OF)) {
+    if (path === sibling || path.startsWith(`${sibling}/`)) return owner;
+  }
+  return path;
+}
 
 const SIDEBAR_KEY = "hoichoi-admin-sidebar-collapsed";
 
@@ -556,7 +583,8 @@ function SidebarNav({
             )}
             <ul className="space-y-[1px] font-sans-bn text-[12.5px] font-medium">
               {group.items.map((n) => {
-                const active = path === n.href || path.startsWith(`${n.href}/`);
+                const here = ownerHref(path);
+                const active = rowOwns(n, here);
                 const badge =
                   n.countKeys?.reduce((sum, k) => sum + (counts[k] ?? 0), 0) ??
                   0;
@@ -655,9 +683,8 @@ function AdminFooter({
   email: string;
   footerRef: React.RefObject<HTMLElement | null>;
 }) {
-  const active = NAV.find(
-    (n) => path === n.href || path.startsWith(`${n.href}/`),
-  );
+  const here = ownerHref(path);
+  const active = NAV.find((n) => rowOwns(n, here));
   return (
     <footer ref={footerRef} className="admin-footer">
       {/*

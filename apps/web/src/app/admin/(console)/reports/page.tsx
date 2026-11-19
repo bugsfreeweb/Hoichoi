@@ -4,6 +4,8 @@ import { Paginator } from "@/components/admin/Paginator";
 import { ReportRow } from "@/components/admin/ReportRow";
 import { ViewToggle } from "@/components/admin/ui/ViewToggle";
 import { PageHeading } from "@/components/admin/ui/PageHeader";
+import { SectionTabs, type SectionTab } from "@/components/admin/ui/SectionTabs";
+import { INBOX_SECTION } from "@/components/admin/ui/sections";
 import { Card, CardHead, StatTile } from "@/components/admin/ui/Card";
 import { viewFromSearch } from "@/lib/view";
 
@@ -61,6 +63,11 @@ export default async function AdminReportsPage({
 
   return (
     <div>
+      <SectionTabs
+        tabs={INBOX_SECTION.tabs as unknown as SectionTab[]}
+        current="/admin/reports"
+        label={INBOX_SECTION.label}
+      />
       <PageHeading
         emoji="🚩"
         kicker="READER REPORTS QUEUE"

@@ -1,4 +1,6 @@
 import { PageHeading } from "@/components/admin/ui/PageHeader";
+import { SectionTabs, type SectionTab } from "@/components/admin/ui/SectionTabs";
+import { INBOX_SECTION } from "@/components/admin/ui/sections";
 import { getPostById, mapRemovalRequest, pageRows } from "@hoichoi/db";
 import { RemovalRow, type RemovalPostRef } from "@/components/admin/RemovalRow";
 import { Paginator } from "@/components/admin/Paginator";
@@ -65,6 +67,11 @@ export default async function AdminRemovalsPage({
 
   return (
     <div>
+      <SectionTabs
+        tabs={INBOX_SECTION.tabs as unknown as SectionTab[]}
+        current="/admin/removals"
+        label={INBOX_SECTION.label}
+      />
       <PageHeading emoji="⚠️" kicker="CONTENT TAKEDOWN REQUESTS" title="রিমুভাল রিকোয়েস্ট" description="পাঠক বা কর্তৃপক্ষের সরানোর অনুরোধ — যাচাই করে পোস্ট রাখুন বা সরিয়ে দিন। প্রতিটি সিদ্ধান্ত লগ হয়।" />
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[12px] text-ink-soft">প্রতিটি অনুরোধে পোস্টের ছবি ও কারণ দেখে সিদ্ধান্ত নিন।</p>

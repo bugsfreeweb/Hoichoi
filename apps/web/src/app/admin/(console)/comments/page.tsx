@@ -1,4 +1,6 @@
 import { PageHeading } from "@/components/admin/ui/PageHeader";
+import { SectionTabs, type SectionTab } from "@/components/admin/ui/SectionTabs";
+import { MODERATION_SECTION } from "@/components/admin/ui/sections";
 import { getAllComments } from "@hoichoi/db";
 import { ModerationTable } from "@/components/admin/ModerationTable";
 
@@ -14,6 +16,11 @@ export default async function AdminCommentsPage() {
   const comments = await getAllComments(600).catch(() => []);
   return (
     <div>
+      <SectionTabs
+        tabs={MODERATION_SECTION.tabs as unknown as SectionTab[]}
+        current="/admin/comments"
+        label={MODERATION_SECTION.label}
+      />
       <PageHeading emoji="💬" kicker="PUBLIC COMMENTS · QUEUE → LIVE" title="মন্তব্য মডারেশন" description="পাঠকের মন্তব্য অনুমোদন, ব্লক বা মুছে ফেলুন। শুধু অনুমোদিত মন্তব্য পাবলিক পেজে দেখায়।" />
       <p className="mt-2 max-w-2xl text-[12.5px] text-ink-soft">
         পাবলিক মন্তব্যগুলো অনুমোদন ছাড়া সাইটে দেখা যায় না। অপেক্ষমান মন্তব্যগুলো

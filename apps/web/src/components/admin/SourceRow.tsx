@@ -30,9 +30,16 @@ const PLATFORM_LABEL: Record<SourcePlatform, string> = {
 export function SourceRow({
   source,
   categories,
+  variant = "row",
 }: {
   source: Source;
   categories: CategoryOption[];
+  /**
+   * `card` stacks the same controls into a tile for the grid view. It is the
+   * same component on purpose: the edit form, the two switches and the delete
+   * confirmation must not exist twice, or the two views drift.
+   */
+  variant?: "row" | "card";
 }) {
   const router = useRouter();
   const [active, setActive] = useState(source.is_active);
@@ -53,7 +60,9 @@ export function SourceRow({
     pageName: source.page_name,
     platform: source.platform ?? "facebook",
     kind: source.kind ?? "page",
-    categories: source.categories.length ? source.categories : [source.category],
+    categories: source.categories.length
+      ? source.categories
+      : [source.category],
     allCategories: false,
   });
 
@@ -68,8 +77,13 @@ export function SourceRow({
       if (!res.ok) {
         // This used to update nothing and say nothing on a 401/403, so the
         // toggle looked like it worked until the page was reloaded.
-        const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        const msg = res.status === 401 || res.status === 403 ? "অনুমতি নেই — admin/editor প্রয়োজন।" : (data?.error ?? `HTTP ${res.status}`);
+        const data = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        const msg =
+          res.status === 401 || res.status === 403
+            ? "অনুমতি নেই — admin/editor প্রয়োজন।"
+            : (data?.error ?? `HTTP ${res.status}`);
         setErr(msg);
         toast.error("✕ সোর্স হালনাগাদ ব্যর্থ", msg);
         return;
@@ -78,8 +92,12 @@ export function SourceRow({
       if (typeof next.is_verified === "boolean") setVerified(next.is_verified);
       toast.success(
         typeof next.is_active === "boolean"
-          ? next.is_active ? "✓ সোর্স সক্রিয়" : "✓ সোর্স নিষ্ক্রিয়"
-          : next.is_verified ? "✓ সোর্স যাচাইকৃত" : "✓ যাচাইকরণ তুলে নেওয়া হয়েছে",
+          ? next.is_active
+            ? "✓ সোর্স সক্রিয়"
+            : "✓ সোর্স নিষ্ক্রিয়"
+          : next.is_verified
+            ? "✓ সোর্স যাচাইকৃত"
+            : "✓ যাচাইকরণ তুলে নেওয়া হয়েছে",
         source.page_name,
       );
       router.refresh();
@@ -144,7 +162,9 @@ export function SourceRow({
         return;
       }
       if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        const data = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         throw new Error(data?.error ?? "delete failed");
       }
       toast.success("✓ সোর্স মুছে ফেলা হয়েছে", source.page_name);
@@ -163,40 +183,64 @@ export function SourceRow({
       // Ticking "সব বিভাগ" then unticking one box means "all except this" — seed
       // the full set first so the untick actually subtracts instead of leaving
       // an empty (and rejected) list.
-      const base = f.allCategories ? categories.map((c) => c.slug) : f.categories;
+      const base = f.allCategories
+        ? categories.map((c) => c.slug)
+        : f.categories;
       return {
         ...f,
         allCategories: false,
-        categories: base.includes(slug) ? base.filter((c) => c !== slug) : [...base, slug],
+        categories: base.includes(slug)
+          ? base.filter((c) => c !== slug)
+          : [...base, slug],
       };
     });
   }
 
-  const field = "mt-1 w-full border border-ink/30 bg-paper px-3 py-2 text-[13px] focus:outline-none focus:border-ink";
+  const field =
+    "mt-1 w-full border border-ink/30 bg-paper px-3 py-2 text-[13px] focus:outline-none focus:border-ink";
 
   if (editing) {
     return (
-      <form onSubmit={saveEdit} className="grid gap-3 border border-ink/30 bg-paper-deep px-4 py-3">
+      <form
+        onSubmit={saveEdit}
+        className="grid gap-3 border border-ink/30 bg-paper-deep px-4 py-3"
+      >
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">প্ল্যাটফর্ম</span>
+            <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+              প্ল্যাটফর্ম
+            </span>
             <select
               className={field}
               value={editForm.platform}
-              onChange={(e) => setEditForm({ ...editForm, platform: normalizePlatform(e.target.value) })}
+              onChange={(e) =>
+                setEditForm({
+                  ...editForm,
+                  platform: normalizePlatform(e.target.value),
+                })
+              }
             >
               {PLATFORMS.map((p) => (
-                <option key={p.value} value={p.value}>{p.label}</option>
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
               ))}
             </select>
           </label>
           {editForm.platform === "facebook" && (
             <label className="block">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">ধরন</span>
+              <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+                ধরন
+              </span>
               <select
                 className={field}
                 value={editForm.kind}
-                onChange={(e) => setEditForm({ ...editForm, kind: e.target.value === "group" ? "group" : "page" })}
+                onChange={(e) =>
+                  setEditForm({
+                    ...editForm,
+                    kind: e.target.value === "group" ? "group" : "page",
+                  })
+                }
               >
                 <option value="page">পেজ</option>
                 <option value="group">গ্রুপ</option>
@@ -205,30 +249,46 @@ export function SourceRow({
           )}
         </div>
         <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">পেজ URL</span>
+          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+            পেজ URL
+          </span>
           <input
             required
             className={field}
             value={editForm.pageUrl}
-            onChange={(e) => setEditForm({ ...editForm, pageUrl: e.target.value })}
+            onChange={(e) =>
+              setEditForm({ ...editForm, pageUrl: e.target.value })
+            }
           />
         </label>
         <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">পেজ নাম</span>
+          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+            পেজ নাম
+          </span>
           <input
             className={field}
             value={editForm.pageName}
-            onChange={(e) => setEditForm({ ...editForm, pageName: e.target.value })}
+            onChange={(e) =>
+              setEditForm({ ...editForm, pageName: e.target.value })
+            }
           />
         </label>
         <fieldset>
-          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">ক্যাটাগরি</span>
+          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+            ক্যাটাগরি
+          </span>
           <div className="mt-1 grid gap-1.5">
             {categories.map((c) => (
-              <label key={c.slug} className="flex cursor-pointer items-center gap-2 border border-ink/20 bg-paper px-3 py-2 text-[12.5px] hover:border-ink/50">
+              <label
+                key={c.slug}
+                className="flex cursor-pointer items-center gap-2 border border-ink/20 bg-paper px-3 py-2 text-[12.5px] hover:border-ink/50"
+              >
                 <input
                   type="checkbox"
-                  checked={editForm.allCategories || editForm.categories.includes(c.slug)}
+                  checked={
+                    editForm.allCategories ||
+                    editForm.categories.includes(c.slug)
+                  }
                   onChange={() => toggleCategory(c.slug)}
                   className="accent-ink"
                 />
@@ -248,7 +308,11 @@ export function SourceRow({
                     : editForm.categories.length
                       ? editForm.categories
                       : [source.category];
-                  setEditForm((f) => ({ ...f, allCategories: on, categories: current }));
+                  setEditForm((f) => ({
+                    ...f,
+                    allCategories: on,
+                    categories: current,
+                  }));
                 }}
                 className="accent-ink"
               />
@@ -261,12 +325,23 @@ export function SourceRow({
             </p>
           )}
         </fieldset>
-        {err && <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">{err}</p>}
+        {err && (
+          <p className="border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">
+            {err}
+          </p>
+        )}
         <div className="flex items-center gap-3">
-          <button className="px-4 py-2 text-[12.5px] font-bold text-on-accent transition disabled:opacity-50 bg-ink hover:bg-alizarin" disabled={busy}>
+          <button
+            className="px-4 py-2 text-[12.5px] font-bold text-on-accent transition disabled:opacity-50 bg-ink hover:bg-alizarin"
+            disabled={busy}
+          >
             ✓ সংরক্ষণ
           </button>
-          <button type="button" className="px-4 py-2 text-[12.5px] font-bold text-ink border border-ink/30 hover:border-ink" onClick={() => setEditing(false)}>
+          <button
+            type="button"
+            className="px-4 py-2 text-[12.5px] font-bold text-ink border border-ink/30 hover:border-ink"
+            onClick={() => setEditing(false)}
+          >
             বাতিল
           </button>
         </div>
@@ -274,11 +349,22 @@ export function SourceRow({
     );
   }
 
+  const card = variant === "card";
+
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border border-ink/20 bg-paper-deep px-4 py-3">
+    <div
+      className={
+        card
+          ? "flex h-full flex-col gap-3 border border-ink/20 bg-paper-deep p-3.5 transition-colors hover:border-ink/45"
+          : "flex flex-wrap items-center justify-between gap-3 border border-ink/20 bg-paper-deep px-4 py-3"
+      }
+    >
       <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <ExternalLink href={source.page_url} className="truncate text-[13.5px] font-bold text-ink hover:text-alizarin">
+        <div className={`flex flex-wrap items-center gap-2 ${card ? "" : ""}`}>
+          <ExternalLink
+            href={source.page_url}
+            className="truncate text-[13.5px] font-bold text-ink hover:text-alizarin"
+          >
             {source.page_name}
           </ExternalLink>
           <span className="rounded-full border border-ink/30 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-widest text-ink-soft">
@@ -286,30 +372,107 @@ export function SourceRow({
             {source.kind === "group" ? " · গ্রুপ" : ""}
           </span>
         </div>
-        <p className="truncate font-mono-x text-[11px] text-ink-soft">{source.page_url}</p>
+        <p
+          className={`truncate font-mono-x text-[11px] text-ink-soft ${card ? "whitespace-normal break-all" : ""}`}
+        >
+          {source.page_url}
+        </p>
       </div>
-      <div className="flex items-center gap-3">
-        <div className="flex max-w-[280px] flex-wrap items-center justify-end gap-1">
-          {(source.categories.length ? source.categories : [source.category]).map((c) => (
-            <span key={c} className="rounded-full border border-ink/20 px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+      <div
+        className={
+          card
+            ? "mt-auto flex flex-wrap items-center justify-between gap-2"
+            : "flex items-center gap-3"
+        }
+      >
+        <div
+          className={`flex flex-wrap items-center gap-1 ${card ? "" : "max-w-[280px] justify-end"}`}
+        >
+          {(source.categories.length
+            ? source.categories
+            : [source.category]
+          ).map((c) => (
+            <span
+              key={c}
+              className="rounded-full border border-ink/20 px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-ink-soft"
+            >
               {c}
             </span>
           ))}
         </div>
-        <Tag active={verified} onClick={() => patch({ is_verified: !verified })} busy={busy} label="Verified" />
-        <Tag active={active} onClick={() => patch({ is_active: !active })} busy={busy} label={active ? "Active" : "Paused"} />
-        <button onClick={() => setEditing(true)} disabled={busy} title="সম্পাদনা" className="flex h-7 w-7 items-center justify-center border border-ink/25 text-ink transition hover:border-ink hover:bg-ink hover:text-paper disabled:opacity-50">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+        <Tag
+          active={verified}
+          onClick={() => patch({ is_verified: !verified })}
+          busy={busy}
+          label="Verified"
+        />
+        <Tag
+          active={active}
+          onClick={() => patch({ is_active: !active })}
+          busy={busy}
+          label={active ? "Active" : "Paused"}
+        />
+        <button
+          onClick={() => setEditing(true)}
+          disabled={busy}
+          title="সম্পাদনা"
+          className="flex h-7 w-7 items-center justify-center border border-ink/25 text-ink transition hover:border-ink hover:bg-ink hover:text-paper disabled:opacity-50"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+            <path d="m15 5 4 4" />
+          </svg>
         </button>
-        <button onClick={remove} disabled={busy} title="মুছুন" className="flex h-7 w-7 items-center justify-center border border-alizarin/40 text-alizarin transition hover:bg-alizarin hover:text-on-accent disabled:opacity-50">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        <button
+          onClick={remove}
+          disabled={busy}
+          title="মুছুন"
+          className="flex h-7 w-7 items-center justify-center border border-alizarin/40 text-alizarin transition hover:bg-alizarin hover:text-on-accent disabled:opacity-50"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M3 6h18" />
+            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+            <path d="M10 11v6" />
+            <path d="M14 11v6" />
+          </svg>
         </button>
       </div>
     </div>
   );
 }
 
-function Tag({ active, onClick, busy, label }: { active: boolean; onClick: () => void; busy: boolean; label: string }) {
+function Tag({
+  active,
+  onClick,
+  busy,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  busy: boolean;
+  label: string;
+}) {
   return (
     <button
       onClick={onClick}

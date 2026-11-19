@@ -6,6 +6,8 @@ import { bn, bnCompact, bnDateTime, clsx } from "@/lib/live-format";
 import { liveThemeName } from "@/lib/live-themes";
 import { changeLiveEventStatus, featureLiveEvent } from "./actions";
 import { PageHeading } from "@/components/admin/ui/PageHeader";
+import { SectionTabs, type SectionTab } from "@/components/admin/ui/SectionTabs";
+import { PROGRAM_SECTION } from "@/components/admin/ui/sections";
 import { Card, CardHead, StatTile } from "@/components/admin/ui/Card";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +31,11 @@ export default async function AdminLiveEventsPage({
 
   return (
     <div>
+      <SectionTabs
+        tabs={PROGRAM_SECTION.tabs as unknown as SectionTab[]}
+        current="/admin/live"
+        label={PROGRAM_SECTION.label}
+      />
       {deleted && <p role="status" className="mb-5 border border-lime/40 bg-lime/10 px-4 py-3 text-[13px] font-bold text-ink">ইভেন্টটি মুছে ফেলা হয়েছে।</p>}
       <PageHeading
         emoji="📡"

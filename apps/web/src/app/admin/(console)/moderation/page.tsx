@@ -1,4 +1,6 @@
 import { PageHeading } from "@/components/admin/ui/PageHeader";
+import { SectionTabs, type SectionTab } from "@/components/admin/ui/SectionTabs";
+import { MODERATION_SECTION } from "@/components/admin/ui/sections";
 import { listCategories, mapPost, pageRows } from "@hoichoi/db";
 import { ModerationGrid } from "@/components/admin/ModerationGrid";
 import { ModerationListRow } from "@/components/admin/ModerationListRow";
@@ -64,6 +66,11 @@ export default async function AdminModerationPage({
   // at article queues does not scroll past reader-submitted text to do their job.
   return (
     <div>
+      <SectionTabs
+        tabs={MODERATION_SECTION.tabs as unknown as SectionTab[]}
+        current="/admin/moderation"
+        label={MODERATION_SECTION.label}
+      />
       <PageHeading emoji="⚖️" kicker="DOUBLE-APPROVAL GATE" title="কনটেন্ট মডারেশন" description="AI-উৎপাদিত খসড়া দুই ধাপের অনুমোদনের পর প্রকাশিত হয়। নোট লিখে অনুমোদন, প্রত্যাখ্যান বা প্রকাশ করুন।" />
       <p className="mt-2 text-[12.5px] text-ink-soft">
         প্রকাশের আগে দুই ধাপের যাচাই। পাঠকের মন্তব্য আলাদা কিউতে —{" "}

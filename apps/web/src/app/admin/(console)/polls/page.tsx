@@ -9,6 +9,8 @@ import { StandalonePollForm } from "@/components/admin/polls/StandalonePollForm"
 import { PollTemplatePicker } from "@/components/admin/polls/PollTemplatePicker";
 import { PollIntegrityPanel } from "@/components/admin/PollIntegrityPanel";
 import { PageHeading } from "@/components/admin/ui/PageHeader";
+import { SectionTabs, type SectionTab } from "@/components/admin/ui/SectionTabs";
+import { PROGRAM_SECTION } from "@/components/admin/ui/sections";
 import { Card, CardHead, StatTile } from "@/components/admin/ui/Card";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +28,11 @@ export default async function AdminPollsPage() {
 
   return (
     <div>
+      <SectionTabs
+        tabs={PROGRAM_SECTION.tabs as unknown as SectionTab[]}
+        current="/admin/polls"
+        label={PROGRAM_SECTION.label}
+      />
       <PageHeading
         emoji="🗳️"
         kicker="LIVE POLLS · পাঠকের মতামত"

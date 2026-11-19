@@ -1,5 +1,16 @@
 import { PageHeading } from "@/components/admin/ui/PageHeader";
-import { mapSource, getSourceCategories, listCategories, pageRows } from "@hoichoi/db";
+import {
+  SectionTabs,
+  type SectionTab,
+} from "@/components/admin/ui/SectionTabs";
+import { TAXONOMY_SECTION } from "@/components/admin/ui/sections";
+import { ViewToggle } from "@/components/admin/ui/ViewToggle";
+import {
+  mapSource,
+  getSourceCategories,
+  listCategories,
+  pageRows,
+} from "@hoichoi/db";
 import type { Source } from "@hoichoi/shared-types";
 import { SourceForm } from "@/components/admin/SourceForm";
 import { SourceRow } from "@/components/admin/SourceRow";
@@ -12,9 +23,10 @@ const PAGE_SIZE = 20;
 export default async function AdminSourcesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; view?: string }>;
 }) {
-  const { page: pageParam } = await searchParams;
+  const { page: pageParam, view } = await searchParams;
+  const grid = view === "card";
 
   const page = await pageRows<Record<string, unknown>>({
     sql: "SELECT * FROM sources",
@@ -26,7 +38,9 @@ export default async function AdminSourcesPage({
   // Resolve category membership only for the rows on screen. Hydrating every
   // source meant one extra query per source on every page load.
   const sources: Source[] = await Promise.all(
-    page.rows.map(async (r) => mapSource(r, await getSourceCategories(String(r.id)))),
+    page.rows.map(async (r) =>
+      mapSource(r, await getSourceCategories(String(r.id))),
+    ),
   );
   // Inactive categories must stay selectable here. The editor round-trips the
   // whole membership set, so a category hidden from this list would be erased
@@ -39,35 +53,60 @@ export default async function AdminSourcesPage({
 
   return (
     <div>
-      <PageHeading emoji="📡" kicker="SOURCE DIRECTORY" title="সোর্স" description="যেসব পাবলিক পেজ/গ্রুপ থেকে খবর আনা হবে তার তালিকা, বিভাগ ও সক্রিয়তা — এখানেই নিয়ন্ত্রণ।" />
-      <div className="mt-6 grid gap-8 lg:grid-cols-[320px_1fr]">
+      <SectionTabs
+        tabs={TAXONOMY_SECTION.tabs as unknown as SectionTab[]}
+        current="/admin/sources"
+        label={TAXONOMY_SECTION.label}
+      />
+      <PageHeading
+        emoji="📡"
+        kicker="SOURCE DIRECTORY"
+        title="সোর্স"
+        description="যেসব পাবলিক পেজ/গ্রুপ থেকে খবর আনা হবে তার তালিকা, বিভাগ ও সক্রিয়তা — এখানেই নিয়ন্ত্রণ।"
+      />
+      <div className="mt-4 flex items-center justify-end">
+        <ViewToggle labelBn="দৃশ্য" />
+      </div>
+      <div className="mt-3 grid gap-8 lg:grid-cols-[320px_1fr]">
         <div className="border border-ink/20 bg-paper-deep p-5">
-          <h3 className="font-sans-bn text-[15px] font-bold text-ink">নতুন সোর্স যোগ</h3>
-          <p className="mt-1 text-[12px] text-ink-soft">শুধু পাবলিক পেজ/গ্রুপ — ব্যক্তিগত প্রোফাইল নয়।</p>
+          <h3 className="font-sans-bn text-[15px] font-bold text-ink">
+            নতুন সোর্স যোগ
+          </h3>
+          <p className="mt-1 text-[12px] text-ink-soft">
+            শুধু পাবলিক পেজ/গ্রুপ — ব্যক্তিগত প্রোফাইল নয়।
+          </p>
           <div className="mt-4">
             <SourceForm categories={options} />
           </div>
         </div>
-        <div className="space-y-2.5">
-{sources.length === 0 && (
-            <p className="border border-ink/20 p-5 text-[13px] text-ink-soft">এখনও কোনো সোর্স যোগ করা হয়নি</p>
+        <div
+          className={
+            grid ? "grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3" : "space-y-2.5"
+          }
+        >
+          {sources.length === 0 && (
+            <p className="border border-ink/20 p-5 text-[13px] text-ink-soft">
+              এখনও কোনো সোর্স যোগ করা হয়নি
+            </p>
           )}
           {sources.map((s) => (
             <SourceRow
               key={s.id}
               source={s}
               categories={options}
+              variant={grid ? "card" : "row"}
             />
           ))}
-          <Paginator
-            page={page.page}
-            pageSize={page.pageSize}
-            total={page.total}
-            basePath="/admin/sources"
-          />
+          <div className={grid ? "col-span-full" : ""}>
+            <Paginator
+              page={page.page}
+              pageSize={page.pageSize}
+              total={page.total}
+              basePath={`/admin/sources${grid ? "?view=card" : ""}`}
+            />
+          </div>
         </div>
       </div>
     </div>
   );
 }
-

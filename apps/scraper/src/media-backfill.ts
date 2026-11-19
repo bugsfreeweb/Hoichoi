@@ -496,21 +496,32 @@ export interface ManualImageResult {
  */
 async function plateFacts(
   postId: string,
-): Promise<{ title: string | null; category: string | null; source: string | null }> {
+): Promise<{
+  title: string | null;
+  summary: string | null;
+  category: string | null;
+  source: string | null;
+}> {
   try {
     const row = (
       await getClient().execute({
-        sql: "SELECT title_bn, category, source_name FROM posts WHERE id = ?",
+        sql: "SELECT title_bn, summary_bn, category, source_name FROM posts WHERE id = ?",
         args: [postId],
       })
-    ).rows[0] as { title_bn?: string; category?: string; source_name?: string } | undefined;
+    ).rows[0] as
+      | { title_bn?: string; summary_bn?: string; category?: string; source_name?: string }
+      | undefined;
     return {
       title: row?.title_bn?.trim() || null,
+      // The standfirst is what makes the plate about *this* story rather than a
+      // headline floating over a picture: without it the poster was a title and
+      // a stock scene, which is exactly the "not related to the article" report.
+      summary: row?.summary_bn?.trim() || null,
       category: row?.category ?? null,
       source: row?.source_name ?? null,
     };
   } catch {
-    return { title: null, category: null, source: null };
+    return { title: null, summary: null, category: null, source: null };
   }
 }
 
@@ -596,6 +607,7 @@ export async function generateManualImage(opts: {
   const plate = await composeStoryPlate({
     background: rendered ? Buffer.from(rendered.bytes) : null,
     title: opts.plateTitle ?? facts.title ?? opts.prompt.slice(0, 160),
+    summary: opts.plateTitle ? null : facts.summary,
     category: opts.plateCategory ?? facts.category ?? null,
     source: opts.plateSource ?? facts.source ?? null,
     layout: opts.layout ?? null,

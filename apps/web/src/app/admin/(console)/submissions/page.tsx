@@ -1,4 +1,6 @@
 import { PageHeading } from "@/components/admin/ui/PageHeader";
+import { SectionTabs, type SectionTab } from "@/components/admin/ui/SectionTabs";
+import { INBOX_SECTION } from "@/components/admin/ui/sections";
 import { mapSubmittedPage, pageRows } from "@hoichoi/db";
 import { SubmissionRow } from "@/components/admin/SubmissionRow";
 import { Paginator } from "@/components/admin/Paginator";
@@ -38,6 +40,11 @@ export default async function AdminSubmissionsPage({
 
   return (
     <div>
+      <SectionTabs
+        tabs={INBOX_SECTION.tabs as unknown as SectionTab[]}
+        current="/admin/submissions"
+        label={INBOX_SECTION.label}
+      />
       <PageHeading emoji="💡" kicker="PUBLIC SUGGESTIONS" title="সাবমিশন" description="পাঠকের পাঠানো পেজ প্রস্তাব — যাচাই করে সোর্স হিসেবে গ্রহণ করুন বা প্রত্যাখ্যান করুন।" />
       <div className="mt-6 grid gap-10">
         <section>

@@ -663,96 +663,6 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         log(`[media] skip: ${(err as Error).message}`);
       }
 
-      // STEP 2.5: AI fallback hero image. Only when a post truly has no media
-      // (nothing re-downloadable), the operator left the feature on, and there
-      // is enough text to draw a subject from. Sensitive categories are always
-      // skipped; the prompt itself bans text, logos, real people and children.
-      if (
-        media.kind === "none" &&
-        aiHeroEnabled &&
-        aiHeroProviderAvailable &&
-        aiHeroEligible(source.category) &&
-        (sp.rawText ?? "").trim().length >= 20
-      ) {
-        try {
-          const articleTitle = sp.rawText?.split(/[.!?।\n]/, 1)[0]?.slice(0, 160) || source.page_name;
-          const aiRel = await generateAIHero({
-            title: articleTitle,
-            summary: sp.rawText ?? "",
-            category: source.category,
-            log,
-          });
-          if (!aiRel) log("[ai-img] fallback complete — no image");
-          if (aiRel) {
-            media.kind = "image";
-            media.path = aiRel;
-            media.origin = "ai";
-            let pub: string | null = null;
-            try {
-              pub = await uploadRemote(aiRel);
-            } catch (err) {
-              log(`[media] AI hero remote upload failed: ${(err as Error).message}`);
-            }
-            if (pub) {
-              media.path = pub;
-              log(`[media] AI hero uploaded → ${pub}`);
-            } else {
-              const mirrored = mirrorMediaFile(aiRel);
-              if (mirrored.length > 0) log(`[media] AI hero mirrored → ${mirrored[0]}`);
-            }
-            stats.aiHero++;
-            collected.push({ path: media.path, kind: "image" });
-          }
-        } catch (err) {
-          log(`[media] AI hero failed: ${(err as Error).message}`);
-        }
-      }
-
-      /**
-       * STEP 2.6: the plate. A published story always has a picture.
-       *
-       * Everything above can fail: the source's media is 403'd, AI generation is
-       * off, the provider is rate-limited or unconfigured. The old code then
-       * published with `media_kind = "none"` and the card fell back to a gradient
-       * — a story on a news site with no picture. This step draws the branded
-       * 16:9 plate (wordmark, desk, headline, date) over a deterministic backdrop
-       * derived from the story itself, so "no image" is no longer a publishable
-       * state. It needs no network and no key.
-       */
-      if (media.kind === "none") {
-        try {
-          const plateTitle =
-            (sp.rawText ?? "").split(/[.!?।\n]/, 1)[0]?.trim().slice(0, 160) || source.page_name;
-          const plate = await composeStoryPlate({
-            background: null,
-            title: plateTitle,
-            category: source.category,
-            source: source.page_name,
-            seed: `${source.page_name}:${plateTitle}`,
-          });
-          const rel = randomMediaName("img", "webp");
-          await processImage(plate, rel, { maxWidthPx: POSTER_FRAME.width });
-          media.kind = "image";
-          media.path = rel;
-          media.origin = "plate";
-          let pub: string | null = null;
-          try {
-            pub = await uploadRemote(rel);
-          } catch (err) {
-            log(`[plate] remote upload failed: ${(err as Error).message}`);
-          }
-          if (pub) {
-            media.path = pub;
-            log(`[plate] uploaded → ${pub}`);
-          } else {
-            const mirrored = mirrorMediaFile(rel);
-            if (mirrored.length > 0) log(`[plate] mirrored → ${mirrored[0]}`);
-          }
-        } catch (err) {
-          log(`[plate] failed: ${(err as Error).message}`);
-        }
-      }
-
       // STEP 3: screenshot evidence (optional, one browser per post — slow).
       if (opts.evidence) {
         const rel = randomMediaName("shot", "png");
@@ -966,6 +876,113 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           stats.skipped++;
           continue;
         }
+
+      // STEP 5.5: the picture, now that the story is in Bangla.
+      //
+      // These steps used to run before the rewrite, so the only text available
+      // was the source's — an English RSS lede or a Facebook caption. The result
+      // was a poster captioned in English, made from a prompt about the wrong
+      // language, on a site that publishes Bangla. Both the AI brief and the
+      // plate now read the rewritten headline, standfirst and body, which is the
+      // story a reader will actually meet: the render follows the article, and
+      // the lettering is the article's own.
+      //
+      // STEP 5.5a: AI fallback hero image. Only when a post truly has no media
+      // (nothing re-downloadable), the operator left the feature on, and there
+      // is enough text to draw a subject from. Sensitive categories are always
+      // skipped; the prompt itself bans text, logos, real people and children.
+      if (
+        media.kind === "none" &&
+        aiHeroEnabled &&
+        aiHeroProviderAvailable &&
+        aiHeroEligible(source.category) &&
+        (outcome.rewritten.title_bn ?? "").trim().length >= 8
+      ) {
+        try {
+          const aiRel = await generateAIHero({
+            title: outcome.rewritten.title_bn,
+            // The brief reads the rewritten story, so the render is about the
+            // article a reader will meet — not about the source's English lede.
+            summary: [outcome.rewritten.summary_bn, outcome.rewritten.body_bn]
+              .filter(Boolean)
+              .join(" ")
+              .slice(0, 1200),
+            category: postCategory,
+            source: source.page_name,
+            log,
+          });
+          if (!aiRel) log("[ai-img] fallback complete — no image");
+          if (aiRel) {
+            media.kind = "image";
+            media.path = aiRel;
+            media.origin = "ai";
+            let pub: string | null = null;
+            try {
+              pub = await uploadRemote(aiRel);
+            } catch (err) {
+              log(`[media] AI hero remote upload failed: ${(err as Error).message}`);
+            }
+            if (pub) {
+              media.path = pub;
+              log(`[media] AI hero uploaded → ${pub}`);
+            } else {
+              const mirrored = mirrorMediaFile(aiRel);
+              if (mirrored.length > 0) log(`[media] AI hero mirrored → ${mirrored[0]}`);
+            }
+            stats.aiHero++;
+            collected.push({ path: media.path, kind: "image" });
+          }
+        } catch (err) {
+          log(`[media] AI hero failed: ${(err as Error).message}`);
+        }
+      }
+
+      /**
+       * STEP 5.5b: the plate. A published story always has a picture.
+       *
+       * Everything above can fail: the source's media is 403'd, AI generation is
+       * off, the provider is rate-limited or unconfigured. The old code then
+       * published with `media_kind = "none"` and the card fell back to a gradient
+       * — a story on a news site with no picture. This step draws the branded
+       * 16:9 plate (wordmark, desk, headline, date) over a deterministic backdrop
+       * derived from the story itself, so "no image" is no longer a publishable
+       * state. It needs no network and no key.
+       */
+      if (media.kind === "none") {
+        try {
+          const plateTitle = (outcome.rewritten.title_bn ?? "").trim() || source.page_name;
+          const plate = await composeStoryPlate({
+            background: null,
+            title: plateTitle,
+            // The standfirst and the desk are what make the plate about *this*
+            // story rather than a headline over a generic wash.
+            summary: outcome.rewritten.summary_bn ?? null,
+            category: postCategory,
+            source: source.page_name,
+            seed: `${source.id}:${plateTitle}:${postCategory}`,
+          });
+          const rel = randomMediaName("img", "webp");
+          await processImage(plate, rel, { maxWidthPx: POSTER_FRAME.width });
+          media.kind = "image";
+          media.path = rel;
+          media.origin = "plate";
+          let pub: string | null = null;
+          try {
+            pub = await uploadRemote(rel);
+          } catch (err) {
+            log(`[plate] remote upload failed: ${(err as Error).message}`);
+          }
+          if (pub) {
+            media.path = pub;
+            log(`[plate] uploaded → ${pub}`);
+          } else {
+            const mirrored = mirrorMediaFile(rel);
+            if (mirrored.length > 0) log(`[plate] mirrored → ${mirrored[0]}`);
+          }
+        } catch (err) {
+          log(`[plate] failed: ${(err as Error).message}`);
+        }
+      }
 
         // Publisher gate: summarise and quote briefly, never republish. Checked
         // against the raw text, because a fluent copy reads exactly like our own

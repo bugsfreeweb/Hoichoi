@@ -64,6 +64,8 @@ export async function generateAIHero(opts: {
   summary: string;
   body?: string;
   category?: string | null;
+  /** Printed under the headline on the plate — the page the story came from. */
+  source?: string | null;
   log?: (msg: string) => void;
 }): Promise<string | null> {
   const log = opts.log ?? (() => undefined);
@@ -118,15 +120,19 @@ export async function generateAIHero(opts: {
  */
 async function writePlate(
   background: Buffer | null,
-  opts: { title: string; summary: string; category?: string | null },
+  opts: { title: string; summary: string; category?: string | null; source?: string | null },
   log: (msg: string) => void,
   via: string,
 ): Promise<string> {
   const plate = await composeStoryPlate({
     background,
     title: opts.title,
+    // The standfirst is what makes the plate read as *this* story: a headline
+    // over a wash says nothing about the article; headline + standfirst + desk
+    // + source is a picture of it.
+    summary: opts.summary || null,
     category: opts.category,
-    source: null,
+    source: opts.source ?? null,
   });
   const rel = randomMediaName("img", "webp");
   await processImage(plate, rel, { maxWidthPx: POSTER_FRAME.width });

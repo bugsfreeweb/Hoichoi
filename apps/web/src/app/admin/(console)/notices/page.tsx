@@ -2,6 +2,8 @@ import { listNoticesPaged } from "@hoichoi/db";
 import { AdminNotices } from "@/components/admin/AdminNotices";
 import { Paginator } from "@/components/admin/Paginator";
 import { PageHeading } from "@/components/admin/ui/PageHeader";
+import { SectionTabs, type SectionTab } from "@/components/admin/ui/SectionTabs";
+import { PROGRAM_SECTION } from "@/components/admin/ui/sections";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +23,11 @@ export default async function AdminNoticesPage({
 
   return (
     <div>
+      <SectionTabs
+        tabs={PROGRAM_SECTION.tabs as unknown as SectionTab[]}
+        current="/admin/notices"
+        label={PROGRAM_SECTION.label}
+      />
       <PageHeading
         emoji="📣"
         kicker="SITE NOTICE BOARD"

@@ -85,42 +85,68 @@ function frameFor(ratio: ImageAspectRatio): string {
  * back to a neutral editorial-news scene.
  */
 export const SCENE_BY_CATEGORY: Record<string, string> = {
-  politics: "a press conference and national-assembly session in a government building with political banners",
-  national: "a national news briefing at the secretariat with officials and microphones",
-  accident: "an emergency scene with a damaged vehicle, flashing hazard lights and rescue workers on a road",
-  crime: "a quiet street cordoned off by police tape at dusk with an investigator in a reflective vest",
-  "law-order": "a courthouse entrance with a police escort and a uniformed officer keeping order",
-  corruption: "a stack of documents and envelopes under a desk lamp in a dim archive room",
-  economy: "a bustling city business district with currency symbols and a stock ticker in the background",
+  politics:
+    "a press conference and national-assembly session in a government building with political banners",
+  national:
+    "a national news briefing at the secretariat with officials and microphones",
+  accident:
+    "an emergency scene with a damaged vehicle, flashing hazard lights and rescue workers on a road",
+  crime:
+    "a quiet street cordoned off by police tape at dusk with an investigator in a reflective vest",
+  "law-order":
+    "a courthouse entrance with a police escort and a uniformed officer keeping order",
+  corruption:
+    "a stack of documents and envelopes under a desk lamp in a dim archive room",
+  economy:
+    "a bustling city business district with currency symbols and a stock ticker in the background",
   business: "a modern office tower with charts and a busy trading floor",
-  education: "a classroom with students and a teacher at a chalkboard, warm morning light",
-  health: "a hospital corridor with a doctor in scrubs beside medical equipment",
-  "medical-science": "a clean laboratory with a researcher, microscope and test tubes",
-  science: "a research laboratory with a scientist, beakers and a model of a molecule",
+  education:
+    "a classroom with students and a teacher at a chalkboard, warm morning light",
+  health:
+    "a hospital corridor with a doctor in scrubs beside medical equipment",
+  "medical-science":
+    "a clean laboratory with a researcher, microscope and test tubes",
+  science:
+    "a research laboratory with a scientist, beakers and a model of a molecule",
   research: "a scholar at a desk surrounded by books, papers and a laptop",
-  sports: "a packed stadium during action with a player mid-attempt under floodlights",
-  technology: "a futuristic data centre and circuitry, softly glowing server racks",
+  sports:
+    "a packed stadium during action with a player mid-attempt under floodlights",
+  technology:
+    "a futuristic data centre and circuitry, softly glowing server racks",
   tech: "a futuristic data centre with glowing server racks and cables",
   ai: "a glowing network of neural connections in a dark room with a processor core",
-  environment: "a lush landscape with a river and a small team in bright vests, clear sky",
+  environment:
+    "a lush landscape with a river and a small team in bright vests, clear sky",
   weather: "a dramatic sky with rainclouds and a weather map overlay",
-  entertainment: "a brightly lit stage with a crowd silhouetted against concert lights",
+  entertainment:
+    "a brightly lit stage with a crowd silhouetted against concert lights",
   culture: "a colourful festival gathering with lanterns and traditional dress",
-  "history-traditions": "an old heritage building with traditional architecture and a crowd of visitors",
-  literature: "an open antique book on a wooden desk with a pen and warm lamp light",
-  lifestyle: "an everyday domestic scene with people in a modern home, soft daylight",
-  obituary: "a quiet memorial with candles, flowers and a framed portrait in soft light",
-  viral: "a busy social-media moment with a phone screen showing a crowd reaction",
-  inspiration: "an ambitious figure on a hilltop at sunrise looking toward the horizon",
-  "helping-others": "volunteers handing out supplies to a relieved crowd in daylight",
+  "history-traditions":
+    "an old heritage building with traditional architecture and a crowd of visitors",
+  literature:
+    "an open antique book on a wooden desk with a pen and warm lamp light",
+  lifestyle:
+    "an everyday domestic scene with people in a modern home, soft daylight",
+  obituary:
+    "a quiet memorial with candles, flowers and a framed portrait in soft light",
+  viral:
+    "a busy social-media moment with a phone screen showing a crowd reaction",
+  inspiration:
+    "an ambitious figure on a hilltop at sunrise looking toward the horizon",
+  "helping-others":
+    "volunteers handing out supplies to a relieved crowd in daylight",
   humanity: "diverse hands joined together in a warm, hopeful moment",
-  "social-welfare": "community workers distributing aid boxes to a grateful family",
-  diaspora: "a cosmopolitan city street with a blend of cultures and luggage at an airport",
+  "social-welfare":
+    "community workers distributing aid boxes to a grateful family",
+  diaspora:
+    "a cosmopolitan city street with a blend of cultures and luggage at an airport",
   international: "a world map with flags and an international conference hall",
   opinion: "a journalist at a typewriter at a desk in a newsroom",
-  "rural-life": "a green paddy field with a farmer at work under a wide open sky",
+  "rural-life":
+    "a green paddy field with a farmer at work under a wide open sky",
   religion: "a serene place of worship with warm light through arches",
-  "missing-children": "a symbolic scene of a lantern being lit beside a sign with an uplifted child silhouette",
+  "missing-children":
+    "a symbolic scene of a lantern being lit beside a sign with an uplifted child silhouette",
 };
 
 /** English labels, so the prompt's "about …" clause is readable by any model. */
@@ -209,7 +235,8 @@ const DIGNIFIED_METAPHORS: readonly Metaphor[] = [
     keys: /$^/,
     tension: "a private story that became a file on a desk",
     metaphor: "a closed case file, a sealed envelope and a dim lamp",
-    subject: "a closed file tied with string and a sealed envelope beside a lamp",
+    subject:
+      "a closed file tied with string and a sealed envelope beside a lamp",
     setting: "a bare desk in a quiet room, one window",
     mood: "serious",
   },
@@ -217,7 +244,8 @@ const DIGNIFIED_METAPHORS: readonly Metaphor[] = [
     id: "unlatched-door",
     keys: /$^/,
     tension: "a door left open, and the quiet after it",
-    metaphor: "a doorway with slippers at the threshold and light falling through it",
+    metaphor:
+      "a doorway with slippers at the threshold and light falling through it",
     subject: "a pair of slippers at a threshold, the door ajar",
     setting: "a courtyard corridor in soft evening light",
     mood: "reflective",
@@ -226,16 +254,39 @@ const DIGNIFIED_METAPHORS: readonly Metaphor[] = [
 
 /** Common Bengali → English clue phrases that tell an image model where/who/what. */
 const CLUE_GLOSSARY: ReadonlyArray<readonly [RegExp, string]> = [
-  [/ঢাকা/i, "Dhaka"], [/চট্টগ্রাম|চাঁদপুর/i, "Chattogram"], [/রাজশাহী/i, "Rajshahi"],
-  [/খুলনা/i, "Khulna"], [/সিলেট/i, "Sylhet"], [/বরিশাল/i, "Barishal"], [/রংপুর/i, "Rangpur"],
-  [/ময়মনসিংহ/i, "Mymensingh"], [/কুমিল্লা/i, "Cumilla"], [/ডিজিটাল/i, "digital"],
-  [/আন্তর্জাতিক/i, "international"], [/রাষ্ট্রপতি/i, "president"], [/প্রধানমন্ত্রী/i, "prime minister"],
-  [/পুলিশ/i, "police"], [/আদালত|কোর্ট/i, "court"], [/হাসপাতাল/i, "hospital"], [/বিশ্ববিদ্যালয়/i, "university"],
-  [/স্কুল/i, "school"], [/সেনা|সেনাবাহিনী/i, "army"], [/সীমান্ত/i, "border"],
-  [/রেল|ট্রেন/i, "train"], [/বিমান/i, "aircraft"], [/জাহাজ/i, "ship"], [/সেতু/i, "bridge"],
-  [/বর্ষা|বৃষ্টি/i, "monsoon rain"], [/বন্যা/i, "flood"], [/ভূমিকম্প/i, "earthquake"],
-  [/অর্থনীতি/i, "economy"], [/স্টক|শেয়ার/i, "stock market"], [/গ্যাস|তেল/i, "fuel"],
-  [/ক্রিকেট/i, "cricket"], [/ফুটবল/i, "football"], [/অলিম্পিক/i, "Olympics"],
+  [/ঢাকা/i, "Dhaka"],
+  [/চট্টগ্রাম|চাঁদপুর/i, "Chattogram"],
+  [/রাজশাহী/i, "Rajshahi"],
+  [/খুলনা/i, "Khulna"],
+  [/সিলেট/i, "Sylhet"],
+  [/বরিশাল/i, "Barishal"],
+  [/রংপুর/i, "Rangpur"],
+  [/ময়মনসিংহ/i, "Mymensingh"],
+  [/কুমিল্লা/i, "Cumilla"],
+  [/ডিজিটাল/i, "digital"],
+  [/আন্তর্জাতিক/i, "international"],
+  [/রাষ্ট্রপতি/i, "president"],
+  [/প্রধানমন্ত্রী/i, "prime minister"],
+  [/পুলিশ/i, "police"],
+  [/আদালত|কোর্ট/i, "court"],
+  [/হাসপাতাল/i, "hospital"],
+  [/বিশ্ববিদ্যালয়/i, "university"],
+  [/স্কুল/i, "school"],
+  [/সেনা|সেনাবাহিনী/i, "army"],
+  [/সীমান্ত/i, "border"],
+  [/রেল|ট্রেন/i, "train"],
+  [/বিমান/i, "aircraft"],
+  [/জাহাজ/i, "ship"],
+  [/সেতু/i, "bridge"],
+  [/বর্ষা|বৃষ্টি/i, "monsoon rain"],
+  [/বন্যা/i, "flood"],
+  [/ভূমিকম্প/i, "earthquake"],
+  [/অর্থনীতি/i, "economy"],
+  [/স্টক|শেয়ার/i, "stock market"],
+  [/গ্যাস|তেল/i, "fuel"],
+  [/ক্রিকেট/i, "cricket"],
+  [/ফুটবল/i, "football"],
+  [/অলিম্পিক/i, "Olympics"],
 ];
 
 /** Extract concrete visual cues from the raw article text (names, numbers, glossary). */
@@ -246,12 +297,19 @@ export function extractVisualCues(text: string): string[] {
   // Latin-script proper nouns / English fragments (e.g. "NVIDIA", "Alice Huang").
   for (const m of text.matchAll(/\b[A-Za-z][A-Za-z0-9&.'+#-]{2,}\b/g)) {
     const w = m[0];
-    if (/^(the|you|and|for|are|was|with|from|this|that|news|post|https|www|com|said|not|has|had|Will|via|more)$/i.test(w)) continue;
+    if (
+      /^(the|you|and|for|are|was|with|from|this|that|news|post|https|www|com|said|not|has|had|Will|via|more)$/i.test(
+        w,
+      )
+    )
+      continue;
     cues.add(w);
   }
   // Quantities + units ("৩০০ কোটি", "১২ জন", "1.5 million").
   // Bengali digits (০-৯) are not matched by \d, so both ranges are listed.
-  for (const m of text.matchAll(/([\d০-৯][\d০-৯,.]*\s*(?:কোটি|লাখ|লক্ষ|হাজার|মিলিয়ন|billion|million|%|km|kg))/gi)) {
+  for (const m of text.matchAll(
+    /([\d০-৯][\d০-৯,.]*\s*(?:কোটি|লাখ|লক্ষ|হাজার|মিলিয়ন|billion|million|%|km|kg))/gi,
+  )) {
     cues.add(`figure ${m[0].trim()}`);
   }
   return [...cues].slice(0, 10);
@@ -259,8 +317,10 @@ export function extractVisualCues(text: string): string[] {
 
 /** The scene sentence for a category, falling back to a neutral editorial scene. */
 export function sceneForCategory(category?: string | null): string {
-  return SCENE_BY_CATEGORY[category?.toLowerCase() ?? ""] ??
-    "an editorial news scene relevant to the story described below";
+  return (
+    SCENE_BY_CATEGORY[category?.toLowerCase() ?? ""] ??
+    "an editorial news scene relevant to the story described below"
+  );
 }
 
 type Mood = "serious" | "hopeful" | "urgent" | "reflective" | "ironic";
@@ -287,8 +347,10 @@ const METAPHORS: readonly Metaphor[] = [
     keys: /ঘুষ|দুর্নীতি|কেলেঙ্কারি|লেনদেন|অনিয়ম|bribe|corruption/i,
     category: "corruption",
     tension: "public money passing through private hands",
-    metaphor: "a gloved hand slipping a sealed envelope into a puppet that wears an official badge",
-    subject: "one hand offering an envelope, and a wooden puppet whose strings are held from above",
+    metaphor:
+      "a gloved hand slipping a sealed envelope into a puppet that wears an official badge",
+    subject:
+      "one hand offering an envelope, and a wooden puppet whose strings are held from above",
     setting: "a dim records room with stacked files and a single desk lamp",
     mood: "urgent",
   },
@@ -297,8 +359,10 @@ const METAPHORS: readonly Metaphor[] = [
     keys: /দাম|মূল্য|বাজার|মুদ্রাস্ফীতি|ঋণ|ব্যাংক|রেমিট্যান্স|price|inflation|market/i,
     category: "economy",
     tension: "costs climbing faster than incomes",
-    metaphor: "a pair of scales where a stack of coins outweighs a shopping basket",
-    subject: "an empty shopping basket hanging from one arm of a great brass scale",
+    metaphor:
+      "a pair of scales where a stack of coins outweighs a shopping basket",
+    subject:
+      "an empty shopping basket hanging from one arm of a great brass scale",
     setting: "a bare morning market street with shuttered stalls",
     mood: "serious",
   },
@@ -307,8 +371,10 @@ const METAPHORS: readonly Metaphor[] = [
     keys: /বন্যা|বৃষ্টি|বর্ষা|জলোচ্ছ্বাস|উপকূল|প্লাবন|flood|rain|monsoon/i,
     category: "environment",
     tension: "water arriving before help does",
-    metaphor: "a household's rooftop standing alone as an island in brown floodwater",
-    subject: "a rooftop with a bundle of belongings and a lamp, and a boat rowing toward it",
+    metaphor:
+      "a household's rooftop standing alone as an island in brown floodwater",
+    subject:
+      "a rooftop with a bundle of belongings and a lamp, and a boat rowing toward it",
     setting: "still floodwater under a grey, breaking sky",
     mood: "urgent",
   },
@@ -327,8 +393,10 @@ const METAPHORS: readonly Metaphor[] = [
     keys: /পুলিশ|গ্রেফতার|চুরি|হত্যা|তদন্ত|র‍্যাব|অপরাধ|police|arrest|crime/i,
     category: "crime",
     tension: "order arriving after the harm",
-    metaphor: "police tape stretched across a street lamp's small circle of light",
-    subject: "a strip of police tape and a pair of boots at the edge of the light",
+    metaphor:
+      "police tape stretched across a street lamp's small circle of light",
+    subject:
+      "a strip of police tape and a pair of boots at the edge of the light",
     setting: "a narrow street at night with one working street lamp",
     mood: "serious",
   },
@@ -337,7 +405,8 @@ const METAPHORS: readonly Metaphor[] = [
     keys: /আদালত|কোর্ট|রায়|কারাদণ্ড|মামলা|বিচার|court|verdict|trial/i,
     category: "law-order",
     tension: "a verdict carrying more weight than the testimony",
-    metaphor: "a gavel resting on a tall stack of paper while one loose page drifts away",
+    metaphor:
+      "a gavel resting on a tall stack of paper while one loose page drifts away",
     subject: "a wooden gavel and a leaning tower of case files",
     setting: "a courtroom desk under hard, narrow light",
     mood: "reflective",
@@ -347,7 +416,8 @@ const METAPHORS: readonly Metaphor[] = [
     keys: /সংসদ|নির্বাচন|বাজেট|মন্ত্রী|সরকার|প্রধানমন্ত্রী|রাষ্ট্রপতি|দল|politics|election|budget/i,
     category: "politics",
     tension: "promises competing with delivery",
-    metaphor: "two empty podiums facing each other beneath one hanging microphone",
+    metaphor:
+      "two empty podiums facing each other beneath one hanging microphone",
     subject: "two podiums and a microphone suspended between them",
     setting: "an assembly hall with tall columns and hard shadows",
     mood: "serious",
@@ -358,7 +428,8 @@ const METAPHORS: readonly Metaphor[] = [
     category: "education",
     tension: "one result deciding years of work",
     metaphor: "an exam paper on a desk with an open door far in the background",
-    subject: "a single sheet of paper under a desk lamp, and a distant doorway of light",
+    subject:
+      "a single sheet of paper under a desk lamp, and a distant doorway of light",
     setting: "a quiet classroom after hours",
     mood: "reflective",
   },
@@ -367,7 +438,8 @@ const METAPHORS: readonly Metaphor[] = [
     keys: /হাসপাতাল|চিকিৎসা|ডাক্তার|রোগী|ওষুধ|স্বাস্থ্য|hospital|doctor|patient|health/i,
     category: "health",
     tension: "care waiting at the end of a long queue",
-    metaphor: "an empty hospital bench beside a lit corridor that stretches away",
+    metaphor:
+      "an empty hospital bench beside a lit corridor that stretches away",
     subject: "an empty bench, a drip stand and a corridor of closed doors",
     setting: "a hospital corridor at night",
     mood: "serious",
@@ -387,7 +459,8 @@ const METAPHORS: readonly Metaphor[] = [
     keys: /ক্রিকেট|ফুটবল|ম্যাচ|খেলা|স্টেডিয়াম|অলিম্পিক|cricket|football|match|sport/i,
     category: "sports",
     tension: "one moment deciding a whole season",
-    metaphor: "a stadium floodlight over an empty pitch with a single ball at the centre",
+    metaphor:
+      "a stadium floodlight over an empty pitch with a single ball at the centre",
     subject: "an empty pitch, one ball, and a floodlight pylon",
     setting: "a stadium at dusk with empty stands",
     mood: "hopeful",
@@ -408,7 +481,8 @@ const METAPHORS: readonly Metaphor[] = [
     category: "diaspora",
     tension: "distance as the price of a future",
     metaphor: "a suitcase, a passport and a transfer slip on a bare table",
-    subject: "a worn suitcase and an open passport under a single overhead light",
+    subject:
+      "a worn suitcase and an open passport under a single overhead light",
     setting: "an empty departure hall",
     mood: "reflective",
   },
@@ -437,7 +511,8 @@ const METAPHORS: readonly Metaphor[] = [
     keys: /মৃত্যু|শোক|সমাধি|স্মরণ|obituary|memorial|death/i,
     category: "obituary",
     tension: "a life leaving a room quiet",
-    metaphor: "an empty chair beside a lamp and a picture frame turned to the wall",
+    metaphor:
+      "an empty chair beside a lamp and a picture frame turned to the wall",
     subject: "an empty chair, a warm lamp and a turned frame",
     setting: "a plain room in late afternoon light",
     mood: "reflective",
@@ -467,7 +542,8 @@ const METAPHORS: readonly Metaphor[] = [
     keys: /কৃষি|কৃষক|ধান|ফসল|গ্রাম|farmer|harvest|paddy/i,
     category: "rural-life",
     tension: "a harvest depending on what the sky allows",
-    metaphor: "a farmer's distant silhouette against a huge sky over a paddy field",
+    metaphor:
+      "a farmer's distant silhouette against a huge sky over a paddy field",
     subject: "a small figure with a tool at the edge of a field",
     setting: "an open paddy field under a wide sky",
     mood: "reflective",
@@ -578,7 +654,8 @@ export function pickMetaphor(text: string, category?: string | null): Metaphor {
     id: "neutral",
     keys: /$^/,
     tension: "a system and the people who depend on it",
-    metaphor: "one hand-drawn figure standing before a wall of filing boxes and open ledgers",
+    metaphor:
+      "one hand-drawn figure standing before a wall of filing boxes and open ledgers",
     subject: "a single standing figure and a wall of stacked boxes",
     setting: "a plain room with a tall window and long shadows",
     mood: pick<Mood>(["serious", "reflective", "hopeful"], seed, 3),
@@ -623,7 +700,9 @@ export function buildImageBrief(input: ImageBriefInput): ImageBrief {
   const title = (input.title?.trim() ?? "").slice(0, 180);
   const summary = input.summary?.trim() ?? "";
   const body = input.body?.trim() ?? "";
-  const text = [title, summary, body, ...(input.tags ?? [])].filter(Boolean).join(" ");
+  const text = [title, summary, body, ...(input.tags ?? [])]
+    .filter(Boolean)
+    .join(" ");
   const slug = (input.category ?? "").toLowerCase();
   const cues = extractVisualCues(text);
   const seed = briefSeed(`${slug}|${title}|${summary.slice(0, 120)}`);
@@ -633,7 +712,14 @@ export function buildImageBrief(input: ImageBriefInput): ImageBrief {
   const palette = pick<string>(PALETTES, seed, 2);
   const mood = metaphor.mood;
   const aspectRatio: ImageAspectRatio = input.aspectRatio ?? "16:9";
-  const side = aspectRatio === "9:16" ? (seed % 2 ? "top" : "bottom") : seed % 2 ? "left" : "right";
+  const side =
+    aspectRatio === "9:16"
+      ? seed % 2
+        ? "top"
+        : "bottom"
+      : seed % 2
+        ? "left"
+        : "right";
 
   // The topic line is English on purpose: it is what the model understands, and
   // it is assembled from extracted cues rather than from the Bangla sentence, so
@@ -723,4 +809,85 @@ export function buildImageBrief(input: ImageBriefInput): ImageBrief {
 /** Convenience one-liner for callers that only need the prompt string. */
 export function editorialImagePrompt(input: ImageBriefInput): string {
   return buildImageBrief(input).prompt;
+}
+
+/**
+ * The prompt ceiling a provider actually enforces.
+ *
+ * Workers AI validates its input against the model's own schema, and
+ * `flux-1-schnell` answers `400 Bad input: Length of '/prompt' must be <= 2048`
+ * for anything longer. The editorial brief is deliberately rich — medium, idea,
+ * metaphor, subject, setting, style, composition, palette, mood, avoid — and
+ * comes in well past that. Sending it whole therefore did not degrade the image;
+ * it refused the call, and the status board showed a permanent red failure for a
+ * provider whose key was fine.
+ *
+ * The harnesses (OpenAI, Together, the custom OpenAI-compatible hosts) take far
+ * longer prompts, so the brief is not shortened for everyone. It is compressed
+ * only where a ceiling is known, by `shortenImagePrompt`.
+ */
+export const CLOUDFLARE_PROMPT_MAX = 2048;
+
+/**
+ * Compress a brief to a character ceiling without lying about the scene.
+ *
+ * Order of sacrifice, and the reason for it:
+ *
+ *   1. `Mood`, then `Color palette`, then `Style` — the render already carries a
+ *      mood from the metaphor; losing the adjective costs the least.
+ *   2. `Composition` — the reserved side is a nicety, and the plate crops to 16:9
+ *      anyway.
+ *   3. `Setting` — the subject still stands somewhere; the sentence about where
+ *      is the least load-bearing.
+ *
+ * Never dropped: the medium line (it is what stops a photograph becoming a
+ * drawing), `Central idea`, `Visual metaphor`, `Subject`, and the `Avoid:` line
+ * (removing the negative list is how lettering and watermarks come back). If the
+ * kept lines still overflow, each is trimmed at a word boundary rather than
+ * mid-word, and the ellipsis is a real character so the model sees a sentence
+ * that ends.
+ */
+export function shortenImagePrompt(
+  prompt: string,
+  limit = CLOUDFLARE_PROMPT_MAX,
+): string {
+  const text = prompt.trim();
+  if (text.length <= limit) return text;
+
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const DROP_ORDER = [
+    "Mood:",
+    "Color palette:",
+    "Style:",
+    "Composition:",
+    "Setting:",
+  ];
+  const keep = [...lines];
+  for (const prefix of DROP_ORDER) {
+    if (keep.join("\n").length <= limit) break;
+    const at = keep.findIndex((line) => line.startsWith(prefix));
+    if (at >= 0) keep.splice(at, 1);
+  }
+
+  let out = keep.join("\n");
+  if (out.length <= limit) return out;
+
+  // Still too long: trim each remaining line proportionally, keeping at least 40
+  // characters of each so no clause becomes a stub.
+  const budget = Math.max(
+    40,
+    Math.floor((limit - (keep.length - 1)) / keep.length),
+  );
+  const trimmed = keep.map((line) => {
+    if (line.length <= budget) return line;
+    const cut = line.slice(0, budget);
+    const space = cut.lastIndexOf(" ");
+    return `${(space > budget * 0.6 ? cut.slice(0, space) : cut).replace(/[,;:\s]+$/, "")}…`;
+  });
+  out = trimmed.join("\n");
+  return out.length <= limit ? out : out.slice(0, limit - 1) + "…";
 }

@@ -11,7 +11,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "tsx src/__tests__/parse-rewrite.test.ts && tsx src/__tests__/body-structure.test.ts && tsx src/__tests__/temperature.test.ts && tsx src/__tests__/resolver.test.ts && tsx src/__tests__/image-providers.test.ts && tsx src/__tests__/image-retry.test.ts && tsx src/__tests__/provider-errors.test.ts && tsx src/__tests__/image-chain.test.ts && tsx src/__tests__/ai-task.test.ts && tsx src/__tests__/image-prompt.test.ts && tsx src/__tests__/pii.test.ts"
+    "test": "tsx src/__tests__/parse-rewrite.test.ts && tsx src/__tests__/body-structure.test.ts && tsx src/__tests__/temperature.test.ts && tsx src/__tests__/resolver.test.ts && tsx src/__tests__/image-providers.test.ts && tsx src/__tests__/image-retry.test.ts && tsx src/__tests__/provider-errors.test.ts && tsx src/__tests__/image-chain.test.ts && tsx src/__tests__/ai-task.test.ts && tsx src/__tests__/image-prompt.test.ts && tsx src/__tests__/image-prompt-limit.test.ts && tsx src/__tests__/pii.test.ts"
   },
   "dependencies": {
     "@hoichoi/db": "workspace:*",

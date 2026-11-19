@@ -947,6 +947,50 @@ crosshair, 60 rim ticks) with real queue-derived blips; a single `desk bootstrap
 spawn replaces 6+ runner calls on refresh; Ads/Settings save buttons show
 spinner → result toast with elapsed ms.
 
+## The picture after the story, and eleven screens in four rows (v1.1.38)
+
+**The poster was written before the story existed.** In `apps/scraper/src/pipeline.ts`
+the picture steps ran *before* the rewrite, so the brief that chose the scene was
+built from the English source lede and the Facebook caption. A rewritten Bangla
+story therefore got a plate whose headline was English and whose picture had
+nothing to do with the article — exactly the report, and not a styling problem.
+The picture block now runs after `rewritePost` and after the unusable-output
+rejection (**STEP 5.5a** hero, **5.5b** plate), reading `title_bn`, `summary_bn`
+and the resolved category.
+
+**A plate carries the standfirst.** `composeStoryPlate` gains `summary` and
+`source`; the collector passes the post's own `summary_bn`, its desk and the page
+it came from, and the editor's manual path reads `summary_bn` from the row
+(`plateFacts`). A headline over a photograph says nothing about the article;
+headline + standfirst + desk + source is a picture *of* it.
+
+**A provider that states its limit is obeyed.** Workers AI answered
+`400 Bad input: Length of '/prompt' must be <= 2048` for the full editorial
+brief — the Cloudflare row and the custom OpenAI-compatible row that proxies to
+it both sat in the status board as permanent red failures for a character count.
+`shortenImagePrompt()` drops whole clauses in a documented order (Mood → palette →
+style → composition → setting) and never drops the medium line, the central idea,
+the subject or the `Avoid:` list; `promptLimitFrom()` reads a ceiling out of a
+provider's own refusal so any host gets one honest retry. `image-prompt-limit.test.ts`
+pins 36 checks.
+
+**Eleven screens, four menu rows.** Sources + categories, live events + notices +
+polls, content + comment moderation, and submissions + removal requests + reader
+reports are each one sidebar row now. `ui/sections.ts` holds the four groups once;
+`SectionTabs` renders the strip on all ten screens **as links**, so a tab works
+before hydration and every existing URL still resolves. The grouped rows keep
+counting every queue they hide. And the row you are on is the row that is lit:
+`rowOwns()` makes the dashboard an exact match (its `/admin` href is a prefix of
+every console URL, so `startsWith` lit it on all twenty screens), and a sibling
+screen highlights the row that owns its group — verified by fetching all eleven
+routes and reading which row carries `is-active`.
+
+**Cards are the same component.** Sources and categories gained `?view=card`
+grids whose tiles are `SourceRow` / `CategoryRow` with a `variant` prop: the edit
+form, the switches and the delete confirmation exist once, so the two views cannot
+drift. `admin-sections.test.ts` (8 checks) pins the grouping, the tab routes, the
+owner mapping and the single edit button.
+
 ## Four unfinished answers, finished (v1.1.37)
 
 **A picture states what it is, not what its name says.** The media registry

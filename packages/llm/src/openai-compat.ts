@@ -22,6 +22,7 @@ import {
 import { getSystemPrompt } from "./prompts";
 import { parseRewriteOutput, resolveTemperature } from "./types";
 import { decodeBase64, sniffImageMime } from "./image-util";
+import { shortenImagePrompt } from "./image-prompt";
 
 export interface OpenAICompatOptions {
   row: LLMProviderRow;
@@ -46,8 +47,10 @@ export interface OpenAICompatOptions {
  */
 function extractCompletion(data: Record<string, unknown>): string {
   const choices = data?.choices as Array<Record<string, unknown>> | undefined;
-  const choice = choices?.[0] ?? (data?.candidates as Array<Record<string, unknown>>)?.[0];
-  const message = (choice?.message as Record<string, unknown> | undefined) ?? choice ?? {};
+  const choice =
+    choices?.[0] ?? (data?.candidates as Array<Record<string, unknown>>)?.[0];
+  const message =
+    (choice?.message as Record<string, unknown> | undefined) ?? choice ?? {};
   let content = message.content as string | Array<unknown> | null | undefined;
 
   if (Array.isArray(content)) {
@@ -55,7 +58,11 @@ function extractCompletion(data: Record<string, unknown>): string {
       .map((part) => {
         if (typeof part === "string") return part;
         const p = part as Record<string, unknown>;
-        return typeof p.text === "string" ? p.text : p.type === "text" ? "" : "";
+        return typeof p.text === "string"
+          ? p.text
+          : p.type === "text"
+            ? ""
+            : "";
       })
       .filter((t) => typeof t === "string" && t.length > 0)
       .join("\n");
@@ -64,7 +71,8 @@ function extractCompletion(data: Record<string, unknown>): string {
   if (typeof content !== "string" || content.trim().length === 0) {
     const alt =
       (typeof choice?.text === "string" && choice.text.trim()) ||
-      (typeof message.reasoning_content === "string" && message.reasoning_content.trim()) ||
+      (typeof message.reasoning_content === "string" &&
+        message.reasoning_content.trim()) ||
       (typeof data.output_text === "string" && data.output_text.trim()) ||
       (typeof data.content === "string" && data.content.trim());
     if (alt) content = alt;
@@ -108,7 +116,8 @@ export function summarizeProviderError(status: number, body: string): string {
       error?: { message?: unknown };
       errors?: Array<{ message?: unknown; code?: unknown }>;
     };
-    const message = obj.message ?? obj.error?.message ?? obj.errors?.[0]?.message;
+    const message =
+      obj.message ?? obj.error?.message ?? obj.errors?.[0]?.message;
     if (typeof message === "string" && message.trim()) detail = message.trim();
     const code = obj.code ?? obj.errors?.[0]?.code;
     const codeHint =
@@ -122,9 +131,15 @@ export function summarizeProviderError(status: number, body: string): string {
 
   if (!detail && /<(!doctype|html|head|body)/i.test(raw)) {
     const title = /<title[^>]*>([^<]{1,120})<\/title>/i.exec(raw)?.[1]?.trim();
-    detail = title ? `HTML পৃষ্ঠা: ${title}` : "HTML পৃষ্ঠা ফিরেছে (কী বা হোস্ট প্রত্যাখ্যান)";
+    detail = title
+      ? `HTML পৃষ্ঠা: ${title}`
+      : "HTML পৃষ্ঠা ফিরেছে (কী বা হোস্ট প্রত্যাখ্যান)";
   }
-  if (!detail && raw) detail = raw.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").slice(0, 200);
+  if (!detail && raw)
+    detail = raw
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .slice(0, 200);
 
   const hint =
     status === 404
@@ -145,6 +160,26 @@ export function summarizeProviderError(status: number, body: string): string {
   return `${head}${shown ? `: ${shown}` : ""}${hint ? ` — ${hint}` : ""}`;
 }
 
+/**
+ * Read a prompt ceiling out of a provider's own refusal.
+ *
+ * Workers AI words it `Length of '/prompt' must be <= 2048`; OpenAI-compatible
+ * proxies in front of it repeat the line verbatim. Anything else returns `null`
+ * — guessing a limit from an unrelated 400 would shorten a prompt that was never
+ * too long.
+ */
+export function promptLimitFrom(body: string): number | null {
+  // The quoting differs by host: `'/prompt'`, `"/prompt"` inside JSON (escaped as
+  // `\"`), or `/prompt` bare. All three name the same field and the same limit.
+  const m =
+    /length of\s*(?:\\?['"`])?\/?prompt(?:\\?['"`])?\s*must be\s*<=?\s*(\d{2,6})/i.exec(
+      body,
+    );
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) && n >= 200 && n <= 200_000 ? n : null;
+}
+
 function safeJson(text: string): unknown {
   try {
     return JSON.parse(text);
@@ -157,9 +192,13 @@ function safeJson(text: string): unknown {
 export function classifyStatus(status: number, body: string): never {
   const message = summarizeProviderError(status, body);
   if (status === 429) throw new ProviderError("rate_limit", message);
-  if (status === 401 || status === 403) throw new ProviderError("auth", message);
+  if (status === 401 || status === 403)
+    throw new ProviderError("auth", message);
   if (status >= 500) throw new ProviderError("network", message);
-  throw new ProviderError(status === 400 || status === 422 ? "bad_output" : "unknown", message);
+  throw new ProviderError(
+    status === 400 || status === 422 ? "bad_output" : "unknown",
+    message,
+  );
 }
 
 /**
@@ -187,7 +226,8 @@ export class OpenAICompatProvider implements LLMProvider {
     this.key = opts.key;
     this.embedPath = opts.embedPath;
     this.baseUrl = resolveAccountPlaceholder(
-      opts.row.base_url?.replace(/\/$/, "") ?? opts.defaultBaseUrl.replace(/\/$/, ""),
+      opts.row.base_url?.replace(/\/$/, "") ??
+        opts.defaultBaseUrl.replace(/\/$/, ""),
       process.env,
     );
     this.headers = {
@@ -203,7 +243,10 @@ export class OpenAICompatProvider implements LLMProvider {
     }
   }
 
-  async rewrite(ctx: RewriteContext, signal?: AbortSignal): Promise<ParsedRewrite> {
+  async rewrite(
+    ctx: RewriteContext,
+    signal?: AbortSignal,
+  ): Promise<ParsedRewrite> {
     const system = getSystemPrompt(ctx);
     const user = this.buildUserPrompt(ctx);
     const content = await this.postUntilOk(
@@ -225,7 +268,10 @@ export class OpenAICompatProvider implements LLMProvider {
 
   async embed(text: string, signal?: AbortSignal): Promise<number[]> {
     if (!this.supportsEmbeddings) {
-      throw new ProviderError("bad_output", `${this.name} does not support embeddings`);
+      throw new ProviderError(
+        "bad_output",
+        `${this.name} does not support embeddings`,
+      );
     }
     return this.postUntilOk(
       this.embedCandidates(),
@@ -241,7 +287,10 @@ export class OpenAICompatProvider implements LLMProvider {
    * `gpt-image-*` models reject `response_format`, so it is requested only for
    * DALL·E-style models and retried without it if the provider complains.
    */
-  async generateImage(req: ImageGenRequest, signal?: AbortSignal): Promise<ImageGenResult> {
+  async generateImage(
+    req: ImageGenRequest,
+    signal?: AbortSignal,
+  ): Promise<ImageGenResult> {
     const model = req.model?.trim() || this.row.model_name;
     const prompt = composeImagePrompt(req);
     this.assertRoutable();
@@ -257,8 +306,14 @@ export class OpenAICompatProvider implements LLMProvider {
     if (req.style) body.style = req.style;
     if (req.quality) body.quality = req.quality;
     const tryB64 = !/gpt-image/i.test(model);
-    if (tryB64) body.response_format = this.isTogether() ? "base64" : "b64_json";
-    return this.postImageUntilOk(this.imageCandidates(), body, { model, prompt }, signal);
+    if (tryB64)
+      body.response_format = this.isTogether() ? "base64" : "b64_json";
+    return this.postImageUntilOk(
+      this.imageCandidates(),
+      body,
+      { model, prompt },
+      signal,
+    );
   }
 
   /** Refuse to call a Cloudflare row whose account placeholder was never filled. */
@@ -274,7 +329,10 @@ export class OpenAICompatProvider implements LLMProvider {
   private isCloudflareWorkersAi(): boolean {
     try {
       const url = new URL(this.baseUrl);
-      return url.hostname === "api.cloudflare.com" && /\/client\/v4\/accounts\/[^/]+\/ai\/run(?:\/|$)/i.test(url.pathname);
+      return (
+        url.hostname === "api.cloudflare.com" &&
+        /\/client\/v4\/accounts\/[^/]+\/ai\/run(?:\/|$)/i.test(url.pathname)
+      );
     } catch {
       return false;
     }
@@ -317,7 +375,9 @@ export class OpenAICompatProvider implements LLMProvider {
       .map((segment) => encodeURIComponent(segment).replace(/%40/gi, "@"))
       .join("/");
     const basePath = this.baseUrl.replace(/\/+$/, "");
-    const url = basePath.endsWith(`/${modelPath}`) ? basePath : `${basePath}/${modelPath}`;
+    const url = basePath.endsWith(`/${modelPath}`)
+      ? basePath
+      : `${basePath}/${modelPath}`;
     /**
      * The Workers AI binding validates its input against the model's own schema
      * and rejects anything the schema does not declare — this payload's first
@@ -331,7 +391,16 @@ export class OpenAICompatProvider implements LLMProvider {
      *
      * `steps` must stay <= 8 on the Workers AI binding; 4 is the fast default.
      */
-    const payload: Record<string, unknown> = { prompt, steps: 4 };
+    /**
+     * The binding's schema caps `/prompt` at 2048 characters and answers
+     * `400 Bad input: Length of '/prompt' must be <= 2048` past it. The brief is
+     * compressed here — and only here — so the other hosts keep the full art
+     * direction, and this row stops refusing every call it is given.
+     */
+    const payload: Record<string, unknown> = {
+      prompt: shortenImagePrompt(prompt),
+      steps: 4,
+    };
     const res = await fetch(url, {
       method: "POST",
       headers: this.headers,
@@ -345,7 +414,13 @@ export class OpenAICompatProvider implements LLMProvider {
     };
     const encoded = raw.result?.image;
     if (!encoded) {
-      throw new ProviderError("bad_output", raw.errors?.map((error) => error.message).filter(Boolean).join("; ") || "Cloudflare response contained no image");
+      throw new ProviderError(
+        "bad_output",
+        raw.errors
+          ?.map((error) => error.message)
+          .filter(Boolean)
+          .join("; ") || "Cloudflare response contained no image",
+      );
     }
     const bytes = decodeBase64(encoded);
     return {
@@ -381,6 +456,8 @@ export class OpenAICompatProvider implements LLMProvider {
     let lastReason: Error | null = null;
     for (const url of candidates) {
       const body = { ...baseBody };
+      /** Set once the provider has told us its own prompt ceiling. */
+      let compressed = false;
       for (let attempt = 0; attempt < 2; attempt++) {
         let res: Response;
         try {
@@ -397,19 +474,49 @@ export class OpenAICompatProvider implements LLMProvider {
         if (res.ok) return this.decodeImageResponse(await res.json(), meta);
         const text = await res.text();
         // gpt-image-1 rejects `response_format`; drop it and retry once.
-        if (res.status === 400 && body.response_format !== undefined && /response_format/i.test(text)) {
+        if (
+          res.status === 400 &&
+          body.response_format !== undefined &&
+          /response_format/i.test(text)
+        ) {
           delete body.response_format;
           continue;
         }
+        /**
+         * A host that is Workers AI behind a custom base URL is not recognised by
+         * `isCloudflareWorkersAi`, so it never gets a compressed prompt — and it
+         * answers `Length of '/prompt' must be <= 2048`. The provider stated the
+         * ceiling in its own words, so honour it and spend the one retry: a
+         * refusal that names its limit is the cheapest kind to fix, and leaving it
+         * unfixed turned four working providers into four permanent red rows.
+         */
+        if (res.status === 400 && !compressed) {
+          const limit = promptLimitFrom(text);
+          if (
+            limit &&
+            typeof body.prompt === "string" &&
+            body.prompt.length > limit
+          ) {
+            body.prompt = shortenImagePrompt(body.prompt, limit);
+            compressed = true;
+            continue;
+          }
+        }
         if (res.status === 404 || res.status === 405 || res.status === 501) {
-          lastReason = new ProviderError("bad_output", `no image endpoint at ${url} (${res.status})`);
+          lastReason = new ProviderError(
+            "bad_output",
+            `no image endpoint at ${url} (${res.status})`,
+          );
           break;
         }
         classifyStatus(res.status, text);
       }
     }
     if (lastReason) throw lastReason;
-    throw new ProviderError("bad_output", `no usable image endpoint under base_url "${this.baseUrl}"`);
+    throw new ProviderError(
+      "bad_output",
+      `no usable image endpoint under base_url "${this.baseUrl}"`,
+    );
   }
 
   private async decodeImageResponse(
@@ -418,22 +525,43 @@ export class OpenAICompatProvider implements LLMProvider {
   ): Promise<ImageGenResult> {
     const data =
       raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
-    const arr = Array.isArray(data.data) ? (data.data as Array<Record<string, unknown> | null>) : [];
-    const first = arr.find((d) => d && (typeof d.b64_json === "string" || typeof d.url === "string")) ?? arr[0] ?? null;
+    const arr = Array.isArray(data.data)
+      ? (data.data as Array<Record<string, unknown> | null>)
+      : [];
+    const first =
+      arr.find(
+        (d) =>
+          d && (typeof d.b64_json === "string" || typeof d.url === "string"),
+      ) ??
+      arr[0] ??
+      null;
     if (!first) {
       const err = (data.error as { message?: string } | undefined)?.message;
-      throw new ProviderError("bad_output", err ?? "image response contained no image");
+      throw new ProviderError(
+        "bad_output",
+        err ?? "image response contained no image",
+      );
     }
     if (typeof first.b64_json === "string" && first.b64_json) {
       const bytes = decodeBase64(first.b64_json);
-      return { bytes, contentType: sniffImageMime(bytes), provider: this.name, model: meta.model, prompt: meta.prompt };
+      return {
+        bytes,
+        contentType: sniffImageMime(bytes),
+        provider: this.name,
+        model: meta.model,
+        prompt: meta.prompt,
+      };
     }
     if (typeof first.url === "string" && first.url) {
       const res = await fetch(first.url, {
         headers: { "user-agent": "Hoichoi/1.1 image-generator" },
         signal: AbortSignal.timeout(60_000),
       });
-      if (!res.ok) throw new ProviderError("network", `image download failed: ${res.status}`);
+      if (!res.ok)
+        throw new ProviderError(
+          "network",
+          `image download failed: ${res.status}`,
+        );
       const bytes = new Uint8Array(await res.arrayBuffer());
       const ct = res.headers.get("content-type");
       return {
@@ -444,7 +572,10 @@ export class OpenAICompatProvider implements LLMProvider {
         prompt: meta.prompt,
       };
     }
-    throw new ProviderError("bad_output", "image response had neither b64_json nor url");
+    throw new ProviderError(
+      "bad_output",
+      "image response had neither b64_json nor url",
+    );
   }
 
   async healthCheck(signal?: AbortSignal): Promise<HealthCheckResult> {
@@ -483,9 +614,17 @@ export class OpenAICompatProvider implements LLMProvider {
           latencyMs: Date.now() - started,
         };
       }
-      return { ok: false, error: reason || "no chat endpoint answered", latencyMs: Date.now() - started };
+      return {
+        ok: false,
+        error: reason || "no chat endpoint answered",
+        latencyMs: Date.now() - started,
+      };
     } catch (err) {
-      return { ok: false, error: (err as Error).message, latencyMs: Date.now() - started };
+      return {
+        ok: false,
+        error: (err as Error).message,
+        latencyMs: Date.now() - started,
+      };
     }
   }
 
@@ -524,7 +663,11 @@ export class OpenAICompatProvider implements LLMProvider {
       out.push(u);
     };
     if (this.embedPath) {
-      push(this.embedPath.startsWith("/") ? `${this.baseUrl}${this.embedPath}` : `${this.baseUrl}/${this.embedPath}`);
+      push(
+        this.embedPath.startsWith("/")
+          ? `${this.baseUrl}${this.embedPath}`
+          : `${this.baseUrl}/${this.embedPath}`,
+      );
     }
     if (/\/embeddings\/?$/i.test(this.baseUrl)) push(this.baseUrl);
     push(`${this.baseUrl}/embeddings`);
@@ -562,27 +705,37 @@ export class OpenAICompatProvider implements LLMProvider {
       if (res.ok) return extract((await res.json()) as Record<string, unknown>);
       const text = await res.text();
       if (res.status === 404 || res.status === 405 || res.status === 501) {
-        lastReason = new ProviderError("bad_output", `no endpoint at ${url} (${res.status})`);
+        lastReason = new ProviderError(
+          "bad_output",
+          `no endpoint at ${url} (${res.status})`,
+        );
         continue;
       }
       classifyStatus(res.status, text);
     }
     if (lastReason) throw lastReason;
-    throw new ProviderError("bad_output", `no usable endpoint under base_url "${this.baseUrl}"`);
+    throw new ProviderError(
+      "bad_output",
+      `no usable endpoint under base_url "${this.baseUrl}"`,
+    );
   }
 
   protected buildUserPrompt(ctx: RewriteContext): string {
     const parts = [`মূল ফেসবুক পোস্ট (${ctx.sourcePageName}):`, ctx.rawText];
-    if (ctx.originalAuthorName) parts.unshift(`মূল লেখক: ${ctx.originalAuthorName}`);
+    if (ctx.originalAuthorName)
+      parts.unshift(`মূল লেখক: ${ctx.originalAuthorName}`);
     parts.push(
       "নিচের ফরম্যাটে শুধুমাত্র ফলাফল দাও:\nTITLE: ...\nSUMMARY: ...\nBODY: ...\nSAFETY_FLAG: ...",
-      ctx.category === "missing-children" ? "CASE_STATUS: <active|found|unresolved|false-alarm|unknown>" : "",
+      ctx.category === "missing-children"
+        ? "CASE_STATUS: <active|found|unresolved|false-alarm|unknown>"
+        : "",
     );
     return parts.filter((p) => p !== "").join("\n\n");
   }
 
   protected embeddingModel(): string {
-    const override = (this.row.config as Record<string, unknown> | null)?.embedding_model;
+    const override = (this.row.config as Record<string, unknown> | null)
+      ?.embedding_model;
     return typeof override === "string" ? override : this.row.model_name;
   }
 }
@@ -613,7 +766,7 @@ export function frameDims(
   if (!rw || !rh) return { width: baseW, height: baseH };
   const area = baseW * baseH;
   const width = Math.round(Math.sqrt((area * rw) / rh) / 8) * 8;
-  const height = Math.round(width * (rh / rw) / 8) * 8;
+  const height = Math.round((width * (rh / rw)) / 8) * 8;
   if (width < 256 || height < 256) return { width: baseW, height: baseH };
   return { width, height };
 }
