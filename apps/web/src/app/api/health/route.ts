@@ -85,7 +85,7 @@ export async function GET() {
   );
 
   const report = buildHealthReport({
-    version: process.env.npm_package_version ?? "1.1.26",
+    version: process.env.npm_package_version ?? "1.1.42",
     commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? process.env.GIT_COMMIT?.slice(0, 7) ?? null,
     startedAt: STARTED_AT,
     probes,

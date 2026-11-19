@@ -704,6 +704,76 @@ export async function deskModeration(
   return (res.comments as DeskComment[]) ?? [];
 }
 
+/** One archived row, as the runner reports it. */
+export interface DeskArchiveRow {
+  id: string;
+  title_bn: string;
+  slug: string;
+  category: string;
+  published_at: string | null;
+  archived_at: string | null;
+  archive_reason: string | null;
+  legal_hold: number;
+}
+
+/** One row past the age line — archived or not. */
+export interface DeskArchiveExpired {
+  id: string;
+  title_bn: string;
+  slug: string;
+  category: string;
+  status: string;
+  published_at: string | null;
+  archived_at: string | null;
+  age_days: number;
+  legal_hold: number;
+  is_active_case: number;
+}
+
+export interface DeskArchivePayload {
+  rows: DeskArchiveRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  visibleDays: number;
+  retentionDays: number;
+  expiredCount: number;
+  expired: DeskArchiveExpired[];
+}
+
+/** Archived posts + everything past the age line, in one call. */
+export async function deskArchive(env: Record<string, string>, page = 1): Promise<DeskArchivePayload> {
+  const res = await deskCall(["archive:list", "--page", String(page)], env);
+  return {
+    rows: (res.rows as DeskArchiveRow[]) ?? [],
+    total: Number(res.total ?? 0),
+    page: Number(res.page ?? page),
+    pageSize: Number(res.pageSize ?? 50),
+    visibleDays: Number(res.visibleDays ?? 7),
+    retentionDays: Number(res.retentionDays ?? 30),
+    expiredCount: Number(res.expiredCount ?? 0),
+    expired: (res.expired as DeskArchiveExpired[]) ?? [],
+  };
+}
+
+/** Permanently delete one archived post. Refused for a legal hold or a live row. */
+export async function deskArchiveDelete(env: Record<string, string>, id: string): Promise<void> {
+  await deskCall(["archive:delete", "--id", id, "--actor", "desk"], env);
+}
+
+/** Delete every post older than `days`, keeping legal holds and active cases. */
+export async function deskArchivePurge(
+  env: Record<string, string>,
+  days: number,
+): Promise<{ deleted: number; skippedLegalHold: number; skippedActiveCase: number }> {
+  const res = await deskCall(["archive:purge", "--older-than", String(days), "--actor", "desk"], env);
+  return {
+    deleted: Number(res.deleted ?? 0),
+    skippedLegalHold: Number(res.skippedLegalHold ?? 0),
+    skippedActiveCase: Number(res.skippedActiveCase ?? 0),
+  };
+}
+
 export async function deskModerationSet(
   env: Record<string, string>,
   id: string,

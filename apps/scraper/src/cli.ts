@@ -128,9 +128,18 @@ program
     }
   });
 
+/**
+ * Archive lifecycle, both as one command and as the three verbs the desk screen
+ * needs.
+ *
+ * `archive` with no subcommand keeps its original meaning (rollover + purge) —
+ * that is what the daily workflow calls, and changing it would silently change a
+ * scheduled job. `archive list|delete|purge` is the console's vocabulary, and each
+ * verb prints one JSON object so the runner passthrough has nothing to parse.
+ */
 program
   .command("archive")
-  .description("auto-rollover the 7-day window + purge past retention")
+  .description("auto-rollover the 7-day window + purge past retention (or: list/delete/purge)")
   .action(async () => {
     try {
       await ensureSchema(getClient());
@@ -138,6 +147,94 @@ program
       console.log(JSON.stringify(report, null, 2));
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("archive:list")
+  .description("archived posts + how many are past the age line (JSON)")
+  .option("--page <n>", "page number, 1-based", "1")
+  .option("--page-size <n>", "rows per page", "50")
+  .option("--older-than <days>", "also count posts older than this many days")
+  .action(async (opts: { page?: string; pageSize?: string; olderThan?: string }) => {
+    try {
+      await ensureSchema(getClient());
+      const {
+        listArchivedPostsPage,
+        listExpiredPosts,
+        countExpiredPosts,
+        getSettings,
+      } = await import("@hoichoi/db");
+      const settings = await getSettings();
+      const page = Number(opts.page ?? 1) || 1;
+      const pageSize = Math.min(200, Math.max(1, Number(opts.pageSize ?? 50) || 50));
+      const archived = await listArchivedPostsPage(page, pageSize);
+      const retention = Number(opts.olderThan ?? settings.archive_retention_days ?? 30);
+      const [expiredCount, expired] = await Promise.all([
+        countExpiredPosts(retention),
+        listExpiredPosts(retention, 50),
+      ]);
+      console.log(
+        JSON.stringify({
+          ok: true,
+          rows: archived.rows.map((p) => ({
+            id: p.id,
+            title_bn: p.title_bn,
+            slug: p.slug,
+            category: p.category,
+            published_at: p.published_at,
+            archived_at: p.archived_at,
+            archive_reason: p.archive_reason,
+            legal_hold: p.legal_hold,
+          })),
+          total: archived.total,
+          page: archived.page,
+          pageSize: archived.pageSize,
+          visibleDays: settings.archive_visible_days,
+          retentionDays: retention,
+          expiredCount,
+          expired,
+        }),
+      );
+    } catch (err) {
+      console.error(JSON.stringify({ ok: false, error: (err as Error).message }));
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("archive:delete")
+  .description("permanently delete one archived post by id (JSON)")
+  .requiredOption("--id <id>", "post id")
+  .option("--actor <name>", "who asked", "desk")
+  .action(async (opts: { id: string; actor?: string }) => {
+    try {
+      await ensureSchema(getClient());
+      const { deleteArchivedPost } = await import("@hoichoi/db");
+      const result = await deleteArchivedPost(opts.id, opts.actor ?? "desk");
+      console.log(JSON.stringify({ ok: true, ...result }));
+    } catch (err) {
+      console.error(JSON.stringify({ ok: false, error: (err as Error).message }));
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("archive:purge")
+  .description("delete every post older than N days (default: the retention setting)")
+  .option("--older-than <days>", "age in days")
+  .option("--actor <name>", "who asked", "desk")
+  .action(async (opts: { olderThan?: string; actor?: string }) => {
+    try {
+      await ensureSchema(getClient());
+      const { deletePostsOlderThan, getSettings } = await import("@hoichoi/db");
+      const settings = await getSettings();
+      const days = Number(opts.olderThan ?? settings.archive_retention_days ?? 30) || 30;
+      const report = await deletePostsOlderThan(days, opts.actor ?? "desk", (m) => console.error(m));
+      console.log(JSON.stringify({ ok: true, days, ...report }));
+    } catch (err) {
+      console.error(JSON.stringify({ ok: false, error: (err as Error).message }));
       process.exitCode = 1;
     }
   });

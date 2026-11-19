@@ -39,7 +39,7 @@ Scraper               Collection pipeline: ingest → dedup → classify → rew
                       publish. Multi-platform: facebook (browser scrape) + news/magazine
                       (RSS/Atom fetch). AI fallback hero images for media-less posts +
                       on-demand manual image generation (`media generate`).
-Desktop (apps/desktop)  Tauri 2 desktop admin + local collector controller — 9-tab desk
+Desktop (apps/desktop)  Tauri 2 desktop admin + local collector controller — 10-tab desk
                        console incl. a ট্রাফিক analytics tab (shares the web TrafficView)
                        with a ট্রাফিক/স্টোরেজ sub-tab toggle (shares the web StorageView),
                        Settings has pill tabs incl. inline সোর্স/বিভাগ editing, AI প্রোভাইডার,
@@ -47,8 +47,10 @@ Desktop (apps/desktop)  Tauri 2 desktop admin + local collector controller — 9
                        home/similar/comments count knobs, default post image + brand-animation
                        knobs, footer branding + per-category footer visibility, এবং admin
                        লগইন লগ panel. The content-row editor mirrors the web gallery strip
-                       (add/remove/promote extra images). API ভল্ট কপি/ডাউনলোড clipboard-plugin
-                       + Downloads ফাইলের মাধ্যমে।
+                       (add/remove/promote extra images). The tenth tab, আর্কাইভ, mirrors the
+                       web archive: what left the seven-day window, everything past retention,
+                       a per-row permanent delete and a guarded "delete the lot". API ভল্ট
+                       কপি/ডাউনলোড clipboard-plugin + Downloads ফাইলের মাধ্যমে।
 DB/LLM/Types          packages/db (Turso/libSQL, incl. the traffic + storage-report modules
                       and the post_images gallery layer), packages/llm (multi-provider
                       resolver + image generation), shared-types.
@@ -332,7 +334,10 @@ Run from anywhere with `npx tsx --env-file=.env apps/scraper/src/cli.ts <cmd>`.
 | Command | What it does |
 | --- | --- |
 | `scrape [--mock] [--max-sources N] [--max-posts N]` | Run the full pipeline |
-| `archive` | Rolling archive/purge pass |
+| `archive` | Rolling archive/purge pass (what the daily workflow runs) |
+| `archive:list` | Archived posts + everything past the age line, as JSON (`--page`, `--older-than`) |
+| `archive:delete` | Permanently delete one archived post (`--id`), refused on a legal hold |
+| `archive:purge` | Delete everything older than N days (`--older-than`), guards kept |
 | `categories list` / `categories add --slug … --keywords "a,b"` | Category catalog (keywords stored as data) |
 | `sources add --page-url <url> --page-name <n> --category <slug> --platform <p>` | Add a source; `news`/`magazine` use RSS/Atom |
 | `media status` / `media backfill [--recover]` / `media cleanup` | Remote-media storage, redownload missing media |
@@ -376,6 +381,83 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 > After any change to `packages/db/migrations/` you **must** re-run `bundle:runner`
 > before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
 > (latest e.g. `012_post_images.sql`).
+
+## Seven days, thirty days, and a comparison that was a string (v1.1.42)
+
+The brief says two things: the public site shows **seven days**, and archived
+content is **deleted after thirty**. Both were implemented, both were documented,
+and neither was true. This release is the measurement that proved it, the fix, and
+the two delete controls that make the retention rule usable from either console.
+
+**The bug was a type, not a policy.** SQLite's `strftime('%s', …)` returns
+**TEXT**; `strftime('%s','now') - 86400 * 7` is a **number**. SQLite compares by
+storage class before it compares by value, and every text sorts above every
+number, so the view's `>=` was true for *every* row and the rollover's `<` was
+false for every row. The daily `rolling-archive.yml` run therefore reported
+`success` with `rolledOver: 0` for a month while the live site served **1,454**
+posts, the oldest **58 days** old, and nothing had ever been archived.
+
+Measured on the live Turso database before the fix:
+
+| What was measured | Result |
+|---|---|
+| `posts` | 1,454 (all `published`, all `archived_at IS NULL`) |
+| posts in `posts_current_window` | **1,451** — the view matched everything |
+| posts actually younger than 7 days | 394 |
+| `ttl_ms` on a 58-day-old row | **−4,422,083,000** (negative, and served anyway) |
+
+`039_window_numeric.sql` recreates the view with
+`CAST(strftime('%s', published_at) AS INTEGER)` on both sides *and* inside
+`ttl_ms`, and backfills `published_at = created_at` for the three published rows
+that had none; `checkAndArchive()` casts too. After applying it to the live
+database:
+
+| What was measured | Result |
+|---|---|
+| `SELECT COUNT(*) FROM posts_current_window` | **394** |
+| oldest row in the window | **2026-11-13** — seven days |
+| posts archived | **781** |
+| posts purged (past retention) | **276** |
+| posts still older than 30 days | 65 — inside the second clock below |
+
+The public site now shows yesterday's stories and 404s the ones that left.
+
+**Retention has two clocks, on purpose.** `purgeExpired()` used to measure only
+from `archived_at`, which means a database that never rolled over would archive a
+two-month-old post and then keep it another thirty days. It now deletes when
+**either** `archived_at` is past retention **or** `published_at` is past
+`visible + retention` — the catch-up path — while the legal-hold and
+active-`missing-children` guards stay. On a local `file:` database with no
+`vec0` module the `posts_vec` delete is skipped rather than throwing.
+
+**Deleting is one implementation, three doorways.** `deleteArchivedPost()` and
+`deletePostsOlderThan()` live in `packages/db/src/archive.ts`; a refused delete
+raises `ArchiveDeleteRefused` with `not_found` / `not_archived` / `legal_hold` so
+the API can answer 404 or a 409 with a Bangla reason. `POST
+/api/admin/archive/delete` accepts `{ id }` for one post or `{ olderThanDays }`
+for the age rule, and writes one deletion-ledger row per post plus one audit row
+per action.
+
+On the surfaces:
+
+* **Web** — `/admin/archive` gains `ExpiredPanel`: the count is stated before the
+  button (`341`, on the live database, before the pass), the confirmation repeats
+  the number, and the result reports what the guards kept.
+* **Desktop** — a tenth tab, **আর্কাইভ**, reads three new runner verbs
+  (`archive:list`, `archive:delete`, `archive:purge`) through the existing
+  `desk_call` passthrough. It shows the expired block *and* the archived block,
+  pages the archive, marks a held row `সুরক্ষিত`, and deletes with the same guards
+  — there is no second implementation to drift.
+
+`packages/db/src/__tests__/archive-window.test.ts` (8 checks) runs the whole thing
+against an in-memory libSQL database with real ISO-8601 `Z` timestamps: the window
+is seven days and it is a number comparison, `ttl_ms` changes sign at the edge, a
+rollover archives what the window let go and nothing else, a second rollover is a
+no-op, the purge deletes what is older than the whole clock, every delete leaves a
+ledger row, a held post is never purged, and a full pass reports what it did.
+
+`/api/health` also stops reporting `1.1.26` from a hard-coded fallback; it now
+reports the version that is deployed (`1.1.42`).
 
 ## The collector drafts without holding the keys (v1.1.29)
 

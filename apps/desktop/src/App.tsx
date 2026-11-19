@@ -36,6 +36,7 @@ import Vault from "./screens/Vault";
 import Settings from "./screens/Settings";
 import Moderation from "./screens/Moderation";
 import Ads from "./screens/Ads";
+import Archive from "./screens/Archive";
 import ThemeToggle from "./components/ThemeToggle";
 import DeskSyncBar from "./components/DeskSyncBar";
 import { ToastHost } from "./components/ToastHost";
@@ -52,7 +53,8 @@ export type View =
   | "vault"
   | "settings"
   | "moderation"
-  | "ads";
+  | "ads"
+  | "archive";
 
 const ONBOARD_KEY = "hoichoi.desk.onboarded.v1";
 const AUTORUN_KEY = "hoichoi.desk.autoru";
@@ -77,6 +79,7 @@ const VIEW_ORDER: View[] = [
   "settings",
   "moderation",
   "ads",
+  "archive",
 ];
 
 const TAB_LABELS: Record<View, { icon: NavIconName; label: string }> = {
@@ -89,6 +92,7 @@ const TAB_LABELS: Record<View, { icon: NavIconName; label: string }> = {
   settings: { icon: "settings", label: "সেটিংস" },
   moderation: { icon: "moderation", label: "মন্তব্য মডারেশন" },
   ads: { icon: "ads", label: "বিজ্ঞাপন" },
+  archive: { icon: "archive", label: "আর্কাইভ" },
 };
 
 function StatusClock() {
@@ -816,6 +820,11 @@ export default function App() {
               <section className="pane" id="pane-ads" hidden={view !== "ads"}>
                 <PaneBoundary name="ads">
                   <Ads refreshBrand={refresh} />
+                </PaneBoundary>
+              </section>
+              <section className="pane" id="pane-archive" hidden={view !== "archive"}>
+                <PaneBoundary name="archive">
+                  <Archive />
                 </PaneBoundary>
               </section>
             </main>

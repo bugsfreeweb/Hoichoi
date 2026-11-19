@@ -74,6 +74,9 @@ admin-dashboard-mockup/
 
 live-event-feature-mockup/
 ad-management-system-mockup/
+hero-mockup/
+# Local runner media mirror and throwaway scrapes
+media/
 .continue/
 .tmp-*.db
 .lighthouseci/
