@@ -947,6 +947,36 @@ crosshair, 60 rim ticks) with real queue-derived blips; a single `desk bootstrap
 spawn replaces 6+ runner calls on refresh; Ads/Settings save buttons show
 spinner → result toast with elapsed ms.
 
+## The story plate is a broadcast card (v1.1.40)
+
+**A story's picture is met in a feed, so it is now a card, not a page.** The four
+editorial layouts were the newsroom's answer to "a poster", and they read like an
+article: tall, dark, columned. `packages/poster/src/html/broadcast.ts` replaces the
+default with a 1200×675 broadcast frame drawn at 2× — a 2400×1350 PNG — carrying a
+red desk badge and a logo badge on the top rail, a headline that reads white into
+gold, a two-line standfirst in a translucent box, and a solid white footer bar with
+"ব্রেকিং নিউজ" and the source. `headlineSizeForCard` steps the type down by length
+and the frame cannot scroll, so no headline can overflow it. The archive layouts are
+still one `layout` or `theme` away, which is what the console's frame picker passes.
+
+**The story's own photo is inspiration, never the picture.** When a story has an
+image, the card renders it at `blur(2px) saturate(1.35) hue-rotate(-8deg)` under a
+`soft-light` blend with a guard fade: the scene's light and colour survive, the
+photograph does not. A card with no image gets the branded motif.
+
+**The same card from three doors.** The collector (`composeStoryPlateDetailed`), the
+console route (`/api/posts/[id]/generate-image`) and a standalone CLI
+(`packages/poster/scripts/social-card.ts --json card.json | --data '{…}' | --sample`)
+all draw it, and all three keep the SVG net for a machine with no Chromium.
+Fonts embed from the package by default; `fonts: "cdn"` additionally requests Hind
+Siliguri and Noto Sans Bengali from Google Fonts, with the embedded faces kept
+underneath so a failed request is never tofu.
+
+**And CodeQL can read the desktop config again.** `apps/desktop/tailwind.config.js`
+carried `import type` and `satisfies` inside a plain `.js` file. Vite tolerates that;
+the JavaScript extractor does not, so the extractor failed and the scan with it. It
+is now a JSDoc `@type` annotation and a plain object.
+
 ## Light where the picture is, and the rail at glyph scale (v1.1.39)
 
 **Every poster was the same dark breaking banner, and the cause was one field.**

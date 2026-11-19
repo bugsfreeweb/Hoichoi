@@ -49,11 +49,16 @@ async function main(): Promise<void> {
     assert.ok(plate.bytes.byteLength > 4_000, "a real plate");
     const sharp = (await import("sharp")).default;
     const meta = await sharp(plate.bytes).metadata();
-    // 1920×1080 is the poster frame the browser renderer draws; the SVG net keeps
-    // its own 1600×900. Both are 16:9 and both are a picture.
+    // The default plate is now the broadcast card: 1200×675 drawn at 2×, which is
+    // 2400×1350. The archive frames are 1920×1080 and the SVG net keeps its own
+    // 1600×900. All of them are 16:9 and all of them are a picture.
     if (plate.engine === "html") {
-      assert.equal(meta.width, 1920);
-      assert.equal(meta.height, 1080);
+      const width = meta.width ?? 0;
+      const height = meta.height ?? 0;
+      const cardish = width === 2400 && height === 1350;
+      const archival = width === 1920 && height === 1080;
+      assert.ok(cardish || archival, `a 16:9 frame (got ${width}×${height})`);
+      assert.equal(width / height, 16 / 9);
     } else {
       assert.equal(meta.width, 1600);
       assert.equal(meta.height, 900);
@@ -61,6 +66,34 @@ async function main(): Promise<void> {
     assert.equal(meta.format, "webp");
     assert.equal(plate.usedFallbackBackdrop, true, "no provider bytes means the branded backdrop");
     fs.writeFileSync(".tmp-plate-scraper.webp", plate.bytes);
+  });
+
+  await check("a story plate is the broadcast card, and the archive is still reachable", async () => {
+    const card = await composeStoryPlateDetailed({
+      background: null,
+      title: "বাজেট ঘোষণার পর বাজারে দাম বাড়ল",
+      summary: "অর্থমন্ত্রী বলেছেন ভর্তুকি বাড়ানো হবে না।",
+      category: "economy",
+      source: "প্রথম আলো",
+    });
+    const sharp = (await import("sharp")).default;
+    const cardMeta = await sharp(card.bytes).metadata();
+    assert.equal(cardMeta.width, 2400, "the card is drawn at 2×");
+    assert.equal(cardMeta.height, 1350);
+    assert.equal(cardMeta.format, "webp", "the plate contract stays WebP for the media pipeline");
+
+    // An explicit frame is an instruction, not a preference to be optimised away.
+    const asked = await composeStoryPlateDetailed({
+      background: null,
+      title: "বাজেট ঘোষণার পর বাজারে দাম বাড়ল",
+      summary: "অর্থমন্ত্রী বলেছেন ভর্তুকি বাড়ানো হবে না।",
+      category: "economy",
+      layout: "breaking-banner",
+      theme: "dark",
+    });
+    const askedMeta = await sharp(asked.bytes).metadata();
+    assert.equal(askedMeta.width, 1920, "the archive frame draws at its own size");
+    assert.notEqual(askedMeta.width, cardMeta.width);
   });
 
   await check("a refused provider chain still produces a picture", () => {

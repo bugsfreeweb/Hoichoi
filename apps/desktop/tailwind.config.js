@@ -1,4 +1,15 @@
-import type { Config } from "tailwindcss";
+/**
+ * Tailwind for the desk window.
+ *
+ * Plain JavaScript on purpose. This file is a `.js` under `"type": "module"`, so
+ * `import type { Config } from "tailwindcss"` and `satisfies Config` were
+ * TypeScript syntax sitting in a JavaScript file: Node never cared (Vite strips
+ * it), but CodeQL's JavaScript extractor cannot parse it and failed the whole
+ * scan with a syntax error on this path. The JSDoc annotation gives an editor the
+ * same completions without asking a `.js` file to be a `.ts` file.
+ *
+ * @type {import("tailwindcss").Config}
+ */
 import dashPreset from "../../packages/dash/tailwind-preset.js";
 
 export default {
@@ -46,4 +57,4 @@ export default {
     },
   },
   plugins: [],
-} satisfies Config;
+};

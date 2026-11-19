@@ -18,6 +18,8 @@
  */
 import { banglaDate, deskFor } from "@hoichoi/db";
 import {
+  PosterBrowserUnavailable,
+  renderBroadcastCard,
   renderEditorialPoster,
   renderPoster,
   topicCues,
@@ -58,12 +60,67 @@ export interface PlateOutput {
   theme?: PosterTheme;
 }
 
+/**
+ * Re-encode the card PNG as WebP.
+ *
+ * The plate's contract with every caller is "WebP bytes at 16:9", because the
+ * media pipeline names the file by the plate's own format and the mirror assumes
+ * `img_*.webp`. The card is drawn as PNG (that is what a social card is), so the
+ * conversion happens here rather than in four call sites.
+ */
+async function toWebp(png: Buffer): Promise<Buffer> {
+  type SharpFn = (input: Buffer) => import("sharp").Sharp;
+  const mod: unknown = await import("sharp");
+  const sharp =
+    typeof mod === "function" ? (mod as SharpFn) : (mod as { default?: SharpFn }).default;
+  if (!sharp) throw new Error("sharp module exposes no callable export");
+  return sharp(png).webp({ quality: 90 }).toBuffer();
+}
+
 /** Compose the finished 1920×1080 poster, never throwing for a missing background. */
 export async function composeStoryPlateDetailed(
   input: PlateInput,
 ): Promise<PlateOutput> {
   const desk = deskFor(input.category);
   const dateText = banglaDate(input.date ?? new Date());
+
+  /**
+   * A story plate is a **broadcast card** unless a desk asked for one of the
+   * archive frames.
+   *
+   * The four editorial layouts (banner, split, paper, card) were the newsroom's
+   * answer to "a poster", and they read as a page rather than as a card: dark,
+   * long, and shaped like an article. A story's picture is met in a feed, so the
+   * default is now the 1200×675 broadcast frame at 2× — navy-to-crimson field,
+   * red desk badge, white-to-gold headline, translucent standfirst box and a
+   * solid white footer bar. The layouts are still reachable by passing `layout`
+   * or `theme`, which is what the console's override picker does.
+   */
+  if (!input.layout && !input.theme) {
+    try {
+      const card = await renderBroadcastCard({
+        category: input.category ? desk.label : null,
+        title: input.title,
+        summary: input.summary ?? null,
+        source: input.source ?? null,
+        dateText,
+        accent: desk.accent,
+        // The story's own picture inspires the field — blurred, saturation-lifted
+        // and soft-light blended — instead of being pasted onto it.
+        backgroundImage: input.background,
+      });
+      return {
+        bytes: await toWebp(card.bytes),
+        usedFallbackBackdrop: !input.background,
+        engine: "html",
+      };
+    } catch (err) {
+      // No browser, no fonts: fall through to the archive renderer, which has its
+      // own SVG net. A story never ships without a picture.
+      if (!(err instanceof PosterBrowserUnavailable)) throw err;
+    }
+  }
+
   try {
     const rendered: EditorialPosterResult = await renderEditorialPoster({
       background: input.background,

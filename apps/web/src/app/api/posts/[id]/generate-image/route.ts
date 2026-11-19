@@ -22,6 +22,7 @@ import {
 } from "@hoichoi/llm";
 import {
   planPoster,
+  renderBroadcastCard,
   renderEditorialPoster,
   renderPoster,
   topicCues,
@@ -52,6 +53,22 @@ function publicUploadsDir(): string {
  * served — the runner mirrors them into `apps/web/public/uploads` and commits
  * that file, and Vercel builds from git.
  */
+/**
+ * Re-encode the card PNG as WebP.
+ *
+ * `sharp` resolves here as a CJS module whose callable export is sometimes the
+ * namespace default and sometimes the module itself (the same 0.33/0.35 split the
+ * scraper narrows), so the shape is checked rather than assumed.
+ */
+async function toWebp(png: Buffer): Promise<Buffer> {
+  type SharpFn = (input: Buffer) => { webp: (o: { quality: number }) => { toBuffer: () => Promise<Buffer> } };
+  const mod: unknown = await import("sharp");
+  const sharp =
+    typeof mod === "function" ? (mod as SharpFn) : (mod as { default?: SharpFn }).default;
+  if (!sharp) throw new Error("sharp module exposes no callable export");
+  return sharp(png).webp({ quality: 90 }).toBuffer();
+}
+
 function runnerConfigured(): boolean {
   return Boolean(process.env.GH_TRIGGER_TOKEN && process.env.GH_REPO);
 }
@@ -396,27 +413,49 @@ export async function POST(
     // The browser renderer is the primary path: it shapes Bengali with HarfBuzz.
     // A function with no Chromium (the deployed default) keeps the SVG plate and
     // still gets a branded picture — it just says which engine drew it.
-    const editorial = await renderEditorialPoster({
-      background: result ? Buffer.from(result.bytes) : null,
-      title: post.title_bn || "হৈচৈ",
-      summary: post.summary_bn ?? null,
-      // The slug picks the frame; the label is printed. Handing the label in as
-      // the category made `planPoster` match nothing, so every poster from this
-      // console rendered as the same dark breaking banner.
-      category: post.category ?? null,
-      deskLabel: deskLabel(post.category),
-      source: post.source_name ?? null,
-      dateText: post.published_at
-        ? banglaDate(new Date(post.published_at))
-        : banglaDate(),
-      seed: post.slug ?? post.id,
-      accent: deskAccent(post.category),
-      layout: (opts.layout || null) as PosterLayout | null,
-      theme: (opts.theme || null) as PosterTheme | null,
-      format: "webp",
-    });
-    buf = editorial.bytes;
-    contentType = editorial.contentType;
+    const title = post.title_bn || "হৈচৈ";
+    const dateText = post.published_at
+      ? banglaDate(new Date(post.published_at))
+      : banglaDate();
+    // An explicit frame from the picker is an instruction; with none, the story
+    // gets the broadcast card — the 1200×675 social frame the feed actually sees,
+    // drawn at 2×. The editorial layouts remain reachable, which is what the
+    // picker offers.
+    if (opts.layout || opts.theme) {
+      const editorial = await renderEditorialPoster({
+        background: result ? Buffer.from(result.bytes) : null,
+        title,
+        summary: post.summary_bn ?? null,
+        // The slug picks the frame; the label is printed. Handing the label in as
+        // the category made `planPoster` match nothing, so every poster from this
+        // console rendered as the same dark breaking banner.
+        category: post.category ?? null,
+        deskLabel: deskLabel(post.category),
+        source: post.source_name ?? null,
+        dateText,
+        seed: post.slug ?? post.id,
+        accent: deskAccent(post.category),
+        layout: (opts.layout || null) as PosterLayout | null,
+        theme: (opts.theme || null) as PosterTheme | null,
+        format: "webp",
+      });
+      buf = editorial.bytes;
+      contentType = editorial.contentType;
+    } else {
+      const card = await renderBroadcastCard({
+        category: deskLabel(post.category),
+        title,
+        summary: post.summary_bn ?? null,
+        source: post.source_name ?? null,
+        dateText,
+        accent: deskAccent(post.category),
+        backgroundImage: result ? Buffer.from(result.bytes) : null,
+      });
+      // The console stores and serves WebP like every other plate; the card is
+      // drawn as PNG because that is what a social card is.
+      buf = await toWebp(card.bytes);
+      contentType = "image/webp";
+    }
   } catch {
     plateEngine = "svg";
     const plate = await renderPoster({

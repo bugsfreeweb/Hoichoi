@@ -96,7 +96,7 @@ let assets: Promise<{
 }> | null = null;
 
 /** Fonts and the logo, read once and inlined as data URLs. */
-function loadAssets(): Promise<{
+export function loadAssets(): Promise<{
   fonts: PosterContent["fonts"];
   logo: string | null;
 }> {
@@ -224,6 +224,35 @@ async function withBrowser<T>(
   } finally {
     await launched.close().catch(() => undefined);
   }
+}
+
+/**
+ * Draw an HTML page and screenshot it as a PNG.
+ *
+ * Exported so a second template (the broadcast card) can share the one browser
+ * launcher, the one font-ready wait and the one "close the browser" rule instead
+ * of copying them. `scale` is the device scale factor: a 1200×675 card at 2× is
+ * a 2400×1350 PNG, which is the size a social platform downsamples from.
+ */
+export async function renderHtmlToPng(
+  html: string,
+  opts: { width: number; height: number; scale?: number },
+): Promise<Buffer> {
+  const scale = opts.scale ?? 1;
+  return withBrowser(async (browser) => {
+    const page = await browser.newPage({
+      viewport: { width: opts.width, height: opts.height },
+      deviceScaleFactor: scale,
+    });
+    await page.setContent(html, { waitUntil: "load" });
+    await page.evaluate(async () => {
+      // Base64 faces still decode asynchronously; without this the screenshot can
+      // beat the font and the headline lands in a fallback face.
+      await (document as Document & { fonts: FontFaceSet }).fonts.ready;
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+    });
+    return page.screenshot({ type: "png" });
+  });
 }
 
 /**

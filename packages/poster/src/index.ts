@@ -27,6 +27,17 @@ export {
 } from "./html/render";
 export { posterHtml, escapeHtml, barcodeBars, POSTER_HTML_FRAME, type PosterContent } from "./html/template";
 export { dataUrlForImage, sniffMime } from "./html/image";
+// The broadcast card: the 1200×675 social frame, rendered at 2× (2400×1350).
+export {
+  BROADCAST_FRAME,
+  BROADCAST_SCALE,
+  broadcastCardTemplate,
+  headlineSizeForCard,
+  renderBroadcastCard,
+  type BroadcastCardInput,
+  type BroadcastCardResult,
+} from "./html/broadcast";
+export { renderHtmlToPng } from "./html/render";
 export {
   planPoster,
   headlineSizeFor,
