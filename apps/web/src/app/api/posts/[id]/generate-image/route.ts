@@ -3,8 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import {
   banglaDate,
-  deskAccent,
-  deskLabel,
+  deskForCategory,
   getPostById,
   getClient,
   nowIso,
@@ -409,6 +408,11 @@ export async function POST(
   let buf: Buffer;
   let contentType = result?.contentType ?? "image/webp";
   let plateEngine: "html" | "svg" = "html";
+  // The desk's Bangla name comes from `category_configs`, not the seed list: the
+  // live database holds 39 desks and the seeds name 22, so a `tech` or
+  // `international` story was being badged "সংবাদ". Resolved before the try so the
+  // SVG net below can label the plate with the same desk.
+  const desk = await deskForCategory(post.category);
   try {
     // The browser renderer is the primary path: it shapes Bengali with HarfBuzz.
     // A function with no Chromium (the deployed default) keeps the SVG plate and
@@ -430,11 +434,11 @@ export async function POST(
         // the category made `planPoster` match nothing, so every poster from this
         // console rendered as the same dark breaking banner.
         category: post.category ?? null,
-        deskLabel: deskLabel(post.category),
+        deskLabel: desk.label,
         source: post.source_name ?? null,
         dateText,
         seed: post.slug ?? post.id,
-        accent: deskAccent(post.category),
+        accent: desk.accent,
         layout: (opts.layout || null) as PosterLayout | null,
         theme: (opts.theme || null) as PosterTheme | null,
         format: "webp",
@@ -443,12 +447,12 @@ export async function POST(
       contentType = editorial.contentType;
     } else {
       const card = await renderBroadcastCard({
-        category: deskLabel(post.category),
+        category: desk.label,
         title,
         summary: post.summary_bn ?? null,
         source: post.source_name ?? null,
         dateText,
-        accent: deskAccent(post.category),
+        accent: desk.accent,
         backgroundImage: result ? Buffer.from(result.bytes) : null,
       });
       // The console stores and serves WebP like every other plate; the card is
@@ -462,18 +466,18 @@ export async function POST(
       background: result ? Buffer.from(result.bytes) : null,
       spec: {
         title: post.title_bn || "হৈচৈ",
-        category: deskLabel(post.category),
+        category: desk.label,
         source: post.source_name ?? null,
         dateText: post.published_at
           ? banglaDate(new Date(post.published_at))
           : banglaDate(),
         topics: topicCues({
-          category: deskLabel(post.category),
+          category: desk.label,
           title: post.title_bn || "",
         }),
       },
       seed: post.slug,
-      accent: deskAccent(post.category),
+      accent: desk.accent,
       format: "webp",
     });
     buf = plate.bytes;

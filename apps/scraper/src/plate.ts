@@ -16,7 +16,7 @@
  *      so `renderEditorialPoster` is the primary path and the old SVG plate is
  *      only the emergency net for a runtime with no Chromium at hand.
  */
-import { banglaDate, deskFor } from "@hoichoi/db";
+import { banglaDate, deskFor, deskForCategory } from "@hoichoi/db";
 import {
   PosterBrowserUnavailable,
   renderBroadcastCard,
@@ -81,7 +81,10 @@ async function toWebp(png: Buffer): Promise<Buffer> {
 export async function composeStoryPlateDetailed(
   input: PlateInput,
 ): Promise<PlateOutput> {
-  const desk = deskFor(input.category);
+  // The desk as the *database* names it: `/admin/categories` is operator-editable,
+  // so the seeds miss desks the live site actually uses (`tech`, `international`,
+  // `ai`), and a plate labelled from the seeds printed "সংবাদ" for all of them.
+  const desk = await deskForCategory(input.category);
   const dateText = banglaDate(input.date ?? new Date());
 
   /**

@@ -4,7 +4,7 @@
  */
 export * from "./client";
 export * from "./rows";
-export { banglaDate, deskAccent, deskFor, deskLabel } from "./plate-meta";
+export { banglaDate, deskAccent, deskFor, deskForCategory, deskLabel } from "./plate-meta";
 export * from "./archive";
 export * from "./media";
 export * from "./media-storage";

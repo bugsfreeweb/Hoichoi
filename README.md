@@ -972,10 +972,21 @@ Fonts embed from the package by default; `fonts: "cdn"` additionally requests Hi
 Siliguri and Noto Sans Bengali from Google Fonts, with the embedded faces kept
 underneath so a failed request is never tofu.
 
+**The desk on the badge comes from the database.** `/admin/categories` is
+operator-editable, so the live installation holds 39 desks while the code-level
+seed lists name 22: `tech` (604 stories), `international`, `ai` and the rest were
+all badged with the neutral "সংবাদ" because the plate asked a constant instead of
+the table. `deskForCategory()` now reads `category_configs.display_name_bn` — the
+same Bangla name the console shows — caches it per slug, and falls back to the
+seeds only when there is no database.
+
 **And CodeQL can read the desktop config again.** `apps/desktop/tailwind.config.js`
 carried `import type` and `satisfies` inside a plain `.js` file. Vite tolerates that;
 the JavaScript extractor does not, so the extractor failed and the scan with it. It
-is now a JSDoc `@type` annotation and a plain object.
+is now a JSDoc `@type` annotation and a plain object. The second half of that
+failure was GitHub's *default* CodeQL setup being on at the same time, which makes
+GitHub refuse SARIF from an advanced configuration; default setup is now off, so
+the workflow in `.github/workflows/codeql.yml` is the single source.
 
 ## Light where the picture is, and the rail at glyph scale (v1.1.39)
 
