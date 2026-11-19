@@ -129,6 +129,67 @@ program
   });
 
 /**
+ * The archive block as the console wants it.
+ *
+ * Two callers — the commander action and the daemon's `dispatchCmd` switch —
+ * print this same object, so the one-shot CLI and the desk cannot answer with
+ * different shapes. Everything here is a read; the deletes are separate verbs.
+ */
+async function archiveSnapshot(page = 1, olderThan?: number): Promise<Record<string, unknown>> {
+  await ensureSchema(getClient());
+  const { listArchivedPostsPage, listExpiredPosts, countExpiredPosts, getSettings } = await import(
+    "@hoichoi/db"
+  );
+  const settings = await getSettings();
+  const p = Number(page) || 1;
+  const pageSize = 50;
+  const archived = await listArchivedPostsPage(p, pageSize);
+  const retention = Number(olderThan ?? settings.archive_retention_days ?? 30);
+  const [expiredCount, expired] = await Promise.all([
+    countExpiredPosts(retention),
+    listExpiredPosts(retention, 50),
+  ]);
+  return {
+    ok: true,
+    rows: archived.rows.map((post) => ({
+      id: post.id,
+      title_bn: post.title_bn,
+      slug: post.slug,
+      category: post.category,
+      published_at: post.published_at,
+      archived_at: post.archived_at,
+      archive_reason: post.archive_reason,
+      legal_hold: post.legal_hold,
+    })),
+    total: archived.total,
+    page: archived.page,
+    pageSize: archived.pageSize,
+    visibleDays: settings.archive_visible_days,
+    retentionDays: retention,
+    expiredCount,
+    expired,
+  };
+}
+
+/** Permanently delete one archived post, or refuse with a readable reason. */
+async function archiveDelete(id: string, actor: string): Promise<Record<string, unknown>> {
+  await ensureSchema(getClient());
+  const { deleteArchivedPost } = await import("@hoichoi/db");
+  const result = await deleteArchivedPost(id, actor);
+  return { ok: true, ...result };
+}
+
+/** Delete everything older than `days`; the guards stay, and are reported. */
+async function archivePurge(days: number | undefined, actor: string): Promise<Record<string, unknown>> {
+  await ensureSchema(getClient());
+  const { deletePostsOlderThan, getSettings } = await import("@hoichoi/db");
+  const settings = await getSettings();
+  const window = Number(days ?? settings.archive_retention_days ?? 30) || 30;
+  const report = await deletePostsOlderThan(window, actor, (m) => console.error(m));
+  return { ok: true, days: window, ...report };
+}
+
+/**
  * Archive lifecycle, both as one command and as the three verbs the desk screen
  * needs.
  *
@@ -155,47 +216,13 @@ program
   .command("archive:list")
   .description("archived posts + how many are past the age line (JSON)")
   .option("--page <n>", "page number, 1-based", "1")
-  .option("--page-size <n>", "rows per page", "50")
-  .option("--older-than <days>", "also count posts older than this many days")
-  .action(async (opts: { page?: string; pageSize?: string; olderThan?: string }) => {
+  .option("--older-than <days>", "count posts older than this many days")
+  .action(async (opts: { page?: string; olderThan?: string }) => {
     try {
-      await ensureSchema(getClient());
-      const {
-        listArchivedPostsPage,
-        listExpiredPosts,
-        countExpiredPosts,
-        getSettings,
-      } = await import("@hoichoi/db");
-      const settings = await getSettings();
-      const page = Number(opts.page ?? 1) || 1;
-      const pageSize = Math.min(200, Math.max(1, Number(opts.pageSize ?? 50) || 50));
-      const archived = await listArchivedPostsPage(page, pageSize);
-      const retention = Number(opts.olderThan ?? settings.archive_retention_days ?? 30);
-      const [expiredCount, expired] = await Promise.all([
-        countExpiredPosts(retention),
-        listExpiredPosts(retention, 50),
-      ]);
       console.log(
-        JSON.stringify({
-          ok: true,
-          rows: archived.rows.map((p) => ({
-            id: p.id,
-            title_bn: p.title_bn,
-            slug: p.slug,
-            category: p.category,
-            published_at: p.published_at,
-            archived_at: p.archived_at,
-            archive_reason: p.archive_reason,
-            legal_hold: p.legal_hold,
-          })),
-          total: archived.total,
-          page: archived.page,
-          pageSize: archived.pageSize,
-          visibleDays: settings.archive_visible_days,
-          retentionDays: retention,
-          expiredCount,
-          expired,
-        }),
+        JSON.stringify(
+          await archiveSnapshot(Number(opts.page ?? 1) || 1, opts.olderThan ? Number(opts.olderThan) : undefined),
+        ),
       );
     } catch (err) {
       console.error(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -210,10 +237,7 @@ program
   .option("--actor <name>", "who asked", "desk")
   .action(async (opts: { id: string; actor?: string }) => {
     try {
-      await ensureSchema(getClient());
-      const { deleteArchivedPost } = await import("@hoichoi/db");
-      const result = await deleteArchivedPost(opts.id, opts.actor ?? "desk");
-      console.log(JSON.stringify({ ok: true, ...result }));
+      console.log(JSON.stringify(await archiveDelete(opts.id, opts.actor ?? "desk")));
     } catch (err) {
       console.error(JSON.stringify({ ok: false, error: (err as Error).message }));
       process.exitCode = 1;
@@ -227,12 +251,11 @@ program
   .option("--actor <name>", "who asked", "desk")
   .action(async (opts: { olderThan?: string; actor?: string }) => {
     try {
-      await ensureSchema(getClient());
-      const { deletePostsOlderThan, getSettings } = await import("@hoichoi/db");
-      const settings = await getSettings();
-      const days = Number(opts.olderThan ?? settings.archive_retention_days ?? 30) || 30;
-      const report = await deletePostsOlderThan(days, opts.actor ?? "desk", (m) => console.error(m));
-      console.log(JSON.stringify({ ok: true, days, ...report }));
+      console.log(
+        JSON.stringify(
+          await archivePurge(opts.olderThan ? Number(opts.olderThan) : undefined, opts.actor ?? "desk"),
+        ),
+      );
     } catch (err) {
       console.error(JSON.stringify({ ok: false, error: (err as Error).message }));
       process.exitCode = 1;
@@ -2315,6 +2338,30 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
       } else {
         throw new Error(`unknown action: ${action}`);
       }
+      return;
+    }
+    case "archive:list": {
+      const { flags } = parseArgs(args.slice(1));
+      const snap = await archiveSnapshot(
+        Number(flags.page ?? 1) || 1,
+        flags["older-than"] ? Number(flags["older-than"]) : undefined,
+      );
+      console.log(JSON.stringify(snap));
+      return;
+    }
+    case "archive:delete": {
+      const { flags } = parseArgs(args.slice(1));
+      if (!flags.id) throw new Error("--id is required");
+      console.log(JSON.stringify(await archiveDelete(flags.id, flags.actor ?? "desk")));
+      return;
+    }
+    case "archive:purge": {
+      const { flags } = parseArgs(args.slice(1));
+      console.log(
+        JSON.stringify(
+          await archivePurge(flags["older-than"] ? Number(flags["older-than"]) : undefined, flags.actor ?? "desk"),
+        ),
+      );
       return;
     }
     case "moderation": {

@@ -28,6 +28,22 @@ import { toast } from "../lib/toast";
  *   2. **আর্কাইভড** — the posts that already left the window, each with its own
  *      permanent-delete control.
  */
+/**
+ * The runner's refusal, said in the desk's language.
+ *
+ * The database layer raises a typed reason (`not_found`, `not_archived`,
+ * `legal_hold`) and the CLI prints its English message; the screen is the place
+ * that turns it into a sentence an operator can act on. An unrecognised error is
+ * passed through untouched rather than hidden behind a generic line.
+ */
+function deleteRefusal(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  if (/not found/i.test(raw)) return "পোস্টটি পাওয়া যায়নি।";
+  if (/not archived/i.test(raw)) return "এই পোস্টটি আর্কাইভড নয় — স্থায়ীভাবে মোছা যাবে না।";
+  if (/legal hold/i.test(raw)) return "এই পোস্টে legal hold আছে — মোছা যাবে না।";
+  return raw;
+}
+
 export default function Archive() {
   const [data, setData] = useState<DeskArchivePayload | null>(null);
   const [page, setPage] = useState(1);
@@ -64,7 +80,7 @@ export default function Archive() {
       toast.ok("মুছে ফেলা হয়েছে");
       await load(page);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "মুছতে পারিনি";
+      const msg = deleteRefusal(e);
       setErr(msg);
       toast.err(msg);
     } finally {
@@ -91,7 +107,7 @@ export default function Archive() {
       );
       await load(1);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "মুছতে পারিনি";
+      const msg = deleteRefusal(e);
       setErr(msg);
       toast.err(msg);
     } finally {
