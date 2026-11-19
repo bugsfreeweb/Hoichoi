@@ -57,11 +57,30 @@ const THEME: Record<PosterTheme, Record<string, string>> = {
     faint: "rgba(255,255,255,0.55)",
     rule: "rgba(255,255,255,0.20)",
     panel: "rgba(9,12,18,0.66)",
-    scrim: "linear-gradient(90deg, rgba(13,16,23,0.985) 0%, rgba(13,16,23,0.96) 42%, rgba(13,16,23,0.52) 72%, rgba(13,16,23,0.16) 100%)",
+    /**
+     * The scrim is measured against the type, not against the frame.
+     *
+     * It used to hold 0.96 opacity across the first 42% *and* 0.985 at the edge,
+     * which is a black rectangle with a photograph suggested behind it: the
+     * page read as "too dark" no matter how bright the render was. The stops now
+     * fall away to nothing by 88% instead of 100%, and the strong band is
+     * exactly as wide as the copy column — under the headline it is still 0.94,
+     * so white type keeps its contrast, while the far side of the picture is
+     * left alone.
+     */
+    scrim:
+      "linear-gradient(90deg, rgba(13,16,23,0.94) 0%, rgba(13,16,23,0.86) 36%, rgba(13,16,23,0.42) 60%, rgba(13,16,23,0.10) 82%, rgba(13,16,23,0) 92%)",
     scrimRight:
-      "linear-gradient(270deg, rgba(13,16,23,0.985) 0%, rgba(13,16,23,0.96) 42%, rgba(13,16,23,0.52) 72%, rgba(13,16,23,0.16) 100%)",
+      "linear-gradient(270deg, rgba(13,16,23,0.94) 0%, rgba(13,16,23,0.86) 36%, rgba(13,16,23,0.42) 60%, rgba(13,16,23,0.10) 82%, rgba(13,16,23,0) 92%)",
+    /**
+     * The banner's copy column is the left 62% of the frame, so a full-width
+     * bottom gradient was dimming the whole picture to protect a third of it.
+     * Two layers instead: a gentler bottom fade for the footer's ground, and a
+     * horizontal fall-off that is only as wide as the column. Text keeps 0.94 at
+     * its left edge, and the right third of the picture is left as rendered.
+     */
     scrimBottom:
-      "linear-gradient(0deg, rgba(13,16,23,0.985) 0%, rgba(13,16,23,0.94) 38%, rgba(13,16,23,0.62) 62%, rgba(13,16,23,0.12) 88%, rgba(13,16,23,0) 100%)",
+      "linear-gradient(0deg, rgba(13,16,23,0.52) 0%, rgba(13,16,23,0.22) 28%, rgba(13,16,23,0) 58%), linear-gradient(90deg, rgba(13,16,23,0.92) 0%, rgba(13,16,23,0.82) 38%, rgba(13,16,23,0.55) 55%, rgba(13,16,23,0.22) 72%, rgba(13,16,23,0.04) 88%, rgba(13,16,23,0) 100%)",
   },
   "light-paper": {
     bg: "#F8F6F0",
@@ -70,7 +89,8 @@ const THEME: Record<PosterTheme, Record<string, string>> = {
     faint: "#666C74",
     rule: "rgba(20,22,26,0.18)",
     panel: "rgba(248,246,240,0.92)",
-    scrim: "linear-gradient(90deg, rgba(248,246,240,0.99) 0%, rgba(248,246,240,0.96) 46%, rgba(248,246,240,0.55) 74%, rgba(248,246,240,0.12) 100%)",
+    scrim:
+      "linear-gradient(90deg, rgba(248,246,240,0.99) 0%, rgba(248,246,240,0.96) 46%, rgba(248,246,240,0.55) 74%, rgba(248,246,240,0.12) 100%)",
     scrimRight:
       "linear-gradient(270deg, rgba(248,246,240,0.99) 0%, rgba(248,246,240,0.96) 46%, rgba(248,246,240,0.55) 74%, rgba(248,246,240,0.12) 100%)",
     scrimBottom:
@@ -115,7 +135,8 @@ export function barcodeBars(seed: string, count = 34): number[] {
 function fontCss(fonts: PosterContent["fonts"]): string {
   return fonts
     .map(
-      (f) => `@font-face{font-family:"${f.family}";font-weight:${f.weight};font-style:normal;font-display:block;src:url("${f.dataUrl}") format("truetype");}`,
+      (f) =>
+        `@font-face{font-family:"${f.family}";font-weight:${f.weight};font-style:normal;font-display:block;src:url("${f.dataUrl}") format("truetype");}`,
     )
     .join("\n");
 }
@@ -150,7 +171,10 @@ function footer(content: PosterContent): string {
         <span class="domain">${escapeHtml(content.site ?? "hoichoifeed.vercel.app")}</span>
       </div>
       <div class="barcode" aria-hidden="true">${bars
-        .map((w, i) => `<i style="width:${w}px;height:${i % 7 === 0 ? 46 : 34}px"></i>`)
+        .map(
+          (w, i) =>
+            `<i style="width:${w}px;height:${i % 7 === 0 ? 46 : 34}px"></i>`,
+        )
         .join("")}</div>
     </div>`;
 }
@@ -186,7 +210,7 @@ function body(content: PosterContent, plan: PosterPlan): string {
   const wash =
     plan.theme === "light-paper"
       ? `radial-gradient(120% 90% at 78% 30%, ${plan.accent}33 0%, ${plan.accent}14 44%, rgba(0,0,0,0) 74%), linear-gradient(160deg, #EFEBE2 0%, #E4DFD3 58%, #D9D3C6 100%)`
-      : `radial-gradient(120% 90% at 78% 30%, ${plan.accent}55 0%, ${plan.accent}18 42%, rgba(0,0,0,0) 72%), linear-gradient(160deg, #171B24 0%, #0C0F16 60%, #090B10 100%)`;
+      : `radial-gradient(120% 90% at 78% 30%, ${plan.accent}66 0%, ${plan.accent}22 44%, rgba(0,0,0,0) 74%), linear-gradient(160deg, #263043 0%, #19202E 62%, #131926 100%)`;
   /**
    * The wash is always drawn, and the photograph is drawn on top of it.
    *
@@ -307,6 +331,11 @@ function styles(plan: PosterPlan): string {
   .tag{display:inline-flex;align-items:center;gap:10px;align-self:flex-start;border:1px solid var(--rule);border-radius:999px;padding:9px 18px;background:${dark ? "rgba(255,255,255,0.06)" : "rgba(20,22,26,0.045)"};}
   .tag-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
   .tag-text{font-size:19px;font-weight:600;letter-spacing:0.6px;text-transform:uppercase;}
+  /* Where the words sit on a photograph, they bring their own contrast: a soft
+     shadow under the type is a tenth of the dimming a full-frame scrim costs, and
+     it only darkens the letters' own edges. The paper theme prints on cream, so
+     it keeps a clean edge. */
+  .headline,.summary,.source,.masthead,.footer{text-shadow:${dark ? "0 2px 14px rgba(0,0,0,0.45)" : "none"};}
   .headline{font-family:"Noto Serif Bengali",serif;font-weight:700;line-height:1.38;letter-spacing:-0.6px;padding-top:6px;padding-bottom:10px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;text-wrap:balance;}
   .summary{font-size:24px;line-height:1.6;color:var(--muted);font-weight:400;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;padding-top:4px;}
   .source{font-size:17px;letter-spacing:0.4px;color:var(--faint);margin-top:2px;}

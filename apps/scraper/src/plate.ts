@@ -59,7 +59,9 @@ export interface PlateOutput {
 }
 
 /** Compose the finished 1920×1080 poster, never throwing for a missing background. */
-export async function composeStoryPlateDetailed(input: PlateInput): Promise<PlateOutput> {
+export async function composeStoryPlateDetailed(
+  input: PlateInput,
+): Promise<PlateOutput> {
   const desk = deskFor(input.category);
   const dateText = banglaDate(input.date ?? new Date());
   try {
@@ -67,7 +69,10 @@ export async function composeStoryPlateDetailed(input: PlateInput): Promise<Plat
       background: input.background,
       title: input.title,
       summary: input.summary ?? null,
-      category: input.category ? desk.label : null,
+      // The slug picks the frame; the label is what the reader sees. Passing the
+      // label into the slug slot made every plate the same dark breaking banner.
+      category: input.category ?? null,
+      deskLabel: input.category ? desk.label : null,
       source: input.source ?? null,
       dateText,
       seed: input.seed ?? input.title,
@@ -106,7 +111,11 @@ export async function composeStoryPlateDetailed(input: PlateInput): Promise<Plat
     seed: input.seed ?? input.title,
     accent: desk.accent,
   });
-  return { bytes: rendered.bytes, usedFallbackBackdrop: rendered.usedFallbackBackdrop, engine: "svg" };
+  return {
+    bytes: rendered.bytes,
+    usedFallbackBackdrop: rendered.usedFallbackBackdrop,
+    engine: "svg",
+  };
 }
 
 /** Backwards-compatible bytes-only helper. */

@@ -12,7 +12,14 @@ import {
   updatePost,
 } from "@hoichoi/db";
 import { uploadBufferRemote, writeGeneratedMedia } from "@hoichoi/db/storage";
-import { buildImageBrief, EDITORIAL_IMAGE_NEGATIVE, extensionForMime, generateImage, imageSizeFor, listImageProviders } from "@hoichoi/llm";
+import {
+  buildImageBrief,
+  EDITORIAL_IMAGE_NEGATIVE,
+  extensionForMime,
+  generateImage,
+  imageSizeFor,
+  listImageProviders,
+} from "@hoichoi/llm";
 import {
   planPoster,
   renderEditorialPoster,
@@ -80,14 +87,18 @@ class BadOverride extends Error {}
 function posterLayoutOverride(v: unknown): string {
   if (v === undefined || v === null || v === "") return "";
   if (!isPosterLayout(v)) {
-    throw new BadOverride(`অজানা পোস্টার লেআউট — ${POSTER_LAYOUTS.join(" / ")} এর একটি দিন।`);
+    throw new BadOverride(
+      `অজানা পোস্টার লেআউট — ${POSTER_LAYOUTS.join(" / ")} এর একটি দিন।`,
+    );
   }
   return v;
 }
 function posterThemeOverride(v: unknown): string {
   if (v === undefined || v === null || v === "") return "";
   if (!isPosterTheme(v)) {
-    throw new BadOverride(`অজানা পোস্টার থিম — ${POSTER_THEMES.join(" / ")} এর একটি দিন।`);
+    throw new BadOverride(
+      `অজানা পোস্টার থিম — ${POSTER_THEMES.join(" / ")} এর একটি দিন।`,
+    );
   }
   return v;
 }
@@ -96,31 +107,37 @@ function posterThemeOverride(v: unknown): string {
  * POST `generate-image` options onto the Actions runner (`generate-image.yml`).
  * Returns true when GitHub accepted the dispatch.
  */
-async function dispatchToRunner(postId: string, opts: GenerateOptions): Promise<boolean> {
-  const res = await fetch(`https://api.github.com/repos/${process.env.GH_REPO}/dispatches`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${process.env.GH_TRIGGER_TOKEN}`,
-      "content-type": "application/json",
-      accept: "application/vnd.github+json",
-    },
-    body: JSON.stringify({
-      event_type: "generate-image",
-      client_payload: {
-        post_id: postId,
-        prompt: opts.prompt,
-        provider: opts.providerId || undefined,
-        ratio: opts.aspectRatio || undefined,
-        size: opts.size || undefined,
-        style: opts.style || undefined,
-        quality: opts.quality || undefined,
-        negative: opts.negativePrompt || undefined,
-        layout: opts.layout || undefined,
-        theme: opts.theme || undefined,
+async function dispatchToRunner(
+  postId: string,
+  opts: GenerateOptions,
+): Promise<boolean> {
+  const res = await fetch(
+    `https://api.github.com/repos/${process.env.GH_REPO}/dispatches`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${process.env.GH_TRIGGER_TOKEN}`,
+        "content-type": "application/json",
+        accept: "application/vnd.github+json",
       },
-    }),
-    signal: AbortSignal.timeout(15_000),
-  });
+      body: JSON.stringify({
+        event_type: "generate-image",
+        client_payload: {
+          post_id: postId,
+          prompt: opts.prompt,
+          provider: opts.providerId || undefined,
+          ratio: opts.aspectRatio || undefined,
+          size: opts.size || undefined,
+          style: opts.style || undefined,
+          quality: opts.quality || undefined,
+          negative: opts.negativePrompt || undefined,
+          layout: opts.layout || undefined,
+          theme: opts.theme || undefined,
+        },
+      }),
+      signal: AbortSignal.timeout(15_000),
+    },
+  );
   // repository_dispatch answers 204 No Content on success.
   return res.status === 204;
 }
@@ -131,7 +148,8 @@ async function writeLocalMirror(rel: string, bytes: Uint8Array): Promise<void> {
   const full = path.resolve(dir, rel);
   // Throws rather than silently returning: a write that never happened must not
   // look like success to the caller below, which treats it as "served locally".
-  if (!full.startsWith(path.resolve(dir))) throw new Error(`illegal media path: ${rel}`);
+  if (!full.startsWith(path.resolve(dir)))
+    throw new Error(`illegal media path: ${rel}`);
   await fs.promises.mkdir(path.dirname(full), { recursive: true });
   await fs.promises.writeFile(full, bytes);
 }
@@ -173,7 +191,10 @@ function str(v: unknown): string {
  * providers that are active right now, plus a suggested prompt derived from the
  * post so the operator can generate with one click or edit it first.
  */
-export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(
+  _req: NextRequest,
+  ctx: { params: Promise<{ id: string }> },
+) {
   const guard = await requireApiRole("editor");
   if ("response" in guard) return guard.response;
   const user = guard.user;
@@ -181,7 +202,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
   const { id } = await ctx.params;
   const post = await getPostById(id);
-  if (!post) return NextResponse.json({ error: "post not found" }, { status: 404 });
+  if (!post)
+    return NextResponse.json({ error: "post not found" }, { status: 404 });
 
   let providers: Awaited<ReturnType<typeof listImageProviders>>;
   try {
@@ -234,7 +256,10 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
  * On success the post's `media_path` is updated through the validated
  * `updatePost` path and an `admin_actions` row records it.
  */
-export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+export async function POST(
+  req: NextRequest,
+  ctx: { params: Promise<{ id: string }> },
+) {
   const guard = await requireApiRole("editor");
   if ("response" in guard) return guard.response;
   const user = guard.user;
@@ -242,36 +267,43 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const { id } = await ctx.params;
   const post = await getPostById(id);
-  if (!post) return NextResponse.json({ error: "post not found" }, { status: 404 });
+  if (!post)
+    return NextResponse.json({ error: "post not found" }, { status: 404 });
 
-  const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+  const body = (await req.json().catch(() => null)) as Record<
+    string,
+    unknown
+  > | null;
   const useTitle = body ? bool(body.useTitle) : true;
   let prompt = str(body?.prompt);
   if (!prompt && useTitle) prompt = promptForPost(post);
   if (!prompt) {
-    return NextResponse.json({ error: "প্রম্পট প্রয়োজন (অথবা useTitle পাঠান)" }, { status: 400 });
+    return NextResponse.json(
+      { error: "প্রম্পট প্রয়োজন (অথবা useTitle পাঠান)" },
+      { status: 400 },
+    );
   }
 
   let opts: GenerateOptions;
   try {
     opts = {
-    prompt,
-    providerId: str(body?.providerId),
-    // A brief written for 16:9 is padded to a square by most hosts unless the
-    // size travels with it, and the card then crops the composition away.
-    size: str(body?.size) || imageSizeFor(str(body?.aspectRatio) || "16:9"),
-    aspectRatio: str(body?.aspectRatio) || "16:9",
-    style: str(body?.style),
-    quality: str(body?.quality),
-    // Always send the editorial negative prompt unless the operator typed one:
-    // without it some providers still render lettering or a corner watermark.
-    negativePrompt: str(body?.negativePrompt) || EDITORIAL_IMAGE_NEGATIVE,
-    // A hand-picked frame is validated here, not in the workflow: an unknown
-    // value must be refused while the caller is still listening, rather than
-    // silently replaced by the desk default an hour later in a runner log.
-    layout: posterLayoutOverride(body?.layout),
-    theme: posterThemeOverride(body?.theme),
-  };
+      prompt,
+      providerId: str(body?.providerId),
+      // A brief written for 16:9 is padded to a square by most hosts unless the
+      // size travels with it, and the card then crops the composition away.
+      size: str(body?.size) || imageSizeFor(str(body?.aspectRatio) || "16:9"),
+      aspectRatio: str(body?.aspectRatio) || "16:9",
+      style: str(body?.style),
+      quality: str(body?.quality),
+      // Always send the editorial negative prompt unless the operator typed one:
+      // without it some providers still render lettering or a corner watermark.
+      negativePrompt: str(body?.negativePrompt) || EDITORIAL_IMAGE_NEGATIVE,
+      // A hand-picked frame is validated here, not in the workflow: an unknown
+      // value must be refused while the caller is still listening, rather than
+      // silently replaced by the desk default an hour later in a runner log.
+      layout: posterLayoutOverride(body?.layout),
+      theme: posterThemeOverride(body?.theme),
+    };
   } catch (err) {
     if (err instanceof BadOverride) {
       return NextResponse.json({ error: err.message }, { status: 400 });
@@ -301,7 +333,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
             user.user_id,
             "post.generate_image_queued",
             id,
-            JSON.stringify({ prompt: opts.prompt, by: user.email, via: "runner" }),
+            JSON.stringify({
+              prompt: opts.prompt,
+              by: user.email,
+              via: "runner",
+            }),
             nowIso(),
           ],
         });
@@ -311,7 +347,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         queued: true,
         via: "runner",
         attached: attach,
-        message: "ছবি তৈরি হচ্ছে GitHub Actions-এ — ১–৩ মিনিট পর এই প্যানেলটি নিজে থেকেই হালনাগাদ হবে।",
+        message:
+          "ছবি তৈরি হচ্ছে GitHub Actions-এ — ১–৩ মিনিট পর এই প্যানেলটি নিজে থেকেই হালনাগাদ হবে।",
       });
     }
     // Dispatch failed (token revoked, repo renamed, network): fall through to
@@ -363,9 +400,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       background: result ? Buffer.from(result.bytes) : null,
       title: post.title_bn || "হৈচৈ",
       summary: post.summary_bn ?? null,
-      category: deskLabel(post.category),
+      // The slug picks the frame; the label is printed. Handing the label in as
+      // the category made `planPoster` match nothing, so every poster from this
+      // console rendered as the same dark breaking banner.
+      category: post.category ?? null,
+      deskLabel: deskLabel(post.category),
       source: post.source_name ?? null,
-      dateText: post.published_at ? banglaDate(new Date(post.published_at)) : banglaDate(),
+      dateText: post.published_at
+        ? banglaDate(new Date(post.published_at))
+        : banglaDate(),
       seed: post.slug ?? post.id,
       accent: deskAccent(post.category),
       layout: (opts.layout || null) as PosterLayout | null,
@@ -382,8 +425,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         title: post.title_bn || "হৈচৈ",
         category: deskLabel(post.category),
         source: post.source_name ?? null,
-        dateText: post.published_at ? banglaDate(new Date(post.published_at)) : banglaDate(),
-        topics: topicCues({ category: deskLabel(post.category), title: post.title_bn || "" }),
+        dateText: post.published_at
+          ? banglaDate(new Date(post.published_at))
+          : banglaDate(),
+        topics: topicCues({
+          category: deskLabel(post.category),
+          title: post.title_bn || "",
+        }),
       },
       seed: post.slug,
       accent: deskAccent(post.category),
@@ -435,7 +483,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     try {
       await updatePost(id, { media_path: applied, media_origin: "ai" });
     } catch (err) {
-      return NextResponse.json({ error: (err as Error).message }, { status: 400 });
+      return NextResponse.json(
+        { error: (err as Error).message },
+        { status: 400 },
+      );
     }
     const client = getClient();
     await client.execute({

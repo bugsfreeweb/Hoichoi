@@ -23,14 +23,32 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { POSTER_HTML_FRAME, posterHtml, type PosterContent } from "./template";
 import { dataUrlForImage } from "./image";
-import { planPoster, type PosterLayout, type PosterPlan, type PosterTheme } from "./select";
+import {
+  planPoster,
+  type PosterLayout,
+  type PosterPlan,
+  type PosterTheme,
+} from "./select";
 
 export interface EditorialPosterOptions {
   /** The AI render, or null for the branded wash. */
   background: Buffer | null;
   title: string;
   summary?: string | null;
+  /**
+   * The category **slug** (`culture`, `national`, …) — the frame is chosen from
+   * this, so it must be the machine name and not a display label.
+   */
   category?: string | null;
+  /**
+   * The desk as a reader sees it ("সংস্কৃতি"). Printed on the plate.
+   *
+   * These were one field, and the platter passed the Bangla label into the
+   * slug slot — so `planPoster` matched nothing, every story landed on the
+   * `breaking` desk, and every poster came out as the same dark breaking
+   * banner no matter what it was about.
+   */
+  deskLabel?: string | null;
   dateText?: string | null;
   source?: string | null;
   site?: string | null;
@@ -66,21 +84,50 @@ export class PosterBrowserUnavailable extends Error {
   }
 }
 
-const MIME: Record<string, string> = { webp: "image/webp", png: "image/png", jpeg: "image/jpeg" };
+const MIME: Record<string, string> = {
+  webp: "image/webp",
+  png: "image/png",
+  jpeg: "image/jpeg",
+};
 
-let assets: Promise<{ fonts: PosterContent["fonts"]; logo: string | null }> | null = null;
+let assets: Promise<{
+  fonts: PosterContent["fonts"];
+  logo: string | null;
+}> | null = null;
 
 /** Fonts and the logo, read once and inlined as data URLs. */
-function loadAssets(): Promise<{ fonts: PosterContent["fonts"]; logo: string | null }> {
+function loadAssets(): Promise<{
+  fonts: PosterContent["fonts"];
+  logo: string | null;
+}> {
   if (assets) return assets;
   assets = (async () => {
     const here = dirname(fileURLToPath(import.meta.url));
-    const roots = [resolve(here, "..", "..", "fonts"), resolve(process.cwd(), "packages", "poster", "fonts")];
+    const roots = [
+      resolve(here, "..", "..", "fonts"),
+      resolve(process.cwd(), "packages", "poster", "fonts"),
+    ];
     const faces: Array<{ family: string; weight: number; file: string }> = [
-      { family: "Noto Serif Bengali", weight: 700, file: "NotoSerifBengali-Bold.ttf" },
-      { family: "Noto Serif Bengali", weight: 600, file: "NotoSerifBengali-SemiBold.ttf" },
-      { family: "Noto Sans Bengali", weight: 400, file: "NotoSansBengali-Regular.ttf" },
-      { family: "Noto Sans Bengali", weight: 700, file: "NotoSansBengali-Bold.ttf" },
+      {
+        family: "Noto Serif Bengali",
+        weight: 700,
+        file: "NotoSerifBengali-Bold.ttf",
+      },
+      {
+        family: "Noto Serif Bengali",
+        weight: 600,
+        file: "NotoSerifBengali-SemiBold.ttf",
+      },
+      {
+        family: "Noto Sans Bengali",
+        weight: 400,
+        file: "NotoSansBengali-Regular.ttf",
+      },
+      {
+        family: "Noto Sans Bengali",
+        weight: 700,
+        file: "NotoSansBengali-Bold.ttf",
+      },
     ];
     const fonts: PosterContent["fonts"] = [];
     for (const face of faces) {
@@ -98,9 +145,15 @@ function loadAssets(): Promise<{ fonts: PosterContent["fonts"]; logo: string | n
         }
       }
     }
-    if (fonts.length === 0) throw new PosterBrowserUnavailable("poster fonts are missing from the package");
+    if (fonts.length === 0)
+      throw new PosterBrowserUnavailable(
+        "poster fonts are missing from the package",
+      );
     let logo: string | null = null;
-    for (const root of [resolve(here, "..", "..", "assets"), resolve(process.cwd(), "packages", "poster", "assets")]) {
+    for (const root of [
+      resolve(here, "..", "..", "assets"),
+      resolve(process.cwd(), "packages", "poster", "assets"),
+    ]) {
       try {
         const bytes = await readFile(join(root, "logo.png"));
         logo = `data:image/png;base64,${bytes.toString("base64")}`;
@@ -117,7 +170,10 @@ function loadAssets(): Promise<{ fonts: PosterContent["fonts"]; logo: string | n
 type BrowserHandle = {
   // The Playwright types are intentionally not imported: this module must load
   // (and be type-checked) in packages that never install a browser.
-  newPage: (opts: { viewport: { width: number; height: number }; deviceScaleFactor: number }) => Promise<{
+  newPage: (opts: {
+    viewport: { width: number; height: number };
+    deviceScaleFactor: number;
+  }) => Promise<{
     setContent: (html: string, opts: { waitUntil: "load" }) => Promise<void>;
     evaluate: <T>(fn: () => Promise<T>) => Promise<T>;
     screenshot: (opts: { type: "png" }) => Promise<Buffer>;
@@ -135,7 +191,9 @@ type BrowserHandle = {
  * hundred milliseconds against a render that already takes seconds; a hung
  * pipeline is not worth that trade.
  */
-async function withBrowser<T>(fn: (browser: BrowserHandle) => Promise<T>): Promise<T> {
+async function withBrowser<T>(
+  fn: (browser: BrowserHandle) => Promise<T>,
+): Promise<T> {
   let launched: BrowserHandle | null = null;
   let lastError: unknown = null;
   for (const name of ["playwright", "playwright-core"]) {
@@ -143,17 +201,24 @@ async function withBrowser<T>(fn: (browser: BrowserHandle) => Promise<T>): Promi
       // A dynamic, non-literal specifier: this module must import cleanly in a
       // runtime that has no browser package installed at all.
       const mod = (await import(name)) as unknown as {
-        chromium?: { launch: (opts?: Record<string, unknown>) => Promise<BrowserHandle> };
+        chromium?: {
+          launch: (opts?: Record<string, unknown>) => Promise<BrowserHandle>;
+        };
       };
       if (!mod.chromium) continue;
-      launched = await mod.chromium.launch({ args: ["--no-sandbox", "--disable-dev-shm-usage"] });
+      launched = await mod.chromium.launch({
+        args: ["--no-sandbox", "--disable-dev-shm-usage"],
+      });
       break;
     } catch (err) {
       lastError = err;
       continue;
     }
   }
-  if (!launched) throw new PosterBrowserUnavailable(lastError ?? "no chromium available to launch");
+  if (!launched)
+    throw new PosterBrowserUnavailable(
+      lastError ?? "no chromium available to launch",
+    );
   try {
     return await fn(launched);
   } finally {
@@ -168,21 +233,32 @@ async function withBrowser<T>(fn: (browser: BrowserHandle) => Promise<T>): Promi
  * is expected to keep a renderer for that case, because "no picture" is never an
  * acceptable outcome.
  */
-export async function renderEditorialPoster(opts: EditorialPosterOptions): Promise<EditorialPosterResult> {
-  const plan = planPoster({ category: opts.category, title: opts.title, layout: opts.layout, theme: opts.theme });
-  const withAccent: PosterPlan = opts.accent ? { ...plan, accent: opts.accent } : plan;
+export async function renderEditorialPoster(
+  opts: EditorialPosterOptions,
+): Promise<EditorialPosterResult> {
+  const plan = planPoster({
+    category: opts.category,
+    title: opts.title,
+    layout: opts.layout,
+    theme: opts.theme,
+  });
+  const withAccent: PosterPlan = opts.accent
+    ? { ...plan, accent: opts.accent }
+    : plan;
   const { fonts, logo } = await loadAssets();
 
   const content: PosterContent = {
     title: opts.title,
     summary: opts.summary ?? null,
-    category: opts.category ?? null,
+    category: opts.deskLabel ?? opts.category ?? null,
     dateText: opts.dateText ?? null,
     source: opts.source ?? null,
     brand: opts.brand ?? "হৈচৈ",
     site: opts.site ?? "hoichoifeed.vercel.app",
     seed: opts.seed ?? opts.title,
-    backgroundDataUrl: opts.background ? dataUrlForImage(opts.background) : null,
+    backgroundDataUrl: opts.background
+      ? dataUrlForImage(opts.background)
+      : null,
     logoDataUrl: logo,
     fonts,
     kicker: withAccent.layout === "breaking-banner" ? "ব্রেকিং নিউজ" : null,
@@ -190,10 +266,15 @@ export async function renderEditorialPoster(opts: EditorialPosterOptions): Promi
 
   const png = await withBrowser(async (chromium) => {
     const page = await chromium.newPage({
-      viewport: { width: POSTER_HTML_FRAME.width, height: POSTER_HTML_FRAME.height },
+      viewport: {
+        width: POSTER_HTML_FRAME.width,
+        height: POSTER_HTML_FRAME.height,
+      },
       deviceScaleFactor: 1,
     });
-    await page.setContent(posterHtml(content, withAccent), { waitUntil: "load" });
+    await page.setContent(posterHtml(content, withAccent), {
+      waitUntil: "load",
+    });
     await page.evaluate(async () => {
       // Base64 faces still decode asynchronously; without this the screenshot can
       // beat the font and the headline lands in a fallback face.
@@ -209,15 +290,22 @@ export async function renderEditorialPoster(opts: EditorialPosterOptions): Promi
     type SharpFn = (input: Buffer) => import("sharp").Sharp;
     const mod: unknown = await import("sharp");
     const sharp =
-      typeof mod === "function" ? (mod as SharpFn) : (mod as { default?: SharpFn }).default;
+      typeof mod === "function"
+        ? (mod as SharpFn)
+        : (mod as { default?: SharpFn }).default;
     if (!sharp) throw new Error("sharp module exposes no callable export");
     const format = opts.format ?? "webp";
-    const pipeline = sharp(png).resize({ width: POSTER_HTML_FRAME.width, height: POSTER_HTML_FRAME.height });
+    const pipeline = sharp(png).resize({
+      width: POSTER_HTML_FRAME.width,
+      height: POSTER_HTML_FRAME.height,
+    });
     const bytes =
       format === "png"
         ? await pipeline.png({ compressionLevel: 9 }).toBuffer()
         : format === "jpeg"
-          ? await pipeline.jpeg({ quality: opts.quality ?? 88, mozjpeg: true }).toBuffer()
+          ? await pipeline
+              .jpeg({ quality: opts.quality ?? 88, mozjpeg: true })
+              .toBuffer()
           : await pipeline.webp({ quality: opts.quality ?? 86 }).toBuffer();
 
     return {

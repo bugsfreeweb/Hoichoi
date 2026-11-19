@@ -947,6 +947,35 @@ crosshair, 60 rim ticks) with real queue-derived blips; a single `desk bootstrap
 spawn replaces 6+ runner calls on refresh; Ads/Settings save buttons show
 spinner → result toast with elapsed ms.
 
+## Light where the picture is, and the rail at glyph scale (v1.1.39)
+
+**Every poster was the same dark breaking banner, and the cause was one field.**
+The platter handed the renderer the desk *label* - `সংস্কৃতি`, `অর্থনীতি` - into
+the slot `planPoster` matches on category *slugs*. Nothing matched, so every story
+fell through to the `breaking` desk: dark theme, breaking banner, same shape,
+whatever the article was about. `EditorialPosterOptions` now has both: `category`
+(the slug, which picks the frame) and `deskLabel` (the Bangla desk, which is
+printed). Fixed in the collector (`plate.ts`), the editor's manual path and the
+console's generate-image route, with a poster test that asserts a culture story is
+`editorial-card` + `light-paper` and that a Bangla label is not a slug.
+
+**The scrim protects the words, not the frame.** With a photograph, the dark
+theme held 0.96 opacity across the first 42% *and* 0.985 at the edge - a black
+rectangle with a picture suggested behind it, which is what "too much dark on the
+poster" actually was. The stops now reach zero by 88-100%, and the breaking
+banner's dim is a horizontal fall-off only as wide as its 62% copy column, so the
+right third of the image is left exactly as rendered. Where the words sit, they
+bring their own contrast: a soft text shadow on the dark theme only, a tenth of
+the dimming a full-frame scrim costs. The no-photo wash moved from #171B24 →
+#090B10 to #263043 → #131926, so a story with no render reads as a dark navy card
+with depth instead of black.
+
+**The collapsed rail is a column of tiles.** A 16 px glyph floating in a 70 px
+rail wasted the one thing the collapsed state has room for. `RAIL_ICON_SIZE`
+(24 px) is drawn inside a 44 px tile that owns its own padding, declared after
+every template block so dock/editorial/ledger cannot squeeze it back - the same
+hit area the expanded row has.
+
 ## The picture after the story, and eleven screens in four rows (v1.1.38)
 
 **The poster was written before the story existed.** In `apps/scraper/src/pipeline.ts`

@@ -194,4 +194,51 @@ check("card and list views are a URL parameter, not client state", () => {
   }
 });
 
+check(
+  "the collapsed rail draws its glyph at rail scale, in a real tile",
+  () => {
+    const css = read("apps/web/src/components/admin/sidebar-styles.css");
+
+    // The glyph is bigger than the expanded one, and the size is a named constant
+    // rather than a literal the next edit can quietly renumber.
+    const railSize = /const RAIL_ICON_SIZE = (\d+);/.exec(shell);
+    assert.ok(railSize, "the rail icon size is declared once");
+    const size = Number(railSize[1]);
+    assert.ok(
+      size > 16,
+      `the collapsed glyph is larger than the expanded one (${size} > 16)`,
+    );
+    assert.ok(
+      size <= 28,
+      `and not so large it crowds the 70 px rail (${size})`,
+    );
+    assert.match(shell, /size=\{collapsed \? RAIL_ICON_SIZE : 16\}/);
+
+    // The tile is a 44 px hit area, not the text padding borrowed from the row.
+    assert.match(
+      shell,
+      /collapsed\s*\? "h-11 w-full justify-center px-0 py-0"/,
+    );
+    const tile =
+      /\.admin-sidebar\.adm-collapsed \.adm-nav \.adm-nav-link \{[^}]*height: 2\.75rem;[^}]*padding: 0;/.exec(
+        css,
+      );
+    assert.ok(
+      tile,
+      "the collapsed row is a 44 px tile with no inherited padding",
+    );
+
+    // Declared after every template block: a template may pad its rows, and in the
+    // rail that padding squeezes the one thing the collapsed state exists for.
+    const lastTemplate = css.lastIndexOf('[data-sidebar-style="cards"]');
+    const collapseBlock = css.indexOf(
+      ".admin-sidebar.adm-collapsed .adm-nav .adm-nav-link {",
+    );
+    assert.ok(
+      lastTemplate > 0 && collapseBlock > lastTemplate,
+      "the rail geometry is stated last",
+    );
+  },
+);
+
 console.log(`\nadmin sections: ${passed} checks passed`);

@@ -161,6 +161,15 @@ function ownerHref(path: string): string {
 
 const SIDEBAR_KEY = "hoichoi-admin-sidebar-collapsed";
 
+/**
+ * Glyph size in the collapsed rail.
+ *
+ * 24 px against a 44 px tile and a 70 px rail: the icon reads as the row's
+ * content instead of a dot in a corridor, and it still clears the 24 px minimum
+ * target size on its own if a pointer lands slightly off centre.
+ */
+const RAIL_ICON_SIZE = 24;
+
 export function AdminShell({
   user,
   sidebarStyle = DEFAULT_SIDEBAR_STYLE,
@@ -595,8 +604,10 @@ function SidebarNav({
                       aria-current={active ? "page" : undefined}
                       aria-label={collapsed ? n.label : undefined}
                       title={collapsed ? n.label : undefined}
-                      className={`adm-nav-link group/nav relative flex items-center gap-3 rounded-lg py-[6px] transition-all duration-200 ${
-                        collapsed ? "justify-center px-2" : "px-3"
+                      className={`adm-nav-link group/nav relative flex items-center gap-3 rounded-lg transition-all duration-200 ${
+                        collapsed
+                          ? "h-11 w-full justify-center px-0 py-0"
+                          : "px-3 py-[6px]"
                       } ${active ? "is-active" : ""}`}
                     >
                       {/*
@@ -614,9 +625,16 @@ function SidebarNav({
                         />
                       ) : null}
                       <span className="relative" data-icon-host>
+                        {/*
+                          The rail is 70 px wide and holds only glyphs, so a
+                          16 px icon floating in it wastes the one thing the
+                          collapsed state has room for. Collapsed, the glyph is
+                          drawn at rail scale inside a 44 px tile — the same
+                          target the row has when it is expanded.
+                        */}
                         <NavIcon
                           name={n.icon}
-                          size={16}
+                          size={collapsed ? RAIL_ICON_SIZE : 16}
                           active={active}
                           settle={active}
                         />

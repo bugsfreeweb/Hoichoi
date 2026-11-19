@@ -119,7 +119,6 @@
   outline-offset: 1px;
 }
 
-
 /* ── 01 · Classic ────────────────────────────────────────────────────────── */
 .admin-sidebar[data-sidebar-style="classic"] {
   --sb-bg: #fdfefa;
@@ -147,7 +146,9 @@
   /* A solid under-colour, not only the gradient: a measurement, a print, or a
      browser that drops the gradient still gets the obsidian panel instead of
      whatever is behind it. */
-  --sb-bg: radial-gradient(ellipse at 10% 0, #24392e, transparent 52%), linear-gradient(180deg, #111b15 0%, #0c140f 100%);
+  --sb-bg:
+    radial-gradient(ellipse at 10% 0, #24392e, transparent 52%),
+    linear-gradient(180deg, #111b15 0%, #0c140f 100%);
   background-color: #0c140f;
   --sb-fg: #eef3ea;
   --sb-mute: #b0c3b6;
@@ -158,7 +159,8 @@
   --sb-r: 6px;
   --sb-accent: #ef6d47;
 }
-.admin-sidebar[data-sidebar-style="obsidian"] .adm-nav-link[aria-current="page"] {
+.admin-sidebar[data-sidebar-style="obsidian"]
+  .adm-nav-link[aria-current="page"] {
   box-shadow: inset 2px 0 0 var(--sb-accent);
 }
 
@@ -173,7 +175,9 @@
   --sb-line: #e3e7dc;
   --sb-r: 12px;
   --sb-accent: #df6038;
-  box-shadow: 0 24px 50px -22px rgba(15, 23, 42, 0.28), 0 0 0 1px rgba(15, 23, 42, 0.05);
+  box-shadow:
+    0 24px 50px -22px rgba(15, 23, 42, 0.28),
+    0 0 0 1px rgba(15, 23, 42, 0.05);
 }
 :root[data-theme="dark"] .admin-sidebar[data-sidebar-style="floating"] {
   --sb-bg: #0f172a;
@@ -204,7 +208,8 @@
 .admin-sidebar[data-sidebar-style="rail"].adm-collapsed .adm-nav-index {
   display: none;
 }
-.admin-sidebar[data-sidebar-style="rail"] .adm-nav-link[aria-current="page"]::after {
+.admin-sidebar[data-sidebar-style="rail"]
+  .adm-nav-link[aria-current="page"]::after {
   content: "";
   position: absolute;
   left: -8px;
@@ -235,7 +240,8 @@
   border-bottom: 1px solid #d6d4c7;
   font-size: 13.5px;
 }
-.admin-sidebar[data-sidebar-style="editorial"] .adm-nav-link[aria-current="page"] {
+.admin-sidebar[data-sidebar-style="editorial"]
+  .adm-nav-link[aria-current="page"] {
   font-weight: 800;
   text-decoration: underline;
   text-decoration-thickness: 2px;
@@ -255,7 +261,9 @@
   --sb-line: #3a3d36;
   border-right-color: #5b5e53;
 }
-:root[data-theme="dark"] .admin-sidebar[data-sidebar-style="editorial"] .adm-nav-link {
+:root[data-theme="dark"]
+  .admin-sidebar[data-sidebar-style="editorial"]
+  .adm-nav-link {
   border-bottom-color: #2c2f2a;
 }
 
@@ -290,10 +298,14 @@
   --sb-r: 3px;
   --sb-accent: #ff6b3d;
   border-right: 1px solid rgba(255, 107, 61, 0.45);
-  box-shadow: 1px 0 0 rgba(255, 107, 61, 0.18), 16px 0 40px -20px rgba(255, 107, 61, 0.25);
+  box-shadow:
+    1px 0 0 rgba(255, 107, 61, 0.18),
+    16px 0 40px -20px rgba(255, 107, 61, 0.25);
 }
 .admin-sidebar[data-sidebar-style="neon"] .adm-nav-link[aria-current="page"] {
-  box-shadow: inset 3px 0 0 #ff6b3d, 0 0 24px -6px rgba(255, 107, 61, 0.45);
+  box-shadow:
+    inset 3px 0 0 #ff6b3d,
+    0 0 24px -6px rgba(255, 107, 61, 0.45);
 }
 
 /* ── 08 · Minimal Line ───────────────────────────────────────────────────── */
@@ -308,10 +320,12 @@
   --sb-r: 0;
   --sb-accent: #111827;
 }
-.admin-sidebar[data-sidebar-style="minimal"] .adm-nav-link[aria-current="page"] {
+.admin-sidebar[data-sidebar-style="minimal"]
+  .adm-nav-link[aria-current="page"] {
   font-weight: 600;
 }
-.admin-sidebar[data-sidebar-style="minimal"] .adm-nav-link[aria-current="page"]::before {
+.admin-sidebar[data-sidebar-style="minimal"]
+  .adm-nav-link[aria-current="page"]::before {
   content: "";
   position: absolute;
   left: 2px;
@@ -358,7 +372,10 @@
   --sb-line: #d6c7ad;
   --sb-r: 2px;
   --sb-accent: #8a4b2a;
-  background-image: repeating-linear-gradient(transparent 0 27px, rgba(138, 75, 42, 0.07) 27px 28px);
+  background-image: repeating-linear-gradient(
+    transparent 0 27px,
+    rgba(138, 75, 42, 0.07) 27px 28px
+  );
 }
 .admin-sidebar[data-sidebar-style="ledger"] .adm-nav-link[aria-current="page"] {
   border-left: 3px solid #8a4b2a;
@@ -408,7 +425,9 @@
   --sb-active-fg: #bfe3c8;
   --sb-line: #2a3830;
 }
-:root[data-theme="dark"] .admin-sidebar[data-sidebar-style="cards"] .adm-nav-group {
+:root[data-theme="dark"]
+  .admin-sidebar[data-sidebar-style="cards"]
+  .adm-nav-group {
   background: #10150f;
   border-color: #2a3830;
 }
@@ -447,6 +466,31 @@
 }
 .admin-sidebar .adm-nav::-webkit-scrollbar-thumb:hover {
   background: var(--sb-mute);
+}
+
+/* ── The collapsed rail is a column of tiles, not a column of dots ─────────
+   A template is free to give its rows their own padding (dock, editorial,
+   ledger each do), and in the rail that padding squeezes the one thing the
+   collapsed state exists for. These rules are declared after every template
+   block and carry one more class than they do, so the tile geometry is owned
+   here: a 44 px hit area, a glyph drawn at rail scale, and the label out of the
+   way. Expanded rows are untouched. */
+.admin-sidebar.adm-collapsed .adm-nav .adm-nav-link {
+  height: 2.75rem;
+  padding: 0;
+  gap: 0;
+  justify-content: center;
+  align-items: center;
+}
+.admin-sidebar.adm-collapsed .adm-nav .adm-nav-link [data-icon-host] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+}
+.admin-sidebar.adm-collapsed .adm-nav-group + .adm-nav-group {
+  margin-top: 0.5rem;
 }
 
 /* The icon rail never needs a bar — it is 70 px of glyphs and the keyboard, the
