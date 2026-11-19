@@ -2,6 +2,18 @@ name: CodeQL
 
 # Static analysis over the TypeScript we ship. Security queries only, so the run
 # is about exploitable patterns rather than style.
+#
+# This is an *advanced* configuration, and GitHub refuses to store SARIF from one
+# while the repository's *default* setup is also on: "CodeQL analyses from advanced
+# configurations cannot be processed when the default setup is enabled". The two
+# are mutually exclusive — pick one. This workflow is the one we keep, because it
+# names its query suite (`security-extended`) in the repository instead of in a
+# settings page nobody can review in a diff. Default setup is off
+# (`/code-scanning/default-setup` → state: not-configured).
+#
+# It only started producing analytics once `apps/desktop/tailwind.config.js` was
+# plain JavaScript: the extractor cannot parse `import type` / `satisfies` in a
+# `.js` file, and it failed the whole scan when it tried.
 on:
   push:
     branches: [main]
@@ -25,10 +37,10 @@ jobs:
         language: [javascript-typescript]
     steps:
       - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           queries: security-extended
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
