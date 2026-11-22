@@ -82,6 +82,29 @@ const VIEW_ORDER: View[] = [
   "archive",
 ];
 
+/*
+ * The rail's key map, in the rail's own order.
+ *
+ * The tenth row printed "10" while the handler only listened for 1–9, so the
+ * hint advertised a key that could not be pressed — the same class of defect as
+ * a template that renders as nothing. One table feeds both the printed hint and
+ * the handler, so a row cannot show a key the rail does not answer: 1–9, then 0
+ * for the tenth.
+ */
+const VIEW_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"] as const;
+
+/** The view a pressed key selects, or null when the key is not the rail's. */
+export function viewForKey(key: string): View | null {
+  const i = (VIEW_KEYS as readonly string[]).indexOf(key);
+  return i < 0 ? null : (VIEW_ORDER[i] ?? null);
+}
+
+/** The key printed on a row — derived from the same table the handler reads. */
+export function keyForView(view: View): string {
+  const i = VIEW_ORDER.indexOf(view);
+  return VIEW_KEYS[i] ?? "";
+}
+
 const TAB_LABELS: Record<View, { icon: NavIconName; label: string }> = {
   dashboard: { icon: "dashboard", label: "মনিটর" },
   traffic: { icon: "traffic", label: "ট্রাফিক" },
@@ -380,8 +403,8 @@ export default function App() {
       if (!t) return;
       if (t.isContentEditable) return;
       if (t.closest("input, textarea, select, hoichoi-moderation")) return;
-      const i = ["1", "2", "3", "4", "5", "6", "7", "8", "9"].indexOf(e.key);
-      if (i >= 0) setView(VIEW_ORDER[i]);
+      const next = viewForKey(e.key);
+      if (next) setView(next);
     };
     window.addEventListener("keydown", onKey);
     const unlog = listen<string>("pipeline://log", (e) => {
@@ -684,7 +707,7 @@ export default function App() {
           <button onClick={() => jump("collector")}>রান</button>
           <button onClick={() => jump("vault")}>ভল্ট</button>
           <a href="/system" onClick={(e) => { e.preventDefault(); void openAdmin(`${SITE_URL}/system`); }}>সাহায্য</a>
-          <span className="kbd-hint ml-auto">1–9 TABS</span>
+          <span className="kbd-hint ml-auto">1–9 · 0 TABS</span>
         </div>
 
         <DeskSyncBar
@@ -695,7 +718,7 @@ export default function App() {
         <div className="winbody">
           <aside className="side" data-sidebar-style={sidebarStyle}>
             <nav className="sidenav" id="sideNav">
-              {VIEW_ORDER.map((v, i) => (
+              {VIEW_ORDER.map((v) => (
                 <TabButton
                   key={v}
                   id={v}
@@ -703,7 +726,7 @@ export default function App() {
                   label={TAB_LABELS[v].label}
                   active={view === v}
                   onClick={() => jump(v)}
-                  shortcut={String(i + 1)}
+                  shortcut={keyForView(v)}
                 />
               ))}
             </nav>

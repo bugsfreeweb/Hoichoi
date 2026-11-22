@@ -382,6 +382,33 @@ artifacts to the GitHub release (`releases/` at the repo root is gitignored).
 > before `tauri build` — the EXE/installers embed a snapshot of the runner + migrations
 > (latest e.g. `012_post_images.sql`).
 
+## The tenth row answered to a key it did not have (desk 1.1.34)
+
+The desk rail has ten rows and prints the key that reaches each one, but the tenth
+row printed **10** while the handler only listened for `1`–`9`, so আর্কাইভ — the
+screen this week's retention work lives on — showed a shortcut that did nothing.
+A printed key is a promise, and this one was unkeepable: `Alt`/`Ctrl`/`Meta` were
+correctly ignored, but no key at all selected the tenth view.
+
+One table now feeds both halves (`apps/desktop/src/App.tsx`): `VIEW_KEYS` is
+`1…9, 0` in `VIEW_ORDER`'s order, `viewForKey()` answers the keydown handler and
+`keyForView()` answers the row's `kbd`, so the label and the behaviour cannot
+disagree — the same rule the twelve sidebar templates already follow. The menubar
+hint reads `1–9 · 0 TABS`. `apps/web/scripts/desk-rail-keys.test.ts` (8 checks)
+recomputes the mapping from the two array literals in the source and fails if the
+handler grows a hand-written digit list again, if a row prints its index, or if
+`10` is ever treated as one key rather than two.
+
+**The 1.1.33 screen was also checked, which the last pass had only proved over the
+daemon protocol.** The built `releases/Hoichoi Desk_1.1.33.exe` was launched and
+its window captured: the rail renders all ten rows (মনিটর → আর্কাইভ) from
+`@hoichoi/icons`, `CONTROLLER ONLINE` is lit, and the monitor fills with the
+runner's own numbers — **376** লাইভ প্রকাশিত, **83** ডুপ্লিকেট ব্লক, **2**
+মডারেশন, one queue with two items, and 1,245 published in the category mix. What
+is still not verified is the same thing as before and it is not code: the
+Cloudflare image provider needs an account id and token, and `.env` carries
+neither.
+
 ## Seven days, thirty days, and a comparison that was a string (v1.1.42)
 
 The brief says two things: the public site shows **seven days**, and archived
