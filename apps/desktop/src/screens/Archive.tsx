@@ -122,7 +122,7 @@ export default function Archive() {
     "flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/70 transition hover:border-lime/50 hover:text-lime disabled:opacity-50";
 
   return (
-    <div className="scroll-slim flex flex-1 flex-col gap-3 overflow-auto">
+    <div className="scroll-slim flex flex-1 flex-col gap-3 overflow-auto p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-mono-x text-[9.5px] tracking-[0.2em] text-white/35 uppercase">RETENTION</p>

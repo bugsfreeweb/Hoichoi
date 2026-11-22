@@ -32,10 +32,12 @@ export {
   BROADCAST_FRAME,
   BROADCAST_SCALE,
   broadcastCardTemplate,
+  broadcastVariant,
   headlineSizeForCard,
   renderBroadcastCard,
   type BroadcastCardInput,
   type BroadcastCardResult,
+  type BroadcastVariant,
 } from "./html/broadcast";
 export { renderHtmlToPng } from "./html/render";
 export {

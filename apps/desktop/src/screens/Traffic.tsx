@@ -50,7 +50,7 @@ export default function Traffic() {
   }, [tab, range, loadTraffic, loadStorage]);
 
   return (
-    <div className="flex h-full flex-col gap-4">
+    <div className="flex h-full flex-col gap-4 p-5">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="font-mono-x text-[10px] tracking-[0.24em] text-white/35 uppercase">

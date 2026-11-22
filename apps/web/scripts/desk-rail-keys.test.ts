@@ -35,8 +35,8 @@ function stringArray(name: string): string[] {
     new RegExp(`const ${name}[^=]*=\\s*\\[([\\s\\S]*?)\\](?:\\s*as const)?;`),
   );
   assert.ok(m, `${name} is declared as an array literal`);
-  const raw = m[1].replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
-  return [...raw.matchAll(/"([^"]*)"/g)].map((x) => x[1]);
+  const raw = (m[1] ?? "").replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+  return [...raw.matchAll(/"([^"]*)"/g)].map((x) => x[1] ?? "");
 }
 
 const views = stringArray("VIEW_ORDER");

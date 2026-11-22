@@ -65,6 +65,123 @@ export function headlineSizeForCard(title: string): number {
 /** The badge paints with the desk accent; breaking stays crimson. */
 const DEFAULT_ACCENT = "#E11D2E";
 
+/**
+ * One card, many fields.
+ *
+ * Every plate used to be the same navy-to-crimson rectangle with the same
+ * diagonal rail, so a page of stories read as one image repeated — the thing a
+ * reader notices long before they notice the headline. The anatomy is the
+ * product and stays fixed (rule, badge, logo, headline, standfirst, footer bar);
+ * what varies is the *surface* behind it: six curated dark palettes, three
+ * textures and two headline treatments, picked by a hash of the story. Same
+ * story in, same card out — a retry cannot change the picture, which is why
+ * this is a hash and not a random number.
+ */
+export interface BroadcastVariant {
+  /** Stable id, printed in the render log and asserted by the tests. */
+  id: string;
+  /** The `.field` background (three layered gradients). */
+  field: string;
+  /** The texture painted over the field. */
+  grain: string;
+  /** Headline paint: white-into-gold, or plain white over an accent rule. */
+  headline: "warm" | "solid";
+}
+
+interface Palette {
+  id: string;
+  field: string;
+}
+
+/*
+ * Chosen so that no card is a black rectangle: every palette's darkest stop is a
+ * lifted ink (#15.. to #2a..), because the first card sat at #0b1020 and read as
+ * black on a phone in daylight.
+ */
+const PALETTES: Palette[] = [
+  {
+    id: "navy-crimson",
+    field: `radial-gradient(120% 140% at 6% -6%, #21305e 0%, transparent 55%),
+      radial-gradient(130% 170% at 98% 106%, rgba(226,42,56,0.88) 0%, rgba(176,32,68,0.34) 40%, transparent 64%),
+      linear-gradient(135deg,#1b2a52 0%,#283864 48%,#461b36 100%)`,
+  },
+  {
+    id: "teal-ink",
+    field: `radial-gradient(125% 150% at 92% -10%, #1d4f5c 0%, transparent 58%),
+      radial-gradient(120% 160% at 4% 104%, rgba(34,178,170,0.55) 0%, transparent 62%),
+      linear-gradient(150deg,#14283a 0%,#1d3c4e 46%,#25545c 100%)`,
+  },
+  {
+    id: "charcoal-amber",
+    field: `radial-gradient(130% 150% at 10% -8%, #3a3326 0%, transparent 56%),
+      radial-gradient(125% 165% at 96% 102%, rgba(233,168,60,0.72) 0%, rgba(196,120,40,0.26) 42%, transparent 66%),
+      linear-gradient(140deg,#241f19 0%,#322a20 50%,#4a3826 100%)`,
+  },
+  {
+    id: "plum-indigo",
+    field: `radial-gradient(120% 145% at 88% -6%, #3a2456 0%, transparent 56%),
+      radial-gradient(135% 170% at 6% 106%, rgba(150,80,214,0.55) 0%, transparent 62%),
+      linear-gradient(145deg,#241a3c 0%,#33245a 48%,#3f2360 100%)`,
+  },
+  {
+    id: "forest-sand",
+    field: `radial-gradient(125% 145% at 8% -8%, #2c4634 0%, transparent 56%),
+      radial-gradient(130% 165% at 98% 104%, rgba(214,176,96,0.60) 0%, rgba(170,140,70,0.22) 42%, transparent 66%),
+      linear-gradient(150deg,#1c3126 0%,#274434 50%,#3c5140 100%)`,
+  },
+  {
+    id: "slate-rose",
+    field: `radial-gradient(120% 150% at 90% -8%, #38445a 0%, transparent 58%),
+      radial-gradient(130% 170% at 2% 104%, rgba(226,120,138,0.52) 0%, transparent 62%),
+      linear-gradient(135deg,#232b3a 0%,#31404f 50%,#4a3a48 100%)`,
+  },
+];
+
+const GRAINS: { id: string; css: string }[] = [
+  {
+    // The original diagonal rail.
+    id: "rail",
+    css: "repeating-linear-gradient(115deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 13px)",
+  },
+  {
+    id: "halftone",
+    css: "radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1.6px)",
+  },
+  {
+    id: "horizon",
+    css: "linear-gradient(180deg, transparent 0 58%, rgba(255,255,255,0.055) 58% 59%, transparent 59% 100%)",
+  },
+];
+
+/** FNV-1a — the same small deterministic hash `image-prompt.ts` uses. */
+function hashSeed(text: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h >>> 0;
+}
+
+/**
+ * Pick the card's surface for this story.
+ *
+ * The seed is the desk plus the headline, so two stories from one desk differ
+ * and one story never changes between renders.
+ */
+export function broadcastVariant(seed: string): BroadcastVariant {
+  const h = hashSeed(seed.replace(/\s+/g, " ").trim());
+  const palette = PALETTES[h % PALETTES.length] ?? PALETTES[0]!;
+  const grain = GRAINS[Math.floor(h / 7) % GRAINS.length] ?? GRAINS[0]!;
+  const headline = Math.floor(h / 97) % 2 === 0 ? "warm" : "solid";
+  return {
+    id: `${palette.id}/${grain.id}/${headline}`,
+    field: palette.field,
+    grain: grain.css,
+    headline,
+  };
+}
+
 function fontLinks(input: BroadcastCardInput): string {
   if (input.fonts !== "cdn") return "";
   return `<link rel="preconnect" href="https://fonts.googleapis.com">
@@ -88,6 +205,7 @@ export async function broadcastCardTemplate(
   const dateText = escapeHtml(input.dateText ?? "");
   const category = input.category?.trim();
   const headSize = headlineSizeForCard(input.title);
+  const variant = broadcastVariant(`${category ?? ""}|${input.title}`);
 
   /**
    * The story's own picture, treated rather than shown.
@@ -115,7 +233,7 @@ export async function broadcastCardTemplate(
   return `<!doctype html><html lang="bn"><head><meta charset="utf-8">
   ${fontLinks(input)}
   <style>
-  :root{--accent:${accent};--accent-soft:${accent}22;--ink:#0B1020;
+  :root{--accent:${accent};--accent-soft:${accent}22;--ink:#141c30;
     --panel:rgba(9,13,24,0.55);--card:#121a30;}
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{width:1200px;height:675px;overflow:hidden;}
@@ -124,24 +242,22 @@ export async function broadcastCardTemplate(
   /* Navy to crimson, but a navy you can name: the first version sat at #0b1020
      and read as black on a phone in daylight. The field is lifted and the crimson
      corner carries more of the frame, so the card looks like a broadcast graphic
-     rather than a dark rectangle with white type. */
-  .field{position:absolute;inset:0;background:
-    radial-gradient(120% 140% at 6% -6%, #16224a 0%, transparent 52%),
-    radial-gradient(130% 170% at 98% 106%, rgba(214,32,46,0.92) 0%, rgba(160,24,60,0.35) 38%, transparent 62%),
-    linear-gradient(135deg,#101a36 0%,#1b2547 48%,#341328 100%);}
+     rather than a dark rectangle with white type. The palette itself now comes
+     from broadcastVariant(), so six surfaces share this one anatomy. */
+  .field{position:absolute;inset:0;background:${variant.field};}
   /* Derivative inspiration: the source photo is never shown as itself. */
-  .ph-scene{position:absolute;inset:0;background:
-    repeating-linear-gradient(115deg, rgba(255,255,255,0.045) 0 1px, transparent 1px 13px);}
+  .ph-scene{position:absolute;inset:0;background:${variant.grain};
+    background-size:${variant.grain.includes("radial-gradient(rgba") ? "9px 9px" : "auto"};}
   .ph-motif::before{content:"";position:absolute;inset:0;background:
     radial-gradient(70% 70% at 82% 26%, rgba(255,205,66,0.16) 0%, transparent 60%);}
   .ph-photo{filter:blur(2px) saturate(1.35) contrast(1.05) hue-rotate(-8deg);
     background-size:cover;background-position:center;transform:scale(1.08);
     mix-blend-mode:soft-light;opacity:0.85;}
   .ph-fade{position:absolute;inset:0;background:
-    linear-gradient(180deg, rgba(6,9,18,0.30) 0%, rgba(6,9,18,0.55) 55%, rgba(6,9,18,0.86) 100%);}
+    linear-gradient(180deg, rgba(6,9,18,0.22) 0%, rgba(6,9,18,0.40) 55%, rgba(6,9,18,0.66) 100%);}
   .vignette{position:absolute;inset:0;background:
-    linear-gradient(180deg, rgba(6,9,18,0.35) 0%, rgba(6,9,18,0) 22%, rgba(6,9,18,0.25) 78%, rgba(6,9,18,0.72) 100%);}
-  .static{position:absolute;inset:0;mix-blend-mode:soft-light;opacity:0.5;
+    linear-gradient(180deg, rgba(6,9,18,0.22) 0%, rgba(6,9,18,0) 24%, rgba(6,9,18,0.14) 78%, rgba(6,9,18,0.54) 100%);}
+  .static{position:absolute;inset:0;mix-blend-mode:soft-light;opacity:0.34;
     background-image:radial-gradient(rgba(255,255,255,0.14) 1px, transparent 1.4px);background-size:9px 9px;}
   .top-rule{position:absolute;top:0;left:0;right:0;height:6px;background:var(--accent);}
   header{position:absolute;top:34px;left:44px;right:44px;display:flex;
@@ -163,10 +279,12 @@ export async function broadcastCardTemplate(
     flex-direction:column;gap:22px;max-width:940px;}
   h1{font-family:"Noto Serif Bengali","Hind Siliguri",serif;font-weight:700;line-height:1.30;
     font-size:${headSize}px;letter-spacing:-0.4px;text-wrap:balance;
-    color:transparent;
-    background:linear-gradient(100deg,#ffffff 0%, #ffffff 42%, #f5c451 100%);
-    -webkit-background-clip:text;background-clip:text;}
-  .glow{filter:drop-shadow(0 4px 22px rgba(245,196,81,0.28));}
+    ${variant.headline === "warm"
+      ? `color:transparent;
+    background:linear-gradient(100deg,#ffffff 0%, #ffffff 42%, #f8cf68 100%);
+    -webkit-background-clip:text;background-clip:text;`
+      : `color:#ffffff;border-bottom:6px solid var(--accent);padding-bottom:10px;display:inline;box-decoration-break:clone;`}}
+  .glow{filter:drop-shadow(0 4px 22px rgba(245,196,81,0.22));}
   .summary{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
     width:max-content;max-width:100%;padding:16px 22px 16px 20px;border-left:4px solid var(--accent);
     background:rgba(255,255,255,0.09);backdrop-filter:blur(8px);

@@ -223,7 +223,7 @@ export default function Moderation() {
         </div>
       )}
 
-      <div className="scroll-slim flex-1 overflow-auto">
+      <div className="scroll-slim flex-1 overflow-auto px-5 py-4">
         {shown.length === 0 && (
           <div className="flex flex-col items-center gap-3 py-20 text-center">
             <MessageSquareText size={28} className="text-white/25" />

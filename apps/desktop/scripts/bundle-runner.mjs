@@ -78,12 +78,19 @@ await esbuild.build({
   platform: "node",
   target: "node20",
   // CJS so runtime-variable `require("node:...")` inside bundled CJS deps
-  // (commander's shims) works; import.meta.url is only used by the migrations
-  // default path which is dead code at runtime (HOICHOI_MIGRATIONS_DIR is set
-  // by the Rust host), so a placeholder is safe here.
+  // (commander's shims) works. `import.meta.url` cannot be a placeholder: the
+  // poster font resolver calls `fileURLToPath(import.meta.url)` at module load,
+  // and the old literal `file:///runner/app/cli.cjs` has no drive letter on
+  // Windows, so *every* bundled command died before printing a word with
+  // ERR_INVALID_FILE_URL_PATH — which is what "the runner exited unexpectedly"
+  // looked like on an installed desk. A banner now defines the real value from
+  // the file that is actually running.
   format: "cjs",
   outfile: path.join(appDir, "cli.cjs"),
-  define: { "import.meta.url": "\"file:///runner/app/cli.cjs\"" },
+  banner: {
+    js: 'var __hoichoiImportMetaUrl = require("node:url").pathToFileURL(__filename).href;',
+  },
+  define: { "import.meta.url": "__hoichoiImportMetaUrl" },
   external: RUNTIME_EXTERNALS,
   logLevel: "warning",
 });
@@ -103,6 +110,21 @@ for (const f of fs.readdirSync(migSrc)) {
   fs.copyFileSync(path.join(migSrc, f), path.join(migDst, f));
 }
 console.log(`[runner] migrations -> ${migDst}`);
+
+// 2b. Poster fonts beside the bundle. `packages/poster/src/fonts.ts` resolves
+//     `<dir of cli.cjs>/../fonts` and registers it with fontconfig, so without
+//     this copy every plate render in the packaged app throws "poster fonts not
+//     found" — the browser-rendered plate would silently never be drawn.
+const fontSrc = path.join(repo, "packages", "poster", "fonts");
+const fontDst = path.join(runner, "fonts");
+fs.rmSync(fontDst, { recursive: true, force: true });
+if (fs.existsSync(fontSrc)) {
+  copyDir(fontSrc, fontDst);
+  console.log(`[runner] poster fonts -> ${fontDst}`);
+} else {
+  console.error(`[runner] poster fonts missing: ${fontSrc}`);
+  process.exit(1);
+}
 
 // 3. Node runtime (self-contained node.exe on Windows).
 if (process.platform === "win32") {
