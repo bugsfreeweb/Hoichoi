@@ -51,19 +51,19 @@ async function main(): Promise<void> {
     assert.match(html, /<header>[\s\S]*class="badge"[\s\S]*<i><\/i>জাতীয়/, "the desk badge is top-left");
     assert.match(html, /class="logo"/, "a placeholder logo badge, top-right");
     assert.match(html, /১৮ নভেম্বর ২০২৬/, "the date rides the same rail");
-    // Headline is the subject, in one of the two paint treatments.
-    assert.match(html, /<h1 class="glow">/, "the headline is the subject");
+    // Headline is the subject, painted for the design's tone.
+    assert.match(html, /<h1>/, "the headline is the subject");
     assert.ok(
       /background:linear-gradient\(100deg,#ffffff 0%, #ffffff 42%, #f8cf68 100%\)/.test(html) ||
-        /color:#ffffff;border-bottom:6px solid var\(--accent\)/.test(html),
-      "the headline is either white-into-gold or white over an accent rule",
+        /color:var\(--ink-c\)/.test(html),
+      "the headline is either white-into-gold or the design's ink",
     );
-    // The standfirst sits in its own translucent box.
+    // The standfirst sits in its own box.
     assert.match(html, /class="summary"/);
-    assert.match(html, /background:rgba\(255,255,255,0\.09\)/, "the box is translucent, not opaque");
+    assert.match(html, /background:var\(--panel\)/, "the box takes the design's panel, not one hard-coded colour");
     assert.match(html, /-webkit-line-clamp:2/, "two lines, then a clamp — never an overflow");
-    // The footer is a solid white bar.
-    assert.match(html, /footer\{position:absolute;left:0;right:0;bottom:0;height:66px;background:#fdfdf8/);
+    // The footer is a bar the design colours.
+    assert.match(html, /footer\{position:absolute;left:0;right:0;bottom:0;height:72px;background:var\(--footer-bg\)/);
     assert.match(html, /ব্রেকিং নিউজ/);
     assert.match(html, /সূত্র · প্রথম আলো/);
   });
@@ -91,7 +91,7 @@ async function main(): Promise<void> {
     assert.ok(long >= 40, "and stay readable");
   });
 
-  await check("one anatomy, six surfaces — the story picks the surface", async () => {
+  await check("one anatomy, eight designs — the story picks the design", async () => {
     const titles = [
       "সুপ্রিম কোর্টের রায়ের পর রাজধানীতে নতুন ট্রাফিক ব্যবস্থা",
       "বাজেট ঘোষণায় ক্ষুদ্র ব্যবসায়ীদের জন্য নতুন ঋণ সুবিধা",
@@ -107,7 +107,11 @@ async function main(): Promise<void> {
       "আবহাওয়া অফিসের সতর্কবার্তা, উপকূলে জোয়ারের আশঙ্কা",
     ];
     const ids = new Set(titles.map((t) => broadcastVariant(`জাতীয়|${t}`).id.split("/")[0]));
-    assert.ok(ids.size >= 4, `twelve stories must not share one surface (saw ${ids.size})`);
+    assert.ok(ids.size >= 5, `twelve stories must not share one design (saw ${ids.size})`);
+    // And they are not one dark anatomy in six hues: most of the deck is light.
+    const tones = titles.map((t) => broadcastVariant(`জাতীয়|${t}`).tone);
+    const light = tones.filter((t) => t === "light").length;
+    assert.ok(light > tones.length / 2, `the deck is light-first (${light}/${tones.length} light)`);
 
     // Same story, same card — a retry cannot repaint it.
     const a = broadcastVariant("জাতীয়|একই খবর");
@@ -122,19 +126,19 @@ async function main(): Promise<void> {
     // Every surface keeps the same anatomy and the same fixed frame.
     for (const title of [titles[0]!, titles[5]!, titles[11]!]) {
       const html = await broadcastCardTemplate({ ...base, title });
-      assert.match(html, /<header>[\s\S]*class="badge"/, `${title.slice(0, 12)}: badge stays top-left`);
-      assert.match(html, /class="logo"/, "logo stays top-right");
-      assert.match(html, /<h1 class="glow">/, "headline stays the subject");
-      assert.match(html, /footer\{position:absolute;left:0;right:0;bottom:0;height:66px/, "footer bar stays");
+      assert.match(html, /<header>[\s\S]*class="badge"/, `${title.slice(0, 12)}: badge stays on the rail`);
+      assert.match(html, /class="logo"/, "the mark stays");
+      assert.match(html, /<h1>/, "headline stays the subject");
+      assert.match(html, /footer\{position:absolute;left:0;right:0;bottom:0;height:72px/, "footer bar stays");
       assert.match(html, /html,body\{width:1200px;height:675px;overflow:hidden;\}/, "the frame stays fixed");
     }
   });
 
-  await check("no surface is a black rectangle", async () => {
+  await check("no design is a black rectangle", async () => {
     const html = await broadcastCardTemplate(base);
     // The field may be dark, but it may not be near-black: the first card sat at
     // #0b1020 and read as a black box on a phone in daylight.
-    const stops = [...html.matchAll(/linear-gradient\([^)]*?#([0-9a-fA-F]{6})/g)].map((m) => m[1] ?? "");
+    const stops = [...html.matchAll(/(?:linear|radial)-gradient\([^)]*?#([0-9a-fA-F]{6})/g)].map((m) => m[1] ?? "");
     for (const hex of stops) {
       const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
       const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
@@ -150,14 +154,14 @@ async function main(): Promise<void> {
   await check("the story's own photo inspires the field, it is not the picture", async () => {
     const html = await broadcastCardTemplate({ ...base, backgroundImage: Buffer.from([1, 2, 3]) });
     assert.match(html, /class="ph-scene ph-photo"/, "the scene layer appears");
-    assert.match(html, /filter:blur\(2px\) saturate\(1\.35\)/, "it is softened and pushed");
-    assert.match(html, /hue-rotate\(-8deg\)/, "its colour is nudged");
-    assert.match(html, /mix-blend-mode:soft-light/, "and blended into the field");
-    assert.match(html, /class="ph-fade"/, "with a fade so the type still has ground");
+    assert.ok(/filter:blur\([0-9.]+px\) saturate\(1\.\d+\)/.test(html), "it is softened and pushed");
+    assert.match(html, /hue-rotate\(-\d+deg\)/, "its colour is nudged");
+    assert.match(html, /mix-blend-mode:(soft-light|multiply|luminosity)/, "and blended into the field");
+    assert.match(html, /class="veil"/, "with a veil so the type still has ground");
 
     const without = await broadcastCardTemplate(base);
     assert.ok(!without.includes('<div class="ph-scene ph-photo"'), "no photo means no photo layer in the markup");
-    assert.match(without, /<div class="ph-scene ph-motif"/, "the branded motif takes its place");
+    assert.match(without, /class="ph-scene ph-motif"/, "the branded motif takes its place");
   });
 
   await check("fonts embed by default; Google Fonts is an opt-in", async () => {
@@ -185,6 +189,57 @@ async function main(): Promise<void> {
     assert.equal(meta.width, 2400, "1200 CSS px at 2×");
     assert.equal(meta.height, 1350, "675 CSS px at 2×");
     assert.ok(result.bytes.byteLength > 20_000, "a real card, not an empty frame");
+  });
+
+  await check("the deck reads bright in a feed, design by design", async () => {
+    // Measured on real pixels, one card per design, because "it looks lighter"
+    // is not a measurement. A near-black card was the original complaint.
+    const titles = [
+      "সুপ্রিম কোর্টের রায়ের পর রাজধানীতে নতুন ট্রাফিক ব্যবস্থা",
+      "বাজেট ঘোষণায় ক্ষুদ্র ব্যবসায়ীদের জন্য নতুন ঋণ সুবিধা",
+      "ঢাকার বুকে ভূমিকম্পের মহড়া, স্কুলে নতুন নিরাপত্তা নির্দেশনা",
+      "কক্সবাজারে পর্যটন মৌসুমে বাড়ছে হোটেল ভাড়া",
+      "জাতীয় দলের নতুন কোচ নিয়োগে বোর্ডের সিদ্ধান্ত",
+      "বিশ্ববিদ্যালয় ভর্তি পরীক্ষার তারিখ ঘোষণা",
+      "স্বাস্থ্য খাতে বাজেট বাড়ছে, নতুন হাসপাতাল চালু",
+      "পদ্মা সেতুতে ট্রেন চলাচলে নতুন সময়সূচি ঘোষণা",
+      "শিল্পে বিদ্যুৎ সংকট, রপ্তানিতে প্রভাবের শঙ্কা",
+      "নির্বাচন কমিশনের নতুন তফসিল ঘোষণা করল",
+      "কৃষকদের জন্য সার ভর্তুকি বাড়ানোর সিদ্ধান্ত",
+      "আবহাওয়া অফিসের সতর্কবার্তা, উপকূলে জোয়ারের আশঙ্কা",
+      "মেট্রোরেলে নতুন তিন স্টেশন উদ্বোধন আজ",
+      "ডলারের দাম বাড়ায় আমদানি খরচে চাপ",
+      "হাসপাতালে নতুন জরুরি বিভাগ চালু হয়েছে",
+      "স্কুলে ডিজিটাল ক্লাসরুম চালুর পরিকল্পনা",
+    ];
+    const seen = new Map<string, string>();
+    for (const t of titles) {
+      const id = broadcastVariant(`জাতীয়|${t}`).id.split("/")[0]!;
+      if (!seen.has(id)) seen.set(id, t);
+    }
+    const sharp = (await import("sharp")).default;
+    const luma: { design: string; value: number }[] = [];
+    for (const [design, title] of seen) {
+      let bytes: Buffer;
+      try {
+        bytes = (await renderBroadcastCard({ ...base, title })).bytes;
+      } catch {
+        console.log("  skip brightness: no browser");
+        return;
+      }
+      const stats = await sharp(bytes).stats();
+      const [r, g, b] = stats.channels.map((c) => c.mean);
+      luma.push({ design, value: 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0) });
+    }
+    for (const row of luma) {
+      assert.ok(row.value > 60, `${row.design} is not a black rectangle (luma ${row.value.toFixed(0)}/255)`);
+    }
+    const mean = luma.reduce((a, r) => a + r.value, 0) / luma.length;
+    const light = luma.filter((r) => r.value > 120).length;
+    console.log(`     ${luma.map((r) => `${r.design}:${r.value.toFixed(0)}`).join(" ")}`);
+    console.log(`     mean luma ${mean.toFixed(1)}/255, ${light}/${luma.length} light`);
+    assert.ok(mean > 150, `the deck's mean card is bright (${mean.toFixed(0)}/255)`);
+    assert.ok(light >= Math.ceil((luma.length * 2) / 3), `two thirds of designs are light (${light}/${luma.length})`);
   });
 
   console.log(`\nbroadcast card: ${passed} checks passed`);
