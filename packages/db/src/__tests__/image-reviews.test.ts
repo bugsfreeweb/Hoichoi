@@ -181,4 +181,36 @@ await check(
   },
 );
 
+await check(
+  "two decisions in one millisecond still have an order",
+  async () => {
+    // The wall clock has millisecond resolution and CI ran both inserts inside
+    // one tick, which made "a later approval supersedes" a coin flip. The record
+    // clock may not go backwards, so the second decision is always newer.
+    const first = await recordImageReview({
+      postId: "p2",
+      path: "media/rapid.png",
+      verdict: "rejected",
+      reason: "মান খারাপ",
+      reviewedBy: "editor@hoichoi.local",
+    });
+    const second = await recordImageReview({
+      postId: "p2",
+      path: "media/rapid.png",
+      verdict: "approved",
+      reviewedBy: "editor@hoichoi.local",
+    });
+    assert.notEqual(first.reviewed_at, second.reviewed_at, "the stamps differ");
+    assert.ok(
+      Date.parse(second.reviewed_at) > Date.parse(first.reviewed_at),
+      second.reviewed_at + " is after " + first.reviewed_at,
+    );
+    assert.deepEqual(
+      await imagePublishConflict("p2", ["media/rapid.png"]),
+      [],
+      "and the approval is what stands",
+    );
+  },
+);
+
 console.log(`\nimage reviews: ${passed} checks passed`);

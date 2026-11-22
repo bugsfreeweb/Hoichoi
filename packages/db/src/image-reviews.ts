@@ -44,6 +44,17 @@ export const IMAGE_REJECT_REASONS = [
   "ভুল তথ্যের ইঙ্গিত",
 ] as const;
 
+/** The review clock: never behind the row it follows. */
+function nextReviewIso(previous: string | undefined): string {
+  const now = nowIso();
+  if (!previous) return now;
+  const previousMs = Date.parse(previous);
+  if (!Number.isFinite(previousMs)) return now;
+  const nowMs = Date.parse(now);
+  if (nowMs > previousMs) return now;
+  return new Date(previousMs + 1).toISOString();
+}
+
 export async function recordImageReview(input: {
   postId: string | null;
   path: string;
@@ -52,6 +63,23 @@ export async function recordImageReview(input: {
   reviewedBy: string;
 }): Promise<ImageReviewRow> {
   const client = getClient();
+  /**
+   * Strictly increasing per path.
+   *
+   * The standing verdict is "the newest row wins", so two decisions that land in
+   * the same millisecond have no order and a review made *after* a rejection
+   * could be read as simultaneous — which the tie rule hands to the rejection.
+   * A reviewer clicking twice quickly is exactly that case, and it turned
+   * `a later approval supersedes the rejection` into a coin flip that failed in
+   * CI. The timestamp of this row is therefore never less than one millisecond
+   * after the newest row for the same path.
+   */
+  const latest = await client.execute({
+    sql: "SELECT reviewed_at FROM image_reviews WHERE path = ? ORDER BY reviewed_at DESC, rowid DESC LIMIT 1",
+    args: [input.path],
+  });
+  const previous = (latest.rows[0] as { reviewed_at?: string } | undefined)?.reviewed_at;
+  const reviewedAt = nextReviewIso(previous);
   const row: ImageReviewRow = {
     id: randomBytes(16).toString("hex"),
     post_id: input.postId,
@@ -59,8 +87,8 @@ export async function recordImageReview(input: {
     verdict: input.verdict,
     reason: input.reason?.trim() ? input.reason.trim().slice(0, 200) : null,
     reviewed_by: input.reviewedBy,
-    reviewed_at: nowIso(),
-    created_at: nowIso(),
+    reviewed_at: reviewedAt,
+    created_at: reviewedAt,
   };
   await client.execute({
     sql: "INSERT INTO image_reviews (id, post_id, path, verdict, reason, reviewed_by, reviewed_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
