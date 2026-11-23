@@ -498,9 +498,11 @@ export interface SectionMeta {
   scope: SectionScope;
   zone: SectionZone;
   label: string;
-  /** Internal/admin-only English label; the public UI uses `label`. */
+  /** The section's name in English; the studio prints one name per language. */
   labelEn: string;
   description: string;
+  /** The same description in English; see `SECTION_EN` below. */
+  descriptionEn?: string;
   /** The shipped design; always present and always available. */
   defaultVariant: string;
   defaultVisible: boolean;
@@ -798,6 +800,58 @@ export const SECTION_REGISTRY: SectionMeta[] = [
     variant("feature", "সম্পাদকীয় সুপারিশ", "বাছাই করা প্রতিবেদনের বড় সুপারিশ বাক্স।", "cover", "print", true),
   ], true),
 ];
+
+/**
+ * The same registry in English: one name and one sentence per section.
+ *
+ * The studio lists every section with its name and a line of help, so an
+ * operator reading English needs both in English. Kept beside the registry rather
+ * than inside `section()` so the Bangla call sites stay one line each, and applied
+ * in a loop so a section added without an English name is caught by the i18n
+ * suite instead of printing Bangla at an English reader.
+ */
+export const SECTION_EN: Record<string, { label: string; description: string }> = {
+  ticker: { label: "Breaking news & status strip", description: "Rolling headlines, collection state and urgent notices at the top." },
+  navbar: { label: "Masthead & navigation", description: "Bangla menu, a way into the desk and the light/dark switch." },
+  footer: { label: "Site footer", description: "Site map, editorial identity, contact and publication details." },
+  hero: { label: "Home hero", description: "First view: what Hoichoi does, the verification policy and the latest state." },
+  kpi: { label: "Collection numbers", description: "Collected, published, duplicates and reader participation." },
+  insights: { label: "Live charts", description: "Reports over time, topic breakdown and the shape of the day." },
+  pipeline: { label: "Verification & publishing steps", description: "Source collection, image storage, duplicate check and approval." },
+  wire: { label: "Newsroom live wire", description: "Collection, hash checks, rewriting and publishing as a running log." },
+  briefing: { label: "Morning briefing", description: "The day's most important verified reports in one block." },
+  lead: { label: "Lead story", description: "The picked report for the reader, with its reason for being picked." },
+  latest: { label: "Latest reports", description: "Published reports by date, topic, source and verification." },
+  "home-ad": { label: "Home page advertisement", description: "Advertiser name, copy and destination link." },
+  academy: { label: "Verification academy", description: "How a reader follows Hoichoi's editorial method at home." },
+  categories: { label: "Topic coverage", description: "How many reports per topic and which one leads." },
+  health: { label: "Site & pipeline health", description: "Database, collector, publishing and reader activity." },
+  newsletter: { label: "Newsletter & subscriptions", description: "How a reader signs up for the regular editorial digest." },
+  "post-hero": { label: "Report headline", description: "Title, summary, topic, time and source of the report." },
+  "post-factbar": { label: "Trust & sources", description: "Fact gate, original source, author and verification detail." },
+  "post-tools": { label: "Reading tools", description: "Listen to the report, resize the text, save it for later." },
+  "post-glance": { label: "Key points at a glance", description: "The report's important points for a reader in a hurry." },
+  "post-body": { label: "Full report", description: "The rewritten report, quotes, documents and notes." },
+  "post-lesson": { label: "What to take away", description: "The lesson, the thinking prompt and further reading after the report." },
+  "post-ad": { label: "In-report advertisement", description: "A clearly marked advertisement inside or after the report." },
+  "post-timeline": { label: "Timeline", description: "The important moments of the story in order." },
+  "post-verify": { label: "Sources & claims", description: "Which claims are verified, partly verified or rejected." },
+  "post-analytics": { label: "Reader numbers", description: "Views, reactions, reading time and how readers arrived." },
+  "post-comments": { label: "Reader comments", description: "Readers comment under a name; new comments wait for moderation." },
+  "post-report": { label: "Report an error", description: "A reader can flag wrong facts, sources or framing." },
+  "post-share": { label: "Share & react", description: "Sharing the report, copying the link and reader reactions." },
+  "post-related": { label: "Read next", description: "Other reports from the same topic or editorial section." },
+};
+
+/** Applies `SECTION_EN` once, at module load, so every consumer sees it. */
+for (const meta of SECTION_REGISTRY) {
+  const en = SECTION_EN[meta.key];
+  if (en) {
+    meta.labelEn = en.label;
+    meta.descriptionEn = en.description;
+  }
+}
+
 
 export const ZONE_LABELS: Record<SectionZone, { bn: string; en: string }> = {
   header: { bn: "শিরোনাম ও নেভিগেশন", en: "Header" },

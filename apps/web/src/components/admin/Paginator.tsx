@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { biFor } from "@hoichoi/i18n";
+import { getLocale } from "@/lib/locale";
 
 /**
  * Compact pagination control for admin list pages.
@@ -9,7 +11,7 @@ import Link from "next/link";
  * server-rendered and force-dynamic, so a full navigation is correct and keeps
  * the URL shareable.
  */
-export function Paginator({
+export async function Paginator({
   page,
   pageSize,
   total,
@@ -25,6 +27,7 @@ export function Paginator({
   paramName?: string;
   extraParams?: Record<string, string>;
 }) {
+  const b = biFor(await getLocale());
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   if (pageCount <= 1) return null;
 
@@ -45,13 +48,13 @@ export function Paginator({
       </p>
       <div className="flex items-center gap-1.5">
         <PageLink href={href(page - 1)} disabled={page <= 1}>
-          ← আগের
+          {b("← আগের", "← Previous")}
         </PageLink>
         <span className="px-2 font-mono-x text-[11px] text-ink-soft">
           {page} / {pageCount}
         </span>
         <PageLink href={href(page + 1)} disabled={page >= pageCount}>
-          পরের →
+          {b("পরের →", "Next →")}
         </PageLink>
       </div>
     </nav>

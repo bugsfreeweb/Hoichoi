@@ -11,6 +11,7 @@ import {
   type SectionState,
   type SectionZone,
 } from "@hoichoi/shared-types";
+import { useBi } from "@/components/i18n/LocaleProvider";
 
 type Status = { kind: "ok" | "err"; text: string } | null;
 
@@ -37,6 +38,7 @@ export function VariantSwitcher({
   accentColor: string;
   fullWidth?: boolean;
 }) {
+  const b = useBi();
   const [sections, setSections] = useState<SectionState[]>(initialSections);
   const [siteVariant, setSiteVariant] = useState(initialSiteVariant);
   const [accent, setAccent] = useState(accentColor);
@@ -81,10 +83,13 @@ export function VariantSwitcher({
             }),
           });
           const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
-          if (!res.ok || !data?.ok) throw new Error(data?.error ?? "প্রিভিউ লোড করা যায়নি।");
+          if (!res.ok || !data?.ok) throw new Error(data?.error ?? b("প্রিভিউ লোড করা যায়নি।", "The preview could not be loaded."));
           setNonce((n) => n + 1);
         } catch (e) {
-          setStatus({ kind: "err", text: e instanceof Error ? e.message : "প্রিভিউ লোড করা যায়নি।" });
+          setStatus({
+            kind: "err",
+            text: e instanceof Error ? e.message : b("প্রিভিউ লোড করা যায়নি।", "The preview could not be loaded."),
+          });
         }
       })();
     }, 250);
@@ -159,7 +164,7 @@ export function VariantSwitcher({
           body: JSON.stringify({ siteVariant }),
         });
         const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
-        if (!res.ok || !data?.ok) throw new Error(data?.error ?? "সেভ করা যায়নি।");
+        if (!res.ok || !data?.ok) throw new Error(data?.error ?? b("সেভ করা যায়নি।", "Could not save."));
       }
       const targets = sections.filter((s) => dirty.has(s.key));
       for (const s of targets) {
@@ -169,15 +174,18 @@ export function VariantSwitcher({
           body: JSON.stringify({ key: s.key, variant: s.variant, enabled: s.enabled, sort_order: s.sort_order }),
         });
         const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
-        if (!res.ok || !data?.ok) throw new Error(data?.error ?? "সেভ করা যায়নি।");
+        if (!res.ok || !data?.ok) throw new Error(data?.error ?? b("সেভ করা যায়নি।", "Could not save."));
       }
       setDirty(new Set());
       setSiteDirty(false);
-      setStatus({ kind: "ok", text: "নকশা সংরক্ষিত হয়েছে — পুরো সাইটে প্রযোজ্য।" });
+      setStatus({
+        kind: "ok",
+        text: b("নকশা সংরক্ষিত হয়েছে — পুরো সাইটে প্রযোজ্য।", "Layout saved — it applies to the whole site."),
+      });
       await reloadSections();
       return true;
     } catch (e) {
-      setStatus({ kind: "err", text: e instanceof Error ? e.message : "সেভ করা যায়নি।" });
+      setStatus({ kind: "err", text: e instanceof Error ? e.message : b("সেভ করা যায়নি।", "Could not save.") });
       return false;
     } finally {
       setBusy(false);
@@ -199,7 +207,7 @@ export function VariantSwitcher({
         body: JSON.stringify({ siteVariant: variant }),
       });
       const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
-      if (!res.ok || !data?.ok) throw new Error(data?.error ?? "সেভ করা যায়নি।");
+      if (!res.ok || !data?.ok) throw new Error(data?.error ?? b("সেভ করা যায়নি।", "Could not save."));
       setSiteVariant(variant);
       setDirty(new Set());
       setSiteDirty(false);
@@ -207,12 +215,12 @@ export function VariantSwitcher({
         kind: "ok",
         text:
           variant === DEFAULT_VARIANT
-            ? "ডিফল্ট নকশা ফিরিয়ে আনা হয়েছে — পুরো সাইটে প্রযোজ্য।"
-            : "নকশা প্রয়োগ হয়েছে — পুরো সাইটে প্রযোজ্য।",
+            ? b("ডিফল্ট নকশা ফিরিয়ে আনা হয়েছে — পুরো সাইটে প্রযোজ্য।", "Back to the default layout — it applies to the whole site.")
+            : b("নকশা প্রয়োগ হয়েছে — পুরো সাইটে প্রযোজ্য।", "Layout applied — it applies to the whole site."),
       });
       await reloadSections();
     } catch (e) {
-      setStatus({ kind: "err", text: e instanceof Error ? e.message : "সেভ করা যায়নি।" });
+      setStatus({ kind: "err", text: e instanceof Error ? e.message : b("সেভ করা যায়নি।", "Could not save.") });
     } finally {
       setBusy(false);
     }
@@ -229,12 +237,12 @@ export function VariantSwitcher({
         body: JSON.stringify({ accent_color: hex }),
       });
       const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
-      if (!res.ok || !data?.ok) throw new Error(data?.error ?? "রং সংরক্ষণ করা যায়নি।");
-      setStatus({ kind: "ok", text: "অ্যাকসেন্ট রং সংরক্ষিত হয়েছে।" });
+      if (!res.ok || !data?.ok) throw new Error(data?.error ?? b("রং সংরক্ষণ করা যায়নি।", "Could not save the colour."));
+      setStatus({ kind: "ok", text: b("অ্যাকসেন্ট রং সংরক্ষিত হয়েছে।", "Accent colour saved.") });
       // The accent is read server-side, so reload the preview to show it.
       if (studio) setNonce((n) => n + 1);
     } catch (e) {
-      setStatus({ kind: "err", text: e instanceof Error ? e.message : "রং সংরক্ষণ করা যায়নি।" });
+      setStatus({ kind: "err", text: e instanceof Error ? e.message : b("রং সংরক্ষণ করা যায়নি।", "Could not save the colour.") });
     } finally {
       setBusy(false);
     }
@@ -247,16 +255,25 @@ export function VariantSwitcher({
     <>
       <div className="border border-ink/20 bg-paper-deep p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="font-sans-bn text-[15px] font-bold text-ink">সাইট-ডিফল্ট নকশা</h3>
+          <h3 className="font-sans-bn text-[15px] font-bold text-ink">
+            {b("সাইট-ডিফল্ট নকশা", "Site-default layout")}
+          </h3>
           <span className="font-mono-x text-[10px] tracking-[0.18em] text-ink-soft uppercase">
-            বর্তমান: {activeLook}
+            {b("বর্তমান", "Current")}: {activeLook}
           </span>
         </div>
         <p className="mt-1 max-w-3xl text-[12px] leading-relaxed text-ink-soft">
-          যেকোনো নকশা <span className="font-bold text-ink">লাইভ স্টুডিওতে</span> খুলে পুরো সাইটে কেমন দেখাবে তা
-          সাথে সাথে দেখুন — সেকশনের ভ্যারিয়েন্ট বদলান কিংবা কোনো সেকশন দেখান/লুকান; সব পরিবর্তন রিয়েল-টাইমে
-          প্রতিফলিত হবে। <span className="font-bold text-ink">ডিফল্ট (বর্তমান নকশা)</span> সবসময় অন্য যেকোনো
-          নকশা থেকে ফিরে আসার নিরাপদ পথ।
+          {b("যেকোনো নকশা ", "Open any layout ")}
+          <span className="font-bold text-ink">{b("লাইভ স্টুডিওতে", "in the live studio")}</span>
+          {b(
+            " খুলে পুরো সাইটে কেমন দেখাবে তা সাথে সাথে দেখুন — সেকশনের ভ্যারিয়েন্ট বদলান কিংবা কোনো সেকশন দেখান/লুকান; সব পরিবর্তন রিয়েল-টাইমে প্রতিফলিত হবে। ",
+            " to see the whole site with it at once — switch a section's variant, show or hide a section, and every change lands in real time. ",
+          )}
+          <span className="font-bold text-ink">{b("ডিফল্ট (বর্তমান নকশা)", "Default (current layout)")}</span>
+          {b(
+            " সবসময় অন্য যেকোনো নকশা থেকে ফিরে আসার নিরাপদ পথ।",
+            " is always the safe way back from any other layout.",
+          )}
         </p>
 
         <button
@@ -265,8 +282,12 @@ export function VariantSwitcher({
           onClick={() => openStudio()}
           className="mt-4 flex items-center gap-2 border-2 border-ink bg-ink px-4 py-2.5 text-[13px] font-bold text-on-accent transition hover:bg-alizarin disabled:opacity-40"
         >
-          ▶ লাইভ ডিজাইন স্টুডিও খুলুন
-          {changeCount > 0 ? <span className="text-[11px] text-paper">· {changeCount} অসংরক্ষিত</span> : null}
+          {b("▶ লাইভ ডিজাইন স্টুডিও খুলুন", "▶ Open the live design studio")}
+          {changeCount > 0 ? (
+            <span className="text-[11px] text-paper">
+              {b(`· ${changeCount} অসংরক্ষিত`, `· ${changeCount} unsaved`)}
+            </span>
+          ) : null}
         </button>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -282,14 +303,19 @@ export function VariantSwitcher({
           >
             <span className="flex items-center gap-2 text-[13px] font-bold text-ink">
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-ink" />
-              ডিফল্ট (বর্তমান নকশা)
-              {activeLook === DEFAULT_VARIANT ? <span className="text-[10px] text-lime">● সক্রিয়</span> : null}
+              {b("ডিফল্ট (বর্তমান নকশা)", "Default (current layout)")}
+              {activeLook === DEFAULT_VARIANT ? (
+                <span className="text-[10px] text-lime">{b("● সক্রিয়", "● active")}</span>
+              ) : null}
             </span>
             <span className="mt-0.5 block text-[11px] text-ink-soft">
-              শিপ করা প্রোডাকশন নকশা — সব ডেটা আসল, লাইট/ডার্ক দুটোতেই সঠিক।
+              {b(
+                "শিপ করা প্রোডাকশন নকশা — সব ডেটা আসল, লাইট/ডার্ক দুটোতেই সঠিক।",
+                "The shipped production layout — real data throughout, correct in light and dark.",
+              )}
             </span>
             <span className="mt-2 font-mono-x text-[10px] tracking-[0.16em] text-ink-soft uppercase">
-              স্টুডিওতে দেখুন →
+              {b("স্টুডিওতে দেখুন →", "Preview in the studio →")}
             </span>
           </button>
 
@@ -308,11 +334,13 @@ export function VariantSwitcher({
               <span className="flex items-center gap-2 text-[13px] font-bold text-ink">
                 <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: p.accent }} />
                 {p.name}
-                {siteVariant === p.id ? <span className="text-[10px] text-lime">● সক্রিয়</span> : null}
+                {siteVariant === p.id ? (
+                  <span className="text-[10px] text-lime">{b("● সক্রিয়", "● active")}</span>
+                ) : null}
               </span>
               <span className="mt-0.5 block text-[11px] text-ink-soft">{p.blurb}</span>
               <span className="mt-2 font-mono-x text-[10px] tracking-[0.16em] text-ink-soft uppercase">
-                স্টুডিওতে দেখুন →
+                {b("স্টুডিওতে দেখুন →", "Preview in the studio →")}
               </span>
             </button>
           ))}
@@ -325,15 +353,18 @@ export function VariantSwitcher({
             onClick={() => void applySiteVariant(DEFAULT_VARIANT)}
             className="border-2 border-ink px-4 py-2 text-[13px] font-bold text-ink transition hover:bg-ink hover:text-paper disabled:opacity-40"
           >
-            ⟲ ডিফল্ট নকশায় ফিরুন
+            {b("⟲ ডিফল্ট নকশায় ফিরুন", "⟲ Back to the default layout")}
           </button>
         </div>
       </div>
 
       <div className="border border-ink/20 bg-paper-deep p-5">
-        <h3 className="font-sans-bn text-[15px] font-bold text-ink">অ্যাকসেন্ট রং</h3>
+        <h3 className="font-sans-bn text-[15px] font-bold text-ink">{b("অ্যাকসেন্ট রং", "Accent colour")}</h3>
         <p className="mt-1 text-[12px] leading-relaxed text-ink-soft">
-          লোগো, বোতাম ও হাইলাইটে ব্যবহৃত রং — নতুন নকশার সব সেকশনে প্রযোজ্য ও সাথে সাথে সংরক্ষিত হয়।
+          {b(
+            "লোগো, বোতাম ও হাইলাইটে ব্যবহৃত রং — নতুন নকশার সব সেকশনে প্রযোজ্য ও সাথে সাথে সংরক্ষিত হয়।",
+            "The colour used by the logo, buttons and highlights — applied to every section of the new layout and saved at once.",
+          )}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {ACCENTS.map((a) => (
@@ -354,7 +385,7 @@ export function VariantSwitcher({
             </button>
           ))}
           <label className="ml-1 flex items-center gap-2 text-[12px] text-ink-soft">
-            কাস্টম
+            {b("কাস্টম", "Custom")}
             <input
               type="color"
               value={accent}
@@ -369,19 +400,25 @@ export function VariantSwitcher({
       {grouped.map(({ zone, items }) => (
         <section key={zone} className="border border-ink/20 bg-paper-deep p-5">
           <header className="flex items-baseline justify-between">
-            <h3 className="font-sans-bn text-[15px] font-bold text-ink">{ZONE_LABELS[zone].bn}</h3>
+            {/* One name, in the reader's language: the pair already holds both,
+                so printing `bn` big and `en` small said it twice. */}
+            <h3 className="font-sans-bn text-[15px] font-bold text-ink">
+              {b(ZONE_LABELS[zone].bn, ZONE_LABELS[zone].en)}
+            </h3>
             <span className="font-mono-x text-[10px] tracking-[0.2em] text-ink-soft uppercase">
-              {ZONE_LABELS[zone].en} · {items.length}
+              {items.length}
             </span>
           </header>
           <ul className="mt-3 divide-y divide-ink/10">
             {items.map((s) => (
               <li key={s.key} className="flex flex-wrap items-start gap-3 py-3">
                 <div className="min-w-[180px] flex-1">
-                  <p className="text-[13px] font-bold text-ink">{s.meta.label}</p>
-                  <p className="mt-0.5 text-[11px] text-ink-soft">{s.meta.description}</p>
+                  <p className="text-[13px] font-bold text-ink">{b(s.meta.label, s.meta.labelEn)}</p>
+                  <p className="mt-0.5 text-[11px] text-ink-soft">
+                    {b(s.meta.description, s.meta.descriptionEn ?? s.meta.labelEn)}
+                  </p>
                   <p className="mt-1 font-mono-x text-[10px] tracking-[0.16em] text-ink-soft uppercase">
-                    {SCOPE_LABELS[s.meta.scope].bn} · {s.key}
+                    {b(SCOPE_LABELS[s.meta.scope].bn, SCOPE_LABELS[s.meta.scope].en)} · {s.key}
                   </p>
                 </div>
                 <select
@@ -392,8 +429,11 @@ export function VariantSwitcher({
                 >
                   {s.meta.variants.map((v) => (
                     <option key={v.id} value={v.id} disabled={!v.available}>
-                      {v.label}
-                      {v.available ? "" : " — শীঘ্রই"}
+                      {/* The variant id is English by construction (`breaking`,
+                          `pulse`), so an English reader gets a name rather than a
+                          Bangla label they cannot read. */}
+                      {b(v.label, v.id)}
+                      {v.available ? "" : b(" — শীঘ্রই", " — coming soon")}
                     </option>
                   ))}
                 </select>
@@ -405,7 +445,7 @@ export function VariantSwitcher({
                     onChange={(e) => patch(s.key, { enabled: e.target.checked })}
                     className="size-4 accent-[color:var(--color-alizarin)]"
                   />
-                  দেখান
+                  {b("দেখান", "Show")}
                 </label>
               </li>
             ))}
@@ -420,7 +460,7 @@ export function VariantSwitcher({
           onClick={() => void persistDraft()}
           className="border border-ink bg-ink px-4 py-2 text-[13px] font-bold text-paper disabled:opacity-40"
         >
-          {busy ? "সংরক্ষণ হচ্ছে…" : `সংরক্ষণ (${changeCount})`}
+          {busy ? b("সংরক্ষণ হচ্ছে…", "Saving…") : b(`সংরক্ষণ (${changeCount})`, `Save (${changeCount})`)}
         </button>
         {status ? (
           <span className={status.kind === "ok" ? "text-[12px] text-ink-soft" : "text-[12px] text-alizarin"}>
@@ -435,10 +475,10 @@ export function VariantSwitcher({
     return (
       <div className="fixed inset-0 z-[80] flex flex-col bg-ink/95 backdrop-blur">
         <div className="flex flex-wrap items-center gap-3 border-b border-white/12 bg-ink px-4 py-2.5 text-paper">
-          <span className="text-[13px] font-bold">লাইভ ডিজাইন স্টুডিও</span>
+          <span className="text-[13px] font-bold">{b("লাইভ ডিজাইন স্টুডিও", "Live design studio")}</span>
           <span className="font-mono-x text-[10px] tracking-[0.18em] text-white/50 uppercase">
             {siteVariant}
-            {changeCount > 0 ? ` · ${changeCount} পরিবর্তন` : ""}
+            {changeCount > 0 ? b(` · ${changeCount} পরিবর্তন`, ` · ${changeCount} changes`) : ""}
           </span>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {status ? (
@@ -452,7 +492,7 @@ export function VariantSwitcher({
               onClick={() => void backToAdmin()}
               className="border border-white/25 px-3 py-1.5 text-[12px] font-bold text-white/80 transition hover:border-white/50 hover:text-white disabled:opacity-40"
             >
-              ← অ্যাডমিনে ফিরুন
+              {b("← অ্যাডমিনে ফিরুন", "← Back to admin")}
             </button>
             <button
               type="button"
@@ -460,7 +500,7 @@ export function VariantSwitcher({
               onClick={() => setNonce((n) => n + 1)}
               className="border border-white/25 px-3 py-1.5 text-[12px] font-bold text-white/80 transition hover:border-white/50 hover:text-white disabled:opacity-40"
             >
-              ↻ রিফ্রেশ
+              {b("↻ রিফ্রেশ", "↻ Refresh")}
             </button>
             <button
               type="button"
@@ -468,14 +508,14 @@ export function VariantSwitcher({
               onClick={() => void applyStudio()}
               className="border border-lime/60 bg-lime/15 px-3 py-1.5 text-[12px] font-bold text-lime transition hover:bg-lime/25 disabled:opacity-40"
             >
-              এই নকশা প্রয়োগ করুন
+              {b("এই নকশা প্রয়োগ করুন", "Apply this layout")}
             </button>
             <button
               type="button"
               onClick={() => void closeStudio()}
               className="border border-white/25 px-3 py-1.5 text-[12px] font-bold text-white/80 transition hover:border-white/50 hover:text-white"
             >
-              বন্ধ করুন
+              {b("বন্ধ করুন", "Close")}
             </button>
           </div>
         </div>
@@ -488,14 +528,14 @@ export function VariantSwitcher({
               <iframe
                 key={nonce}
                 src={`/?_pv=${nonce}`}
-                title="লাইভ ডিজাইন প্রিভিউ"
+                title={b("লাইভ ডিজাইন প্রিভিউ", "Live design preview")}
                 onLoad={() => setFrameReady(true)}
                 className="h-full w-full border-0"
               />
             ) : null}
             {nonce === 0 || !frameReady ? (
               <div className="absolute inset-0 grid place-items-center bg-paper text-[13px] text-ink-soft">
-                লাইভ প্রিভিউ লোড হচ্ছে…
+                {b("লাইভ প্রিভিউ লোড হচ্ছে…", "Loading the live preview…")}
               </div>
             ) : null}
           </div>
