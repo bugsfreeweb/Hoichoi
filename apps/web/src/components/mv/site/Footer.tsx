@@ -26,33 +26,56 @@ import { HOME_META } from "@/lib/mv/content";
 import { bn } from "@/lib/mv/format";
 import { playClick } from "@/lib/mv/sound";
 import { subscribe } from "@/lib/mv/subscribe";
+import type { MessageKey } from "@hoichoi/i18n";
+import type { LucideIcon } from "lucide-react";
+import { useLocale, useT } from "@/components/i18n/LocaleProvider";
 
-const COLS = [
+/**
+ * Footer columns as dictionary keys. The text is not stored here: a column
+ * heading and its four destinations are named in `packages/i18n`, so the footer
+ * speaks whichever language the reader chose without this file knowing either.
+ */
+type FooterKey =
+  | "site.footer.item.collect"
+  | "site.footer.item.insights"
+  | "site.footer.item.pipeline"
+  | "site.footer.item.health"
+  | "site.footer.item.adminConsole"
+  | "site.footer.item.factGate"
+  | "site.footer.editorialPolicy"
+  | "site.footer.item.duplicateGate"
+  | "site.footer.item.dataApi"
+  | "site.footer.item.rss"
+  | "site.footer.item.newsletter"
+  | "site.footer.contact"
+  | "site.footer.item.repository";
+
+const COLS: Array<{ title: MessageKey; links: Array<{ key: FooterKey; href: string }> }> = [
   {
-    title: "সেকশন",
+    title: "site.footer.col.sections",
     links: [
-      { label: "সর্বশেষ সংগ্রহ", href: "/#latest" },
-      { label: "লাইভ ইনসাইটস", href: "/#live-insights" },
-      { label: "অটোমেশন পাইপলাইন", href: "/#pipeline" },
-      { label: "সিস্টেম হেলথ", href: "/#system-health" },
+      { key: "site.footer.item.collect", href: "/#latest" },
+      { key: "site.footer.item.insights", href: "/#live-insights" },
+      { key: "site.footer.item.pipeline", href: "/#pipeline" },
+      { key: "site.footer.item.health", href: "/#system-health" },
     ],
   },
   {
-    title: "ডেস্ক",
+    title: "site.footer.col.desk",
     links: [
-      { label: "অ্যাডমিন কনসোল", href: "/admin" },
-      { label: "ফ্যাক্ট-গেট নীতি", href: "/#pipeline" },
-      { label: "সম্পাদকীয় নীতি", href: "/#newsletter" },
-      { label: "ডুপ্লিকেট গেট", href: "/#live-insights" },
+      { key: "site.footer.item.adminConsole", href: "/admin" },
+      { key: "site.footer.item.factGate", href: "/#pipeline" },
+      { key: "site.footer.editorialPolicy", href: "/#newsletter" },
+      { key: "site.footer.item.duplicateGate", href: "/#live-insights" },
     ],
   },
   {
-    title: "সংযোগ",
+    title: "site.footer.col.connect",
     links: [
-      { label: "ডেটা API", href: "/api/sections" },
-      { label: "RSS ফিড", href: "/#latest" },
-      { label: "নিউজলেটার", href: "/#newsletter" },
-      { label: "যোগাযোগ", href: "/#newsletter" },
+      { key: "site.footer.item.dataApi", href: "/api/sections" },
+      { key: "site.footer.item.rss", href: "/#latest" },
+      { key: "site.footer.item.newsletter", href: "/#newsletter" },
+      { key: "site.footer.contact", href: "/#newsletter" },
     ],
   },
 ];
@@ -89,6 +112,8 @@ export default function Footer({
 /* ───────────── shared pieces ───────────── */
 
 function FooterMail() {
+  const { locale } = useLocale();
+  const t = useT();
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
   const [msg, setMsg] = useState("");
@@ -101,11 +126,11 @@ function FooterMail() {
     if (r.ok) {
       playClick(880);
       setState("done");
-      setMsg(r.already ? "এই ইমেইল আগেই যুক্ত আছে" : "যুক্ত হয়েছে — ধন্যবাদ!");
+      setMsg(r.already ? t("site.footer.nl.already") : t("site.footer.nl.thanks"));
       setEmail("");
     } else {
       setState("error");
-      setMsg(r.error ?? "সম্পন্ন করা যায়নি");
+      setMsg(r.error ?? t("site.footer.nl.failed"));
     }
   };
   return (
@@ -121,8 +146,8 @@ function FooterMail() {
               setEmail(e.target.value);
               if (state !== "idle") setState("idle");
             }}
-            placeholder="আপনার ইমেইল"
-            aria-label="ইমেইল ঠিকানা"
+            placeholder={t("site.footer.nl.placeholder")}
+            aria-label={t("site.footer.nl.emailAria")}
             className="w-full bg-transparent text-[13.5px] text-mist-100 outline-none placeholder:text-mist-400"
           />
         </label>
@@ -133,7 +158,7 @@ function FooterMail() {
           style={{ background: "var(--accent)" }}
         >
           {state === "done" ? <Check className="h-3.5 w-3.5" /> : <Send className="h-3.5 w-3.5" />}
-          {state === "busy" ? "পাঠানো হচ্ছে…" : state === "done" ? "যুক্ত হয়েছে" : "সাবস্ক্রাইব"}
+          {state === "busy" ? t("site.footer.nl.sending") : state === "done" ? t("site.footer.nl.joined") : t("site.footer.nl.subscribe")}
         </button>
       </form>
       <p aria-live="polite" className={clsx("mt-1.5 min-h-[1rem] pl-2 text-[12px]", state === "error" ? "text-rose-400" : "text-mint-400")}>{msg}</p>
@@ -142,6 +167,7 @@ function FooterMail() {
 }
 
 function SocialRow({ socials = [] }: { socials?: FooterSocialLink[] }) {
+  const t = useT();
   if (socials.length > 0) {
     return (
       <div className="flex flex-wrap items-center gap-2">
@@ -160,19 +186,19 @@ function SocialRow({ socials = [] }: { socials?: FooterSocialLink[] }) {
       </div>
     );
   }
-  const items = [
-    { Icon: Code2, href: "/admin", label: "রিপোজিটরি" },
-    { Icon: Send, href: "/#newsletter", label: "নিউজলেটার" },
-    { Icon: Rss, href: "/#latest", label: "আরএসএস ফিড" },
+  const items: Array<{ Icon: LucideIcon; href: string; key: FooterKey }> = [
+    { Icon: Code2, href: "/admin", key: "site.footer.item.repository" },
+    { Icon: Send, href: "/#newsletter", key: "site.footer.item.newsletter" },
+    { Icon: Rss, href: "/#latest", key: "site.footer.item.rss" },
   ];
   return (
     <div className="flex items-center gap-2">
-      {items.map(({ Icon, href, label }) => (
+      {items.map(({ Icon, href, key }) => (
         <Link
-          key={label}
+          key={key}
           href={href}
-          title={label}
-          aria-label={label}
+          title={t(key)}
+          aria-label={t(key)}
           className="footer-chip grid h-9 w-9 place-items-center rounded-full text-mist-300 transition-all hover:-translate-y-0.5 hover:text-mist-100"
         >
           <Icon className="h-4 w-4" />
@@ -198,10 +224,12 @@ function StatusRow() {
 }
 
 function LegalBar({ socials = [] }: { socials?: FooterSocialLink[] }) {
+  const t = useT();
+  const { locale } = useLocale();
   return (
     <div className="footer-rule mt-6 flex flex-col items-start justify-between gap-3 border-t pt-5 md:flex-row md:items-center">
       <p className="text-[12.5px] text-mist-400">
-        © {bn(new Date().getFullYear())} হৈচৈ · ফিড থেকে সংগ্রহ, যাচাই শেষে প্রকাশ।
+        © {locale === "en" ? new Date().getFullYear() : bn(new Date().getFullYear())} {t("site.footer.copyright")}
       </p>
       <div className="flex flex-wrap items-center gap-4">
         {socials.slice(0, 5).map((l, i) => (
@@ -216,17 +244,17 @@ function LegalBar({ socials = [] }: { socials?: FooterSocialLink[] }) {
           </a>
         ))}
         <a href="/terms" className="mono-label text-mist-400 transition-colors hover:text-mist-100">
-          শর্তাবলি
+          {t("site.footer.terms")}
         </a>
         <a href="/cookies" className="mono-label text-mist-400 transition-colors hover:text-mist-100">
-          কুকি নীতি
+          {t("site.footer.cookies")}
         </a>
         <a href="/privacy" className="mono-label text-mist-400 transition-colors hover:text-mist-100">
-          গোপনীয়তা
+          {t("site.footer.privacy")}
         </a>
         <AdvertiserLoginLink tone="dark" />
         <span className="mono-label flex items-center gap-1.5 text-mist-400">
-          <MapPin className="h-3 w-3" /> ঢাকা, বাংলাদেশ
+          <MapPin className="h-3 w-3" /> {t("site.footer.location")}
         </span>
         <LiveClock className="mono-label text-mist-400" />
       </div>
@@ -236,6 +264,8 @@ function LegalBar({ socials = [] }: { socials?: FooterSocialLink[] }) {
 
 /* ───────────── variant 1 · newsroom mega ───────────── */
 function Mega({ engine = "crt", socials = [] }: { engine?: LogoEngine; socials?: FooterSocialLink[] }) {
+  const { locale } = useLocale();
+  const t = useT();
   return (
     <footer className="footer-root relative mt-10 overflow-hidden">
       <div aria-hidden className="footer-divider pointer-events-none absolute inset-x-0 top-0 h-px" />
@@ -247,15 +277,14 @@ function Mega({ engine = "crt", socials = [] }: { engine?: LogoEngine; socials?:
           <div className="max-w-md">
             <BrandLogo format="masthead" engine={engine} size={38} showTagline />
             <p className="mt-4 text-[14px] leading-relaxed text-mist-400">
-              শহর ফিডে যা বলে, আমরা তা যাচাই করে লিখি। প্রতিটি প্রতিবেদনে থাকে হ্যাশ-স্ট্যাম্প, ফ্যাক্ট-গেট স্কোর আর
-              মানুষের রিভিউ লগ।
+              {t("site.footer.mission")}
             </p>
           </div>
           <div className="md:text-right">
-            <p className="mono-label mb-3 text-mist-400">দৈনিক ডাইজেস্ট · সকাল ৭টা</p>
+            <p className="mono-label mb-3 text-mist-400">{t("site.footer.digest")}</p>
             <FooterMail />
             <p className="mono-label mt-3 text-mist-400">
-              ইতিমধ্যে <span className="text-mist-200">{bn(4280)}</span> জন সাবস্ক্রাইবার
+              {t("site.footer.subscribers", { n: locale === "en" ? "4,280" : bn(4280) })}
             </p>
           </div>
         </div>
@@ -264,7 +293,7 @@ function Mega({ engine = "crt", socials = [] }: { engine?: LogoEngine; socials?:
         <div className="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <p className="mono-label mb-4" style={{ color: "var(--accent)" }}>
-              পাইপলাইন
+              {t("site.footer.pipelineHeading")}
             </p>
             <p className="mono-label leading-relaxed text-mist-400">{HOME_META.pipelineChain}</p>
             <div className="mt-5">
@@ -273,19 +302,19 @@ function Mega({ engine = "crt", socials = [] }: { engine?: LogoEngine; socials?:
           </div>
 
           {COLS.map((c) => (
-            <div key={c.title}>
+            <div key={c.title} className="min-w-0">
               <p className="mono-label mb-4" style={{ color: "var(--accent)" }}>
-                {c.title}
+                {t(c.title)}
               </p>
               <ul className="space-y-2.5">
                 {c.links.map((l) => (
-                  <li key={l.label}>
+                  <li key={l.key}>
                     <Link
                       href={l.href}
                       className="group inline-flex items-center gap-1.5 text-[14px] text-mist-400 transition-colors hover:text-mist-100"
                     >
                       <span className="h-px w-0 transition-all duration-300 group-hover:w-3" style={{ background: "var(--accent)" }} />
-                      {l.label}
+                      {t(l.key)}
                     </Link>
                   </li>
                 ))}
@@ -301,7 +330,7 @@ function Mega({ engine = "crt", socials = [] }: { engine?: LogoEngine; socials?:
             href="/admin"
             className="group inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-mist-200 transition-colors hover:text-mist-100"
           >
-            সম্পাদকীয় ডেস্ক
+            {t("site.nav.editorialDesk")}
             <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </Link>
         </div>
@@ -314,6 +343,8 @@ function Mega({ engine = "crt", socials = [] }: { engine?: LogoEngine; socials?:
 
 /* ───────────── variant 2 · minimal slab ───────────── */
 function Slab({ engine = "neon", socials = [] }: { engine?: LogoEngine; socials?: FooterSocialLink[] }) {
+  const { locale } = useLocale();
+  const t = useT();
   return (
     <footer className="footer-root mt-16">
       <div className="mx-auto max-w-[1100px] px-5 py-14 text-center md:px-8">
@@ -326,8 +357,8 @@ function Slab({ engine = "neon", socials = [] }: { engine?: LogoEngine; socials?
 
         <nav className="mt-8 flex flex-wrap items-center justify-center gap-x-7 gap-y-3">
           {[...(COLS[0]?.links ?? []), ...(COLS[1]?.links.slice(0, 2) ?? [])].map((l) => (
-            <Link key={l.label} href={l.href} className="link-underline text-[14px] text-mist-400 hover:text-mist-100">
-              {l.label}
+            <Link key={l.key} href={l.href} className="link-underline text-[14px] text-mist-400 hover:text-mist-100">
+              {t(l.key)}
             </Link>
           ))}
         </nav>
@@ -340,7 +371,7 @@ function Slab({ engine = "neon", socials = [] }: { engine?: LogoEngine; socials?
 
         <div className="mt-6 flex flex-col items-center justify-center gap-3 text-[12.5px] text-mist-400 md:flex-row md:gap-6">
           <span className="mono-label">{HOME_META.pipelineChain}</span>
-          <span>© {bn(new Date().getFullYear())} হৈচৈ নিউজরুম</span>
+          <span>© {locale === "en" ? new Date().getFullYear() : bn(new Date().getFullYear())} {t("site.footer.copyrightRoom")}</span>
           <LiveClock className="mono-label" />
         </div>
       </div>
@@ -350,6 +381,8 @@ function Slab({ engine = "neon", socials = [] }: { engine?: LogoEngine; socials?
 
 /* ───────────── variant 3 · link grid ───────────── */
 function LinkGrid({ engine = "hologram", socials = [] }: { engine?: LogoEngine; socials?: FooterSocialLink[] }) {
+  const { locale } = useLocale();
+  const t = useT();
   return (
     <footer className="footer-root mt-16">
       <div className="mx-auto max-w-[1320px] px-5 py-14 md:px-8">
@@ -364,15 +397,15 @@ function LinkGrid({ engine = "hologram", socials = [] }: { engine?: LogoEngine; 
 
           {COLS.map((c) => (
             <div key={c.title} className="footer-panel rounded-2xl p-6">
-              <p className="mono-label mb-4 text-mist-300">{c.title}</p>
+              <p className="mono-label mb-4 text-mist-300">{t(c.title)}</p>
               <ul className="space-y-2.5">
                 {c.links.map((l) => (
-                  <li key={l.label}>
+                  <li key={l.key}>
                     <Link
                       href={l.href}
                       className="group flex items-center justify-between gap-2 text-[14px] text-mist-400 transition-colors hover:text-mist-100"
                     >
-                      {l.label}
+                      {t(l.key)}
                       <ArrowUpRight className="h-3.5 w-3.5 opacity-0 transition-all group-hover:opacity-100" />
                     </Link>
                   </li>
@@ -395,6 +428,8 @@ function LinkGrid({ engine = "hologram", socials = [] }: { engine?: LogoEngine; 
 
 /* ───────────── variant 4 · terminal log ───────────── */
 function TerminalLog({ engine = "boot", socials = [] }: { engine?: LogoEngine; socials?: FooterSocialLink[] }) {
+  const { locale } = useLocale();
+  const t = useT();
   const { runLog: RUN_LOG } = useMvData();
   return (
     <footer className="footer-root relative mt-16 overflow-hidden">
@@ -403,7 +438,7 @@ function TerminalLog({ engine = "boot", socials = [] }: { engine?: LogoEngine; s
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <BrandLogo format="full" engine={engine} size={40} />
           <span className="mono-label flex items-center gap-2 text-mint-400">
-            <LiveDot /> সিস্টেম স্বাভাবিক
+            <LiveDot /> {t("site.footer.systemOk")}
           </span>
         </div>
 
@@ -413,14 +448,14 @@ function TerminalLog({ engine = "boot", socials = [] }: { engine?: LogoEngine; s
               <span className="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
               <span className="h-2.5 w-2.5 rounded-full bg-gold-400/80" />
               <span className="h-2.5 w-2.5 rounded-full bg-mint-400/80" />
-              <span className="mono-label ml-2 text-mist-400">সর্বশেষ রান-লগ</span>
+              <span className="mono-label ml-2 text-mist-400">{t("site.footer.runLog")}</span>
             </div>
             <div className="space-y-1.5 font-mono text-[11.5px] leading-relaxed">
               {RUN_LOG.map((r) => (
                 <div key={r.id} className="flex items-center gap-2 text-mist-400">
                   <span className="opacity-70">{r.at}</span>
                   <span className="text-mist-200">{r.step}</span>
-                  <span>{bn(r.items)} রেকর্ড</span>
+                  <span>{t("site.nav.records", { n: locale === "en" ? String(r.items) : bn(r.items) })}</span>
                   <span className="ml-auto" style={{ color: r.ok ? "#22c55e" : "#fb7185" }}>
                     {r.ok ? "OK" : "FAIL"}
                   </span>
@@ -431,13 +466,13 @@ function TerminalLog({ engine = "boot", socials = [] }: { engine?: LogoEngine; s
           </div>
 
           <div>
-            <p className="mono-label mb-4 text-mist-300">পরিচালন তথ্য</p>
+            <p className="mono-label mb-4 text-mist-300">{t("site.footer.opsInfo")}</p>
             <div className="grid gap-3 sm:grid-cols-2">
               {[
-                { Icon: Database, k: "টার্সো ডাটাবেস", val: "edge replica · connected" },
-                { Icon: ShieldCheck, k: "ফ্যাক্ট-গেট", val: "threshold 0.90 · bangla v2.4" },
-                { Icon: GitBranch, k: "গিট কমিট বট", val: "content/*.json · signed" },
-                { Icon: Rocket, k: "আইএসআর ডিপ্লয়", val: "~8s revalidate" },
+                { Icon: Database, k: t("site.footer.ops.db"), val: "edge replica · connected" },
+                { Icon: ShieldCheck, k: t("site.footer.ops.factGate"), val: "threshold 0.90 · bangla v2.4" },
+                { Icon: GitBranch, k: t("site.footer.ops.gitBot"), val: "content/*.json · signed" },
+                { Icon: Rocket, k: t("site.footer.ops.isr"), val: "~8s revalidate" },
               ].map(({ Icon, k, val }) => (
                 <div key={k} className="footer-panel card-lift rounded-xl p-4">
                   <div className="flex items-center gap-2">
@@ -458,7 +493,8 @@ function TerminalLog({ engine = "boot", socials = [] }: { engine?: LogoEngine; s
           <Marquee speed="slow">
             {Array.from({ length: 4 }).map((_, i) => (
               <span key={i} className="mono-label whitespace-nowrap px-6 text-mist-400">
-                {HOME_META.pipelineChain} · {HOME_META.tagline} · ঢাকা · {bn(new Date().getFullYear())}
+                {HOME_META.pipelineChain} · {HOME_META.tagline} · {t("site.footer.closing")} ·{" "}
+                {locale === "en" ? new Date().getFullYear() : bn(new Date().getFullYear())}
               </span>
             ))}
           </Marquee>
@@ -472,6 +508,8 @@ function TerminalLog({ engine = "boot", socials = [] }: { engine?: LogoEngine; s
 
 /* ───────────── variant 5 · reader support ───────────── */
 function CompactFooter({ engine = "led", socials = [] }: { engine?: LogoEngine; socials?: FooterSocialLink[] }) {
+  const { locale } = useLocale();
+  const t = useT();
   return (
     <footer className="footer-root mt-16">
       <div className="mx-auto max-w-[1320px] px-5 py-11 md:px-8">
@@ -485,8 +523,8 @@ function CompactFooter({ engine = "led", socials = [] }: { engine?: LogoEngine; 
 
           <nav className="flex flex-wrap justify-center gap-x-6 gap-y-3">
             {[...(COLS[0]?.links.slice(0, 3) ?? []), ...(COLS[2]?.links.slice(0, 2) ?? [])].map((l) => (
-              <Link key={l.label} href={l.href} className="link-underline text-[13.5px] text-mist-400 hover:text-mist-100">
-                {l.label}
+              <Link key={l.key} href={l.href} className="link-underline text-[13.5px] text-mist-400 hover:text-mist-100">
+                {t(l.key)}
               </Link>
             ))}
           </nav>

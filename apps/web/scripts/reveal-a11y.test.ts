@@ -50,7 +50,9 @@ check("reduced motion still shows everything", () => {
 });
 
 check("mobile icon-only nav links have an accessible name", () => {
-  assert.match(topbar, /aria-label=\{label\}/);
+  // The label now comes from the dictionary, so the attribute reads `t(link.key)`
+  // — still a name on the element, which is what the assertion is about.
+  assert.match(topbar, /aria-label=\{t\(link\.key\)\}/);
 });
 
 check("the ad placeholder does not rename itself for screen readers", () => {

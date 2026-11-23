@@ -24,6 +24,8 @@ import { SystemStatusBar } from "@/components/admin/ui/SystemStatusBar";
 // One glyph vocabulary, shared with the desktop app: a screen has the same icon
 // wherever an operator meets it.
 import { NavIcon, type NavIconName } from "@hoichoi/icons";
+import { LanguageToggle } from "@/components/i18n/LanguageToggle";
+import { useLocale } from "@/components/i18n/LocaleProvider";
 import "@hoichoi/icons/styles.css";
 
 function toBn(v: number): string {
@@ -47,7 +49,10 @@ interface NavItem {
   href: string;
   /** A name, not a glyph: the shape comes from `@hoichoi/icons`. */
   icon: NavIconName;
+  /** Bangla — the console's first language. */
   label: string;
+  /** The same name in English; the sidebar prints whichever the operator reads. */
+  en: string;
   /** Summed into one badge, so a two-stage queue reads as the total waiting. */
   countKeys?: CountKey[];
 }
@@ -61,7 +66,7 @@ const NAV_GROUPS: Array<{ title: string; en: string; items: NavItem[] }> = [
   {
     title: "ওভারভিউ",
     en: "Overview",
-    items: [{ href: "/admin", icon: "dashboard", label: "ড্যাশবোর্ড" }],
+    items: [{ href: "/admin", icon: "dashboard", label: "ড্যাশবোর্ড", en: "Dashboard" }],
   },
   {
     title: "কনটেন্ট",
@@ -74,11 +79,11 @@ const NAV_GROUPS: Array<{ title: string; en: string; items: NavItem[] }> = [
      * feature behind a second click that has no visible name.
      */
     items: [
-      { href: "/admin/sources", icon: "sources", label: "সোর্স ও বিভাগ" },
-      { href: "/admin/posts", icon: "posts", label: "পোস্ট এডিটর" },
-      { href: "/admin/live", icon: "live", label: "লাইভ, নোটিশ ও পোল" },
-      { href: "/admin/ads", icon: "ads", label: "বিজ্ঞাপন" },
-      { href: "/admin/archive", icon: "archive", label: "আর্কাইভ" },
+      { href: "/admin/sources", icon: "sources", label: "সোর্স ও বিভাগ", en: "Sources & desks" },
+      { href: "/admin/posts", icon: "posts", label: "পোস্ট এডিটর", en: "Post editor" },
+      { href: "/admin/live", icon: "live", label: "লাইভ, নোটিশ ও পোল", en: "Live, notices & polls" },
+      { href: "/admin/ads", icon: "ads", label: "বিজ্ঞাপন", en: "Advertising" },
+      { href: "/admin/archive", icon: "archive", label: "আর্কাইভ", en: "Archive" },
     ],
   },
   {
@@ -89,6 +94,7 @@ const NAV_GROUPS: Array<{ title: string; en: string; items: NavItem[] }> = [
         href: "/admin/moderation",
         icon: "moderation",
         label: "মডারেশন",
+        en: "Moderation",
         // Both gates and both subjects: an item waiting on the second approval is
         // still an item an operator has to act on, and a pending comment is a
         // queue nobody sees unless it is counted here.
@@ -98,6 +104,7 @@ const NAV_GROUPS: Array<{ title: string; en: string; items: NavItem[] }> = [
         href: "/admin/submissions",
         icon: "submissions",
         label: "ইনবক্স ও রিপোর্ট",
+        en: "Inbox & reports",
         // Three inboxes, one number: whichever of them is non-empty is work.
         countKeys: ["new_submissions", "open_removals", "open_reports"],
       },
@@ -107,13 +114,13 @@ const NAV_GROUPS: Array<{ title: string; en: string; items: NavItem[] }> = [
     title: "সিস্টেম",
     en: "System",
     items: [
-      { href: "/admin/providers", icon: "providers", label: "AI প্রোভাইডার" },
-      { href: "/admin/media", icon: "media", label: "মিডিয়া ও কোটা" },
-      { href: "/admin/backup", icon: "backup", label: "ব্যাকআপ ও রিসেট" },
-      { href: "/admin/logs", icon: "logs", label: "লগ" },
-      { href: "/admin/security", icon: "security", label: "নিরাপত্তা ও ডিভাইস" },
-      { href: "/admin/setup", icon: "setup", label: "সেটআপ গাইড" },
-      { href: "/admin/settings", icon: "settings", label: "সেটিংস" },
+      { href: "/admin/providers", icon: "providers", label: "AI প্রোভাইডার", en: "AI providers" },
+      { href: "/admin/media", icon: "media", label: "মিডিয়া ও কোটা", en: "Media & quota" },
+      { href: "/admin/backup", icon: "backup", label: "ব্যাকআপ ও রিসেট", en: "Backup & reset" },
+      { href: "/admin/logs", icon: "logs", label: "লগ", en: "Logs" },
+      { href: "/admin/security", icon: "security", label: "নিরাপত্তা ও ডিভাইস", en: "Security & devices" },
+      { href: "/admin/setup", icon: "setup", label: "সেটআপ গাইড", en: "Setup guide" },
+      { href: "/admin/settings", icon: "settings", label: "সেটিংস", en: "Settings" },
     ],
   },
 ];
@@ -207,6 +214,7 @@ function AdminChrome({
   children: React.ReactNode;
 }) {
   const path = usePathname();
+  const { locale } = useLocale();
   const { counts } = useQueueCounts();
   const footerRef = useRef<HTMLElement>(null);
 
@@ -391,8 +399,9 @@ function AdminChrome({
                 href="/"
                 className="hidden font-mono-x text-[9.5px] tracking-[0.16em] text-ink-soft uppercase transition-colors hover:text-ink sm:inline"
               >
-                পাবলিক সাইট ↘
+                {locale === "en" ? "Public site ↘" : "পাবলিক সাইট ↘"}
               </Link>
+              <LanguageToggle />
               <ThemeToggle />
               <NotificationBell />
               <form action={adminLogout}>
@@ -400,7 +409,7 @@ function AdminChrome({
                   type="submit"
                   className="rounded-lg border border-alizarin/40 px-3 py-1.5 text-[10.5px] font-bold text-alizarin transition-colors hover:bg-alizarin hover:text-on-accent"
                 >
-                  লগআউট
+                  {locale === "en" ? "Log out" : "লগআউট"}
                 </button>
               </form>
             </div>
@@ -447,15 +456,20 @@ function SidebarNav({
   // the rail shows only the screens that match. When collapsed there is no room
   // for the field, so the search reset with the collapse.
   const [query, setQuery] = useState("");
+  const { locale } = useLocale();
   const needle = query.trim().toLowerCase();
+  // Search matches both languages: an operator who switched to English may still
+  // type the Bangla name they remember, and the reverse.
   const groups = needle
     ? NAV_GROUPS.map((g) => ({
         ...g,
         items: g.items.filter(
           (n) =>
             n.label.toLowerCase().includes(needle) ||
+            n.en.toLowerCase().includes(needle) ||
             n.href.includes(needle) ||
-            g.en.toLowerCase().includes(needle),
+            g.en.toLowerCase().includes(needle) ||
+            g.title.toLowerCase().includes(needle),
         ),
       })).filter((g) => g.items.length > 0)
     : NAV_GROUPS;
@@ -575,7 +589,7 @@ function SidebarNav({
       >
         {nothingFound ? (
           <p className="adm-nav-empty px-3 py-6 text-center text-[11px] leading-relaxed">
-            “{query.trim()}” নামে কোনো স্ক্রিন নেই।
+            {locale === "en" ? `No screen named “${query.trim()}”.` : `“${query.trim()}” নামে কোনো স্ক্রিন নেই।`}
           </p>
         ) : null}
         {groups.map((group) => (
@@ -587,7 +601,7 @@ function SidebarNav({
               />
             ) : (
               <p className="adm-nav-kicker mb-[3px] px-2.5 font-mono-x text-[8.5px] tracking-[0.22em] uppercase">
-                {group.title} · {group.en}
+                {locale === "en" ? group.en : group.title}
               </p>
             )}
             <ul className="space-y-[1px] font-sans-bn text-[12.5px] font-medium">
@@ -645,7 +659,7 @@ function SidebarNav({
                       {!collapsed ? (
                         <>
                           <span className="adm-nav-label flex-1">
-                            {n.label}
+                            {locale === "en" ? n.en : n.label}
                           </span>
                           {badge > 0 && (
                             <span className="rounded-full bg-alizarin px-1.5 py-0.5 font-mono-x text-[9px] font-bold text-on-accent">

@@ -26,7 +26,10 @@ import "@hoichoi/icons/styles.css";
 import { getDeskSidebarStyle, onDeskSidebarStyle } from "./lib/desk-ui-prefs";
 import type { SidebarStyleId } from "@hoichoi/shared-types";
 import { bnClock, toBn } from "./lib/format";
+import type { MessageKey } from "@hoichoi/i18n";
+import { useDeskLocale } from "./lib/locale";
 import SetupWizard from "./components/SetupWizard";
+import DeskLanguageToggle from "./components/DeskLanguageToggle";
 import Dashboard from "./screens/Dashboard";
 import Traffic from "./screens/Traffic";
 import Watchlist from "./screens/Watchlist";
@@ -105,17 +108,25 @@ export function keyForView(view: View): string {
   return VIEW_KEYS[i] ?? "";
 }
 
-const TAB_LABELS: Record<View, { icon: NavIconName; label: string }> = {
-  dashboard: { icon: "dashboard", label: "মনিটর" },
-  traffic: { icon: "traffic", label: "ট্রাফিক" },
-  watchlist: { icon: "watchlist", label: "ওয়াচলিস্ট" },
-  queue: { icon: "queue", label: "কনটেন্ট সারি" },
-  collector: { icon: "collector", label: "কালেক্টর" },
-  vault: { icon: "setup", label: "API ভল্ট" },
-  settings: { icon: "settings", label: "সেটিংস" },
-  moderation: { icon: "moderation", label: "মন্তব্য মডারেশন" },
-  ads: { icon: "ads", label: "বিজ্ঞাপন" },
-  archive: { icon: "archive", label: "আর্কাইভ" },
+/**
+ * The rail, in both languages.
+ *
+ * `key` points at the shared table rather than holding text, so the print,
+ * the shortcut and the translation can never drift apart. `label` stays as the
+ * Bangla name for the places that print it without a hook (document titles,
+ * crash logs).
+ */
+const TAB_LABELS: Record<View, { icon: NavIconName; key: MessageKey; label: string }> = {
+  dashboard: { icon: "dashboard", key: "desk.rail.dashboard", label: "মনিটর" },
+  traffic: { icon: "traffic", key: "desk.rail.traffic", label: "ট্রাফিক" },
+  watchlist: { icon: "watchlist", key: "desk.rail.watchlist", label: "ওয়াচলিস্ট" },
+  queue: { icon: "queue", key: "desk.rail.queue", label: "কনটেন্ট সারি" },
+  collector: { icon: "collector", key: "desk.rail.collector", label: "কালেক্টর" },
+  vault: { icon: "setup", key: "desk.rail.vault", label: "API ভল্ট" },
+  settings: { icon: "settings", key: "desk.rail.settings", label: "সেটিংস" },
+  moderation: { icon: "moderation", key: "desk.rail.moderation", label: "মন্তব্য মডারেশন" },
+  ads: { icon: "ads", key: "desk.rail.ads", label: "বিজ্ঞাপন" },
+  archive: { icon: "archive", key: "desk.rail.archive", label: "আর্কাইভ" },
 };
 
 function StatusClock() {
@@ -198,6 +209,7 @@ function MTabsButton({ id, label, active, onClick }: {
 }
 
 export default function App() {
+  const { t } = useDeskLocale();
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem(ONBOARD_KEY) === "1");
   const [view, setView] = useState<View>("dashboard");
   /**
@@ -620,7 +632,7 @@ export default function App() {
             <button
               className="dot red"
               id="btnClose"
-              title="বন্ধ · সাইটে ফিরুন"
+              title={t("desk.chrome.quit")}
               onClick={() => {
                 void deskWin().then((w) =>
                   w ? w.close() : openAdmin(SITE_URL),
@@ -630,7 +642,7 @@ export default function App() {
             <button
               className="dot yellow"
               id="btnMin"
-              title="মিনিমাইজ"
+              title={t("desk.chrome.minimize")}
               onClick={() => {
                 void deskWin().then((w) =>
                   w ? w.minimize() : setWinMinimized(true),
@@ -640,7 +652,7 @@ export default function App() {
             <button
               className="dot green"
               id="btnMax"
-              title="ম্যাক্সিমাইজ"
+              title={t("desk.chrome.maximize")}
               onClick={() => {
                 void deskWin().then((w) =>
                   w ? w.toggleMaximize() : setWinMaximized(!winMaximized),
@@ -660,14 +672,15 @@ export default function App() {
             }}
           >
 <img src="/logo.png" alt="" />
-            <span>হৈচৈ ডেস্ক</span>
+            <span>{t("desk.chrome.name")}</span>
             <em>TAURI 2.1</em>
           </div>
           <div className="winctl">
+            <DeskLanguageToggle />
             <ThemeToggle />
             <button
               id="btnMin2"
-              title="মিনিমাইজ"
+              title={t("desk.chrome.minimize")}
               onClick={() => {
                 void deskWin().then((w) =>
                   w ? w.minimize() : setWinMinimized(true),
@@ -678,7 +691,7 @@ export default function App() {
             </button>
             <button
               id="btnMax2"
-              title="ম্যাক্সিমাইজ / পুনরুদ্ধার"
+              title={t("desk.chrome.maximize")}
               onClick={() => {
                 void deskWin().then((w) =>
                   w ? w.toggleMaximize() : setWinMaximized(!winMaximized),
@@ -689,7 +702,7 @@ export default function App() {
             </button>
             <button
               id="btnClose2"
-              title="বন্ধ · অ্যাপ বন্ধ করুন"
+              title={t("desk.chrome.quit")}
               onClick={() => {
                 void deskWin().then((w) =>
                   w ? w.close() : openAdmin(SITE_URL),
@@ -723,7 +736,7 @@ export default function App() {
                   key={v}
                   id={v}
                   icon={TAB_LABELS[v].icon}
-                  label={TAB_LABELS[v].label}
+                  label={t(TAB_LABELS[v].key)}
                   active={view === v}
                   onClick={() => jump(v)}
                   shortcut={keyForView(v)}
@@ -747,7 +760,7 @@ export default function App() {
                 <MTabsButton
                   key={v}
                   id={v}
-                  label={TAB_LABELS[v].label}
+                  label={t(TAB_LABELS[v].key)}
                   active={view === v}
                   onClick={() => jump(v)}
                 />

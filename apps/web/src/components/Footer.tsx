@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { toBn } from "@/lib/format";
 import { BRAND } from "@/lib/brand";
+import { t } from "@hoichoi/i18n";
+import { getLocale } from "@/lib/locale";
 import { SITE_BUILD } from "@/lib/build";
 import { listFooterCategories, getSettings, parseAppConfig } from "@hoichoi/db";
 import { FooterSocials } from "./FooterSocials";
@@ -8,30 +10,41 @@ import { AdvertiserLoginLink } from "./AdvertiserLoginLink";
 import LocalZone from "./LocalZone";
 
 export async function Footer() {
-  const [categories, settings] = await Promise.all([listFooterCategories(), getSettings()]);
+  const [categories, settings, locale] = await Promise.all([
+    listFooterCategories(),
+    getSettings(),
+    getLocale(),
+  ]);
+  /** The footer is a server component, so it translates without a provider. */
+  const tr = (key: Parameters<typeof t>[0], params?: Parameters<typeof t>[1]) =>
+    t(key, params, locale);
   const footerLinks = categories.length > 0 ? categories : [];
   const appConfig = parseAppConfig(settings.app_config_json);
   const siteName = settings.site_name || BRAND.en;
-  const about =
-    settings.footer_about_bn ||
-    `${BRAND.tagline} — ফেসবুক পেজ ও গ্রুপ, অনলাইন সংবাদপত্র, ম্যাগাজিন এবং সামাজিক মাধ্যমে ছড়িয়ে পড়া গল্প সংগ্রহ করে যাচাই, ডুপ্লিকেট-ফিল্টার ও এআই-সম্পাদনার পর বাংলায় প্রকাশিত সংবাদ-ধাঁচের সাইট।`;
+  /**
+   * Bangla readers get the operator's own text when there is one. English
+   * readers get the translated default: the stored field is Bangla-only, and
+   * mixing the two languages in one paragraph reads worse than a clean default.
+   */
+  const aboutDefault = `${BRAND.tagline} — ${tr("site.footer.aboutFallback")}`;
+  const about = locale === "en" ? aboutDefault : settings.footer_about_bn || aboutDefault;
   // The submit link is the site's only growth channel, so it is surfaced in the
   // footer nav and as its own call-to-action. It previously existed only at
   // /submit with no inbound link, so visitors could never find it.
   const legalLinks = [
-    { href: "/submit", label: "সোর্স জমা দিন" },
-    { href: "/report", label: "ভুল রিপোর্ট" },
-    { href: "/about", label: "সম্পর্কে" },
-    { href: "/about/editorial", label: "সম্পাদকীয় নীতি" },
-    { href: "/about/ai", label: "এআই নীতি" },
-    { href: "/about/corrections", label: "সংশোধন নীতি" },
-    { href: "/about/security", label: "নিরাপত্তা নীতি" },
-    { href: "/about/retention", label: "ধারণ নীতি" },
-    { href: "/privacy", label: "গোপনীয়তা" },
-    { href: "/terms", label: "শর্তাবলি" },
-    { href: "/cookies", label: "কুকি নীতি" },
-    { href: "/dmca", label: "DMCA" },
-    { href: "/contact", label: "যোগাযোগ" },
+    { href: "/submit", label: tr("site.footer.submitSource") },
+    { href: "/report", label: tr("site.footer.reportError") },
+    { href: "/about", label: tr("site.footer.aboutUs") },
+    { href: "/about/editorial", label: tr("site.footer.editorialPolicy") },
+    { href: "/about/ai", label: tr("site.footer.aiPolicy") },
+    { href: "/about/corrections", label: tr("site.footer.corrections") },
+    { href: "/about/security", label: tr("site.footer.securityPolicy") },
+    { href: "/about/retention", label: tr("site.footer.retention") },
+    { href: "/privacy", label: tr("site.footer.privacy") },
+    { href: "/terms", label: tr("site.footer.terms") },
+    { href: "/cookies", label: tr("site.footer.cookies") },
+    { href: "/dmca", label: tr("site.footer.dmca") },
+    { href: "/contact", label: tr("site.footer.contact") },
   ];
   return (
     <footer className="page-chrome border-t-2 border-ink">
@@ -57,47 +70,45 @@ export async function Footer() {
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <AdvertiserLoginLink />
               <Link href="/portal/signup" className="font-mono-x text-[10px] tracking-[0.14em] text-ink-soft uppercase underline-offset-4 hover:text-alizarin hover:underline">
-                নতুন বিজ্ঞাপনদাতা? নিবন্ধন
+                {tr("site.footer.newAdvertiser")}
               </Link>
             </div>
           </div>
           <div className="md:col-span-4">
             <p className="font-mono-x text-[10px] tracking-[0.24em] text-ink-soft uppercase">
-              বিভাগসমূহ
+              {tr("site.footer.sectionsHeading")}
             </p>
             {footerLinks.length === 0 ? (
-              <p className="mt-4 text-[13px] text-ink-soft">কোনো বিভাগ এখনো যোগ হয়নি।</p>
+              <p className="mt-4 text-[13px] text-ink-soft">{tr("site.footer.noSections")}</p>
             ) : (
-              <CategoryColumns links={footerLinks} />
+              <CategoryColumns links={footerLinks} locale={locale} />
             )}
           </div>
           <div className="md:col-span-3">
             <div className="border border-alizarin/40 bg-alizarin/[0.06] p-5">
               <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">
-                আপনি কি এমন কোনো ফেসবুক পেজ বা গ্রুপ জানেন?
+                {tr("site.footer.wantHeading")}
               </p>
               <p className="mt-2 text-[12.5px] leading-relaxed text-ink">
-                সংবাদ-ধাঁচের গুরুত্বপূর্ণ পোস্ট প্রকাশ করে এমন সব পেজ ও গ্রুপ আমাদের কাছে জানান।
-                অ্যাডমিন যাচাই করে অনুমোদন করলেই সেটি সোর্স হিসেবে যুক্ত হয়।
+                {tr("site.footer.wantBody")}
               </p>
               <Link
                 href="/submit"
                 className="mt-4 inline-block bg-alizarin px-5 py-2.5 text-[12.5px] font-bold text-on-accent transition-colors hover:bg-ink"
               >
-                সোর্স জমা দিন →
+                {tr("site.footer.submitSourceCta")}
               </Link>
             </div>
             <p className="mt-6 font-mono-x text-[10px] tracking-[0.24em] text-ink-soft uppercase">
-              সিস্টেম
+              {tr("site.nav.system")}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Link href="/system" className="border border-ink/30 px-4 py-2 text-[12px] font-bold transition-all duration-300 hover:border-ink hover:bg-ink hover:text-paper">
-                সিস্টেম ব্লুপ্রিন্ট →
+                {tr("site.footer.blueprint")}
               </Link>
             </div>
             <p className="mt-6 text-[10.5px] leading-relaxed text-ink-soft">
-              ছবি: Pexels ফটোগ্রাফারগণ · এটি একটি প্রযুক্তি প্রদর্শনী (মকআপ) —
-              সব চরিত্র ও ঘটনাবহুল কাল্পনিক এবং কেবল সচেতনতামূলক বিন্যাসে রচিত।
+              {tr("site.footer.credit")}
             </p>
           </div>
         </div>
@@ -131,9 +142,12 @@ export async function Footer() {
  */
 function CategoryColumns({
   links,
+  locale,
   maxPerColumn = 10,
 }: {
   links: Array<{ slug: string; displayNameBn: string; displayNameEn: string }>;
+  /** Desk names in the reader's language; Bangla when English is missing. */
+  locale: "bn" | "en";
   maxPerColumn?: number;
 }) {
   const columns: typeof links[] = [];
@@ -149,7 +163,7 @@ function CategoryColumns({
             <li key={cat.slug} className="flex items-center gap-2">
               <span className="h-1 w-1 rotate-45 bg-alizarin" />
               <Link href={`/category/${cat.slug}`} className="hover:text-alizarin">
-                {cat.displayNameBn || cat.displayNameEn}
+                {(locale === "en" ? cat.displayNameEn || cat.displayNameBn : cat.displayNameBn || cat.displayNameEn)}
               </Link>
             </li>
           ))}

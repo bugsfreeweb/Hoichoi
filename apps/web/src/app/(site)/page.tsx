@@ -29,6 +29,7 @@ import MvHome from "@/components/mv/MvHome";
 import { timeBn, readMinutesBn, shortId, bnNum } from "@/lib/bn";
 import { agoBn } from "@/lib/format";
 import { categoryLabel, categoryTint, readableOn } from "@/lib/category-style";
+import { getLocale } from "@/lib/locale";
 import { mediaUrl, withDefaultImages } from "@/lib/media";
 import { LiveEventSection } from "@/components/home/LiveEventSection";
 import { HomePollSection } from "@/components/home/HomePollSection";
@@ -48,6 +49,7 @@ export default async function HomePage({
   searchParams: Promise<{ page?: string }>;
 }) {
   const sp = await searchParams;
+  const locale = await getLocale(sp);
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
   const live = await getLive().catch(() => null);
   if (live && isMvMode(live)) {
@@ -99,7 +101,7 @@ export default async function HomePage({
           featuredImg={featured ? mediaUrl(featured) : null}
           featuredTitle={featured?.title_bn ?? null}
           featuredCategory={
-            featured ? categoryLabel(featured.category, catRows) : null
+            featured ? categoryLabel(featured.category, catRows, locale) : null
           }
           showLiveGraph={cfg.show_live_graph}
           siteName={settings.site_name}
@@ -112,7 +114,7 @@ export default async function HomePage({
             id: p.id,
             slug: p.slug,
             title: p.title_bn,
-            category: categoryLabel(p.category, catRows),
+            category: categoryLabel(p.category, catRows, locale),
             source: p.source_name,
             image: mediaUrl(p),
             summary: p.summary_bn ?? "",
@@ -296,6 +298,7 @@ export default async function HomePage({
                         {categoryLabel(
                           featured.category,
                           catStats.map((s) => s.category),
+                          locale,
                         )}
                       </span>
                     );
@@ -415,7 +418,7 @@ export default async function HomePage({
                                         ),
                                       }}
                                     />
-                                    {categoryLabel(a.category, meta)} ·{" "}
+                                    {categoryLabel(a.category, meta, locale)} ·{" "}
                                   </>
                                 );
                               })()}

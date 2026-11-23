@@ -30,6 +30,13 @@ const FALLBACK_LABEL: Record<string, string> = {
   "missing-children": "নিখোঁজ শিশু",
 };
 
+/** The same three house sections in English, for a reader on the English site. */
+const FALLBACK_LABEL_EN: Record<string, string> = {
+  "child-sexual-abuse": "Child sexual abuse",
+  "extramarital-crime": "Extramarital crime",
+  "missing-children": "Missing children",
+};
+
 const NEUTRAL_TINT = "#0a0c10";
 
 export const CATEGORY_TINT = FALLBACK_TINT;
@@ -79,8 +86,14 @@ export function categoryTint(
 export function categoryLabel(
   category: string,
   cats?: Array<Pick<CategoryMeta, "slug" | "displayNameBn" | "displayNameEn">> | null,
+  locale: "bn" | "en" = "bn",
 ): string {
   const found = cats?.find((c) => c.slug === category);
+  if (locale === "en") {
+    // Desks store both names; the English reader gets the English one and falls
+    // back to Bangla rather than to a slug.
+    return found?.displayNameEn || found?.displayNameBn || FALLBACK_LABEL_EN[category] || FALLBACK_LABEL[category] || category;
+  }
   return found?.displayNameBn || found?.displayNameEn || FALLBACK_LABEL[category] || category;
 }
 

@@ -20,6 +20,9 @@ importers:
       '@hoichoi/dash':
         specifier: workspace:*
         version: link:../../packages/dash
+      '@hoichoi/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@hoichoi/icons':
         specifier: workspace:*
         version: link:../../packages/icons
@@ -131,6 +134,9 @@ importers:
       '@hoichoi/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@hoichoi/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@hoichoi/icons':
         specifier: workspace:*
         version: link:../../packages/icons
@@ -257,6 +263,18 @@ importers:
       '@types/bcryptjs':
         specifier: ^2.4.6
         version: 2.4.6
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.1
+      tsx:
+        specifier: ^4.19.2
+        version: 4.23.13
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
+  packages/i18n:
+    devDependencies:
       '@types/node':
         specifier: ^22.10.0
         version: 22.20.1

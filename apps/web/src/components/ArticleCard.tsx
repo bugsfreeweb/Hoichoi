@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import type { Post, CategoryMeta } from "@hoichoi/shared-types";
 import { toBn } from "@/lib/format";
@@ -6,6 +8,7 @@ import { readMinutesBn, shortId } from "@/lib/bn";
 import { mediaUrl } from "@/lib/media";
 import SafeImage from "@/components/SafeImage";
 import VerificationBadge from "@/components/VerificationBadge";
+import { useLocale, useT } from "@/components/i18n/LocaleProvider";
 
 interface ArticleCardProps {
   post: Post;
@@ -28,7 +31,16 @@ const Icons = {
   ),
 };
 
+/** `readMinutesBn` hands back Bangla digits; English needs the same count in ASCII. */
+function plainReadMinutes(body: string): string {
+  return String(Math.max(1, Math.round(body.trim().split(/\s+/).length / 200)));
+}
+
 export default function ArticleCard({ post, index, categories }: ArticleCardProps) {
+  // Card chrome follows the reader's language; the story itself stays as
+  // published until its English edition exists (see the translation pipeline).
+  const { locale } = useLocale();
+  const t = useT();
   const tint = categoryTint(post.category, categories);
 
   return (
@@ -59,16 +71,16 @@ export default function ArticleCard({ post, index, categories }: ArticleCardProp
           )}
         </div>
         <span className="absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full bg-ink/80 px-3 py-1.5 font-mono-x text-[9.5px] tracking-[0.16em] text-paper uppercase backdrop-blur-sm">
-          {Icons.Globe} SOURCE · {post.source_name}
+          {Icons.Globe} {t("site.card.source", { name: post.source_name }).toUpperCase()}
         </span>
         {/* "FACT-CHECKED" was a claim no code path could back: nothing here is
             fact-checked, only rewritten from a cited source. Show that instead. */}
         <span className="absolute top-3 left-3 flex items-center gap-1.5 bg-ink/80 px-2.5 py-1 font-mono-x text-[9.5px] tracking-[0.14em] text-paper uppercase backdrop-blur-sm">
-          AI REWRITE
+          {t("site.card.aiRewrite").toUpperCase()}
         </span>
       </div>
       <p className="mt-3 flex items-center justify-between text-[10.5px] text-ink-soft">
-        <span>পুনর্লিখন · প্রতীকী</span>
+        <span>{t("site.card.illustrative")}</span>
         <span className="font-mono-x tracking-wide">
           SHOT_{shortId(post.id).toUpperCase()} · PLAYWRIGHT
         </span>
@@ -79,7 +91,7 @@ export default function ArticleCard({ post, index, categories }: ArticleCardProp
           style={{ background: tint, color: readableOn(tint) }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>
-          {categoryLabel(post.category, categories)}
+          {categoryLabel(post.category, categories, locale)}
         </span>
         <span className="flex items-center gap-1 text-[12px] text-ink-soft">
           {Icons.Pin} {post.source_name}
@@ -100,7 +112,7 @@ export default function ArticleCard({ post, index, categories }: ArticleCardProp
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <span className="group flex items-center gap-2 bg-ink px-5 py-2.5 text-[13px] font-bold text-on-accent transition-colors duration-300 group-hover:bg-alizarin">
-          পুরোটা পড়ুন
+          {t("site.card.readMore")}
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="14"
@@ -121,7 +133,10 @@ export default function ArticleCard({ post, index, categories }: ArticleCardProp
           {Icons.Hash} {shortId(post.id)}
         </span>
         <span className="flex items-center gap-1.5 text-[11.5px] text-ink-soft">
-          {Icons.Timer} {toBn(readMinutesBn(post.body_bn))} মিনিট
+          {Icons.Timer}{" "}
+          {t("site.card.minutes", {
+            n: locale === "en" ? plainReadMinutes(post.body_bn) : readMinutesBn(post.body_bn),
+          })}
         </span>
       </div>
     </Link>

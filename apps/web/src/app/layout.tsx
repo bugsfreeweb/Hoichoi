@@ -6,6 +6,8 @@ import { Analytics } from "@vercel/analytics/next";
 import "./fonts.css";
 import "./globals.css";
 import { siteUrl } from "../lib/site";
+import { getLocale } from "../lib/locale";
+import { LocaleProvider } from "../components/i18n/LocaleProvider";
 
 const SITE_URL = siteUrl();
 
@@ -32,9 +34,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // The reader's language is decided once, on the server, before anything paints:
+  // a reader who chose English never sees a flash of Bangla.
+  const locale = await getLocale();
   return (
-    <html lang="bn" dir="ltr" suppressHydrationWarning>
+    <html lang={locale} dir="ltr" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -43,7 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="grain">
-        {children}
+        <LocaleProvider locale={locale}>{children}</LocaleProvider>
         <Analytics />
       </body>
     </html>

@@ -8,6 +8,7 @@ import { PlatformAdSlot } from "@/components/ads/PlatformAdSlot";
 import { toBn } from "@/lib/format";
 import { categoryLabel } from "@/lib/category-style";
 import type { CategoryMeta } from "@hoichoi/shared-types";
+import { useLocale } from "@/components/i18n/LocaleProvider";
 
 export default function ArticleGrid({
   posts,
@@ -22,6 +23,7 @@ export default function ArticleGrid({
   adDeliveryMode?: "both" | "platform" | "house";
   categories?: CategoryMeta[] | null;
 }) {
+  const { locale } = useLocale();
   const cats = Array.from(new Set(posts.map((a) => a.category)));
   const [active, setActive] = useState<string>("all");
 
@@ -39,7 +41,7 @@ export default function ArticleGrid({
               : "border-ink/25 text-ink-soft hover:border-ink hover:text-ink"
           }`}
         >
-          সব <span className="font-mono-x text-[10px] opacity-70">{toBn(posts.length)}</span>
+          {locale === "en" ? "All" : "সব"} <span className="font-mono-x text-[10px] opacity-70">{toBn(posts.length)}</span>
         </button>
         {cats.map((c) => (
           <button
@@ -51,7 +53,7 @@ export default function ArticleGrid({
                 : "border-ink/25 text-ink-soft hover:border-ink hover:text-ink"
             }`}
           >
-            {categoryLabel(c, categories)}{" "}
+            {categoryLabel(c, categories, locale)}{" "}
             <span className="font-mono-x text-[10px] opacity-70">
               {toBn(posts.filter((a) => a.category === c).length)}
             </span>

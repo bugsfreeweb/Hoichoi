@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { bnNum } from "@/lib/bn";
 import { trackAd } from "@/lib/track-client";
+import { useT } from "@/components/i18n/LocaleProvider";
 
 /* Inline SVG icons (web app avoids lucide-react). */
 function MegaphoneIcon({ size = 9 }: { size?: number }) {
@@ -43,9 +44,9 @@ const clkKey = "hoichoi-ad-clicks";
  *  AdSense/Adsterra-style codes run after hydration. */
 export function AdSlot({
   variant = "leaderboard",
-  sponsor = "হৈচৈ লাইভ",
-  headline = "আপনার বিজ্ঞাপন এখানে",
-  sub = "হৈচৈ পাঠকের কাছে সরাসরি পৌঁছান — ads@hoichoi.example",
+  sponsor,
+  headline,
+  sub,
   html = null,
 }: {
   variant?: Variant;
@@ -54,6 +55,12 @@ export function AdSlot({
   sub?: string;
   html?: string | null;
 }) {
+  const t = useT();
+  // The placeholder copy is the house's, so it follows the reader's language
+  // unless the caller passed its own wording.
+  const line1 = sponsor ?? t("site.ad.sponsor");
+  const line2 = headline ?? t("site.ad.headline");
+  const line3 = sub ?? t("site.ad.sub");
   const [clicked, setClicked] = useState(false);
   const [bump, setBump] = useState(0);
   const rawRef = useRef<HTMLDivElement>(null);
@@ -97,7 +104,7 @@ export function AdSlot({
   const chip = (
     <span className="inline-flex items-center gap-1 rounded-sm border border-ink/30 bg-paper/90 px-1.5 py-0.5 font-mono-x text-[8.5px] font-semibold tracking-[0.2em] text-ink-soft uppercase">
       <MegaphoneIcon />
-      বিজ্ঞাপন · AD
+      {t("site.ad.label")}
     </span>
   );
 
@@ -105,16 +112,16 @@ export function AdSlot({
     <>
       <div className="flex items-center gap-3">
         <span className="ad-chip flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-ink bg-ink text-[13px] font-black text-lime">
-          {sponsor.slice(0, 1)}
+          {line1.slice(0, 1)}
         </span>
         <div className="text-left">
-          <p className="font-serif-bn text-[14px] leading-tight font-extrabold text-ink">{headline}</p>
-          <p className="mt-0.5 text-[10.5px] text-ink-soft">{sub}</p>
+          <p className="font-serif-bn text-[14px] leading-tight font-extrabold text-ink">{line2}</p>
+          <p className="mt-0.5 text-[10.5px] text-ink-soft">{line3}</p>
         </div>
       </div>
       <span className="flex items-center gap-2 bg-ink px-3.5 py-2 text-[11px] font-bold whitespace-nowrap text-paper">
         {clicked ? <ClickIcon className="text-lime" /> : <TrendIcon className="text-lime" />}
-        {clicked ? `ক্লিক #${bnNum(bump)} ✓` : "স্পনসর হোন"}
+        {clicked ? t("site.ad.clicks", { n: bnNum(bump) }) : t("site.ad.sponsorUs")}
       </span>
     </>
   );
@@ -124,16 +131,16 @@ export function AdSlot({
     <>
       <div className="flex items-center gap-3">
         <span className="flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-bandline/40 bg-bandline text-[13px] font-black text-band">
-          {sponsor.slice(0, 1)}
+          {line1.slice(0, 1)}
         </span>
         <div className="text-left">
-          <p className="font-serif-bn text-[14px] leading-tight font-extrabold text-bandline">{headline}</p>
-          <p className="mt-0.5 text-[10.5px] text-bandline/60">{sub}</p>
+          <p className="font-serif-bn text-[14px] leading-tight font-extrabold text-bandline">{line2}</p>
+          <p className="mt-0.5 text-[10.5px] text-bandline/60">{line3}</p>
         </div>
       </div>
       <span className="flex items-center gap-2 bg-lime px-3.5 py-2 text-[11px] font-bold whitespace-nowrap text-night">
         {clicked ? <ClickIcon /> : <TrendIcon />}
-        {clicked ? `ক্লিক #${bnNum(bump)} ✓` : "স্পনসর হোন"}
+        {clicked ? t("site.ad.clicks", { n: bnNum(bump) }) : t("site.ad.sponsorUs")}
       </span>
     </>
   );
@@ -146,7 +153,7 @@ export function AdSlot({
       >
         <div ref={rawRef} className="ad-raw w-full" dangerouslySetInnerHTML={{ __html: html }} />
         <span className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-sm border border-ink/30 bg-paper/90 px-1.5 py-0.5 font-mono-x text-[8.5px] font-semibold tracking-[0.2em] text-ink-soft uppercase">
-          <MegaphoneIcon /> বিজ্ঞাপন · AD
+          <MegaphoneIcon /> {t("site.ad.label")}
         </span>
       </div>
     );
@@ -167,7 +174,7 @@ export function AdSlot({
     <button
       onClick={onAd}
       // No `aria-label` here on purpose: the placeholder already says
-      // "আপনার বিজ্ঞাপন এখানে" in three languages, and an aria-label that does not
+      // The placeholder in three languages, and an aria-label that does not
       // contain that visible text makes the accessible name contradict the label.
       className={`group relative block w-full ${variant === "infeed" ? "" : "text-center"}`}
     >
@@ -190,13 +197,13 @@ export function AdSlot({
         <div className="relative h-full min-h-[280px] border-[1.5px] border-dashed border-ink/45 bg-paper-deep/30 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-ink">
           <span className="absolute top-3 right-3">{chip}</span>
           <span className="ad-chip flex h-12 w-12 items-center justify-center rounded-full border-[1.5px] border-ink bg-ink text-[16px] font-black text-lime">
-            {sponsor.slice(0, 1)}
+            {line1.slice(0, 1)}
           </span>
-          <p className="mt-6 font-serif-bn text-[19px] leading-snug font-extrabold text-ink">{headline}</p>
-          <p className="mt-2 line-clamp-3 text-[12.5px] leading-relaxed text-ink-soft">{sub}</p>
+          <p className="mt-6 font-serif-bn text-[19px] leading-snug font-extrabold text-ink">{line2}</p>
+          <p className="mt-2 line-clamp-3 text-[12.5px] leading-relaxed text-ink-soft">{line3}</p>
           <span className="mt-5 inline-flex items-center gap-2 bg-ink px-4 py-2 text-[11.5px] font-bold text-paper">
             <TrendIcon className="text-lime" />
-            {clicked ? `ক্লিক #${bnNum(bump)} ✓` : "বিস্তারিত"}
+            {clicked ? t("site.ad.clicks", { n: bnNum(bump) }) : t("site.ad.details")}
           </span>
         </div>
       )}

@@ -80,7 +80,9 @@ check("the desk draws from the same catalogue, not its own paths", () => {
   assert.ok(!/<svg className="ic"/.test(desk.slice(tabStart, tabEnd)), "no hand-drawn tab glyphs");
   assert.match(desk, /import \{ NavIcon, type NavIconName \} from "@hoichoi\/icons"/);
   assert.match(desk, /<NavIcon name=\{icon\}/);
-  const tabIcons = [...desk.matchAll(/icon: "([a-z]+)", label:/g)].map((m) => m[1]!);
+  // Each row is `icon`, then the dictionary `key` it prints, then the Bangla
+  // label kept for document titles and logs.
+  const tabIcons = [...desk.matchAll(/icon: "([a-z]+)", key: "[a-z.]+", label:/g)].map((m) => m[1]!);
   assert.ok(tabIcons.length >= 9, "the tab strip still has its nine screens");
   for (const name of tabIcons) {
     assert.equal(isNavIconName(name), true, `desk tab "${name}" resolves`);

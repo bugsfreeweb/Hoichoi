@@ -12,14 +12,22 @@ import SearchButton from "@/components/mv/site/SearchButton";
 import { Magnetic } from "@/components/mv/ui/motion";
 import { useMvData } from "@/components/mv/ui/mv-data";
 import { bn } from "@/lib/mv/format";
+import type { MessageKey } from "@hoichoi/i18n";
+import { useT } from "@/components/i18n/LocaleProvider";
+import { LanguageToggle } from "@/components/i18n/LanguageToggle";
 
+/**
+ * The five destinations are the same in both languages; only the label changes.
+ * Keeping the key here (not the text) means a new language never has to touch
+ * this file — see packages/i18n.
+ */
 const NAV = [
-  { href: "/", label: "হোম" },
-  { href: "/#latest", label: "সর্বশেষ" },
-  { href: "/#live-insights", label: "তথ্যচিত্র" },
-  { href: "/#pipeline", label: "যাচাই-পথ" },
-  { href: "/#system-health", label: "সিস্টেম" },
-];
+  { href: "/", key: "site.nav.home" },
+  { href: "/#latest", key: "site.nav.latest" },
+  { href: "/#live-insights", key: "site.nav.data" },
+  { href: "/#pipeline", key: "site.nav.verify" },
+  { href: "/#system-health", key: "site.nav.system" },
+] as const satisfies ReadonlyArray<{ href: string; key: MessageKey }>;
 
 function Wordmark({
   compact = false,
@@ -74,6 +82,7 @@ function MobileDrawer({
   onClose: () => void;
   engine?: LogoEngine;
 }) {
+  const t = useT();
   return (
     <div className={clsx("fixed inset-0 z-[80] lg:hidden", open ? "pointer-events-auto" : "pointer-events-none")}>
       <div
@@ -89,8 +98,9 @@ function MobileDrawer({
         <div className="mb-8 flex items-center justify-between">
           <Wordmark engine={engine} />
           <div className="flex items-center gap-2">
+            <LanguageToggle className="text-mist-200" />
             <ThemeToggle />
-            <button onClick={onClose} className="rounded-lg border border-white/10 p-2 text-mist-300 hover:bg-white/5" aria-label="মেনু বন্ধ করুন">
+            <button onClick={onClose} className="rounded-lg border border-white/10 p-2 text-mist-300 hover:bg-white/5" aria-label={t("site.nav.closeMenu")}>
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -103,7 +113,7 @@ function MobileDrawer({
               onClick={onClose}
               className="group flex items-center justify-between border-b border-white/6 py-3.5"
             >
-              <span className="font-display-bn text-2xl text-mist-100 transition-colors group-hover:text-white">{n.label}</span>
+              <span className="font-display-bn text-2xl text-mist-100 transition-colors group-hover:text-white">{t(n.key)}</span>
               <span className="mono-label text-mist-400">{String(i + 1).padStart(2, "0")}</span>
             </Link>
           ))}
@@ -113,7 +123,7 @@ function MobileDrawer({
           className="mt-8 flex items-center justify-center gap-2 rounded-xl py-3 font-semibold text-ink-950"
           style={{ background: "var(--accent)" }}
         >
-          <Settings2 className="h-4 w-4" /> অ্যাডমিন প্যানেল
+          <Settings2 className="h-4 w-4" /> {t("site.nav.editorialDesk")}
         </Link>
       </div>
     </div>
@@ -122,6 +132,7 @@ function MobileDrawer({
 
 /* ── variant 1: newsroom classic ───────────────────────────── */
 function NewsroomClassic({ engine = "broadcast" }: { engine?: LogoEngine }) {
+  const t = useT();
   const scrolled = useScrolled();
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -147,13 +158,14 @@ function NewsroomClassic({ engine = "broadcast" }: { engine?: LogoEngine }) {
                     active ? "text-mist-100" : "text-mist-400 hover:text-mist-100",
                   )}
                 >
-                  {n.label}
+                  {t(n.key)}
                   {active ? <span className="absolute inset-x-3.5 -bottom-0.5 h-px" style={{ background: "var(--accent)" }} /> : null}
                 </Link>
               );
             })}
           </nav>
           <div className="ml-auto flex items-center gap-2">
+            <LanguageToggle className="hidden text-mist-200 sm:inline-flex" />
             <ThemeToggle />
             <SearchButton className="hidden md:grid" />
             <Magnetic className="hidden sm:inline-block">
@@ -162,7 +174,7 @@ function NewsroomClassic({ engine = "broadcast" }: { engine?: LogoEngine }) {
                 className="flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold text-ink-950 transition-all hover:brightness-110"
                 style={{ background: "var(--accent)" }}
               >
-                <Settings2 className="h-3.5 w-3.5" /> অ্যাডমিন
+                <Settings2 className="h-3.5 w-3.5" /> {t("site.nav.admin")}
               </Link>
             </Magnetic>
             <button onClick={() => setOpen(true)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 text-mist-200 lg:hidden">
@@ -178,6 +190,7 @@ function NewsroomClassic({ engine = "broadcast" }: { engine?: LogoEngine }) {
 
 /* ── variant 2: glass dock ───────────────────────────── */
 function GlassDock({ engine = "signal" }: { engine?: LogoEngine }) {
+  const t = useT();
   const scrolled = useScrolled(40);
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -205,7 +218,7 @@ function GlassDock({ engine = "signal" }: { engine?: LogoEngine }) {
                     active ? "bg-white/10 text-mist-100" : "text-mist-400 hover:bg-white/5 hover:text-mist-100",
                   )}
                 >
-                  {n.label}
+                  {t(n.key)}
                   {active ? (
                     <span className="absolute inset-x-4 -bottom-px h-[2px] rounded-full" style={{ background: "var(--accent)" }} />
                   ) : null}
@@ -216,11 +229,11 @@ function GlassDock({ engine = "signal" }: { engine?: LogoEngine }) {
           <div className="ml-auto flex items-center gap-1.5 md:ml-0">
             <span className="hidden items-center gap-1.5 rounded-xl px-2.5 py-2 sm:flex">
               <LiveDot />
-              <span className="mono-label text-mist-400">সরাসরি</span>
+              <span className="mono-label text-mist-400">{t("site.nav.liveBadge")}</span>
             </span>
             <SearchButton className="rounded-xl" />
             <ThemeToggle className="rounded-xl" />
-            <Link href="/admin" aria-label="প্রশাসন" className="grid h-9 w-9 place-items-center rounded-xl text-mist-300 transition-colors hover:bg-white/5 hover:text-mist-100">
+            <Link href="/admin" aria-label={t("site.nav.adminAria")} className="grid h-9 w-9 place-items-center rounded-xl text-mist-300 transition-colors hover:bg-white/5 hover:text-mist-100">
               <Settings2 className="h-4 w-4" />
             </Link>
             <button onClick={() => setOpen(true)} className="grid h-9 w-9 place-items-center rounded-xl text-mist-200 md:hidden">
@@ -236,6 +249,7 @@ function GlassDock({ engine = "signal" }: { engine?: LogoEngine }) {
 
 /* ── variant 3: split mega ───────────────────────────── */
 function SplitMega({ engine = "cube" }: { engine?: LogoEngine }) {
+  const t = useT();
   const { categoryMix: CATEGORY_MIX } = useMvData();
   const scrolled = useScrolled();
   const [open, setOpen] = useState(false);
@@ -246,7 +260,7 @@ function SplitMega({ engine = "cube" }: { engine?: LogoEngine }) {
         <div className={clsx("border-b border-white/8 bg-ink-900/80 backdrop-blur-xl transition-all", scrolled && "bg-ink-950/92")}>
           <div className="mx-auto flex max-w-[1600px] items-center gap-4 px-5 py-1.5 md:px-8">
             <span className="mono-label flex items-center gap-2 text-mist-400">
-              <LiveDot /> সংগ্রহ পাইপলাইন সক্রিয়
+              <LiveDot /> {t("site.nav.pipelineActive")}
             </span>
             <span className="ml-auto hidden items-center gap-4 md:flex">
               {CATEGORY_MIX.slice(0, 3).map((c) => (
@@ -255,7 +269,7 @@ function SplitMega({ engine = "cube" }: { engine?: LogoEngine }) {
                 </span>
               ))}
               <Link href="/admin" className="mono-label text-mist-300 transition-colors hover:text-white">
-                সম্পাদকীয় ডেস্ক ↗
+                {t("site.nav.editorialDesk")} ↗
               </Link>
             </span>
           </div>
@@ -266,7 +280,7 @@ function SplitMega({ engine = "cube" }: { engine?: LogoEngine }) {
             <nav className="ml-2 hidden items-center gap-5 lg:flex">
               {NAV.map((n) => (
                 <Link key={n.href} href={n.href} className="link-underline text-[14px] font-medium text-mist-300 hover:text-mist-100">
-                  {n.label}
+                  {t(n.key)}
                 </Link>
               ))}
               <button
@@ -275,17 +289,18 @@ function SplitMega({ engine = "cube" }: { engine?: LogoEngine }) {
                 onClick={() => setMega((m) => !m)}
                 className="flex items-center gap-1 text-[14px] font-medium text-mist-300 hover:text-mist-100"
               >
-                ক্যাটাগরি <ChevronDown className={clsx("h-3.5 w-3.5 transition-transform", mega && "rotate-180")} />
+                {t("site.nav.categories")} <ChevronDown className={clsx("h-3.5 w-3.5 transition-transform", mega && "rotate-180")} />
               </button>
             </nav>
             <div className="ml-auto flex items-center gap-2">
               <SearchButton />
+              <LanguageToggle className="text-mist-200" />
               <ThemeToggle />
               <Link href="/#latest" className="hidden rounded-full border border-white/12 px-4 py-2 text-[13px] font-medium text-mist-100 transition-colors hover:bg-white/5 sm:inline-flex">
-                সর্বশেষ পড়ুন
+                {t("site.nav.latest")}
               </Link>
               <Link href="/admin" className="rounded-full px-4 py-2 text-[13px] font-semibold text-ink-950" style={{ background: "var(--accent)" }}>
-                ডেস্ক লঞ্চ
+                {t("site.nav.deskLaunch")}
               </Link>
               <button onClick={() => setOpen(true)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 text-mist-200 lg:hidden">
                 <Menu className="h-4 w-4" />
@@ -314,7 +329,7 @@ function SplitMega({ engine = "cube" }: { engine?: LogoEngine }) {
                 <p className="mt-2 font-display-bn text-lg leading-snug text-mist-100">{c.name}</p>
                 <p className="mt-2 flex items-center gap-1.5">
                   <Hash className="h-3 w-3 text-mist-400" />
-                  <span className="mono-label text-mist-400">{bn(c.value)} রেকর্ড</span>
+                  <span className="mono-label text-mist-400">{t("site.nav.records", { n: bn(c.value) })}</span>
                 </p>
               </Link>
             ))}
@@ -328,6 +343,7 @@ function SplitMega({ engine = "cube" }: { engine?: LogoEngine }) {
 
 /* ── variant 4: minimal mono ───────────────────────────── */
 function MinimalMono({ engine = "depth" }: { engine?: LogoEngine }) {
+  const t = useT();
   const scrolled = useScrolled();
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -343,21 +359,22 @@ function MinimalMono({ engine = "depth" }: { engine?: LogoEngine }) {
                 <Link key={n.href} href={n.href} className="group flex items-baseline gap-1.5">
                   <span className="mono-label text-mist-400 group-hover:text-mist-200">{String(i + 1).padStart(2, "0")}</span>
                   <span className={clsx("text-[14px] transition-colors", active ? "text-mist-100" : "text-mist-400 group-hover:text-mist-100")}>
-                    {n.label}
+                    {t(n.key)}
                   </span>
                 </Link>
               );
             })}
             <Link href="/admin" className="mono-label border-b pb-0.5 text-mist-200 transition-colors hover:text-white" style={{ borderColor: "var(--accent)" }}>
-              সম্পাদকীয় ডেস্ক
+              {t("site.nav.editorialDesk")}
             </Link>
             <SearchButton />
             <ThemeToggle />
           </nav>
           <div className="flex items-center gap-2 md:hidden">
             <SearchButton />
+            <LanguageToggle className="text-mist-200" />
             <ThemeToggle />
-            <button onClick={() => setOpen(true)} className="text-mist-200" aria-label="মেনু খুলুন">
+            <button onClick={() => setOpen(true)} className="text-mist-200" aria-label={t("site.nav.menu")}>
               <Menu className="h-5 w-5" />
             </button>
           </div>
@@ -372,6 +389,7 @@ function MinimalMono({ engine = "depth" }: { engine?: LogoEngine }) {
 }
 
 function StackedHeader({ engine = "decode" }: { engine?: LogoEngine }) {
+  const t = useT();
   const scrolled = useScrolled(24);
   const [open, setOpen] = useState(false);
   return (
@@ -380,14 +398,14 @@ function StackedHeader({ engine = "decode" }: { engine?: LogoEngine }) {
         <div className="mx-auto flex max-w-[1440px] items-center gap-4 px-5 py-3 md:px-8">
           <Wordmark compact={scrolled} engine={engine} />
           <span className="hidden h-7 w-px bg-white/10 md:block" />
-          <p className="hidden text-[13px] text-mist-400 md:block">সংগৃহীত খবর · যাচাই করা তথ্য · পাঠকের অংশগ্রহণ</p>
+          <p className="hidden text-[13px] text-mist-400 md:block">{t("site.nav.promise")}</p>
           <div className="ml-auto flex items-center gap-2">
             <SearchButton />
             <ThemeToggle />
             <Link href="/admin" className="hidden rounded-full px-4 py-2 text-[13px] font-semibold text-ink-950 sm:inline-flex" style={{ background: "var(--accent)" }}>
-              সম্পাদকীয় ডেস্ক
+              {t("site.nav.editorialDesk")}
             </Link>
-            <button onClick={() => setOpen(true)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 text-mist-200 lg:hidden" aria-label="মেনু খুলুন">
+            <button onClick={() => setOpen(true)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 text-mist-200 lg:hidden" aria-label={t("site.nav.menu")}>
               <Menu className="h-4 w-4" />
             </button>
           </div>
@@ -395,10 +413,10 @@ function StackedHeader({ engine = "decode" }: { engine?: LogoEngine }) {
         <nav className="mx-auto flex max-w-[1440px] items-center gap-1 overflow-x-auto border-t border-white/6 px-5 py-1.5 md:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {NAV.map((item, i) => (
             <Link key={item.href} href={item.href} className="shrink-0 rounded-full px-4 py-2 text-[13.5px] text-mist-300 transition-colors hover:bg-white/[0.06] hover:text-mist-100">
-              <span className="mono-label mr-2 text-mist-400">{String(i + 1).padStart(2, "0")}</span>{item.label}
+              <span className="mono-label mr-2 text-mist-400">{String(i + 1).padStart(2, "0")}</span>{t(item.key)}
             </Link>
           ))}
-          <span className="mono-label ml-auto hidden shrink-0 items-center gap-2 text-mint-400 sm:flex"><LiveDot /> সরাসরি আপডেট</span>
+          <span className="mono-label ml-auto hidden shrink-0 items-center gap-2 text-mint-400 sm:flex"><LiveDot /> {t("site.nav.liveBadge")} {t("site.nav.updates")}</span>
         </nav>
       </header>
       <MobileDrawer open={open} onClose={() => setOpen(false)} engine={engine} />

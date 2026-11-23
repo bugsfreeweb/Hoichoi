@@ -1,17 +1,23 @@
 import Link from "next/link";
 import { longDateBn } from "@/lib/bn";
+import { formatDate, t } from "@hoichoi/i18n";
+import { getLocale } from "@/lib/locale";
 import type { SiteSettings } from "@hoichoi/shared-types";
 
-export function Masthead({ settings }: { settings: SiteSettings }) {
+export async function Masthead({ settings }: { settings: SiteSettings }) {
   const accent = settings.accent_color || "#d64541";
+  // Bangla keeps its own long-date spelling (`longDateBn`) so the masthead reads
+  // exactly as it always has; English uses the shared formatter.
+  const locale = await getLocale();
+  const dateLine = locale === "en" ? formatDate(new Date(), "en", { weekday: true }) : longDateBn(new Date().toISOString());
   return (
     <header className="mx-auto max-w-site px-4 pt-6 md:px-8">
       <div className="flex items-center justify-between border-b border-ink/20 pb-3 text-[11.5px] font-medium text-ink-soft">
-        <span>{longDateBn(new Date().toISOString())} · অনলাইন সংস্করণ</span>
+        <span>{dateLine} · {t("site.masthead.onlineEdition", undefined, locale)}</span>
         <span className="hidden font-mono-x tracking-[0.2em] uppercase sm:block">
-          AUTONOMOUS NEWS DESK · ISSN-AUTO-24
+          {t("site.masthead.desk", undefined, locale).toUpperCase()} · ISSN-AUTO-24
         </span>
-        <span>মূল্য: অবৈতনিক</span>
+        <span>{t("site.masthead.price", undefined, locale)}</span>
       </div>
       <div className="flex flex-col items-center py-8 text-center md:py-10">
         <Link className="group inline-flex items-baseline" href="/">

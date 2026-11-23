@@ -13,6 +13,7 @@
   "dependencies": {
     "@hoichoi/dash": "workspace:*",
     "@hoichoi/db": "workspace:*",
+    "@hoichoi/i18n": "workspace:*",
     "@hoichoi/icons": "workspace:*",
     "@hoichoi/llm": "workspace:*",
     "@hoichoi/poster": "workspace:*",
