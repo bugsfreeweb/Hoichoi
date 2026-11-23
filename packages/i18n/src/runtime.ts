@@ -165,3 +165,43 @@ export function formatDateTime(input: Date | string, locale: Locale): string {
   }).format(date);
   return `${formatDate(date, locale)}, ${time}`;
 }
+
+/**
+ * A sentence that exists in exactly one place, in both languages.
+ *
+ * The keyed table is right for words that recur — a status, a button, a nav row —
+ * because two copies of the same word drift apart. It is wrong for the prose of
+ * one console screen: 1,900 invented keys for 1,900 unique sentences is a table
+ * nobody reads, and a translator cannot tell which of four similar keys is which.
+ *
+ * So prose is written where it is used, as a pair:
+ *
+ *   const b = useBi();               // client
+ *   <p>{b("AI-উৎপাদিত খসড়া …", "AI-written drafts …")}</p>
+ *
+ * and a server component builds the same function from its locale:
+ *
+ *   const b = biFor(await getLocale());
+ *
+ * The second argument is never optional: the guard test fails a pair whose
+ * English is empty or still contains Bangla, which is exactly how a half-done
+ * translation looks.
+ */
+export type Bilingual = readonly [bn: string, en: string];
+
+/** Declare a pair (reads as `bi(bn, en)` at the call site). */
+export function bi(bn: string, en: string): Bilingual {
+  return [bn, en] as const;
+}
+
+/** Pick the pair's string for a language. */
+export function pick(pair: Bilingual, locale: Locale): string {
+  return locale === "en" ? pair[1] : pair[0];
+}
+
+/** `b("বাংলা", "English")` → the string for one language, decided once. */
+export type BiFn = (bn: string, en: string) => string;
+
+export function biFor(locale: Locale): BiFn {
+  return (bn, en) => (locale === "en" ? en : bn);
+}

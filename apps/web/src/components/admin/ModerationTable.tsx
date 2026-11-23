@@ -5,14 +5,16 @@ import Link from "next/link";
 import type { CommentWithPost } from "@hoichoi/shared-types";
 import { useAdminAction } from "@/lib/admin-api";
 import { mediaUrl } from "@/lib/media";
+import { useBi, type BiHook } from "@/components/i18n/LocaleProvider";
 
 type Tab = "all" | "pending" | "approved" | "blocked";
 
-const TAB_BN: Record<Tab, string> = {
-  all: "সব",
-  pending: "অপেক্ষমান",
-  approved: "অনুমোদিত",
-  blocked: "ব্লকড",
+/** Tab names in both languages; the panel prints the one the operator reads. */
+const TAB_LABEL: Record<Tab, readonly [string, string]> = {
+  all: ["সব", "All"],
+  pending: ["অপেক্ষমান", "Waiting"],
+  approved: ["অনুমোদিত", "Approved"],
+  blocked: ["ব্লকড", "Blocked"],
 };
 
 const STATUS_CLS: Record<string, string> = {
@@ -20,27 +22,29 @@ const STATUS_CLS: Record<string, string> = {
   approved: "bg-lime/15 text-lime",
   blocked: "bg-rose-500/15 text-rose-300",
 };
-const STATUS_BN: Record<string, string> = {
-  pending: "অপেক্ষমান",
-  approved: "অনুমোদিত",
-  blocked: "ব্লকড",
+const STATUS_LABEL: Record<string, readonly [string, string]> = {
+  pending: ["অপেক্ষমান", "Waiting"],
+  approved: ["অনুমোদিত", "Approved"],
+  blocked: ["ব্লকড", "Blocked"],
 };
 
-function bn(n: number): string {
-  return n.toLocaleString("bn-BD");
+/** Bangla digits for Bangla, plain digits for English — one count, two spellings. */
+function count(n: number, b: BiHook): string {
+  return b(n.toLocaleString("bn-BD"), n.toLocaleString("en-US"));
 }
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, b: BiHook): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 2) return "এইমাত্র";
-  if (mins < 60) return `${bn(mins)} মিনিট আগে`;
+  if (mins < 2) return b("এইমাত্র", "just now");
+  if (mins < 60) return b(`${count(mins, b)} মিনিট আগে`, `${count(mins, b)} min ago`);
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${bn(hours)} ঘণ্টা আগে`;
-  return `${bn(Math.floor(hours / 24))} দিন আগে`;
+  if (hours < 24) return b(`${count(hours, b)} ঘণ্টা আগে`, `${count(hours, b)} h ago`);
+  return b(`${count(Math.floor(hours / 24), b)} দিন আগে`, `${count(Math.floor(hours / 24), b)} d ago`);
 }
 
 export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
+  const b = useBi();
   const [list, setList] = useState(rows);
   const [tab, setTab] = useState<Tab>("all");
   const [busy, setBusy] = useState<string | null>(null);
@@ -73,9 +77,9 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
   const act = async (id: string, action: "approve" | "block" | "delete") => {
     setBusy(id);
     const labels = {
-      approve: { busy: "মন্তব্য অনুমোদন করা হচ্ছে…", success: "✓ মন্তব্য অনুমোদিত" },
-      block: { busy: "মন্তব্য ব্লক করা হচ্ছে…", success: "✓ মন্তব্য ব্লকড" },
-      delete: { busy: "মন্তব্য মুছে ফেলা হচ্ছে…", success: "✓ মন্তব্য মুছে ফেলা হয়েছে" },
+      approve: { busy: b("মন্তব্য অনুমোদন করা হচ্ছে…", "Approving the comment…"), success: b("✓ মন্তব্য অনুমোদিত", "✓ Comment approved") },
+      block: { busy: b("মন্তব্য ব্লক করা হচ্ছে…", "Blocking the comment…"), success: b("✓ মন্তব্য ব্লকড", "✓ Comment blocked") },
+      delete: { busy: b("মন্তব্য মুছে ফেলা হচ্ছে…", "Deleting the comment…"), success: b("✓ মন্তব্য মুছে ফেলা হয়েছে", "✓ Comment deleted") },
     }[action];
     const data = await run({
       path: "/api/comments",
@@ -95,18 +99,20 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
       <div className="flex flex-wrap items-center gap-3 border-b border-white/8 px-5 py-4">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-400/15 text-[15px]">💬</span>
         <div>
-          <p className="font-serif-bn text-[17px] font-bold text-white">মন্তব্য মডারেশন</p>
+          <p className="font-serif-bn text-[17px] font-bold text-white">
+            {b("মন্তব্য মডারেশন", "Comment moderation")}
+          </p>
           <p className="font-mono-x text-[9px] tracking-[0.22em] text-white/55 uppercase">
             PUBLIC COMMENTS · QUEUE → LIVE
           </p>
         </div>
         <span className="ml-auto hidden items-center gap-1.5 rounded-full border border-white/12 px-3 py-1 font-mono-x text-[9.5px] tracking-[0.14em] text-white/50 uppercase md:flex">
-          🛡 অনুমোদন ছাড়া পাবলিকে না
+          🛡 {b("অনুমোদন ছাড়া পাবলিকে না", "Nothing goes public without approval")}
         </span>
       </div>
 
       <div className="flex flex-wrap gap-1.5 border-b border-white/8 px-5 py-3">
-        {(Object.keys(TAB_BN) as Tab[]).map((t) => (
+        {(Object.keys(TAB_LABEL) as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -114,9 +120,9 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
               tab === t ? "bg-white text-night" : "text-white/50 hover:bg-white/8 hover:text-white"
             }`}
           >
-            {TAB_BN[t]}{" "}
+            {b(...TAB_LABEL[t])}{" "}
             <span className={`font-mono-x text-[9.5px] ${tab === t ? "text-night/60" : "text-white/55"}`}>
-              {bn(counts[t])}
+              {count(counts[t], b)}
             </span>
           </button>
         ))}
@@ -124,7 +130,9 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/8 px-5 py-2.5">
         <p className="font-mono-x text-[9px] tracking-[0.18em] text-white/55 uppercase">
-          {view === "card" ? "কার্ড ভিউ · ছবি ও শিরোনামসহ" : "লিস্ট ভিউ · দ্রুত স্ক্যান"}
+          {view === "card"
+            ? b("কার্ড ভিউ · ছবি ও শিরোনামসহ", "Card view · with the picture and title")
+            : b("লিস্ট ভিউ · দ্রুত স্ক্যান", "List view · fast scanning")}
         </p>
         <div className="flex border border-white/12">
           {(["card", "list"] as const).map((v) => (
@@ -137,7 +145,7 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
                 view === v ? "bg-white text-night" : "text-white/50 hover:bg-white/8"
               }`}
             >
-              {v === "card" ? "কার্ড" : "লিস্ট"}
+              {v === "card" ? b("কার্ড", "Cards") : b("লিস্ট", "List")}
             </button>
           ))}
         </div>
@@ -149,7 +157,9 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
             <CommentCard key={r.id} row={r} busy={busy === r.id} onAct={act} />
           ))}
           {shown.length === 0 && (
-            <p className="col-span-full py-12 text-center text-[12.5px] text-white/55">এই সারিতে কোনো মন্তব্য নেই।</p>
+            <p className="col-span-full py-12 text-center text-[12.5px] text-white/55">
+              {b("এই সারিতে কোনো মন্তব্য নেই।", "No comments in this tab.")}
+            </p>
           )}
         </div>
       ) : (
@@ -157,11 +167,11 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
         <table className="w-full min-w-[900px] text-left">
           <thead>
             <tr className="font-mono-x text-[9.5px] tracking-[0.18em] text-white/55 uppercase">
-              <th className="px-5 py-3 font-medium">মন্তব্য</th>
-              <th className="px-3 py-3 font-medium">প্রতিবেদন</th>
-              <th className="px-3 py-3 font-medium">সময়</th>
-              <th className="px-3 py-3 font-medium">স্ট্যাটাস</th>
-              <th className="px-5 py-3 text-right font-medium">অ্যাকশন</th>
+              <th className="px-5 py-3 font-medium">{b("মন্তব্য", "Comment")}</th>
+              <th className="px-3 py-3 font-medium">{b("প্রতিবেদন", "Report")}</th>
+              <th className="px-3 py-3 font-medium">{b("সময়", "When")}</th>
+              <th className="px-3 py-3 font-medium">{b("স্ট্যাটাস", "Status")}</th>
+              <th className="px-5 py-3 text-right font-medium">{b("অ্যাকশন", "Actions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/6">
@@ -181,28 +191,28 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
                   )}
                 </td>
                 <td className="whitespace-nowrap px-3 py-3.5 font-mono-x text-[11px] text-white/50">
-                  {timeAgo(r.created_at)}
+                  {timeAgo(r.created_at, b)}
                 </td>
                 <td className="px-3 py-3.5">
                   <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold ${STATUS_CLS[r.status] ?? STATUS_CLS.pending}`}>
-                    {STATUS_BN[r.status] ?? r.status}
+                    {STATUS_LABEL[r.status] ? b(...STATUS_LABEL[r.status]!) : r.status}
                   </span>
                 </td>
                 <td className="px-5 py-3.5">
                   <div className="flex items-center justify-end gap-1.5">
                     {busy === r.id ? (
-                      <span className="text-[11px] text-white/70">· চলছে …</span>
+                      <span className="text-[11px] text-white/70">· {b("চলছে …", "working…")}</span>
                     ) : (
                       <>
                         {r.status !== "approved" && (
-                          <button onClick={() => act(r.id, "approve")} title="অনুমোদন করুন"
+                          <button onClick={() => act(r.id, "approve")} title={b("অনুমোদন করুন", "Approve")}
                             className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/60 transition-colors hover:border-lime/60 hover:text-lime">✓</button>
                         )}
                         {r.status !== "blocked" && (
-                          <button onClick={() => act(r.id, "block")} title="ব্লক করুন"
+                          <button onClick={() => act(r.id, "block")} title={b("ব্লক করুন", "Block")}
                             className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/60 transition-colors hover:border-amberx/60 hover:text-amberx">⊘</button>
                         )}
-                        <button onClick={() => act(r.id, "delete")} title="মুছে ফেলুন"
+                        <button onClick={() => act(r.id, "delete")} title={b("মুছে ফেলুন", "Delete")}
                           className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/60 transition-colors hover:border-rose-400/60 hover:text-rose-300">🗑</button>
                       </>
                     )}
@@ -212,7 +222,9 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
             ))}
             {shown.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-5 py-14 text-center text-[12.5px] text-white/55">এই সারিতে কোনো মন্তব্য নেই।</td>
+                <td colSpan={5} className="px-5 py-14 text-center text-[12.5px] text-white/55">
+                  {b("এই সারিতে কোনো মন্তব্য নেই।", "No comments in this tab.")}
+                </td>
               </tr>
             )}
           </tbody>
@@ -221,7 +233,10 @@ export function ModerationTable({ rows }: { rows: CommentWithPost[] }) {
       )}
 
       <div className="border-t border-white/8 px-5 py-3 font-mono-x text-[9px] tracking-[0.18em] text-white/55 uppercase">
-        অনুমোদিত মন্তব্যই শুধু পাবলিক প্রতিবেদনে দেখা যায় · pending → approved → live
+        {b(
+          "অনুমোদিত মন্তব্যই শুধু পাবলিক প্রতিবেদনে দেখা যায় · pending → approved → live",
+          "Only approved comments appear on the public page · pending → approved → live",
+        )}
       </div>
     </div>
   );
@@ -241,6 +256,7 @@ function CommentCard({
   busy: boolean;
   onAct: (id: string, action: "approve" | "block" | "delete") => void;
 }) {
+  const b = useBi();
   const img = mediaUrl({
     media_path: row.postMediaPath ?? null,
     media_kind: row.postMediaKind ?? "image",
@@ -253,7 +269,7 @@ function CommentCard({
           <img src={img} alt="" loading="lazy" className="h-11 w-16 shrink-0 rounded border border-white/12 object-cover" />
         ) : (
           <span className="flex h-11 w-16 shrink-0 items-center justify-center rounded border border-dashed border-white/15 text-[9px] text-white/55">
-            ছবি নেই
+            {b("ছবি নেই", "No picture")}
           </span>
         )}
         <div className="min-w-0">
@@ -265,10 +281,10 @@ function CommentCard({
               {row.postTitle}
             </Link>
           ) : (
-            <span className="text-[11.5px] text-white/55">পোস্ট পাওয়া যায়নি</span>
+            <span className="text-[11.5px] text-white/55">{b("পোস্ট পাওয়া যায়নি", "Post not found")}</span>
           )}
           <p className="font-mono-x text-[9px] tracking-[0.1em] text-white/55 uppercase">
-            {row.postCategory ?? "—"} · {timeAgo(row.created_at)}
+            {row.postCategory ?? "—"} · {timeAgo(row.created_at, b)}
           </p>
         </div>
       </div>
@@ -278,21 +294,21 @@ function CommentCard({
       </div>
       <div className="flex items-center justify-between gap-2 border-t border-white/8 px-3 py-2">
         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9.5px] font-semibold ${STATUS_CLS[row.status] ?? STATUS_CLS.pending}`}>
-          {STATUS_BN[row.status] ?? row.status}
+          {STATUS_LABEL[row.status] ? b(...STATUS_LABEL[row.status]!) : row.status}
         </span>
         {busy ? (
-          <span className="text-[11px] text-white/70">· চলছে …</span>
+          <span className="text-[11px] text-white/70">· {b("চলছে …", "working…")}</span>
         ) : (
           <div className="flex items-center gap-1.5">
             {row.status !== "approved" && (
-              <button onClick={() => onAct(row.id, "approve")} title="অনুমোদন করুন"
+              <button onClick={() => onAct(row.id, "approve")} title={b("অনুমোদন করুন", "Approve")}
                 className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/60 hover:border-lime/60 hover:text-lime">✓</button>
             )}
             {row.status !== "blocked" && (
-              <button onClick={() => onAct(row.id, "block")} title="ব্লক করুন"
+              <button onClick={() => onAct(row.id, "block")} title={b("ব্লক করুন", "Block")}
                 className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/60 hover:border-amberx/60 hover:text-amberx">⊘</button>
             )}
-            <button onClick={() => onAct(row.id, "delete")} title="মুছে ফেলুন"
+            <button onClick={() => onAct(row.id, "delete")} title={b("মুছে ফেলুন", "Delete")}
               className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/60 hover:border-rose-400/60 hover:text-rose-300">🗑</button>
           </div>
         )}

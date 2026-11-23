@@ -8,6 +8,7 @@ import Link from "next/link";
 import { QuickImageButton } from "./QuickImageButton";
 import { OriginMark, PostCover } from "./PostCover";
 import { imageOrigin } from "@/lib/image-origin";
+import { useBi } from "@/components/i18n/LocaleProvider";
 
 /**
  * One reviewable story, as a card.
@@ -38,6 +39,7 @@ export function ModerationCard({
   /** A desk that needs a second signature: bulk approval is not offered. */
   locked?: boolean;
 }) {
+  const b = useBi();
   const [busy, setBusy] = useState<null | string>(null);
   const [note, setNote] = useState("");
   const run = useAdminAction();
@@ -51,9 +53,9 @@ export function ModerationCard({
   async function act(action: "approve" | "publish" | "reject") {
     setBusy(action);
     const labels = {
-      approve: { busy: "অনুমোদন দেওয়া হচ্ছে…", success: "✓ অনুমোদন সম্পন্ন" },
-      publish: { busy: "প্রকাশ করা হচ্ছে…", success: "✓ পোস্ট প্রকাশিত" },
-      reject: { busy: "প্রত্যাখ্যান করা হচ্ছে…", success: "✓ প্রত্যাখ্যান সম্পন্ন" },
+      approve: { busy: b("অনুমোদন দেওয়া হচ্ছে…", "Approving…"), success: b("✓ অনুমোদন সম্পন্ন", "✓ Approved") },
+      publish: { busy: b("প্রকাশ করা হচ্ছে…", "Publishing…"), success: b("✓ পোস্ট প্রকাশিত", "✓ Post published") },
+      reject: { busy: b("প্রত্যাখ্যান করা হচ্ছে…", "Rejecting…"), success: b("✓ প্রত্যাখ্যান সম্পন্ন", "✓ Rejected") },
     }[action];
     const data = await run({
       path: `/api/moderation/${post.id}`,
@@ -65,8 +67,14 @@ export function ModerationCard({
       success: labels.success,
       detail: (d) => {
         const r = d as { status?: string; approverRequired?: boolean } | null;
-        if (r?.approverRequired) return "দ্বিতীয় অনুমোদন প্রয়োজন — approver স্বাক্ষর ছাড়া প্রকাশ হবে না।";
-        return r?.status ? `বর্তমান অবস্থা: ${r.status}` : undefined;
+        if (r?.approverRequired)
+          return b(
+            "দ্বিতীয় অনুমোদন প্রয়োজন — approver স্বাক্ষর ছাড়া প্রকাশ হবে না।",
+            "A second approval is required — nothing publishes without an approver's signature.",
+          );
+        return r?.status
+          ? b(`বর্তমান অবস্থা: ${r.status}`, `Current status: ${r.status}`)
+          : undefined;
       },
     });
     setBusy(null);
@@ -86,14 +94,21 @@ export function ModerationCard({
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-[#0b0e14]/90 via-[#0b0e14]/40 to-transparent" />
         <label
           className="absolute top-1.5 left-1.5 flex h-5 w-5 cursor-pointer items-center justify-center border border-ink/30 bg-paper"
-          title={locked ? "দ্বিতীয় অনুমোদন প্রয়োজন — এককভাবে অনুমোদন করুন" : "বাল্ক অনুমোদনের জন্য নির্বাচন"}
+          title={
+            locked
+              ? b(
+                  "দ্বিতীয় অনুমোদন প্রয়োজন — এককভাবে অনুমোদন করুন",
+                  "A second approval is required — approve this one on its own",
+                )
+              : b("বাল্ক অনুমোদনের জন্য নির্বাচন", "Select for bulk approval")
+          }
         >
           <input
             type="checkbox"
             checked={selected}
             disabled={locked || !onSelect}
             onChange={(e) => onSelect?.(post.id, e.target.checked)}
-            aria-label={`${post.title_bn} নির্বাচন করুন`}
+            aria-label={b(`${post.title_bn} নির্বাচন করুন`, `Select ${post.title_bn}`)}
             className="h-4 w-4 border border-ink/50 accent-alizarin disabled:opacity-40"
           />
         </label>
@@ -123,7 +138,7 @@ export function ModerationCard({
           <Link
             href={`/post/${post.slug}`}
             className="font-mono-x text-[9px] text-ink-soft underline hover:text-alizarin"
-            title="পাবলিক পোস্ট দেখুন"
+            title={b("পাবলিক পোস্ট দেখুন", "Open the public post")}
           >
             /post ↗
           </Link>
@@ -131,8 +146,8 @@ export function ModerationCard({
 
         <input
           type="text"
-          placeholder="নোট (ঐচ্ছিক)"
-          aria-label="নোট"
+          placeholder={b("নোট (ঐচ্ছিক)", "Note (optional)")}
+          aria-label={b("নোট", "Note")}
           className="w-full border border-ink/25 bg-paper px-1.5 py-1 text-[11px] focus:outline-none"
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -141,11 +156,11 @@ export function ModerationCard({
         <div className="flex items-center gap-1 pb-2">
           {queue === "pending" ? (
             <>
-              <ActionBtn label="অনুমোদন" busy={busy === "approve"} onClick={() => act("approve")} color="cat-teal" />
-              <ActionBtn label="প্রত্যাখ্যান" busy={busy === "reject"} onClick={() => act("reject")} color="alizarin" />
+              <ActionBtn label={b("অনুমোদন", "Approve")} busy={busy === "approve"} onClick={() => act("approve")} color="cat-teal" />
+              <ActionBtn label={b("প্রত্যাখ্যান", "Reject")} busy={busy === "reject"} onClick={() => act("reject")} color="alizarin" />
             </>
           ) : (
-            <ActionBtn label="প্রকাশ করুন" busy={busy === "publish"} onClick={() => act("publish")} color="cat-blue" />
+            <ActionBtn label={b("প্রকাশ করুন", "Publish")} busy={busy === "publish"} onClick={() => act("publish")} color="cat-blue" />
           )}
         </div>
       </div>
@@ -154,6 +169,7 @@ export function ModerationCard({
 }
 
 function ActionBtn({ label, busy, onClick, color }: { label: string; busy: boolean; onClick: () => void; color: string }) {
+  const busyLabel = useBi()("চলছে…", "Working…");
   const bg = color === "cat-teal" ? "bg-cat-teal" : color === "alizarin" ? "bg-alizarin" : "bg-cat-blue";
   return (
     <button
@@ -163,7 +179,7 @@ function ActionBtn({ label, busy, onClick, color }: { label: string; busy: boole
     >
       {busy ? (
         <span className="inline-flex items-center gap-1">
-          <Loader2 size={10} className="animate-spin" /> চলছে…
+          <Loader2 size={10} className="animate-spin" /> {busyLabel}
         </span>
       ) : (
         label

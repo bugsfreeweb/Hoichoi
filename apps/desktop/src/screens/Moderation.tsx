@@ -4,14 +4,16 @@ import { toBn, bnTime } from "../lib/format";
 import { deskModeration, deskModerationSet, type DeskComment } from "../lib/tauri";
 import { getRunEnv, isCloudSync } from "../lib/vault";
 import { toast } from "../lib/toast";
+import { useDeskLocale } from "../lib/locale";
 
 type Filter = "all" | "pending" | "approved" | "blocked";
 
-const FILTER_BN: Record<Filter, string> = {
-  all: "সব",
-  pending: "অপেক্ষমান",
-  approved: "অনুমোদিত",
-  blocked: "ব্লকড",
+/** Filter names as pairs; the panel prints the half the desk reads. */
+const FILTER_LABEL: Record<Filter, readonly [string, string]> = {
+  all: ["সব", "All"],
+  pending: ["অপেক্ষমান", "Waiting"],
+  approved: ["অনুমোদিত", "Approved"],
+  blocked: ["ব্লকড", "Blocked"],
 };
 
 const STATUS_PILL: Record<string, string> = {
@@ -21,6 +23,7 @@ const STATUS_PILL: Record<string, string> = {
 };
 
 export default function Moderation() {
+  const { b } = useDeskLocale();
   const [rows, setRows] = useState<DeskComment[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const [busy, setBusy] = useState<string | null>(null);
@@ -46,7 +49,7 @@ export default function Moderation() {
       setSelected(new Set());
     } catch (e) {
       setErr(String(e));
-      toast.err("মন্তব্য লোড ব্যর্থ", String(e));
+      toast.err(b("মন্তব্য লোড ব্যর্থ", "Could not load comments"), String(e));
     } finally {
       setLoading(false);
     }
@@ -69,12 +72,22 @@ export default function Moderation() {
     setErr(null);
     try {
       await deskModerationSet(await getRunEnv(), c.id, status);
-      setMsg(status === "approved" ? `মন্তব্যটি অনুমোদিত হয়েছে।` : `মন্তব্যটি ব্লক হয়েছে।`);
-      toast.ok(status === "approved" ? "মন্তব্য অনুমোদিত" : "মন্তব্য ব্লক", c.author);
+      setMsg(
+      status === "approved"
+        ? b("মন্তব্যটি অনুমোদিত হয়েছে।", "The comment is approved.")
+        : b("মন্তব্যটি ব্লক হয়েছে।", "The comment is blocked."),
+    );
+      toast.ok(
+      status === "approved" ? b("মন্তব্য অনুমোদিত", "Comment approved") : b("মন্তব্য ব্লক", "Comment blocked"),
+      c.author,
+    );
       await load();
     } catch (e) {
       setErr(String(e));
-      toast.err(status === "approved" ? "অনুমোদন ব্যর্থ" : "ব্লক ব্যর্থ", String(e));
+      toast.err(
+      status === "approved" ? b("অনুমোদন ব্যর্থ", "Approval failed") : b("ব্লক ব্যর্থ", "Block failed"),
+      String(e),
+    );
     } finally {
       setBusy(null);
     }
@@ -82,11 +95,19 @@ export default function Moderation() {
 
   const bulkAct = async (status: "approved" | "blocked") => {
     if (selected.size === 0) return;
-    if (!window.confirm(`${toBn(selected.size)}টি মন্তব্য ${status === "approved" ? "অনুমোদন" : "ব্লক"} করবেন?`)) return;
+    const verb = status === "approved" ? b("অনুমোদন", "approve") : b("ব্লক", "block");
+    if (
+      !window.confirm(
+        b(
+          `${toBn(selected.size)}টি মন্তব্য ${verb} করবেন?`,
+          `${verb === "approve" ? "Approve" : "Block"} ${selected.size} comments?`,
+        ),
+      )
+    )
+      return;
     setBusy("bulk");
     setErr(null);
     setBulkProgress({ done: 0, total: selected.size });
-    const verb = status === "approved" ? "অনুমোদন" : "ব্লক";
     // Each comment is a separate write, so a failure halfway through leaves a
     // partial result. Report exactly what landed rather than a blanket "failed"
     // that hides which items still need attention.
@@ -105,21 +126,29 @@ export default function Moderation() {
       }
       const okCount = done;
       if (failed.length === 0) {
-        setMsg(`${toBn(okCount)}টি মন্তব্য ${verb} হয়েছে।`);
-        toast.ok(`আইটেম ${toBn(okCount)}টির ${verb} সম্পন্ন`, "মডারেশন অবস্থা হালনাগাদ");
+        setMsg(
+          b(`${toBn(okCount)}টি মন্তব্য ${verb} হয়েছে।`, `${okCount} comments: ${verb} done.`),
+        );
+        toast.ok(
+          b(`আইটেম ${toBn(okCount)}টির ${verb} সম্পন্ন`, `${okCount} items ${verb}: done`),
+          b("মডারেশন অবস্থা হালনাগাদ", "Moderation state refreshed"),
+        );
       } else {
         setErr(
-          `${toBn(okCount)}টি ${verb} হয়েছে, ${toBn(failed.length)}টি ব্যর্থ। বাকিগুলো আবার চেষ্টা করুন।`,
+          b(
+            `${toBn(okCount)}টি ${verb} হয়েছে, ${toBn(failed.length)}টি ব্যর্থ। বাকিগুলো আবার চেষ্টা করুন।`,
+            `${okCount} succeeded, ${failed.length} failed. Try the rest again.`,
+          ),
         );
         toast.err(
-          `আংশিক সফল — ${toBn(failed.length)}টি ব্যর্থ`,
-          `${toBn(okCount)}টি ${verb} হয়েছে।`,
+          b(`আংশিক সফল — ${toBn(failed.length)}টি ব্যর্থ`, `Partly done — ${failed.length} failed`),
+          b(`${toBn(okCount)}টি ${verb} হয়েছে।`, `${okCount} succeeded.`),
         );
       }
       await load();
     } catch (e) {
       setErr(String(e));
-      toast.err("বাল্ক অ্যাকশন ব্যর্থ", String(e));
+      toast.err(b("বাল্ক অ্যাকশন ব্যর্থ", "The bulk action failed"), String(e));
     } finally {
       setBulkProgress(null);
       setBusy(null);
@@ -173,7 +202,7 @@ export default function Moderation() {
       <div className="flex flex-wrap items-center gap-3 border-b border-white/8 px-5 py-3.5">
         <p className="flex items-center gap-2 font-serif-bn text-[17px] font-bold text-white">
           <ShieldCheck size={16} className="text-lime" />
-          মন্তব্য মডারেশন
+          {b("মন্তব্য মডারেশন", "Comment moderation")}
         </p>
         <span className="font-mono-x text-[9.5px] tracking-[0.2em] text-white/35 uppercase">
           PENDING → APPROVED · BLOCKED
@@ -182,12 +211,16 @@ export default function Moderation() {
           className={`flex items-center gap-1 rounded-full px-2 py-1 font-mono-x text-[9.5px] ${
             driver === "cloud" ? "bg-lime/15 text-lime" : "bg-sky-400/12 text-sky-300"
           }`}
-          title={driver === "cloud" ? "Turso ক্লাউড DB — সাইটের সাথে শেয়ারড" : "লোকাল file DB"}
+          title={
+                driver === "cloud"
+                  ? b("Turso ক্লাউড DB — সাইটের সাথে শেয়ারড", "Turso cloud DB — shared with the site")
+                  : b("লোকাল file DB", "Local file DB")
+              }
         >
           <Database size={10} /> {driver === "cloud" ? "CLOUD SYNC" : "LOCAL DB"}
         </span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          {(Object.keys(FILTER_BN) as Filter[]).map((f) => (
+          {(Object.keys(FILTER_LABEL) as Filter[]).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -195,7 +228,7 @@ export default function Moderation() {
                 filter === f ? "bg-white text-night" : "text-white/50 hover:bg-white/8"
               }`}
             >
-              {FILTER_BN[f]}{" "}
+              {b(...FILTER_LABEL[f])}{" "}
               <span className={`font-mono-x text-[9.5px] ${filter === f ? "text-night/60" : "text-white/35"}`}>
                 {toBn(counts[f])}
               </span>
@@ -205,7 +238,7 @@ export default function Moderation() {
             onClick={() => void load()}
             disabled={loading}
             className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/70 hover:border-lime/50 hover:text-lime disabled:opacity-50"
-            title="রিফ্রেশ"
+            title={b("রিফ্রেশ", "Refresh")}
           >
             {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
           </button>
@@ -227,7 +260,12 @@ export default function Moderation() {
         {shown.length === 0 && (
           <div className="flex flex-col items-center gap-3 py-20 text-center">
             <MessageSquareText size={28} className="text-white/25" />
-            <p className="text-[12.5px] text-white/35">কোনো মন্তব্য নেই — নতুন মন্তব্য ওয়েব সাইটে জমা হলে এখানে ধরা পড়বে।</p>
+            <p className="text-[12.5px] text-white/35">
+            {b(
+              "কোনো মন্তব্য নেই — নতুন মন্তব্য ওয়েব সাইটে জমা হলে এখানে ধরা পড়বে।",
+              "No comments — a comment submitted on the site shows up here.",
+            )}
+          </p>
           </div>
         )}
         <div className="flex flex-wrap items-center gap-2 border-b border-white/8 px-5 py-2">
@@ -242,9 +280,11 @@ export default function Moderation() {
                 )
               }
             />
-            সব নির্বাচন
+            {b("সব নির্বাচন", "Select all")}
           </label>
-          <span className="font-mono-x text-[10px] text-white/35">{toBn(selected.size)} নির্বাচিত</span>
+          <span className="font-mono-x text-[10px] text-white/35">
+              {b(`${toBn(selected.size)} নির্বাচিত`, `${selected.size} selected`)}
+            </span>
           <div className="ml-auto flex items-center gap-2">
             {bulkProgress && (
               <span className="flex items-center gap-1.5 font-mono-x text-[10px] text-lime">
@@ -259,18 +299,21 @@ export default function Moderation() {
                   disabled={busy !== null}
                   className="flex items-center gap-1 rounded-lg bg-lime px-3 py-1 text-[10.5px] font-bold text-night disabled:opacity-40"
                 >
-                  <Check size={11} /> বাল্ক অনুমোদন
+                  <Check size={11} /> {b("বাল্ক অনুমোদন", "Bulk approve")}
                 </button>
                 <button
                   onClick={() => void bulkAct("blocked")}
                   disabled={busy !== null}
                   className="flex items-center gap-1 rounded-lg bg-rose-500/80 px-3 py-1 text-[10.5px] font-bold text-white disabled:opacity-40"
                 >
-                  <Ban size={11} /> বাল্ক ব্লক
+                  <Ban size={11} /> {b("বাল্ক ব্লক", "Bulk block")}
                 </button>
               </>
             )}
-            <span className="font-mono-x text-[9.5px] text-white/30">j=অনুমোদন · k=ব্লক · space=নির্বাচন · ↑↓/w-s=চালনা</span>
+            <span className="font-mono-x text-[9.5px] text-white/30">{b(
+              "j=অনুমোদন · k=ব্লক · space=নির্বাচন · ↑↓/w-s=চালনা",
+              "j=approve · k=block · space=select · ↑↓/w-s=move",
+            )}</span>
           </div>
         </div>
 
@@ -317,7 +360,7 @@ export default function Moderation() {
                     onClick={() => void act(c, "approved")}
                     disabled={busy === c.id}
                     className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/60 transition-colors hover:border-lime/60 hover:text-lime disabled:opacity-40"
-                    title="অনুমোদন"
+                    title={b("অনুমোদন", "Approve")}
                   >
                     <Check size={12} />
                   </button>
@@ -327,7 +370,7 @@ export default function Moderation() {
                     onClick={() => void act(c, "blocked")}
                     disabled={busy === c.id}
                     className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 text-white/60 transition-colors hover:border-rose-400/60 hover:text-rose-300 disabled:opacity-40"
-                    title="ব্লক"
+                    title={b("ব্লক", "Block")}
                   >
                     <Ban size={12} />
                   </button>

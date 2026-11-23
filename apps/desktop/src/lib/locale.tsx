@@ -35,6 +35,11 @@ interface DeskLocale {
   toggle: () => void;
   /** `t()` bound to the chosen language. */
   t: (key: MessageKey, params?: Params) => string;
+  /**
+   * `b("বাংলা", "English")` for desk prose that exists in one screen only —
+   * same idea as the web's `useBi`, see `Bilingual` in `@hoichoi/i18n`.
+   */
+  b: (bn: string, en: string) => string;
 }
 
 const DeskLocaleContext = createContext<DeskLocale | null>(null);
@@ -72,6 +77,7 @@ export function DeskLocaleProvider({ children }: { children: ReactNode }) {
       setLocale,
       toggle: () => setLocale(otherLocale(locale)),
       t: (key: MessageKey, params?: Params) => translate(key, params, locale),
+      b: (bn: string, en: string) => (locale === "en" ? en : bn),
     }),
     [locale, setLocale],
   );
@@ -87,6 +93,8 @@ export function useDeskLocale(): DeskLocale {
       setLocale: () => undefined,
       toggle: () => undefined,
       t: (key: MessageKey, params?: Params) => translate(key, params, "bn"),
+      // Outside the provider the desk is Bangla, which is the bn half.
+      b: (bn: string, _en: string) => bn,
     }
   );
 }

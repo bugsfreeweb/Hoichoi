@@ -3,6 +3,7 @@ import { StorageView, TrafficView } from "@hoichoi/dash";
 import type { StorageSnapshot, TrafficRange, TrafficSnapshot } from "@hoichoi/shared-types";
 import { deskStorage, deskTraffic } from "../lib/tauri";
 import { getRunEnv } from "../lib/vault";
+import { useDeskLocale } from "../lib/locale";
 
 type Tab = "traffic" | "storage";
 
@@ -13,6 +14,7 @@ type Tab = "traffic" | "storage";
  * and the storage report in one screen without a second nav entry.
  */
 export default function Traffic() {
+  const { b } = useDeskLocale();
   const [tab, setTab] = useState<Tab>("traffic");
   const [range, setRange] = useState<TrafficRange>("24h");
   const [data, setData] = useState<TrafficSnapshot | null>(null);
@@ -57,7 +59,7 @@ export default function Traffic() {
             FIRST-PARTY · COOKIE-LESS
           </p>
           <h1 className="text-[22px] font-bold text-white">
-            {tab === "traffic" ? "ট্রাফিক অ্যানালিটিক্স" : "স্টোরেজ ও ডেটাবেস"}
+            {tab === "traffic" ? b("ট্রাফিক অ্যানালিটিক্স", "Traffic analytics") : b("স্টোরেজ ও ডেটাবেস", "Storage & database")}
           </h1>
         </div>
         <div className="flex items-center gap-2">
@@ -70,7 +72,7 @@ export default function Traffic() {
                   tab === t ? "bg-white text-night" : "text-white/60 hover:text-white"
                 }`}
               >
-                {t === "traffic" ? "ট্রাফিক" : "স্টোরেজ"}
+                {t === "traffic" ? b("ট্রাফিক", "Traffic") : b("স্টোরেজ", "Storage")}
               </button>
             ))}
           </div>
@@ -87,11 +89,11 @@ export default function Traffic() {
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
         {err && !data && tab === "traffic" ? (
           <div className="rounded-xl border border-rose-400/25 bg-rose-400/10 p-4 text-[12.5px] text-rose-200">
-            ট্রাফিক ডেটা লোড ব্যর্থ: {err}
+            {b("ট্রাফিক ডেটা লোড ব্যর্থ", "Could not load traffic data")}: {err}
           </div>
         ) : err && !storage && tab === "storage" ? (
           <div className="rounded-xl border border-rose-400/25 bg-rose-400/10 p-4 text-[12.5px] text-rose-200">
-            স্টোরেজ রিপোর্ট লোড ব্যর্থ: {err}
+            {b("স্টোরেজ রিপোর্ট লোড ব্যর্থ", "Could not load the storage report")}: {err}
           </div>
         ) : tab === "traffic" ? (
           <TrafficView data={data} range={range} onRange={setRange} loading={loading} error={err} />

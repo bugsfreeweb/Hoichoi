@@ -81,6 +81,20 @@ export function useLocale(): LocaleContextValue {
   );
 }
 
+/**
+ * `b("বাংলা", "English")` → the string in the reader's language.
+ *
+ * Console screens hold a lot of prose that exists in exactly one place; this
+ * keeps the pair next to the markup instead of inventing a key per sentence.
+ * See `Bilingual` in `@hoichoi/i18n` for why both mechanisms exist.
+ */
+export type BiHook = (bn: string, en: string) => string;
+
+export function useBi(): BiHook {
+  const { locale } = useLocale();
+  return useCallback((bn: string, en: string) => (locale === "en" ? en : bn), [locale]);
+}
+
 /** `t()` already bound to the reader's language: `const t = useT()`. */
 export function useT(): (key: MessageKey, params?: Params) => string {
   const { locale } = useLocale();

@@ -58,6 +58,63 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
+/**
+ * Every `b("...", "...")` / `bi("...", "...")` call in a file, as its two arguments.
+ *
+ * Deliberately a small scanner rather than a parser: it walks from the call to its
+ * matching bracket, splits on the top-level comma and keeps the quoted text.
+ * Calls whose argument is a variable are skipped — this check is about literals,
+ * which is exactly where a half-done translation shows.
+ */
+function inlinePairCalls(code: string): Array<[string, string]> {
+  const out: Array<[string, string]> = [];
+  const open = /(^|[^\w$.])(b|bi)\(/g;
+  for (const match of code.matchAll(open)) {
+    const start = (match.index ?? 0) + match[0].length;
+    let depth = 1;
+    let quote: string | null = null;
+    const args: string[] = [];
+    let current = "";
+    for (let i = start; i < code.length && depth > 0; i++) {
+      const ch = code[i] ?? "";
+      if (quote) {
+        current += ch;
+        if (ch === "\\") {
+          current += code[i + 1] ?? "";
+          i++;
+        } else if (ch === quote) {
+          quote = null;
+        }
+        continue;
+      }
+      if (ch === '"' || ch === "'" || ch === "`") {
+        quote = ch;
+        current += ch;
+        continue;
+      }
+      if (ch === "(") depth++;
+      else if (ch === ")") depth--;
+      else if (ch === "," && depth === 1) {
+        args.push(current);
+        current = "";
+        continue;
+      }
+      if (depth > 0) current += ch;
+    }
+    args.push(current);
+    if (args.length !== 2) continue;
+    const literal = (raw: string): string | null => {
+      const m = /^["'`]([\s\S]*)["'`]$/.exec(raw.trim());
+      return m ? (m[1] ?? "") : null;
+    };
+    const bn = literal(args[0] ?? "");
+    const en = literal(args[1] ?? "");
+    if (bn !== null && en !== null) out.push([bn, en]);
+  }
+  return out;
+}
+
+
 async function main(): Promise<void> {
   await check("every entry is translated in both languages", () => {
     assert.ok(MESSAGE_KEYS.length > 100, `the table is populated (${MESSAGE_KEYS.length} keys)`);
@@ -204,6 +261,49 @@ async function main(): Promise<void> {
       if (!entry.en) missing.push(`${key} has no English`);
     }
     assert.deepEqual(missing, [], missing.join("\n"));
+  });
+
+
+  /**
+   * Inline pairs must actually be pairs.
+   *
+   * The table cannot be the only home for text: console screens hold sentences
+   * that appear once, and 1,900 invented keys would be unreadable. Those are
+   * written as `b("বাংলা", "English")` next to the markup — so the guard is that
+   * every such call has two arguments, the first in Bangla and the second not.
+   * A half-finished migration (Bangla copied into both slots, or an empty English
+   * string) fails here instead of shipping as English-labelled Bangla.
+   */
+  await check("every inline bilingual pair is a real pair", () => {
+    const bad: string[] = [];
+    let pairs = 0;
+    for (const root of ["apps/web/src", "apps/desktop/src"]) {
+      for (const file of walk(resolve(ROOT, root))) {
+        if (!file.endsWith(".tsx") && !file.endsWith(".ts")) continue;
+        const code = readFileSync(file, "utf8")
+          .replace(/\/\*[\s\S]*?\*\//g, "")
+          .replace(/(^|\s)\/\/[^\n]*/g, "$1");
+        for (const [bn, en] of inlinePairCalls(code)) {
+          pairs++;
+          const where = file.replace(ROOT, "");
+          if (!/[\u0980-\u09FF]/.test(bn)) bad.push(`${where}: first argument is not Bangla: ${bn.slice(0, 40)}`);
+          if (en.trim().length === 0) bad.push(`${where}: empty English for: ${bn.slice(0, 40)}`);
+          if (/[\u0980-\u09FF]/.test(en)) bad.push(`${where}: English half still has Bangla: ${en.slice(0, 40)}`);
+        }
+      }
+    }
+    assert.ok(pairs >= 1, "the scanner found no inline pairs at all");
+    assert.deepEqual(bad, [], `broken pairs:\n${bad.join("\n")}`);
+  });
+
+
+  // The guard above is only worth having if it can see a broken pair, so the
+  // scanner is fed one and must report it.
+  await check("the pair scanner sees a broken pair", () => {
+    const found = inlinePairCalls('const b = useBi();\n<p>{b("বাংলা লেখা", "")}</p>;\n');
+    assert.deepEqual(found, [["বাংলা লেখা", ""]]);
+    const good = inlinePairCalls('b("বাংলা লেখা", "English text")');
+    assert.deepEqual(good, [["বাংলা লেখা", "English text"]]);
   });
 
   console.log(`\ni18n: ${passed} checks passed`);

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Post } from "@hoichoi/shared-types";
+import { useBi } from "@/components/i18n/LocaleProvider";
 
 /**
  * One archived post, with a permanent-delete control.
@@ -13,6 +14,7 @@ import type { Post } from "@hoichoi/shared-types";
  * a broken control.
  */
 export function ArchivedRow({ post }: { post: Post }) {
+  const b = useBi();
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export function ArchivedRow({ post }: { post: Post }) {
     });
     const data = (await res.json().catch(() => ({}))) as { error?: string };
     if (!res.ok) {
-      setError(data.error ?? "মুছে ফেলা যায়নি");
+      setError(data.error ?? b("মুছে ফেলা যায়নি", "Could not delete it"));
       setConfirming(false);
       return;
     }
@@ -52,9 +54,9 @@ export function ArchivedRow({ post }: { post: Post }) {
         {post.legal_hold ? (
           <span
             className="rounded-lg border border-alizarin/40 px-3 py-1.5 text-[11px] font-bold text-alizarin"
-            title="Legal hold থাকায় মুছে ফেলা যাবে না"
+            title={b("Legal hold থাকায় মুছে ফেলা যাবে না", "A legal hold blocks deletion")}
           >
-            🔒 হোল্ড
+            🔒 {b("হোল্ড", "Hold")}
           </span>
         ) : confirming ? (
           <span className="flex items-center gap-2">
@@ -63,7 +65,7 @@ export function ArchivedRow({ post }: { post: Post }) {
               disabled={pending}
               className="rounded-lg bg-alizarin px-3 py-1.5 text-[11px] font-bold text-on-accent transition-colors hover:bg-alizarin/80 disabled:opacity-60"
             >
-              {pending ? "মুছছে…" : "নিশ্চিত করুন"}
+              {pending ? b("মুছছে…", "Deleting…") : b("নিশ্চিত করুন", "Confirm")}
             </button>
             <button
               onClick={() => {
@@ -72,7 +74,7 @@ export function ArchivedRow({ post }: { post: Post }) {
               }}
               className="rounded-lg border border-ink/30 px-3 py-1.5 text-[11px] font-bold text-ink-soft transition-colors hover:border-ink"
             >
-              বাতিল
+              {b("বাতিল", "Cancel")}
             </button>
           </span>
         ) : (
@@ -80,7 +82,7 @@ export function ArchivedRow({ post }: { post: Post }) {
             onClick={() => setConfirming(true)}
             className="rounded-lg border border-ink/30 px-3 py-1.5 text-[11px] font-bold text-ink-soft transition-colors hover:border-alizarin hover:text-alizarin"
           >
-            স্থায়ীভাবে মুছুন
+            {b("স্থায়ীভাবে মুছুন", "Delete for good")}
           </button>
         )}
       </div>

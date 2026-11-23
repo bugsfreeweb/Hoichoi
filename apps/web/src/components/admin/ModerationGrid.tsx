@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useAdminAction } from "@/lib/admin-api";
+import { useBi } from "@/components/i18n/LocaleProvider";
 import type { Post } from "@hoichoi/shared-types";
 import { ModerationCard } from "./ModerationCard";
 
@@ -34,6 +35,7 @@ export function ModerationGrid({
   /** Post ids whose desk requires a second approval signature. */
   lockedIds: string[];
 }) {
+  const b = useBi();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<null | "approve" | "reject">(null);
@@ -62,8 +64,14 @@ export function ModerationGrid({
     const data = (await run({
       path: "/api/moderation/bulk",
       init: { method: "POST", body: JSON.stringify({ ids, action, note: note || undefined }) },
-      busy: action === "approve" ? "বাল্ক অনুমোদন চলছে…" : "বাল্ক প্রত্যাখ্যান চলছে…",
-      success: action === "approve" ? "✓ বাল্ক অনুমোদন সম্পন্ন" : "✓ বাল্ক প্রত্যাখ্যান সম্পন্ন",
+      busy:
+        action === "approve"
+          ? b("বাল্ক অনুমোদন চলছে…", "Bulk approval running…")
+          : b("বাল্ক প্রত্যাখ্যান চলছে…", "Bulk rejection running…"),
+      success:
+        action === "approve"
+          ? b("✓ বাল্ক অনুমোদন সম্পন্ন", "✓ Bulk approval finished")
+          : b("✓ বাল্ক প্রত্যাখ্যান সম্পন্ন", "✓ Bulk rejection finished"),
       detail: (d) => {
         const r = d as { approved?: number; rejected?: number; skipped?: unknown[]; failed?: unknown[] } | null;
         if (!r) return undefined;
@@ -71,10 +79,15 @@ export function ModerationGrid({
         const skipped = r.skipped?.length ?? 0;
         const failed = r.failed?.length ?? 0;
         const tail = [
-          skipped ? `${skipped}টি বাদ (দ্বিতীয় অনুমোদন বা ভুল অবস্থা)` : "",
-          failed ? `${failed}টি ব্যর্থ` : "",
+          skipped
+            ? b(`${skipped}টি বাদ (দ্বিতীয় অনুমোদন বা ভুল অবস্থা)`, `${skipped} skipped (needs a second approval, or wrong state)`)
+            : "",
+          failed ? b(`${failed}টি ব্যর্থ`, `${failed} failed`) : "",
         ].filter(Boolean);
-        return `${done}টি সম্পন্ন${tail.length ? " · " + tail.join(" · ") : ""}`;
+        return b(
+          `${done}টি সম্পন্ন${tail.length ? " · " + tail.join(" · ") : ""}`,
+          `${done} done${tail.length ? " · " + tail.join(" · ") : ""}`,
+        );
       },
     })) as { approved?: number; failed?: unknown[] } | null;
     setBusy(null);
@@ -95,15 +108,26 @@ export function ModerationGrid({
             onChange={toggleAll}
             className="h-4 w-4 border border-ink/50 accent-alizarin disabled:opacity-40"
           />
-          সব নির্বাচন
+          {b("সব নির্বাচন", "Select all")}
         </label>
         <span className="font-mono-x text-[10.5px] text-ink-soft">
-          {selected.size.toLocaleString("bn-BD")} নির্বাচিত
+          {b(
+            `${selected.size.toLocaleString("bn-BD")} নির্বাচিত`,
+            `${selected.size.toLocaleString("en-US")} selected`,
+          )}
           {" · "}
-          {selectable.length.toLocaleString("bn-BD")} নির্বাচনযোগ্য
+          {b(
+            `${selectable.length.toLocaleString("bn-BD")} নির্বাচনযোগ্য`,
+            `${selectable.length.toLocaleString("en-US")} selectable`,
+          )}
           {/* A locked card is not a bug in the count: it is a story that needs a
               second signature, and saying so is kinder than a silent 0. */}
-          {locked.size > 0 ? ` · ${locked.size.toLocaleString("bn-BD")}টি 🔒 এককভাবে সই করুন` : ""}
+          {locked.size > 0
+            ? b(
+                ` · ${locked.size.toLocaleString("bn-BD")}টি 🔒 এককভাবে সই করুন`,
+                ` · ${locked.size.toLocaleString("en-US")} 🔒 need a signature of their own`,
+              )
+            : ""}
         </span>
         {selected.size > 0 && (
           <>
@@ -111,7 +135,10 @@ export function ModerationGrid({
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="নোট (ঐচ্ছিক, সব নির্বাচিত পোস্টে যুক্ত হবে)"
+              placeholder={b(
+                "নোট (ঐচ্ছিক, সব নির্বাচিত পোস্টে যুক্ত হবে)",
+                "Note (optional, added to every selected post)",
+              )}
               className="min-w-[160px] flex-1 border border-ink/30 bg-paper px-2 py-1 text-[11.5px] focus:outline-none"
             />
             {queue === "pending" ? (
@@ -120,7 +147,7 @@ export function ModerationGrid({
                 disabled={busy !== null}
                 className="border-2 border-ink bg-cat-teal px-3 py-1 text-[11.5px] font-bold text-ink transition hover:brightness-95 disabled:opacity-50"
               >
-                {busy === "approve" ? "চলছে…" : `✓ ${selected.size}টি অনুমোদন`}
+                {busy === "approve" ? b("চলছে…", "Working…") : b(`✓ ${selected.size}টি অনুমোদন`, `✓ Approve ${selected.size}`)}
               </button>
             ) : null}
             <button
@@ -128,13 +155,13 @@ export function ModerationGrid({
               disabled={busy !== null}
               className="border-2 border-ink bg-alizarin px-3 py-1 text-[11.5px] font-bold text-ink transition hover:brightness-95 disabled:opacity-50"
             >
-              {busy === "reject" ? "চলছে…" : `✗ ${selected.size}টি প্রত্যাখ্যান`}
+              {busy === "reject" ? b("চলছে…", "Working…") : b(`✗ ${selected.size}টি প্রত্যাখ্যান`, `✗ Reject ${selected.size}`)}
             </button>
             <button
               onClick={() => setSelected(new Set())}
               className="border border-ink/30 bg-paper px-2 py-1 text-[11px] font-bold text-ink-soft hover:border-ink"
             >
-              বাতিল
+              {b("বাতিল", "Clear")}
             </button>
           </>
         )}

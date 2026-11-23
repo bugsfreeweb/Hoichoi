@@ -20,6 +20,9 @@ export {
 export type { Entry, Locale, MessageKey } from "./dictionary";
 
 export {
+  bi,
+  biFor,
+  pick,
   formatDate,
   formatDateTime,
   formatNumber,
@@ -31,4 +34,4 @@ export {
   t,
   tBoth,
 } from "./runtime";
-export type { DateOptions, Params } from "./runtime";
+export type { BiFn, Bilingual, DateOptions, Params } from "./runtime";

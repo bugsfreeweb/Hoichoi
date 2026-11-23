@@ -6,6 +6,8 @@ import { ModerationGrid } from "@/components/admin/ModerationGrid";
 import { ModerationListRow } from "@/components/admin/ModerationListRow";
 import { ViewToggle } from "@/components/admin/ui/ViewToggle";
 import { viewFromSearch } from "@/lib/view";
+import { biFor } from "@hoichoi/i18n";
+import { getLocale } from "@/lib/locale";
 import { Paginator } from "@/components/admin/Paginator";
 
 export const dynamic = "force-dynamic";
@@ -64,6 +66,8 @@ export default async function AdminModerationPage({
   // Reader comments live on their own moderation page (/admin/comments) — the
   // comment queue was split out of this content page so a post editor looking
   // at article queues does not scroll past reader-submitted text to do their job.
+  // This is a server component, so it builds its own pair function.
+  const b = biFor(await getLocale());
   return (
     <div>
       <SectionTabs
@@ -71,25 +75,39 @@ export default async function AdminModerationPage({
         current="/admin/moderation"
         label={MODERATION_SECTION.label}
       />
-      <PageHeading emoji="⚖️" kicker="DOUBLE-APPROVAL GATE" title="কনটেন্ট মডারেশন" description="AI-উৎপাদিত খসড়া দুই ধাপের অনুমোদনের পর প্রকাশিত হয়। নোট লিখে অনুমোদন, প্রত্যাখ্যান বা প্রকাশ করুন।" />
+      <PageHeading
+        emoji="⚖️"
+        kicker="DOUBLE-APPROVAL GATE"
+        title={b("কনটেন্ট মডারেশন", "Content moderation")}
+        description={b(
+          "AI-উৎপাদিত খসড়া দুই ধাপের অনুমোদনের পর প্রকাশিত হয়। নোট লিখে অনুমোদন, প্রত্যাখ্যান বা প্রকাশ করুন।",
+          "AI-written drafts publish only after two approvals. Approve, reject or publish with a note.",
+        )}
+      />
       <p className="mt-2 text-[12.5px] text-ink-soft">
-        প্রকাশের আগে দুই ধাপের যাচাই। পাঠকের মন্তব্য আলাদা কিউতে —{" "}
+        {b(
+          "প্রকাশের আগে দুই ধাপের যাচাই। পাঠকের মন্তব্য আলাদা কিউতে —",
+          "Two gates before anything publishes. Reader comments sit in their own queue —",
+        )}{" "}
         <a href="/admin/comments" className="font-bold text-alizarin underline underline-offset-2">
-          মন্তব্য মডারেশন ↗
+          {b("মন্তব্য মডারেশন ↗", "Comment moderation ↗")}
         </a>
         .
       </p>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[12px] text-ink-soft">
-          কার্ডে ছবি ও সারাংশ দেখে দ্রুত সিদ্ধান্ত নিন; লিস্টে এক লাইনে বড় ব্যাকলগ স্ক্যান করুন।
+          {b(
+            "কার্ডে ছবি ও সারাংশ দেখে দ্রুত সিদ্ধান্ত নিন; লিস্টে এক লাইনে বড় ব্যাকলগ স্ক্যান করুন।",
+            "Cards show the picture and summary for a quick call; the list scans a large backlog one line at a time.",
+          )}
         </p>
-        <ViewToggle labelBn="দেখার ধরন" />
+        <ViewToggle labelBn={b("দেখার ধরন", "View")} />
       </div>
       <div className="mt-6 grid gap-10">
         <section>
-          <QueueTitle color="amberx" count={pending.total} label="অনুমোদনের অপেক্ষায়" />
+          <QueueTitle color="amberx" count={pending.total} label={b("অনুমোদনের অপেক্ষায়", "Waiting for the first approval")} />
           <div className="mt-3">
-            {pending.rows.length === 0 && <Empty msg="অনুমোদনের অপেক্ষায় কোনো পোস্ট নেই। চমৎকার!" />}
+            {pending.rows.length === 0 && <Empty msg={b("অনুমোদনের অপেক্ষায় কোনো পোস্ট নেই। চমৎকার!", "Nothing is waiting for approval. Good.")} />}
             {view === "card" && pending.rows.length > 0 ? (
               <ModerationGrid posts={pending.rows} queue="pending" lockedIds={lockedIds(pending.rows)} />
             ) : view === "card" ? null : (
@@ -110,12 +128,18 @@ export default async function AdminModerationPage({
           />
         </section>
         <section>
-          <QueueTitle color="cat-blue" count={approved.total} label="দ্বিতীয়-অনুমোদনের (সম্পাদক-অনুমোদনের) অপেক্ষায়" />
+          <QueueTitle color="cat-blue" count={approved.total} label={b(
+              "দ্বিতীয়-অনুমোদনের (সম্পাদক-অনুমোদনের) অপেক্ষায়",
+              "Waiting for the second (editor) approval",
+            )} />
           <p className="mt-1 text-[12.5px] text-ink-soft">
-            child-sexual-abuse বিভাগের জন্য চার-স্তরের (fact+editor+human+legal) যাচাই - প্রকাশের আগে approver লিখে স্বাক্ষর করতে হয়
+            {b(
+              "child-sexual-abuse বিভাগের জন্য চার-স্তরের (fact+editor+human+legal) যাচাই - প্রকাশের আগে approver লিখে স্বাক্ষর করতে হয়",
+              "child-sexual-abuse needs four gates (fact + editor + human + legal) — an approver has to sign in writing before it publishes",
+            )}
           </p>
           <div className="mt-3">
-            {approved.rows.length === 0 && <Empty msg="কোনো পোস্ট নেই।" />}
+            {approved.rows.length === 0 && <Empty msg={b("কোনো পোস্ট নেই।", "No posts here.")} />}
             {view === "card" && approved.rows.length > 0 ? (
               <ModerationGrid posts={approved.rows} queue="approved" lockedIds={lockedIds(approved.rows)} />
             ) : view === "card" ? null : (

@@ -9,6 +9,7 @@ import {
 } from "../lib/tauri";
 import { getRunEnv, isCloudSync } from "../lib/vault";
 import { toast } from "../lib/toast";
+import { useDeskLocale } from "../lib/locale";
 
 /**
  * The archive, on the desk.
@@ -36,15 +37,21 @@ import { toast } from "../lib/toast";
  * that turns it into a sentence an operator can act on. An unrecognised error is
  * passed through untouched rather than hidden behind a generic line.
  */
-function deleteRefusal(err: unknown): string {
+function deleteRefusal(err: unknown, b: (bn: string, en: string) => string): string {
   const raw = err instanceof Error ? err.message : String(err);
-  if (/not found/i.test(raw)) return "পোস্টটি পাওয়া যায়নি।";
-  if (/not archived/i.test(raw)) return "এই পোস্টটি আর্কাইভড নয় — স্থায়ীভাবে মোছা যাবে না।";
-  if (/legal hold/i.test(raw)) return "এই পোস্টে legal hold আছে — মোছা যাবে না।";
+  if (/not found/i.test(raw)) return b("পোস্টটি পাওয়া যায়নি।", "That post does not exist.");
+  if (/not archived/i.test(raw)) {
+    return b(
+      "এই পোস্টটি আর্কাইভড নয় — স্থায়ীভাবে মোছা যাবে না।",
+      "This post is not archived — it cannot be deleted for good.",
+    );
+  }
+  if (/legal hold/i.test(raw)) return b("এই পোস্টে legal hold আছে — মোছা যাবে না।", "This post is on legal hold — it cannot be deleted.");
   return raw;
 }
 
 export default function Archive() {
+  const { b } = useDeskLocale();
   const [data, setData] = useState<DeskArchivePayload | null>(null);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -61,7 +68,7 @@ export default function Archive() {
       setData(await deskArchive(env, target));
       setPage(target);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "আর্কাইভ পড়া যায়নি");
+      setErr(e instanceof Error ? e.message : b("আর্কাইভ পড়া যায়নি", "The archive could not be read"));
     } finally {
       setLoading(false);
     }
@@ -72,15 +79,23 @@ export default function Archive() {
   }, [load]);
 
   async function removeOne(row: { id: string; title_bn: string }) {
-    if (!window.confirm(`"${row.title_bn.slice(0, 60)}" স্থায়ীভাবে মুছে ফেলা হবে। ফেরানো যাবে না।`)) return;
+    if (
+      !window.confirm(
+        b(
+          `"${row.title_bn.slice(0, 60)}" স্থায়ীভাবে মুছে ফেলা হবে। ফেরানো যাবে না।`,
+          `"${row.title_bn.slice(0, 60)}" will be deleted for good. This cannot be undone.`,
+        ),
+      )
+    )
+      return;
     setBusy(row.id);
     setErr(null);
     try {
       await deskArchiveDelete(await getRunEnv(), row.id);
-      toast.ok("মুছে ফেলা হয়েছে");
+      toast.ok(b("মুছে ফেলা হয়েছে", "Deleted"));
       await load(page);
     } catch (e) {
-      const msg = deleteRefusal(e);
+      const msg = deleteRefusal(e, b);
       setErr(msg);
       toast.err(msg);
     } finally {
@@ -92,7 +107,10 @@ export default function Archive() {
     if (!data) return;
     if (
       !window.confirm(
-        `${toBn(data.retentionDays)} দিনের বেশি পুরনো ${toBn(data.expiredCount)}টি পোস্ট স্থায়ীভাবে মুছে যাবে। legal hold ও সক্রিয় নিখোঁজ মামলা বাদ যাবে। নিশ্চিত?`,
+        b(
+          `${toBn(data.retentionDays)} দিনের বেশি পুরনো ${toBn(data.expiredCount)}টি পোস্ট স্থায়ীভাবে মুছে যাবে। legal hold ও সক্রিয় নিখোঁজ মামলা বাদ যাবে। নিশ্চিত?`,
+          `Every post older than ${data.retentionDays} days (${data.expiredCount}) will be deleted for good. Legal holds and active missing-person cases are skipped. Continue?`,
+        ),
       )
     )
       return;
@@ -101,13 +119,16 @@ export default function Archive() {
     try {
       const res = await deskArchivePurge(await getRunEnv(), data.retentionDays);
       const kept = res.skippedLegalHold + res.skippedActiveCase;
-      toast.ok(
-        `${toBn(res.deleted)}টি মুছে ফেলা হয়েছে` +
-          (kept ? ` · ${toBn(kept)}টি সুরক্ষায় রাখা হয়েছে` : ""),
-      );
+      // Each half of the sentence is a pair of its own, joined after the choice —
+      // that keeps both languages visible to the bilingual guard and lets the
+      // "kept" clause disappear when nothing was kept.
+      const keptNote = kept
+        ? b(` · ${toBn(kept)}টি সুরক্ষায় রাখা হয়েছে`, ` · ${kept} kept under protection`)
+        : "";
+      toast.ok(b(`${toBn(res.deleted)}টি মুছে ফেলা হয়েছে`, `${res.deleted} deleted`) + keptNote);
       await load(1);
     } catch (e) {
-      const msg = deleteRefusal(e);
+      const msg = deleteRefusal(e, b);
       setErr(msg);
       toast.err(msg);
     } finally {
@@ -127,16 +148,20 @@ export default function Archive() {
         <div>
           <p className="font-mono-x text-[9.5px] tracking-[0.2em] text-white/35 uppercase">RETENTION</p>
           <h2 className="mt-1 flex items-center gap-2 font-serif-bn text-[17px] font-bold text-white">
-            <ArchiveIcon size={16} aria-hidden className="text-white/50" /> আর্কাইভ
+            <ArchiveIcon size={16} aria-hidden className="text-white/50" /> {b("আর্কাইভ", "Archive")}
           </h2>
           <p className="mt-1 max-w-[62ch] text-[12.5px] leading-relaxed text-white/60">
-            ওয়েবসাইটে কেবল {toBn(data?.visibleDays ?? 7)} দিনের পোস্ট দেখায়; তার পুরনো পোস্ট এখানে জমা হয়, আর{" "}
-            {toBn(data?.retentionDays ?? 30)} দিনের বেশি পুরনো হলে স্থায়ীভাবে মুছে যায়।
-            {driver && <span className="ml-2 text-white/35">· DB: {driver === "cloud" ? "Turso" : "লোকাল"}</span>}
+            {b("ওয়েবসাইটে কেবল ", "The website shows only ")}
+            {b(`${toBn(data?.visibleDays ?? 7)} দিনের পোস্ট দেখায়; তার পুরনো পোস্ট এখানে জমা হয়, আর`, `${data?.visibleDays ?? 7} days of posts; anything older collects here, and`)}{" "}
+            {b(
+              `${toBn(data?.retentionDays ?? 30)} দিনের বেশি পুরনো হলে স্থায়ীভাবে মুছে যায়।`,
+              `anything past ${data?.retentionDays ?? 30} days is deleted for good.`,
+            )}
+            {driver && <span className="ml-2 text-white/35">· DB: {driver === "cloud" ? "Turso" : b("লোকাল", "local")}</span>}
           </p>
         </div>
         <button className={ghostBtn} onClick={() => void load(page)} disabled={loading}>
-          <RotateCw size={14} className={loading ? "animate-spin" : ""} /> রিফ্রেশ
+          <RotateCw size={14} className={loading ? "animate-spin" : ""} /> {b("রিফ্রেশ", "Refresh")}
         </button>
       </div>
 
@@ -149,19 +174,25 @@ export default function Archive() {
       <section className="rounded-xl border border-white/10 bg-white/[0.03]">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
           <h3 className="font-mono-x text-[10px] tracking-[0.16em] text-white/45 uppercase">
-            মেয়াদোত্তীর্ণ · {toBn(data?.retentionDays ?? 30)} দিনের বেশি পুরনো · {toBn(data?.expiredCount ?? 0)}টি
+            {b(
+              `মেয়াদোত্তীর্ণ · ${toBn(data?.retentionDays ?? 30)} দিনের বেশি পুরনো · ${toBn(data?.expiredCount ?? 0)}টি`,
+              `Expired · older than ${data?.retentionDays ?? 30} days · ${data?.expiredCount ?? 0}`,
+            )}
           </h3>
           <button
             className={dangerBtn}
             onClick={() => void purgeExpired()}
             disabled={busy === "purge" || (data?.expiredCount ?? 0) === 0}
           >
-            <Trash2 size={14} /> সবগুলো মুছুন
+            <Trash2 size={14} /> {b("সবগুলো মুছুন", "Delete all")}
           </button>
         </div>
         {(data?.expired.length ?? 0) === 0 ? (
           <p className="px-3 py-5 text-center text-[12px] text-white/40">
-            মেয়াদোত্তীর্ণ কিছু নেই — সব পোস্ট {toBn(data?.retentionDays ?? 30)} দিনের ভিতরে।
+            {b(
+              `মেয়াদোত্তীর্ণ কিছু নেই — সব পোস্ট ${toBn(data?.retentionDays ?? 30)} দিনের ভিতরে।`,
+              `Nothing has expired — every post is inside ${data?.retentionDays ?? 30} days.`,
+            )}
           </p>
         ) : (
           <ul className="divide-y divide-white/[0.06]">
@@ -170,15 +201,15 @@ export default function Archive() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[12.5px] font-semibold text-white/85">{row.title_bn}</p>
                   <p className="font-mono-x text-[10px] text-white/40">
-                    {toBn(row.age_days)} দিন · {row.category}
-                    {row.archived_at ? " · আর্কাইভড" : " · এখনো লাইভ"}
+                    {b(`${toBn(row.age_days)} দিন`, `${row.age_days} days`)} · {row.category}
+                    {row.archived_at ? b(" · আর্কাইভড", " · archived") : b(" · এখনো লাইভ", " · still live")}
                     {row.legal_hold ? " · legal hold" : ""}
-                    {row.is_active_case ? " · সক্রিয় মামলা" : ""}
+                    {row.is_active_case ? b(" · সক্রিয় মামলা", " · active case") : ""}
                   </p>
                 </div>
                 {row.legal_hold || row.is_active_case ? (
                   <span className="flex shrink-0 items-center gap-1 rounded-md border border-white/10 px-2 py-1 text-[10px] font-semibold text-white/40">
-                    <Lock size={11} /> সুরক্ষিত
+                    <Lock size={11} /> {b("সুরক্ষিত", "Protected")}
                   </span>
                 ) : (
                   <button
@@ -186,7 +217,7 @@ export default function Archive() {
                     onClick={() => void removeOne(row)}
                     disabled={busy === row.id}
                   >
-                    <Trash2 size={13} /> মুছুন
+                    <Trash2 size={13} /> {b("মুছুন", "Delete")}
                   </button>
                 )}
               </li>
@@ -198,11 +229,11 @@ export default function Archive() {
       <section className="rounded-xl border border-white/10 bg-white/[0.03]">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
           <h3 className="font-mono-x text-[10px] tracking-[0.16em] text-white/45 uppercase">
-            আর্কাইভড · {toBn(data?.total ?? 0)}টি
+            {b(`আর্কাইভড · ${toBn(data?.total ?? 0)}টি`, `Archived · ${data?.total ?? 0}`)}
           </h3>
           <div className="flex items-center gap-2">
             <button className={ghostBtn} disabled={page <= 1 || loading} onClick={() => void load(page - 1)}>
-              পূর্ববর্তী
+              {b("পূর্ববর্তী", "Previous")}
             </button>
             <span className="font-mono-x text-[10.5px] text-white/40">
               {toBn(page)} / {toBn(totalPages)}
@@ -212,13 +243,16 @@ export default function Archive() {
               disabled={page >= totalPages || loading}
               onClick={() => void load(page + 1)}
             >
-              পরবর্তী
+              {b("পরবর্তী", "Next")}
             </button>
           </div>
         </div>
         {(data?.rows.length ?? 0) === 0 ? (
           <p className="px-3 py-5 text-center text-[12px] text-white/40">
-            আর্কাইভ খালি। উইন্ডো থেকে বের হওয়া পোস্ট স্বয়ংক্রিয়ভাবে এখানে আসবে।
+            {b(
+            "আর্কাইভ খালি। উইন্ডো থেকে বের হওয়া পোস্ট স্বয়ংক্রিয়ভাবে এখানে আসবে।",
+            "The archive is empty. A post that leaves the window lands here on its own.",
+          )}
           </p>
         ) : (
           <ul className="divide-y divide-white/[0.06]">
@@ -240,7 +274,7 @@ export default function Archive() {
                     onClick={() => void removeOne(row)}
                     disabled={busy === row.id}
                   >
-                    <Trash2 size={13} /> স্থায়ীভাবে মুছুন
+                    <Trash2 size={13} /> {b("স্থায়ীভাবে মুছুন", "Delete for good")}
                   </button>
                 )}
               </li>

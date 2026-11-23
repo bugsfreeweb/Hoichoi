@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import type { Post } from "@hoichoi/shared-types";
 import { useAdminAction } from "@/lib/admin-api";
+import { useBi } from "@/components/i18n/LocaleProvider";
 import { AdminThumb, OriginBadge } from "./AdminThumb";
 import { QuickImageButton } from "./QuickImageButton";
 
@@ -17,15 +18,16 @@ import { QuickImageButton } from "./QuickImageButton";
  * will answer with that reason, which is shown in the toast.
  */
 export function ModerationListRow({ post, queue }: { post: Post; queue: "pending" | "approved" }) {
+  const b = useBi();
   const [busy, setBusy] = useState<null | string>(null);
   const run = useAdminAction();
 
   async function act(action: "approve" | "publish" | "reject") {
     setBusy(action);
     const labels = {
-      approve: { busy: "অনুমোদন দেওয়া হচ্ছে…", success: "✓ অনুমোদন সম্পন্ন" },
-      publish: { busy: "প্রকাশ করা হচ্ছে…", success: "✓ পোস্ট প্রকাশিত" },
-      reject: { busy: "প্রত্যাখ্যান করা হচ্ছে…", success: "✓ প্রত্যাখ্যান সম্পন্ন" },
+      approve: { busy: b("অনুমোদন দেওয়া হচ্ছে…", "Approving…"), success: b("✓ অনুমোদন সম্পন্ন", "✓ Approved") },
+      publish: { busy: b("প্রকাশ করা হচ্ছে…", "Publishing…"), success: b("✓ পোস্ট প্রকাশিত", "✓ Post published") },
+      reject: { busy: b("প্রত্যাখ্যান করা হচ্ছে…", "Rejecting…"), success: b("✓ প্রত্যাখ্যান সম্পন্ন", "✓ Rejected") },
     }[action];
     const data = await run({
       path: `/api/moderation/${post.id}`,
@@ -34,8 +36,12 @@ export function ModerationListRow({ post, queue }: { post: Post; queue: "pending
       success: labels.success,
       detail: (d) => {
         const r = d as { status?: string; approverRequired?: boolean } | null;
-        if (r?.approverRequired) return "দ্বিতীয় অনুমোদন প্রয়োজন — approver স্বাক্ষর ছাড়া প্রকাশ হবে না।";
-        return r?.status ? `বর্তমান অবস্থা: ${r.status}` : undefined;
+        if (r?.approverRequired)
+          return b(
+            "দ্বিতীয় অনুমোদন প্রয়োজন — approver স্বাক্ষর ছাড়া প্রকাশ হবে না।",
+            "A second approval is required — nothing publishes without an approver's signature.",
+          );
+        return r?.status ? b(`বর্তমান অবস্থা: ${r.status}`, `Current status: ${r.status}`) : undefined;
       },
     });
     setBusy(null);
@@ -66,7 +72,7 @@ export function ModerationListRow({ post, queue }: { post: Post; queue: "pending
               disabled={busy !== null}
               className="border border-cat-teal bg-cat-teal/15 px-2.5 py-1 text-[11px] font-bold text-ink hover:bg-cat-teal/25 disabled:opacity-50"
             >
-              {busy === "approve" ? <Loader2 size={11} className="animate-spin" /> : "অনুমোদন"}
+              {busy === "approve" ? <Loader2 size={11} className="animate-spin" /> : b("অনুমোদন", "Approve")}
             </button>
             <button
               type="button"
@@ -74,7 +80,7 @@ export function ModerationListRow({ post, queue }: { post: Post; queue: "pending
               disabled={busy !== null}
               className="border border-alizarin px-2.5 py-1 text-[11px] font-bold text-alizarin hover:bg-alizarin hover:text-on-accent disabled:opacity-50"
             >
-              {busy === "reject" ? <Loader2 size={11} className="animate-spin" /> : "প্রত্যাখ্যান"}
+              {busy === "reject" ? <Loader2 size={11} className="animate-spin" /> : b("প্রত্যাখ্যান", "Reject")}
             </button>
           </>
         ) : (
@@ -84,7 +90,7 @@ export function ModerationListRow({ post, queue }: { post: Post; queue: "pending
             disabled={busy !== null}
             className="border border-cat-blue bg-cat-blue/15 px-2.5 py-1 text-[11px] font-bold text-ink hover:bg-cat-blue/25 disabled:opacity-50"
           >
-            {busy === "publish" ? <Loader2 size={11} className="animate-spin" /> : "প্রকাশ করুন"}
+            {busy === "publish" ? <Loader2 size={11} className="animate-spin" /> : b("প্রকাশ করুন", "Publish")}
           </button>
         )}
       </span>
