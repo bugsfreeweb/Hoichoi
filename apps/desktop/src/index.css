@@ -49,7 +49,7 @@
   --knob: #e9e6da;
   --bd-2: rgba(255, 255, 255, 0.12);
   --bd-3: rgba(255, 255, 255, 0.22);
-  --fb: "Noto Serif Bengali", Georgia, serif;
+  --fb: var(--font-serif-bn, "Noto Serif Bengali", Georgia, serif);
   --fl: "Space Grotesk", system-ui, sans-serif;
   --fm: "JetBrains Mono", ui-monospace, monospace;
 
@@ -174,7 +174,7 @@ body,
 body {
   background: var(--color-window-border);
   color: var(--color-main-tx);
-  font-family: var(--desk-font, "Hind Siliguri", "Space Grotesk", sans-serif);
+  font-family: var(--desk-font, var(--font-sans-bn, "Hind Siliguri", sans-serif));
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
   transition: background-color 0.35s ease, color 0.35s ease;

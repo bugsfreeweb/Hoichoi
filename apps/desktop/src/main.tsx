@@ -12,10 +12,13 @@ try {
   const raw = localStorage.getItem("hoichoi.desk.prefs.v1");
   const saved = raw ? (JSON.parse(raw) as { desk_font?: unknown }) : null;
   const id = typeof saved?.desk_font === "string" ? saved.desk_font : "";
-  document.documentElement.style.setProperty(
-    "--desk-font",
-    banglaFontStack(id, "Hind Siliguri", "sans-serif"),
-  );
+  if (id) {
+    // No local override means the shared site body face stays in charge.
+    document.documentElement.style.setProperty(
+      "--desk-font",
+      banglaFontStack(id, "Hind Siliguri", "sans-serif"),
+    );
+  }
 } catch {
   /* a corrupt pref must not stop the desk from starting */
 }

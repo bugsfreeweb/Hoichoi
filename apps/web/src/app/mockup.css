@@ -12,9 +12,9 @@
 [data-mv] {
   color-scheme: dark;
 
-  --font-bangla: "Hind Siliguri", "Noto Serif Bengali", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Tiro Bangla", "Hind Siliguri", Georgia, serif;
-  --font-latin: "Space Grotesk", "Hind Siliguri", ui-sans-serif, system-ui, sans-serif;
+  --font-bangla: var(--font-sans-bn, "Hind Siliguri", ui-sans-serif, system-ui, sans-serif);
+  --font-display: var(--font-serif-bn, "Tiro Bangla", "Hind Siliguri", Georgia, serif);
+  --font-latin: "Space Grotesk", var(--font-sans-bn, "Hind Siliguri"), ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --color-ink-950: #05060a;

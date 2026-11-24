@@ -21,6 +21,7 @@ import {
   type CredentialName,
 } from "./lib/vault";
 import { SITE_URL } from "./lib/site";
+import { applyTypography } from "./lib/typography";
 import { NavIcon, type NavIconName } from "@hoichoi/icons";
 import "@hoichoi/icons/styles.css";
 import { getDeskSidebarStyle, onDeskSidebarStyle } from "./lib/desk-ui-prefs";
@@ -379,6 +380,14 @@ export default function App() {
 
       const s = boot.settings;
       if (s && Number(s.pipeline_hours) > 0) setHours(Number(s.pipeline_hours));
+      try {
+        const cfg = JSON.parse(String(s?.app_config_json ?? "{}")) as {
+          typography?: Parameters<typeof applyTypography>[0];
+        };
+        applyTypography(cfg.typography);
+      } catch {
+        /* a broken config must not stop the desk from refreshing */
+      }
 
       setSources(boot.sources ?? []);
       setQueueRows(boot.queue?.rows ?? []);

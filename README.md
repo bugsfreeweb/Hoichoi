@@ -716,9 +716,11 @@ The web app, the admin console and the Tauri desk all import the same stylesheet
 Settings → ডিজাইন tab shows a **বাংলা ফন্ট লাইব্রেরি** gallery with live samples; its three
 selects write `app_config_json.typography.headline`, `.body` and `.meta`, and the root layout
 applies them by overriding `--font-serif-bn`, `--font-sans-bn` and `--font-meta-bn` for both
-the public site and the admin console. The desktop's প্রেফারেন্স tab has
-its own local **ডেস্কের বাংলা ফন্ট** choice (`localStorage`), while the shared site choice is
-edited under সাইট. Any family can also be used in ad/notice HTML with `.bnfont-<id>`.
+the public site and the admin console. The Tauri desk reads the same three ids on boot and
+applies them to its own headlines, body and tag/category labels. Its প্রেফারেন্স tab also has
+a local **ডেস্কের বাংলা ফন্ট** override (`localStorage`) for body copy; clearing it returns
+the desk to the shared body face, while the shared choice is edited under সাইট. Any family
+can also be used in ad/notice HTML with `.bnfont-<id>`.
 
 Each source zip's readme/terms travels to `packages/bangla-fonts/licenses/`. All 47 families
 ship because the operator confirmed they are free to use; the manifest keeps the source

@@ -33,6 +33,7 @@ import {
 } from "../lib/vault";
 import { SECRET_SPECS, LLM_SECRET_NAMES } from "../lib/secret-specs";
 import { BANGLA_FONTS, banglaFontStack } from "@hoichoi/bangla-fonts";
+import { applyTypography } from "../lib/typography";
 import { toast } from "../lib/toast";
 import {
   settingsGet,
@@ -291,11 +292,19 @@ export default function Settings({
 
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
   useEffect(() => {
-    document.documentElement.style.setProperty(
-      "--desk-font",
-      banglaFontStack(prefs.desk_font, "Hind Siliguri", "sans-serif"),
-    );
+    if (prefs.desk_font) {
+      document.documentElement.style.setProperty(
+        "--desk-font",
+        banglaFontStack(prefs.desk_font, "Hind Siliguri", "sans-serif"),
+      );
+    } else {
+      document.documentElement.style.removeProperty("--desk-font");
+    }
   }, [prefs.desk_font]);
+  useEffect(() => {
+    applyTypography(vis.typography);
+  }, [vis.typography]);
+
   const updatePref = <K extends keyof Prefs>(k: K, v: Prefs[K]) => {
     setPrefs((prev) => {
       const next = { ...prev, [k]: v };

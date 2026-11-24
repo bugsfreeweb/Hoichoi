@@ -39,8 +39,9 @@ export default {
         "rose-400": "#f34f4f",
       },
       fontFamily: {
-        "serif-bn": ['"Noto Serif Bengali"', "serif"],
-        "sans-bn": ['"Hind Siliguri"', "sans-serif"],
+        "serif-bn": ['var(--font-serif-bn, "Noto Serif Bengali", serif)'],
+        "sans-bn": ['var(--font-sans-bn, "Hind Siliguri", sans-serif)'],
+        "meta-bn": ['var(--font-meta-bn, "Hind Siliguri", sans-serif)'],
         sans: ['"Space Grotesk"', "sans-serif"],
         mono: ['"JetBrains Mono"', "monospace"],
         "mono-x": ['"JetBrains Mono"', "monospace"],

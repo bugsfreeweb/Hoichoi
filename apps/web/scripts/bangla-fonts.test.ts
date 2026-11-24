@@ -90,6 +90,12 @@ check("the chosen families reach the site and the desk", () => {
   assert.match(globals, /\.page-chrome \{\s*font-family: var\(--font-sans-bn/);
   assert.match(read("apps/web/src/components/CategoryBadge.tsx"), /font-meta-bn/);
   assert.match(desktopSettings, /ট্যাগ ও বিভাগ/);
+  const desktopTailwind = read("apps/desktop/tailwind.config.js");
+  assert.match(desktopTailwind, /"meta-bn": \['var\(--font-meta-bn/);
+  assert.match(read("apps/desktop/src/index.css"), /--fb: var\(--font-serif-bn/);
+  assert.match(read("apps/desktop/src/App.tsx"), /applyTypography\(cfg\.typography\)/);
+  assert.match(desktopSettings, /applyTypography\(vis\.typography\)/);
+  assert.match(read("apps/web/src/app/mockup.css"), /--font-display: var\(--font-serif-bn/);
 });
 
 check("unknown ids fall back instead of leaving text unstyled", () => {
