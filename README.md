@@ -732,6 +732,11 @@ the chosen image at its real frame (4:5 or 1.91:1), the site host, and the edito
 title and summary. If 4:5 is selected with no portrait stored, the card says so and shows
 the fallback image, so nobody publishes a preview they have not actually seen.
 
+Under the card, live character counts flag the two places Facebook truncates: titles past
+about 60 code points and descriptions past about 110. They are warnings, not refusals,
+because the cut depends on rendered width; counting code points rather than UTF-16 units
+keeps the number honest for Bengali clusters.
+
 Verified by rendering all five layouts at `3840×2160` (zero clipped lines measured in the
 DOM), by a live art-direction call and a live FLUX render (WebP, 450 KB), and by
 `design-poster` (8 checks) and `art-director` (10 checks) test files.

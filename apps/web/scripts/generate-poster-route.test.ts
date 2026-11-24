@@ -123,6 +123,12 @@ check("the editor sees the share card before publishing", () => {
   assert.match(panel, /৪:৫ পোস্টার নেই — পোস্টের মূল ছবি দেখানো হচ্ছে/);
   assert.match(panel, /aspectRatio: sharePortrait \? "4 \/ 5" : "1\.91 \/ 1"/);
   assert.match(panel, /p\.startsWith\("\/"\)/);
+  assert.match(panel, /const titleLength = Array\.from/);
+  assert.match(panel, /const titleWarn = titleLength > 60/);
+  assert.match(panel, /const descWarn = descLength > 110/);
+  assert.match(panel, /শিরোনাম ৬০ অক্ষরের বেশি/);
+  assert.match(panel, /বিবরণ ১১০ অক্ষরের বেশি/);
+  assert.match(panel, /function bnCount/);
 });
 
 check("the vocabulary is the brief's, once", () => {

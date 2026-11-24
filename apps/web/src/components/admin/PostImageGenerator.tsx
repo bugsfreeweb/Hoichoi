@@ -410,6 +410,14 @@ export function PostImageGenerator({
       : shareAspect === "4:5"
         ? "৪:৫ পোস্টার নেই — পোস্টের মূল ছবি দেখানো হচ্ছে।"
         : "সোর্স: পোস্টের মূল ছবি";
+  // Facebook truncates by rendered width, not by a hard rule, so these are
+  // warnings rather than refusals: 60/110 is where the card starts cutting in
+  // the common desktop and mobile widths. Count code points, not UTF-16 units,
+  // because a Bengali cluster is often two units and would overstate length.
+  const titleLength = Array.from(shareTitle.trim()).length;
+  const descLength = Array.from(shareDescription.trim()).length;
+  const titleWarn = titleLength > 60;
+  const descWarn = descLength > 110;
 
   return (
     <div className="mt-4 border border-ink/15 bg-paper p-4">
@@ -682,6 +690,24 @@ export function PostImageGenerator({
               </div>
             </div>
             <p className="mt-1.5 text-[10px] text-ink-soft">{shareNote}</p>
+            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 font-mono-x text-[10px]">
+              <span className={titleWarn ? "font-bold text-red-700" : "text-ink-soft"}>
+                শিরোনাম {bnCount(titleLength)}/৬০
+              </span>
+              <span className={descWarn ? "font-bold text-red-700" : "text-ink-soft"}>
+                বিবরণ {bnCount(descLength)}/১১০
+              </span>
+            </div>
+            {titleWarn && (
+              <p className="mt-1 text-[10px] text-red-700">
+                শিরোনাম ৬০ অক্ষরের বেশি — ফেসবুকে কেটে যেতে পারে।
+              </p>
+            )}
+            {descWarn && (
+              <p className="mt-1 text-[10px] text-red-700">
+                বিবরণ ১১০ অক্ষরের বেশি — ফেসবুকে কেটে যেতে পারে।
+              </p>
+            )}
           </div>
         </div>
 
@@ -718,6 +744,15 @@ export function PostImageGenerator({
       </div>
     </div>
   );
+}
+
+const BN_DIGITS = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"] as const;
+
+function bnCount(n: number): string {
+  return String(Math.max(0, Math.trunc(n)))
+    .split("")
+    .map((d) => BN_DIGITS[Number(d)] ?? d)
+    .join("");
 }
 
 function previewSrc(p: string): string {
