@@ -129,6 +129,10 @@ check("the editor sees the share card before publishing", () => {
   assert.match(panel, /শিরোনাম ৬০ অক্ষরের বেশি/);
   assert.match(panel, /বিবরণ ১১০ অক্ষরের বেশি/);
   assert.match(panel, /function bnCount/);
+  assert.match(adminPostPage, /shareUrl=\{\`\$\{siteUrl\(\)\}\/post\/\$\{post\.slug\}\`\}/);
+  assert.match(panel, /developers\.facebook\.com\/tools\/debug/);
+  assert.match(panel, /encodeURIComponent\(shareUrl\)/);
+  assert.match(panel, /Facebook ডিবাগারে প্রিভিউ যাচাই করুন/);
 });
 
 check("the vocabulary is the brief's, once", () => {

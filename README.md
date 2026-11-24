@@ -735,7 +735,9 @@ the fallback image, so nobody publishes a preview they have not actually seen.
 Under the card, live character counts flag the two places Facebook truncates: titles past
 about 60 code points and descriptions past about 110. They are warnings, not refusals,
 because the cut depends on rendered width; counting code points rather than UTF-16 units
-keeps the number honest for Bengali clusters.
+keeps the number honest for Bengali clusters. Next to them, **Facebook ডিবাগারে প্রিভিউ
+যাচাই করুন** opens the Sharing Debugger for the post's canonical URL, which is how an
+editor forces Facebook to re-scrape after the card changes.
 
 Verified by rendering all five layouts at `3840×2160` (zero clipped lines measured in the
 DOM), by a live art-direction call and a live FLUX render (WebP, 450 KB), and by

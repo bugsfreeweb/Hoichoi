@@ -17,6 +17,7 @@ export default async function AdminPostEditPage({ params }: { params: Promise<{ 
       post={post}
       portraitPath={portrait?.media_path ?? null}
       shareDomain={new URL(siteUrl()).host}
+      shareUrl={`${siteUrl()}/post/${post.slug}`}
     />
   );
 }

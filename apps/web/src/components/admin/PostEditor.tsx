@@ -76,10 +76,12 @@ export function PostEditor({
   post,
   portraitPath,
   shareDomain = "hoichoifeed.vercel.app",
+  shareUrl = null,
 }: {
   post: Post;
   portraitPath?: string | null;
   shareDomain?: string;
+  shareUrl?: string | null;
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(post.title_bn);
@@ -639,6 +641,7 @@ export function PostEditor({
           shareTitle={title || post.title_bn}
           shareDescription={summary || post.summary_bn || body.slice(0, 160)}
           shareDomain={shareDomain}
+          shareUrl={shareUrl}
           onAttached={(path) => {
             setMediaPath(path);
             setMediaMsg("✓ এআই-তৈরি ছবি যুক্ত হয়েছে");

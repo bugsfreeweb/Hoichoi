@@ -84,6 +84,7 @@ export function PostImageGenerator({
   shareTitle = "",
   shareDescription = "",
   shareDomain = "hoichoifeed.vercel.app",
+  shareUrl = null,
 }: {
   postId: string;
   onAttached: (mediaPath: string) => void;
@@ -97,6 +98,8 @@ export function PostImageGenerator({
   shareTitle?: string;
   shareDescription?: string;
   shareDomain?: string;
+  /** Canonical public URL, used to open Facebook's scraper debugger. */
+  shareUrl?: string | null;
 }) {
   const [opts, setOpts] = useState<Options | null>(null);
   const [providerId, setProviderId] = useState("");
@@ -690,6 +693,16 @@ export function PostImageGenerator({
               </div>
             </div>
             <p className="mt-1.5 text-[10px] text-ink-soft">{shareNote}</p>
+            {shareUrl && (
+              <a
+                href={`https://developers.facebook.com/tools/debug/?q=${encodeURIComponent(shareUrl)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1.5 inline-block text-[10.5px] font-bold text-ink underline decoration-ink/40 underline-offset-2 hover:text-alizarin"
+              >
+                Facebook ডিবাগারে প্রিভিউ যাচাই করুন ↗
+              </a>
+            )}
             <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 font-mono-x text-[10px]">
               <span className={titleWarn ? "font-bold text-red-700" : "text-ink-soft"}>
                 শিরোনাম {bnCount(titleLength)}/৬০
