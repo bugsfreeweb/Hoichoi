@@ -77,6 +77,22 @@ export function PostImageGenerator({
   const [via, setVia] = useState<Via | null>(null);
   const [queued, setQueued] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  /**
+   * The dynamic poster, which is a different pipeline from the image above:
+   * an LLM art director picks the layout and palette, the image model draws
+   * only the focal visual, and the headlines are set in HTML. It carries its
+   * own state so a "Regenerate Style" click cannot overwrite an image the
+   * editor has just approved by accident.
+   */
+  const [posterBusy, setPosterBusy] = useState(false);
+  const [poster, setPoster] = useState<{
+    dataUrl: string;
+    layout: string;
+    palette: string;
+    mediaPath: string | null;
+    directedBy: string;
+  } | null>(null);
+  const [posterMsg, setPosterMsg] = useState<string | null>(null);
 
   /** `media_path` as of the last successful check — the poll watches for a change. */
   const baseRef = useRef<string | null>(null);
@@ -174,6 +190,67 @@ export function PostImageGenerator({
     } finally {
       setBusy(false);
     }
+  };
+
+  /**
+   * Generate a fresh design for this story. Every click is a new art-direction
+   * pass, and the route rotates the layout/palette against the last five
+   * posters, so "Regenerate Style" always produces a visibly different page
+   * rather than a new photograph in the same frame.
+   */
+  const regenerateStyle = async () => {
+    setPosterBusy(true);
+    setPosterMsg(null);
+    try {
+      const res = await fetch("/api/generate-poster", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ postId, regenerate: true, attach: true, format: "webp" }),
+      });
+      const j = (await res.json().catch(() => null)) as
+        | {
+            ok?: boolean;
+            error?: string;
+            warnings?: string[];
+            design?: { layout?: string; palette?: { label?: string }; directed_by?: string };
+            image?: { data_url?: string; media_path?: string | null; attached?: boolean };
+          }
+        | null;
+      if (!res.ok || !j?.ok || !j.image?.data_url) {
+        throw new Error(j?.error ?? `HTTP ${res.status}`);
+      }
+      setPoster({
+        dataUrl: j.image.data_url,
+        layout: j.design?.layout ?? "—",
+        palette: j.design?.palette?.label ?? "—",
+        mediaPath: j.image.media_path ?? null,
+        directedBy: j.design?.directed_by ?? "fallback",
+      });
+      if (j.image.attached && j.image.media_path) {
+        baseRef.current = j.image.media_path;
+        setPreview(previewSrc(j.image.media_path));
+        onAttached(j.image.media_path);
+      }
+      setPosterMsg(
+        `✓ নতুন পোস্টার · ${j.design?.layout ?? "—"} · ${j.design?.palette?.label ?? "—"}${
+          j.warnings?.length ? ` · ${j.warnings[0]}` : ""
+        }`,
+      );
+    } catch (e) {
+      setPosterMsg(`✕ ${e instanceof Error ? e.message : "পোস্টার তৈরি ব্যর্থ"}`);
+    } finally {
+      setPosterBusy(false);
+    }
+  };
+
+  const downloadPoster = () => {
+    if (!poster) return;
+    const a = document.createElement("a");
+    a.href = poster.dataUrl;
+    a.download = `poster-${poster.layout}-${postId.slice(0, 8)}.webp`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   // Poll the API until a queued image has been attached *and* Vercel has
@@ -396,6 +473,60 @@ export function PostImageGenerator({
           <img src={preview} alt="" className="h-40 w-auto max-w-full border border-ink/20 object-contain" />
         </div>
       )}
+
+      <div className="mt-5 border-t border-ink/15 pt-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h5 className="font-sans-bn text-[13px] font-bold text-ink">🎨 ডাইনামিক পোস্টার (১৬:৯)</h5>
+          <span className="font-mono-x text-[10px] text-ink-soft">
+            ৫ লেআউট × ৫ প্যালেট · বাংলা টেক্সট HTML-এ, ছবিতে নয়
+          </span>
+        </div>
+        <p className="mt-1 text-[11px] text-ink-soft">
+          এআই আর্ট ডিরেক্টর গল্প বুঝে লেআউট ও রং বাছেন; টাইপোগ্রাফি ব্রাউজারে রেন্ডার হয় — যুক্তাক্ষর নিখুঁত থাকে।
+        </p>
+
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button
+            className={btnLime}
+            onClick={() => void regenerateStyle()}
+            disabled={posterBusy}
+            type="button"
+          >
+            {posterBusy ? "🎨 ডিজাইন হচ্ছে…" : "🎲 রিজেনারেট স্টাইল"}
+          </button>
+          <button
+            className="border-2 border-ink bg-paper px-4 py-2.5 text-[13px] font-bold text-ink transition hover:bg-lime disabled:opacity-40"
+            onClick={downloadPoster}
+            disabled={!poster}
+            type="button"
+          >
+            ⬇ পোস্টার ডাউনলোড
+          </button>
+          {poster && (
+            <span className="text-[11px] text-ink-soft">
+              {poster.layout} · {poster.palette} ·{" "}
+              {poster.directedBy === "llm" ? "আর্ট ডিরেক্টর" : "ফলব্যাক প্ল্যানার"}
+            </span>
+          )}
+        </div>
+
+        {posterMsg && (
+          <p className={`mt-2 text-[11px] ${posterMsg.startsWith("✕") ? "text-red-700" : "text-ink-soft"}`}>
+            {posterMsg}
+          </p>
+        )}
+
+        {poster && (
+          <div className="mt-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={poster.dataUrl}
+              alt="ডাইনামিক পোস্টার প্রিভিউ"
+              className="w-full max-w-2xl border border-ink/20 object-contain"
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

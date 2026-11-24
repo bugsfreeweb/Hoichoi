@@ -10,7 +10,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "tsx src/__tests__/poster.test.ts && tsx src/__tests__/broadcast-card.test.ts"
+    "test": "tsx src/__tests__/poster.test.ts && tsx src/__tests__/broadcast-card.test.ts && tsx src/__tests__/design-poster.test.ts"
   },
   "dependencies": {
     "sharp": "^0.33.5",

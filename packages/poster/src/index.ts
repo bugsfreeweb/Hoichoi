@@ -52,3 +52,24 @@ export {
   type PosterTheme,
   type PosterPlan,
 } from "./html/select";
+
+// The dynamic poster: five story-driven layouts, five palettes, art-directed.
+export {
+  renderDesignPoster,
+  designContent,
+  loadDesignAssets,
+  type DesignPlan,
+  type DesignPosterOptions,
+  type DesignPosterResult,
+} from "./design/render";
+export { designPosterHtml } from "./design/compose";
+export {
+  DESIGN_FRAME,
+  DESIGN_SCALE,
+  focalAspectFor,
+  headlineSizeFor as designHeadlineSizeFor,
+  paletteVars,
+  resolvePalette,
+  type DesignPosterContent,
+} from "./design/tokens";
+export { textureSvg, textureDataUri } from "./design/textures";

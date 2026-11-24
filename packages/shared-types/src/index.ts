@@ -1,6 +1,7 @@
 export * from "./provider-catalog";
 export * from "./sidebar-templates";
 export * from "./poster-frames";
+export * from "./poster-design";
 export * from "./image-meta";
 export * from "./claims";
 import { DEFAULT_SIDEBAR_STYLE } from "./sidebar-templates";

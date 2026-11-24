@@ -654,6 +654,58 @@ Verified by rendering all four layouts in both themes with a real photograph and
 branded wash (`1920×1080`, zero clipping, Bangla shaped correctly at every size), and by
 `pnpm typecheck` 8/8, `pnpm test` 6/6, `pnpm build` green.
 
+## The poster is art-directed now (five shapes, five moods)
+
+**A poster is a design decision, not a template fill.** `POST /api/generate-poster` takes
+one Bengali article and returns a 16:9 poster composed for *that* story. It is a separate
+route from the manual image generator, because it is a separate promise: the image
+generator puts a picture on a page; the poster service decides what kind of page the story
+deserves.
+
+**Step 1 — the art director.** A text model (Gemini structured output, with the free-first
+provider chain behind it) is asked for Bengali copy and design tokens in one JSON object:
+`headline` (≤ 45 characters), `highlight_word`, exactly three bullets *or* one pull-quote,
+`badge_text`, `footer_text`, a `layout_variant`, a `palette_id`, a `visual_style`, a
+procedural `texture`, and an English `image_prompt` that bans lettering. The schema lives
+in `packages/llm/src/art-director.ts`. A model that answers badly is repaired, field by
+field; a model that is down is replaced by a deterministic planner that still writes a
+complete, story-specific plan. The poster never depends on the model being awake.
+
+| layout_variant | shape |
+| --- | --- |
+| `split_left_media` | visual on the left 45 %, type column on the right 55 % |
+| `split_right_media` | type column on the left 55 %, framed visual on the right 45 % |
+| `hero_overlay_gradient` | full-bleed 16:9 visual, gradient veil, glassmorphic text card |
+| `editorial_magazine_grid` | Swiss grid, top accent bar, framed visual, pull-quote box |
+| `breaking_spotlight` | centred circular focal visual, crimson spotlight, bottom ticker |
+
+**Step 2 — the visual has no words in it.** The image model draws only the focal picture,
+at `1:1` for the split/grid layouts and `16:9` for the hero and spotlight. The negative
+prompt (`DESIGN_IMAGE_NEGATIVE`) forbids text, letters, numbers, logos and identifiable
+faces — and deliberately does *not* forbid illustration, because the art director may have
+chosen one. If the image chain fails, the renderer draws the palette's textured wash.
+
+**Step 3 — Bengali is HTML, never pixels from a model.** Five `1920×1080` layouts in
+`packages/poster/src/design/` receive `--bg-color`, `--accent-color`, `--card-bg`,
+`--text-primary` and `--text-muted` from the chosen palette. Each gets a seeded, code-drawn
+SVG texture (dot grid, diagonal mesh, radial glow, topographic, mixed), so two stories do
+not share a background. Fonts are the real Google families — **Hind Siliguri** for display,
+**Noto Sans Bengali** as fallback, **Galada** for pull-quotes — bundled and base64-inlined,
+so conjuncts are shaped by HarfBuzz with `document.fonts.ready` awaited before capture.
+Chromium screenshots at `deviceScaleFactor: 2`: a `3840×2160` PNG or WebP from a
+`1920×1080` frame.
+
+**Step 4 — no two neighbours look alike.** Every render writes a `poster_designs` row. The
+next call reads the last five and passes them to the model as `recently_used_designs`; the
+renderer then *enforces* the rule, moving a repeated `(layout, palette)` pair to the first
+unused combination and barring the immediately previous palette. The CMS panel offers
+**🎲 রিজেনারেট স্টাইল** beside **⬇ পোস্টার ডাউনলোড**, so an editor can cycle the whole
+design in one click.
+
+Verified by rendering all five layouts at `3840×2160` (zero clipped lines measured in the
+DOM), by a live art-direction call and a live FLUX render (WebP, 450 KB), and by
+`design-poster` (8 checks) and `art-director` (10 checks) test files.
+
 ## Twelve ways to draw the same menu, and one place that decides (v1.1.34)
 
 The console's sidebar had one look, and the design prototype had twelve. Porting the

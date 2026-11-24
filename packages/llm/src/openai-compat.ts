@@ -13,8 +13,10 @@ export {
 import {
   ProviderError,
   composeImagePrompt,
+  parseJsonLoose,
   type ImageGenRequest,
   type ImageGenResult,
+  type JsonGenRequest,
   type LLMProvider,
   type ParsedRewrite,
   type RewriteContext,
@@ -264,6 +266,36 @@ export class OpenAICompatProvider implements LLMProvider {
       signal,
     );
     return parseRewriteOutput(content);
+  }
+
+  /**
+   * Structured text generation through OpenAI's JSON mode.
+   *
+   * JSON mode guarantees parseable JSON but not our field set, so the result is
+   * parsed loosely and validated by the art director exactly like a Gemini
+   * answer. `response_format` is deliberately not `json_schema`: a number of the
+   * gateways in the provider chain reject that richer shape, while plain
+   * `json_object` is understood almost everywhere.
+   */
+  async generateJson(req: JsonGenRequest, signal?: AbortSignal): Promise<unknown> {
+    const text = await this.postUntilOk(
+      this.chatCandidates(),
+      {
+        model: req.model?.trim() || this.row.model_name,
+        messages: [
+          { role: "system", content: req.system },
+          { role: "user", content: req.user },
+        ],
+        temperature: resolveTemperature(req.temperature ?? 0.8),
+        max_tokens: Math.max(256, Math.min(8192, req.maxOutputTokens ?? 2048)),
+        response_format: { type: "json_object" },
+      },
+      extractCompletion,
+      signal,
+    );
+    const parsed = parseJsonLoose(text);
+    if (!parsed) throw new ProviderError("bad_output", `${this.name} returned no JSON`);
+    return parsed;
   }
 
   async embed(text: string, signal?: AbortSignal): Promise<number[]> {

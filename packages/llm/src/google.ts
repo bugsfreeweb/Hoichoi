@@ -4,8 +4,10 @@ import { getSystemPrompt } from "./prompts";
 import {
   ProviderError,
   composeImagePrompt,
+  parseJsonLoose,
   type ImageGenRequest,
   type ImageGenResult,
+  type JsonGenRequest,
   type LLMProvider,
   type ParsedRewrite,
   type RewriteContext,
@@ -84,6 +86,68 @@ export class GoogleGeminiProvider implements LLMProvider {
       throw new ProviderError("bad_output", data.error?.message ?? "gemini returned no text");
     }
     return parseRewriteOutput(text);
+  }
+
+  /**
+   * Structured text generation through Gemini's native JSON mode.
+   *
+   * `responseSchema` makes the model emit exactly the fields the poster
+   * renderer can draw, so "the answer was prose with JSON in it" is not a
+   * failure mode the art director has to repair. The schema is sent only when
+   * the provider row is the Google API itself; an OpenAI-compatible gateway
+   * wearing a Google label rejects unknown config keys.
+   */
+  async generateJson(req: JsonGenRequest, signal?: AbortSignal): Promise<unknown> {
+    const model = req.model?.trim() || this.row.model_name;
+    const generationConfig: Record<string, unknown> = {
+      responseMimeType: "application/json",
+      temperature: resolveTemperature(req.temperature ?? 0.8),
+      maxOutputTokens: Math.max(256, Math.min(8192, req.maxOutputTokens ?? 2048)),
+    };
+    if (req.schema) generationConfig.responseSchema = req.schema;
+    let res = await fetch(
+      `${this.fetchBase()}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(this.key ?? "")}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        signal,
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: req.system }] },
+          contents: [{ role: "user", parts: [{ text: req.user }] }],
+          generationConfig,
+        }),
+      },
+    );
+    // A model can accept JSON mode and still reject a responseSchema. One retry
+    // without the schema is cheaper than dropping to the deterministic planner
+    // over a provider quirk.
+    if (!res.ok && res.status === 400 && generationConfig.responseSchema) {
+      delete generationConfig.responseSchema;
+      res = await fetch(
+        `${this.fetchBase()}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(this.key ?? "")}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          signal,
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: req.system }] },
+            contents: [{ role: "user", parts: [{ text: req.user }] }],
+            generationConfig,
+          }),
+        },
+      );
+    }
+    if (!res.ok) classifyStatus(res.status, await res.text());
+    const data = (await res.json()) as GeminiResponse;
+    const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("\n");
+    const parsed = text ? parseJsonLoose(text) : null;
+    if (!parsed) {
+      throw new ProviderError(
+        "bad_output",
+        data.error?.message ?? "gemini returned no JSON for the art director",
+      );
+    }
+    return parsed;
   }
 
   async embed(text: string, signal?: AbortSignal): Promise<number[]> {

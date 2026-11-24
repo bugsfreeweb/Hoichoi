@@ -46,7 +46,7 @@ export function localMediaPath(rel: string): string {
   return resolved;
 }
 
-export function randomMediaName(kind: "img" | "vid" | "shot", ext: string): string {
+export function randomMediaName(kind: "img" | "vid" | "shot" | "poster", ext: string): string {
   const day = new Date().toISOString().slice(0, 10);
   const id = crypto.randomUUID().slice(0, 8);
   return `${day}/${kind}_${id}.${ext}`;

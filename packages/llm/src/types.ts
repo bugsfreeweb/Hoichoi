@@ -56,6 +56,12 @@ export interface LLMProvider {
    * it, and callers must check `supportsImage` before relying on it.
    */
   generateImage?(req: ImageGenRequest, signal?: AbortSignal): Promise<ImageGenResult>;
+  /**
+   * Structured text generation. Optional: only providers that implement it can
+   * act as the poster art director, and the caller falls back to the
+   * deterministic planner when this is absent or throws.
+   */
+  generateJson?(req: JsonGenRequest, signal?: AbortSignal): Promise<unknown>;
   healthCheck(signal?: AbortSignal): Promise<HealthCheckResult>;
 }
 
@@ -81,6 +87,44 @@ export interface ImageGenRequest {
   negativePrompt?: string;
   /** Number of images, default 1. */
   count?: number;
+}
+
+/** One structured-output call. The schema is provider-specific (Gemini's subset). */
+export interface JsonGenRequest {
+  system: string;
+  user: string;
+  /** OpenAPI-subset schema for Gemini; a hint for OpenAI-compatible JSON mode. */
+  schema?: Record<string, unknown> | null;
+  maxOutputTokens?: number;
+  temperature?: number;
+  /** Model override; falls back to the provider row's model name. */
+  model?: string;
+}
+
+/**
+ * Parse a JSON answer defensively.
+ *
+ * Structured output still arrives as text on every provider we support, and
+ * models occasionally wrap it in a markdown fence despite the instruction not
+ * to. `null` is a valid answer: it tells the caller to use its fallback instead
+ * of throwing on a field that is already best-effort.
+ */
+export function parseJsonLoose(text: string): unknown {
+  const trimmed = text.trim();
+  const candidates = [trimmed];
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(trimmed)?.[1];
+  if (fenced) candidates.push(fenced.trim());
+  const first = trimmed.indexOf("{");
+  const last = trimmed.lastIndexOf("}");
+  if (first >= 0 && last > first) candidates.push(trimmed.slice(first, last + 1));
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 export interface ImageGenResult {
