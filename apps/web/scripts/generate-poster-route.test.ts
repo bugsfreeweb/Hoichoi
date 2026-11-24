@@ -39,6 +39,8 @@ const postPage = read("apps/web/src/app/(site)/post/[slug]/page.tsx");
 const posterDb = read("packages/db/src/poster-designs.ts");
 const postApi = read("apps/web/src/app/api/posts/[id]/route.ts");
 const postPreferenceMigration = read("packages/db/migrations/042_post_social_aspect.sql");
+const adminPostPage = read("apps/web/src/app/admin/(console)/posts/[id]/page.tsx");
+const postEditor = read("apps/web/src/components/admin/PostEditor.tsx");
 const migration = read("packages/db/migrations/040_poster_designs.sql");
 const aspectMigration = read("packages/db/migrations/041_poster_design_aspect.sql");
 const embedded = read("packages/db/src/migrations.generated.ts");
@@ -108,6 +110,19 @@ check("the editor can choose the share frame per post", () => {
   assert.match(panel, /ফেসবুক \/ ইনস্টাগ্রামে ৪:৫ শেয়ার কার্ড/);
   assert.match(panel, /saveShareAspect/);
   assert.match(panel, /social_share_aspect: next/);
+});
+
+check("the editor sees the share card before publishing", () => {
+  assert.match(adminPostPage, /latestPosterDesign\(id, "4:5"\)/);
+  assert.match(adminPostPage, /portraitPath=\{portrait\?\.media_path \?\? null\}/);
+  assert.match(adminPostPage, /shareDomain=\{new URL\(siteUrl\(\)\)\.host\}/);
+  assert.match(postEditor, /shareTitle=\{title \|\| post\.title_bn\}/);
+  assert.match(postEditor, /shareDescription=\{summary \|\| post\.summary_bn/);
+  assert.match(panel, /লিংক প্রিভিউ/);
+  assert.match(panel, /const sharePortrait = shareAspect === "4:5" && Boolean\(portraitSrc\)/);
+  assert.match(panel, /৪:৫ পোস্টার নেই — পোস্টের মূল ছবি দেখানো হচ্ছে/);
+  assert.match(panel, /aspectRatio: sharePortrait \? "4 \/ 5" : "1\.91 \/ 1"/);
+  assert.match(panel, /p\.startsWith\("\/"\)/);
 });
 
 check("the vocabulary is the brief's, once", () => {

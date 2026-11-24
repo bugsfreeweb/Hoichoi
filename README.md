@@ -727,6 +727,11 @@ landscape art is stronger can keep the 16:9 card while its portrait poster stays
 The preference is honest about absence — choosing 4:5 with no portrait falls back to the
 post's own image rather than shipping a broken preview.
 
+Beside the switch sits a **link preview card** that mirrors what Facebook will render:
+the chosen image at its real frame (4:5 or 1.91:1), the site host, and the editor's live
+title and summary. If 4:5 is selected with no portrait stored, the card says so and shows
+the fallback image, so nobody publishes a preview they have not actually seen.
+
 Verified by rendering all five layouts at `3840×2160` (zero clipped lines measured in the
 DOM), by a live art-direction call and a live FLUX render (WebP, 450 KB), and by
 `design-poster` (8 checks) and `art-director` (10 checks) test files.

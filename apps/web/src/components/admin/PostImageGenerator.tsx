@@ -79,11 +79,24 @@ export function PostImageGenerator({
   postId,
   onAttached,
   socialAspect = "4:5",
+  portraitPath = null,
+  webImagePath = null,
+  shareTitle = "",
+  shareDescription = "",
+  shareDomain = "hoichoifeed.vercel.app",
 }: {
   postId: string;
   onAttached: (mediaPath: string) => void;
   /** The saved share-frame preference, so the switch starts truthful. */
   socialAspect?: "4:5" | "16:9";
+  /** Newest stored 4:5 poster, if the page server found one. */
+  portraitPath?: string | null;
+  /** The post's own image, used when no portrait is chosen or available. */
+  webImagePath?: string | null;
+  /** Live editor state, so the preview follows what will actually publish. */
+  shareTitle?: string;
+  shareDescription?: string;
+  shareDomain?: string;
 }) {
   const [opts, setOpts] = useState<Options | null>(null);
   const [providerId, setProviderId] = useState("");
@@ -382,6 +395,22 @@ export function PostImageGenerator({
   const available = (opts?.providers ?? []).filter((p) => p.supportsImage);
   const usable = available.some((p) => p.hasKey);
 
+  // The card mirrors the metadata rule: prefer a portrait when the switch says
+  // 4:5, fall back to the post's own image when there is no portrait. A fresh
+  // render wins over the server prop, so the preview updates in this session.
+  const generatedPortrait = posters.find((p) => p.aspect === "4:5")?.dataUrl ?? null;
+  const portraitSrc = generatedPortrait ?? (portraitPath ? previewSrc(portraitPath) : null);
+  const webSrc = webImagePath ? previewSrc(webImagePath) : null;
+  const sharePortrait = shareAspect === "4:5" && Boolean(portraitSrc);
+  const shareSrc = sharePortrait ? portraitSrc : webSrc;
+  const shareNote = !shareSrc
+    ? "কোনো ছবি নেই — লিংক কার্ডে ছবি ছাড়াই শিরোনাম দেখাবে।"
+    : sharePortrait
+      ? "সোর্স: ৪:৫ পোস্টার"
+      : shareAspect === "4:5"
+        ? "৪:৫ পোস্টার নেই — পোস্টের মূল ছবি দেখানো হচ্ছে।"
+        : "সোর্স: পোস্টের মূল ছবি";
+
   return (
     <div className="mt-4 border border-ink/15 bg-paper p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -618,6 +647,42 @@ export function PostImageGenerator({
               {shareMsg}
             </p>
           )}
+
+          <div className="mt-3 border-t border-ink/10 pt-3">
+            <p className="font-mono-x text-[9.5px] uppercase tracking-wide text-ink-soft">
+              লিংক প্রিভিউ
+            </p>
+            <div className="mt-2 max-w-[360px] overflow-hidden border border-ink/20 bg-white shadow-sm">
+              {shareSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={shareSrc}
+                  alt="শেয়ার কার্ডের ছবি"
+                  className="w-full bg-ink/5 object-cover"
+                  style={{ aspectRatio: sharePortrait ? "4 / 5" : "1.91 / 1" }}
+                />
+              ) : (
+                <div
+                  className="flex items-center justify-center bg-ink/5 text-[11px] text-ink-soft"
+                  style={{ aspectRatio: "1.91 / 1" }}
+                >
+                  ছবি নেই
+                </div>
+              )}
+              <div className="px-3 py-2.5">
+                <p className="font-mono-x text-[9px] uppercase tracking-wide text-ink-soft">
+                  {shareDomain}
+                </p>
+                <p className="mt-0.5 line-clamp-2 font-serif-bn text-[14px] font-extrabold leading-snug text-ink">
+                  {shareTitle || "শিরোনাম"}
+                </p>
+                <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-ink-soft">
+                  {shareDescription || "সারসংক্ষেপ"}
+                </p>
+              </div>
+            </div>
+            <p className="mt-1.5 text-[10px] text-ink-soft">{shareNote}</p>
+          </div>
         </div>
 
         {posters.length > 0 && (
@@ -656,5 +721,6 @@ export function PostImageGenerator({
 }
 
 function previewSrc(p: string): string {
-  return /^https?:\/\//i.test(p) ? p : `/uploads/${p.replace(/\\/g, "/")}`;
+  if (/^https?:\/\//i.test(p) || p.startsWith("/")) return p;
+  return `/uploads/${p.replace(/\\/g, "/")}`;
 }

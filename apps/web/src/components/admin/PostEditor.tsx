@@ -72,7 +72,15 @@ interface GalleryImage {
   is_primary: number;
 }
 
-export function PostEditor({ post }: { post: Post }) {
+export function PostEditor({
+  post,
+  portraitPath,
+  shareDomain = "hoichoifeed.vercel.app",
+}: {
+  post: Post;
+  portraitPath?: string | null;
+  shareDomain?: string;
+}) {
   const router = useRouter();
   const [title, setTitle] = useState(post.title_bn);
   const [body, setBody] = useState(post.body_bn);
@@ -626,6 +634,11 @@ export function PostEditor({ post }: { post: Post }) {
         <PostImageGenerator
           postId={post.id}
           socialAspect={post.social_share_aspect ?? "4:5"}
+          portraitPath={portraitPath ?? null}
+          webImagePath={mediaPath || post.media_path || null}
+          shareTitle={title || post.title_bn}
+          shareDescription={summary || post.summary_bn || body.slice(0, 160)}
+          shareDomain={shareDomain}
           onAttached={(path) => {
             setMediaPath(path);
             setMediaMsg("✓ এআই-তৈরি ছবি যুক্ত হয়েছে");
