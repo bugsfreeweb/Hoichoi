@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/next";
 // Fonts are self-hosted (see `fonts.css` + `public/fonts/`) so the production
 // build never depends on a live fonts.googleapis.com fetch. The @font-face
 // rules and their exact `unicode-range` subsets are the ones Google served.
+import "@hoichoi/bangla-fonts/fonts.css";
 import "./fonts.css";
 import "./globals.css";
 import { siteUrl } from "../lib/site";

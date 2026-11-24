@@ -6,6 +6,7 @@ import { getLocale } from "@/lib/locale";
 import { SITE_BUILD } from "@/lib/build";
 import { listFooterCategories, getSettings, parseAppConfig } from "@hoichoi/db";
 import { FooterSocials } from "./FooterSocials";
+import { banglaFontById } from "@hoichoi/bangla-fonts";
 import { AdvertiserLoginLink } from "./AdvertiserLoginLink";
 import LocalZone from "./LocalZone";
 
@@ -28,6 +29,11 @@ export async function Footer() {
    */
   const aboutDefault = `${BRAND.tagline} — ${tr("site.footer.aboutFallback")}`;
   const about = locale === "en" ? aboutDefault : settings.footer_about_bn || aboutDefault;
+  // Lipighor's terms allow webfont use only with a footer backlink, so the
+  // credit appears exactly when one of its families is actually selected.
+  const creditFont = [appConfig.typography?.headline, appConfig.typography?.body]
+    .map((id) => (id ? banglaFontById(id) : null))
+    .find((font) => font?.license === "web-with-attribution");
   // The submit link is the site's only growth channel, so it is surfaced in the
   // footer nav and as its own call-to-action. It previously existed only at
   // /submit with no inbound link, so visitors could never find it.
@@ -126,6 +132,14 @@ export async function Footer() {
           <span className="flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
             BUGSFREE STUDIO · LOCALHOST/<LocalZone /> · EDGE CACHE ON
+            {creditFont && (
+              <>
+                <span aria-hidden>·</span>
+                <a href="https://lipighor.com" target="_blank" rel="noopener noreferrer" className="hover:text-alizarin">
+                  বাংলা ফন্ট: লিপিঘর
+                </a>
+              </>
+            )}
           </span>
         </div>
       </div>

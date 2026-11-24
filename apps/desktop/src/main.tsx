@@ -3,7 +3,22 @@ import ReactDOM from "react-dom/client";
 import { isTauri } from "./lib/tauri";
 import { DeskLocaleProvider, useDeskLocale } from "./lib/locale";
 import App from "./App";
+import { banglaFontStack } from "@hoichoi/bangla-fonts";
 import "./index.css";
+
+// Apply the saved desk typeface before React paints. The Settings screen also
+// updates it live, but a relaunch must not wait for that screen to be opened.
+try {
+  const raw = localStorage.getItem("hoichoi.desk.prefs.v1");
+  const saved = raw ? (JSON.parse(raw) as { desk_font?: unknown }) : null;
+  const id = typeof saved?.desk_font === "string" ? saved.desk_font : "";
+  document.documentElement.style.setProperty(
+    "--desk-font",
+    banglaFontStack(id, "Hind Siliguri", "sans-serif"),
+  );
+} catch {
+  /* a corrupt pref must not stop the desk from starting */
+}
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

@@ -1,0 +1,2322 @@
+[
+ {
+  "zip": "AbuJMAkkas.zip",
+  "file": "Unicode/Li Abu J M Akkas Unicode Italic.ttf",
+  "family": "Li Abu J M Akkas Unicode",
+  "sub": "Italic",
+  "full": "Li Abu J M Akkas Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AbuJMAkkas.zip",
+  "file": "Unicode/Li Abu J M Akkas Unicode.ttf",
+  "family": "Li Abu J M Akkas Unicode",
+  "sub": "Regular",
+  "full": "Li Abu J M Akkas Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AbuJMAkkas.zip",
+  "file": "ANSI V1/Li Abu J M Akkas ANSI V1 Italic.ttf",
+  "family": "Li Abu J M Akkas ANSI V1",
+  "sub": "Italic",
+  "full": "Li Abu J M Akkas ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AbuJMAkkas.zip",
+  "file": "ANSI V1/Li Abu J M Akkas ANSI V1.ttf",
+  "family": "Li Abu J M Akkas ANSI V1",
+  "sub": "Regular",
+  "full": "Li Abu J M Akkas ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AbuJMAkkas.zip",
+  "file": "ANSI V2/Li Abu J M Akkas ANSI V2 Italic.ttf",
+  "family": "Li Abu J M Akkas ANSI V2",
+  "sub": "Italic",
+  "full": "Li Abu J M Akkas ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AbuJMAkkas.zip",
+  "file": "ANSI V2/Li Abu J M Akkas ANSI V2.ttf",
+  "family": "Li Abu J M Akkas ANSI V2",
+  "sub": "Regular",
+  "full": "Li Abu J M Akkas ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurAtithi.zip",
+  "file": "ANSI V1/Li Alinur Atithi ANSI V1 Italic.ttf",
+  "family": "Li Alinur Atithi ANSI V1",
+  "sub": "Italic",
+  "full": "Li Alinur Atithi ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurAtithi.zip",
+  "file": "ANSI V1/Li Alinur Atithi ANSI V1.ttf",
+  "family": "Li Alinur Atithi ANSI V1",
+  "sub": "Regular",
+  "full": "Li Alinur Atithi ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurAtithi.zip",
+  "file": "ANSI V2/Li Alinur Atithi ANSI V2 Italic.ttf",
+  "family": "Li Alinur Atithi ANSI V2",
+  "sub": "Italic",
+  "full": "Li Alinur Atithi ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurAtithi.zip",
+  "file": "ANSI V2/Li Alinur Atithi ANSI V2.ttf",
+  "family": "Li Alinur Atithi ANSI V2",
+  "sub": "Regular",
+  "full": "Li Alinur Atithi ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurAtithi.zip",
+  "file": "Unicode/Li Alinur Atithi Unicode Italic.ttf",
+  "family": "Li Alinur Atithi Unicode",
+  "sub": "Italic",
+  "full": "Li Alinur Atithi Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurAtithi.zip",
+  "file": "Unicode/Li Alinur Atithi Unicode.ttf",
+  "family": "Li Alinur Atithi Unicode",
+  "sub": "Regular",
+  "full": "Li Alinur Atithi Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurBinoy.zip",
+  "file": "ANSI V1/Li Alinur Binoy ANSI V1 Italic.ttf",
+  "family": "Li Alinur Binoy ANSI V1",
+  "sub": "Italic",
+  "full": "Li Alinur Binoy ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurBinoy.zip",
+  "file": "ANSI V1/Li Alinur Binoy ANSI V1.ttf",
+  "family": "Li Alinur Binoy ANSI V1",
+  "sub": "Regular",
+  "full": "Li Alinur Binoy ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurBinoy.zip",
+  "file": "ANSI V2/Li Alinur Binoy ANSI V2 Italic.ttf",
+  "family": "Li Alinur Binoy ANSI V2",
+  "sub": "Italic",
+  "full": "Li Alinur Binoy ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurBinoy.zip",
+  "file": "ANSI V2/Li Alinur Binoy ANSI V2.ttf",
+  "family": "Li Alinur Binoy ANSI V2",
+  "sub": "Regular",
+  "full": "Li Alinur Binoy ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurBinoy.zip",
+  "file": "Unicode/Li Alinur Binoy Unicode Italic.ttf",
+  "family": "Li Alinur Binoy Unicode",
+  "sub": "Italic",
+  "full": "Li Alinur Binoy Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurBinoy.zip",
+  "file": "Unicode/Li Alinur Binoy Unicode.ttf",
+  "family": "Li Alinur Binoy Unicode",
+  "sub": "Regular",
+  "full": "Li Alinur Binoy Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurBornoBikash.zip",
+  "file": "ANSI V1/Li Alinur BornoBikash ANSI V1 Italic.ttf",
+  "family": "Li Alinur BornoBikash ANSI V1",
+  "sub": "Italic",
+  "full": "Li Alinur BornoBikash ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurBornoBikash.zip",
+  "file": "ANSI V1/Li Alinur BornoBikash ANSI V1.ttf",
+  "family": "Li Alinur BornoBikash ANSI V1",
+  "sub": "Regular",
+  "full": "Li Alinur BornoBikash ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurBornoBikash.zip",
+  "file": "ANSI V2/Li Alinur BornoBikash ANSI V2 Italic.ttf",
+  "family": "Li Alinur BornoBikash ANSI V2",
+  "sub": "Italic",
+  "full": "Li Alinur BornoBikash ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurBornoBikash.zip",
+  "file": "ANSI V2/Li Alinur BornoBikash ANSI V2.ttf",
+  "family": "Li Alinur BornoBikash ANSI V2",
+  "sub": "Regular",
+  "full": "Li Alinur BornoBikash ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurBornoBikash.zip",
+  "file": "Unicode/Li Alinur BornoBikash Unicode Italic.ttf",
+  "family": "Li Alinur BornoBikash Unicode",
+  "sub": "Italic",
+  "full": "Li Alinur BornoBikash Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurBornoBikash.zip",
+  "file": "Unicode/Li Alinur BornoBikash Unicode.ttf",
+  "family": "Li Alinur BornoBikash Unicode",
+  "sub": "Regular",
+  "full": "Li Alinur BornoBikash Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurImarat.zip",
+  "file": "ANSI V1/Li Alinur Imarat ANSI V1 Italic.ttf",
+  "family": "Li Alinur Imarat ANSI V1",
+  "sub": "Italic",
+  "full": "Li Alinur Imarat ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurImarat.zip",
+  "file": "ANSI V1/Li Alinur Imarat ANSI V1.ttf",
+  "family": "Li Alinur Imarat ANSI V1",
+  "sub": "Regular",
+  "full": "Li Alinur Imarat ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurImarat.zip",
+  "file": "ANSI V2/Li Alinur Imarat ANSI V2 Italic.ttf",
+  "family": "Li Alinur Imarat ANSI V2",
+  "sub": "Italic",
+  "full": "Li Alinur Imarat ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurImarat.zip",
+  "file": "ANSI V2/Li Alinur Imarat ANSI V2.ttf",
+  "family": "Li Alinur Imarat ANSI V2",
+  "sub": "Regular",
+  "full": "Li Alinur Imarat ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurImarat.zip",
+  "file": "Unicode/Li Alinur Imarat Unicode Italic.ttf",
+  "family": "Li Alinur Imarat Unicode",
+  "sub": "Italic",
+  "full": "Li Alinur Imarat Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurImarat.zip",
+  "file": "Unicode/Li Alinur Imarat Unicode.ttf",
+  "family": "Li Alinur Imarat Unicode",
+  "sub": "Regular",
+  "full": "Li Alinur Imarat Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurProhor.zip",
+  "file": "ANSI V1/Li Alinur Prohor ANSI V1 Italic.ttf",
+  "family": "Li Alinur Prohor ANSI V1",
+  "sub": "Italic",
+  "full": "Li Alinur Prohor ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurProhor.zip",
+  "file": "ANSI V1/Li Alinur Prohor ANSI V1.ttf",
+  "family": "Li Alinur Prohor ANSI V1",
+  "sub": "Regular",
+  "full": "Li Alinur Prohor ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurProhor.zip",
+  "file": "ANSI V2/Li Alinur Prohor ANSI V2 Italic.ttf",
+  "family": "Li Alinur Prohor ANSI V2",
+  "sub": "Italic",
+  "full": "Li Alinur Prohor ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurProhor.zip",
+  "file": "ANSI V2/Li Alinur Prohor ANSI V2.ttf",
+  "family": "Li Alinur Prohor ANSI V2",
+  "sub": "Regular",
+  "full": "Li Alinur Prohor ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurProhor.zip",
+  "file": "Unicode/Li Alinur Prohor Unicode Italic.ttf",
+  "family": "Li Alinur Prohor Unicode",
+  "sub": "Italic",
+  "full": "Li Alinur Prohor Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurProhor.zip",
+  "file": "Unicode/Li Alinur Prohor Unicode.ttf",
+  "family": "Li Alinur Prohor Unicode",
+  "sub": "Regular",
+  "full": "Li Alinur Prohor Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurRangpur.zip",
+  "file": "ANSI V1/Li Alinur Rangpur ANSI V1 Italic.ttf",
+  "family": "Li Alinur Rangpur ANSI V1",
+  "sub": "Italic",
+  "full": "Li Alinur Rangpur ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurRangpur.zip",
+  "file": "ANSI V1/Li Alinur Rangpur ANSI V1.ttf",
+  "family": "Li Alinur Rangpur ANSI V1",
+  "sub": "Regular",
+  "full": "Li Alinur Rangpur ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurRangpur.zip",
+  "file": "ANSI V2/Li Alinur Rangpur ANSI V2 Italic.ttf",
+  "family": "Li Alinur Rangpur ANSI V2",
+  "sub": "Italic",
+  "full": "Li Alinur Rangpur ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurRangpur.zip",
+  "file": "ANSI V2/Li Alinur Rangpur ANSI V2.ttf",
+  "family": "Li Alinur Rangpur ANSI V2",
+  "sub": "Regular",
+  "full": "Li Alinur Rangpur ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurRangpur.zip",
+  "file": "Unicode/Li Alinur Rangpur Unicode Italic.ttf",
+  "family": "Li Alinur Rangpur Unicode",
+  "sub": "Italic",
+  "full": "Li Alinur Rangpur Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurRangpur.zip",
+  "file": "Unicode/Li Alinur Rangpur Unicode.ttf",
+  "family": "Li Alinur Rangpur Unicode",
+  "sub": "Regular",
+  "full": "Li Alinur Rangpur Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurTumatul.zip",
+  "file": "ANSI V1/Li Alinur Tumatul ANSI V1 Italic.ttf",
+  "family": "Li Alinur Tumatul ANSI V1",
+  "sub": "Italic",
+  "full": "Li Alinur Tumatul ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurTumatul.zip",
+  "file": "ANSI V1/Li Alinur Tumatul ANSI V1.ttf",
+  "family": "Li Alinur Tumatul ANSI V1",
+  "sub": "Regular",
+  "full": "Li Alinur Tumatul ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurTumatul.zip",
+  "file": "ANSI V2/Li Alinur Tumatul ANSI V2 Italic.ttf",
+  "family": "Li Alinur Tumatul ANSI V2",
+  "sub": "Italic",
+  "full": "Li Alinur Tumatul ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurTumatul.zip",
+  "file": "ANSI V2/Li Alinur Tumatul ANSI V2.ttf",
+  "family": "Li Alinur Tumatul ANSI V2",
+  "sub": "Regular",
+  "full": "Li Alinur Tumatul ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "AlinurTumatul.zip",
+  "file": "Unicode/Li Alinur Tumatul Unicode Italic.ttf",
+  "family": "Li Alinur Tumatul Unicode",
+  "sub": "Italic",
+  "full": "Li Alinur Tumatul Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "AlinurTumatul.zip",
+  "file": "Unicode/Li Alinur Tumatul Unicode.ttf",
+  "family": "Li Alinur Tumatul Unicode",
+  "sub": "Regular",
+  "full": "Li Alinur Tumatul Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "BL-Masud-Mosaic-Unicode.zip",
+  "file": "BL Masud Mosaic Unicode Italic.ttf",
+  "family": "BL Masud Mosaic Unicode",
+  "sub": "Bold Italic",
+  "full": "BL Masud Mosaic Unicode Bold Italic",
+  "bengali": true,
+  "weight": 900,
+  "italic": true
+ },
+ {
+  "zip": "BL-Masud-Mosaic-Unicode.zip",
+  "file": "BL Masud Mosaic Unicode.ttf",
+  "family": "BL Masud Mosaic Unicode",
+  "sub": "Bold",
+  "full": "BL Masud Mosaic Unicode Bold",
+  "bengali": true,
+  "weight": 900,
+  "italic": false
+ },
+ {
+  "zip": "Badhon Bhasha-17.zip",
+  "file": "ANSI V1/FN Badhon Bhasha-17 ANSI V1 Italic.ttf",
+  "family": "FN Badhon Bhasha-17 ANSI V1",
+  "sub": "Italic",
+  "full": "FN Badhon Bhasha-17 ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "Badhon Bhasha-17.zip",
+  "file": "ANSI V1/FN Badhon Bhasha-17 ANSI V1.ttf",
+  "family": "FN Badhon Bhasha-17 ANSI V1",
+  "sub": "Regular",
+  "full": "FN Badhon Bhasha-17 ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "Badhon Bhasha-17.zip",
+  "file": "ANSI V2/FN Badhon Bhasha-17 ANSI V2 Italic.ttf",
+  "family": "FN Badhon Bhasha-17 ANSI V2",
+  "sub": "Italic",
+  "full": "FN Badhon Bhasha-17 ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "Badhon Bhasha-17.zip",
+  "file": "ANSI V2/FN Badhon Bhasha-17 ANSI V2.ttf",
+  "family": "FN Badhon Bhasha-17 ANSI V2",
+  "sub": "Regular",
+  "full": "FN Badhon Bhasha-17 ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "Badhon Bhasha-17.zip",
+  "file": "Unicode/FN Badhon Bhasha-17 Unicode Italic.ttf",
+  "family": "FN Badhon Bhasha-17 Unicode",
+  "sub": "Italic",
+  "full": "FN Badhon Bhasha-17 Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "Badhon Bhasha-17.zip",
+  "file": "Unicode/FN Badhon Bhasha-17 Unicode.ttf",
+  "family": "FN Badhon Bhasha-17 Unicode",
+  "sub": "Regular",
+  "full": "FN Badhon Bhasha-17 Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "Badhon Ikra.zip",
+  "file": "Bijoy52/FN Badhon Ikra ANSI V2 Italic.ttf",
+  "family": "FN Badhon Ikra ANSI V2 Italic",
+  "sub": "Italic",
+  "full": "FN Badhon Ikra ANSI V2 Italic FN Badhon Ikra ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "Badhon Ikra.zip",
+  "file": "Bijoy52/FN Badhon Ikra ANSI V2.ttf",
+  "family": "FN Badhon Ikra ANSI V2",
+  "sub": "Regular",
+  "full": "FN Badhon Ikra ANSI V2 FN Badhon Ikra ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "Badhon Ikra.zip",
+  "file": "Bijoy2003/FN Badhon Ikra ANSI V1 Italic.ttf",
+  "family": "FN Badhon Ikra ANSI V1 Italic",
+  "sub": "Italic",
+  "full": "FN Badhon Ikra ANSI V1 Italic FN Badhon Ikra ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "Badhon Ikra.zip",
+  "file": "Bijoy2003/FN Badhon Ikra ANSI V1.ttf",
+  "family": "FN Badhon Ikra ANSI V1",
+  "sub": "Regular",
+  "full": "FN Badhon Ikra ANSI V1 FN Badhon Ikra ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "Badhon Ikra.zip",
+  "file": "Unicode/FN Badhon Ikra Unicode Italic.ttf",
+  "family": "FN Badhon Ikra Unicode Italic",
+  "sub": "Italic",
+  "full": "FN Badhon Ikra Unicode Italic FN Badhon Ikra Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "Badhon Ikra.zip",
+  "file": "Unicode/FN Badhon Ikra Unicode.ttf",
+  "family": "FN Badhon Ikra Unicode",
+  "sub": "Regular",
+  "full": "FN Badhon Ikra Unicode FN Badhon Ikra Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "ChayanaTeesta.zip",
+  "file": "ANSI V1/Li Chayana Teesta ANSI V1 Italic.ttf",
+  "family": "Li Chayana Teesta ANSI V1",
+  "sub": "Italic",
+  "full": "Li Chayana Teesta ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "ChayanaTeesta.zip",
+  "file": "ANSI V1/Li Chayana Teesta ANSI V1.ttf",
+  "family": "Li Chayana Teesta ANSI V1",
+  "sub": "Regular",
+  "full": "Li Chayana Teesta ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "ChayanaTeesta.zip",
+  "file": "ANSI V2/Li Chayana Teesta ANSI V2 Italic.ttf",
+  "family": "Li Chayana Teesta ANSI V2",
+  "sub": "Italic",
+  "full": "Li Chayana Teesta ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "ChayanaTeesta.zip",
+  "file": "ANSI V2/Li Chayana Teesta ANSI V2.ttf",
+  "family": "Li Chayana Teesta ANSI V2",
+  "sub": "Regular",
+  "full": "Li Chayana Teesta ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "ChayanaTeesta.zip",
+  "file": "Unicode/Li Chayana Teesta Unicode Italic.ttf",
+  "family": "Li Chayana Teesta Unicode",
+  "sub": "Italic",
+  "full": "Li Chayana Teesta Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "ChayanaTeesta.zip",
+  "file": "Unicode/Li Chayana Teesta Unicode.ttf",
+  "family": "Li Chayana Teesta Unicode",
+  "sub": "Regular",
+  "full": "Li Chayana Teesta Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "ChhatrishJuly.zip",
+  "file": "ANSI V1/Li Chhatrish July ANSI V1 Italic.ttf",
+  "family": "Li Chhatrish July ANSI V1",
+  "sub": "Italic",
+  "full": "Li Chhatrish July ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "ChhatrishJuly.zip",
+  "file": "ANSI V1/Li Chhatrish July ANSI V1.ttf",
+  "family": "Li Chhatrish July ANSI V1",
+  "sub": "Regular",
+  "full": "Li Chhatrish July ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "ChhatrishJuly.zip",
+  "file": "ANSI V2/Li Chhatrish July ANSI V2 Italic.ttf",
+  "family": "Li Chhatrish July ANSI V2",
+  "sub": "Italic",
+  "full": "Li Chhatrish July ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "ChhatrishJuly.zip",
+  "file": "ANSI V2/Li Chhatrish July ANSI V2.ttf",
+  "family": "Li Chhatrish July ANSI V2",
+  "sub": "Regular",
+  "full": "Li Chhatrish July ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "ChhatrishJuly.zip",
+  "file": "Unicode/Li Chhatrish July Unicode Italic.ttf",
+  "family": "Li Chhatrish July Unicode",
+  "sub": "Italic",
+  "full": "Li Chhatrish July Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "ChhatrishJuly.zip",
+  "file": "Unicode/Li Chhatrish July Unicode.ttf",
+  "family": "Li Chhatrish July Unicode",
+  "sub": "Regular",
+  "full": "Li Chhatrish July Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Dhaleshwari.zip",
+  "file": "Dhaleshwari/Dhaleshwari Italic.ttf",
+  "family": "Dhaleshwari",
+  "sub": "Bold",
+  "full": "Dhaleshwari Bold",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Dhaleshwari.zip",
+  "file": "Dhaleshwari/Dhaleshwari Normal.ttf",
+  "family": "Dhaleshwari",
+  "sub": "Bold",
+  "full": "Dhaleshwari Bold",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Dukkho-Bilsahi.zip",
+  "file": "FN Dukkho-Bilsahi/Unicode/FN Dukkho Bilashi Italic.otf",
+  "family": "FN Dukkho Bilashi",
+  "sub": "Regular",
+  "full": "Dukkho Bilashi By Mashbik Mathew -www.fontbd.com Regular",
+  "bengali": true,
+  "weight": 300,
+  "italic": false
+ },
+ {
+  "zip": "FN Dukkho-Bilsahi.zip",
+  "file": "FN Dukkho-Bilsahi/Unicode/FN Dukkho Bilashi Regular.ttf",
+  "family": "FN Dukkho Bilashi",
+  "sub": "Regular",
+  "full": "Dukkho Bilashi By Mashbik Mathew - www..fontbd.com Regular",
+  "bengali": true,
+  "weight": 300,
+  "italic": false
+ },
+ {
+  "zip": "FN Faruq Noakhali.zip",
+  "file": "FN Faruq Noakhali/ANSI V1/FN Faruq Noakhali  ANSI V1 Italic.ttf",
+  "family": "FN Faruq Noakhali  ANSI V1 Ital",
+  "sub": "Regular",
+  "full": "FN Faruq Noakhali  ANSI V1 Ital",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN Faruq Noakhali.zip",
+  "file": "FN Faruq Noakhali/ANSI V1/FN Faruq Noakhali ANSI V1.ttf",
+  "family": "FN Faruq Noakhali  ANSI V1",
+  "sub": "Regular",
+  "full": "FN Faruq Noakhali  ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Faruq Noakhali.zip",
+  "file": "FN Faruq Noakhali/ANSI V2/FN Faruq Noakhali  ANSI V2 Italic.ttf",
+  "family": "FN Faruq Noakhali  ANSI V2 Ital",
+  "sub": "Regular",
+  "full": "FN Faruq Noakhali  ANSI V2 Ital",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN Faruq Noakhali.zip",
+  "file": "FN Faruq Noakhali/ANSI V2/FN Faruq Noakhali ANSI V2.ttf",
+  "family": "FN Faruq Noakhali  ANSI V2",
+  "sub": "Regular",
+  "full": "FN Faruq Noakhali  ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Faruq Noakhali.zip",
+  "file": "FN Faruq Noakhali/Unicode/FN Faruq Noakhali Unicode Italic.ttf",
+  "family": "FN Faruq Noakhali Unicode Itali",
+  "sub": "Regular",
+  "full": "FN Faruq Noakhali Unicode Itali",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN Faruq Noakhali.zip",
+  "file": "FN Faruq Noakhali/Unicode/FN Faruq Noakhali Unicode.ttf",
+  "family": "FN Faruq Noakhali Unicode",
+  "sub": "Regular",
+  "full": "FN Faruq Noakhali Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Helal Arafat.zip",
+  "file": "FN Helal Arafat/Bijoy52/FN Helal Arafat Bijoy52 Italic.ttf",
+  "family": "FN Helal Arafat Bijoy52",
+  "sub": "Italic",
+  "full": "FN Helal Arafat Bijoy52 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Helal Arafat.zip",
+  "file": "FN Helal Arafat/Bijoy52/FN Helal Arafat Bijoy52.ttf",
+  "family": "FN Helal Arafat Bijoy52",
+  "sub": "Regular",
+  "full": "FN Helal Arafat Bijoy52",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Helal Arafat.zip",
+  "file": "FN Helal Arafat/Unicod/FN Helal Arafat Unicod Italic.ttf",
+  "family": "FN Helal Arafat Unicode",
+  "sub": "Italic",
+  "full": "FN Helal Arafat Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Helal Arafat.zip",
+  "file": "FN Helal Arafat/Unicod/FN Helal Arafat Unicod.ttf",
+  "family": "FN Helal Arafat Unicode",
+  "sub": "Regular",
+  "full": "FN Helal Arafat Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Helal Laveriya.zip",
+  "file": "FN Helal Laveriya/FN Helal Laveriya Bijoy52/FN Helal Laveriya Bijoy52 Italic.ttf",
+  "family": "FN Helal Laveriya Bijoy52",
+  "sub": "Italic",
+  "full": "FN Helal Laveriya Bijoy52 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Helal Laveriya.zip",
+  "file": "FN Helal Laveriya/FN Helal Laveriya Bijoy52/FN Helal Laveriya Bijoy52.ttf",
+  "family": "FN Helal Laveriya Bijoy52",
+  "sub": "Regular",
+  "full": "FN Helal Laveriya Bijoy52",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Helal Laveriya.zip",
+  "file": "FN Helal Laveriya/FN-Helal-Laveriya-Unicode/FN-Helal-Laveriya-Unicode Italic.otf",
+  "family": "FN Helal Laveriya Unicode",
+  "sub": "Italic",
+  "full": "FN Helal Laveriya Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Helal Laveriya.zip",
+  "file": "FN Helal Laveriya/FN-Helal-Laveriya-Unicode/FN-Helal-Laveriya-Unicode.otf",
+  "family": "FN Helal Laveriya Unicode",
+  "sub": "Regular",
+  "full": "FN Helal Laveriya Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Kapotakkho.zip",
+  "file": "Kopotakkho Unicode Italic.ttf",
+  "family": "Kopotakkho Unicode",
+  "sub": "Regular",
+  "full": "Kopotakkho Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Kapotakkho.zip",
+  "file": "Kopotakkho Unicode Regular.ttf",
+  "family": "Kopotakkho Unicode",
+  "sub": "Regular",
+  "full": "Kopotakkho Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Kothakoli.zip",
+  "file": "Bijoy52/FN Kothakoli Bijoy52 Italic.otf",
+  "family": "FN Kothakoli Bijoy52",
+  "sub": "Italic",
+  "full": "FN Kothakoli Bijoy52 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN Kothakoli.zip",
+  "file": "Bijoy52/FN Kothakoli Bijoy52.otf",
+  "family": "FN Kothakoli Bijoy52",
+  "sub": "Regular",
+  "full": "FN Kothakoli Bijoy52",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Kothakoli.zip",
+  "file": "Bijoy2003/FN Kothakoli Bijoy2003 Italic.otf",
+  "family": "FN Kothakoli Bijoy2003",
+  "sub": "Italic",
+  "full": "FN Kothakoli Bijoy2003 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN Kothakoli.zip",
+  "file": "Bijoy2003/FN Kothakoli Bijoy2003.otf",
+  "family": "FN Kothakoli Bijoy2003",
+  "sub": "Regular",
+  "full": "FN Kothakoli Bijoy2003",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Kothakoli.zip",
+  "file": "Unicode/FN Kothakoli Unicode Italic.ttf",
+  "family": "FN Kothakoli Unicode",
+  "sub": "Italic",
+  "full": "FN Kothakoli Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN Kothakoli.zip",
+  "file": "Unicode/FN Kothakoli Unicode.ttf",
+  "family": "FN Kothakoli Unicode",
+  "sub": "Regular",
+  "full": "FN Kothakoli Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Lipika Azhari.zip",
+  "file": "FN Lipika Azhari/FN-Lipika-Azhari-Boold.ttf",
+  "family": "FN Lipika Azhari",
+  "sub": "Regular",
+  "full": "FN Lipika Azhari Bold",
+  "bengali": true,
+  "weight": 700,
+  "italic": false
+ },
+ {
+  "zip": "FN Lipika Azhari.zip",
+  "file": "FN Lipika Azhari/FN-Lipika-Azhari-Boold-Italic.ttf",
+  "family": "Fn Lipika Azhari",
+  "sub": "Regular",
+  "full": "Fn Lipika Azhari Bold Italic",
+  "bengali": true,
+  "weight": 800,
+  "italic": true
+ },
+ {
+  "zip": "FN Lipika Azhari.zip",
+  "file": "FN Lipika Azhari/FN-Lipika-Azhari-Light.ttf",
+  "family": "FN Lipika Azhari",
+  "sub": "Regular",
+  "full": "FN Lipika Azhari Light",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Lipika Azhari.zip",
+  "file": "FN Lipika Azhari/FN-Lipika-Azhari-Light-Italic.ttf",
+  "family": "Fn Lipika Azhari",
+  "sub": "Italic",
+  "full": "Fn Lipika Azhari Light Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN Lipika Azhari.zip",
+  "file": "FN Lipika Azhari/FN-Lipika-Azhari-Medium.ttf",
+  "family": "FN Lipika Azhari",
+  "sub": "Bold",
+  "full": "FN Lipika Azhari Medium",
+  "bengali": true,
+  "weight": 500,
+  "italic": false
+ },
+ {
+  "zip": "FN Lipika Azhari.zip",
+  "file": "FN Lipika Azhari/FN-Lipika-Azhari-Medium-Italic.ttf",
+  "family": "FN Lipika Azhari",
+  "sub": "Bold",
+  "full": "FN Lipika Azhari Medium Italic",
+  "bengali": true,
+  "weight": 500,
+  "italic": true
+ },
+ {
+  "zip": "FN Mahbub Samira.zip",
+  "file": "FN Mahbub Samira/Bijoy 2003/FN Mahbub shamira Bijoy2003 Italic.otf",
+  "family": "FN Mahbub Shamira B2003 Italic",
+  "sub": "Regular",
+  "full": "FN Mahbub shamira Bijoy2003",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Mahbub Samira.zip",
+  "file": "FN Mahbub Samira/Bijoy 2003/FN Mahbub shamira Bijoy2003.otf",
+  "family": "FN Mahbub Shamira Bijoy2003",
+  "sub": "Regular",
+  "full": "FN Mahbub shamira Bijoy2003",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Mahbub Samira.zip",
+  "file": "FN Mahbub Samira/Bijoy52/FN Mahbub Samira Bijoy52 Italic.ttf",
+  "family": "FN Mahbub Shamira Bijoy52 Itali",
+  "sub": "Regular",
+  "full": "FN Mahbub Shamira Bijoy52",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Mahbub Samira.zip",
+  "file": "FN Mahbub Samira/Bijoy52/FN Mahbub Samira Bijoy52.ttf",
+  "family": "FN Mahbub Shamira Bijoy52",
+  "sub": "Regular",
+  "full": "FN Mahbub Shamira Bijoy52",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Mahbub Samira.zip",
+  "file": "FN Mahbub Samira/Unicode/FN Mahbub Samira Unicode Italic.ttf",
+  "family": "FN Mahbub Samira Unicode Iltali",
+  "sub": "Regular",
+  "full": "FN Mahbub Samira Unicode Iltali",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Mahbub Samira.zip",
+  "file": "FN Mahbub Samira/Unicode/FN Mahbub Samira Unicode.ttf",
+  "family": "FN Mahbub Samira Unicode",
+  "sub": "Regular",
+  "full": "samira beta 2",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Mahfuz Metro.zip",
+  "file": "FN Mahfuz Metro/Bijoy2003/Md-Mahfuzur-Rahman-Bijoy-2003 Italic.ttf",
+  "family": "FN Mahfuz Metro Bijoy 2003 Ital",
+  "sub": "Italic",
+  "full": "FN Mahfuz Metro Bijoy 2003 Ital Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN Mahfuz Metro.zip",
+  "file": "FN Mahfuz Metro/Bijoy2003/Md-Mahfuzur-Rahman-Bijoy-2003.otf",
+  "family": "FN Mahfuz Metro Bijoy 2003",
+  "sub": "Regular",
+  "full": "FN Mahfuz Metro Bijoy 2003",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Mahfuz Metro.zip",
+  "file": "FN Mahfuz Metro/Bijoy52/FN-Mahfuz-Metro-Bijoy-52 Italic.ttf",
+  "family": "FN Mahfuz Metro Bijoy52 Italic",
+  "sub": "Italic",
+  "full": "FN Mahfuz Metro Bijoy52",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN Mahfuz Metro.zip",
+  "file": "FN Mahfuz Metro/Bijoy52/FN-Mahfuz-Metro-Bijoy-52.otf",
+  "family": "FN Mahfuz Metro Bijoy52",
+  "sub": "Regular",
+  "full": "FN Mahfuz Metro Bijoy52",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Mahfuz Metro.zip",
+  "file": "FN Mahfuz Metro/Unicode/FN Mahfuz Metro UNI & BE Italic.ttf",
+  "family": "FN Mahfuz Metro UNI & BE Italic",
+  "sub": "Regular",
+  "full": "FN Mahfuz Metro UNI & BE",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Mahfuz Metro.zip",
+  "file": "FN Mahfuz Metro/Unicode/FN Mahfuz Metro UNI & BE.otf",
+  "family": "FN Mahfuz Metro UNI & BE",
+  "sub": "Regular",
+  "full": "FN Mahfuz Metro UNI & BE",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Mahin Jubayer.zip",
+  "file": "FN Mahin Jubayer/Unicode/FN Mahin Jubayer Unicode Italic.ttf",
+  "family": "FN Mahin Jubayer Unicode",
+  "sub": "Italic",
+  "full": "FN Mahin Jubayer Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN Mahin Jubayer.zip",
+  "file": "FN Mahin Jubayer/Unicode/FN Mahin Jubayer Unicode.ttf",
+  "family": "FN Mahin Jubayer Unicode",
+  "sub": "Regular",
+  "full": "FN Mahin Jubayer Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Mamun Mahfuz.zip",
+  "file": "FN Mamun Mahfuz/Unicode/FN-Mamun-Mahfuz-Unicode-Bold.ttf",
+  "family": "FN Mamun Mahfuz Unicode",
+  "sub": "Bold",
+  "full": "FN Mamun Mahfuz Unicode Bold",
+  "bengali": true,
+  "weight": 700,
+  "italic": false
+ },
+ {
+  "zip": "FN Mamun Mahfuz.zip",
+  "file": "FN Mamun Mahfuz/Unicode/FN-Mamun-Mahfuz-Unicode-Bold-Italic.ttf",
+  "family": "FN Mamun Mahfuz Unicode",
+  "sub": "Bold Italic",
+  "full": "FN Mamun Mahfuz Unicode Bold Italic",
+  "bengali": true,
+  "weight": 700,
+  "italic": true
+ },
+ {
+  "zip": "FN Nuralam Shakh Mujib.zip",
+  "file": "FN Nuralam Sheikh Mujib Font/FN Nuralam Shakh Mujib Bijoy52/FN Nuralam Shakh Mujib Bijoy52 Bold Italic.ttf",
+  "family": "FN Nuralam Sheikh Mujib B52",
+  "sub": "Bold Italic",
+  "full": "FN Nuralam Sheike Mujib B52 Bold Italic",
+  "bengali": false,
+  "weight": 700,
+  "italic": true
+ },
+ {
+  "zip": "FN Nuralam Shakh Mujib.zip",
+  "file": "FN Nuralam Sheikh Mujib Font/FN Nuralam Shakh Mujib Bijoy52/FN Nuralam Shakh Mujib Bijoy52 Bold.ttf",
+  "family": "FN Nuralam Sheikh Mujib B52",
+  "sub": "Bold",
+  "full": "FN Nuralam Sheike Mujib B52 Bold",
+  "bengali": false,
+  "weight": 700,
+  "italic": false
+ },
+ {
+  "zip": "FN Nuralam Shakh Mujib.zip",
+  "file": "FN Nuralam Sheikh Mujib Font/FN Nuralam Shakh Mujib Bijoy52/FN Nuralam Shakh Mujib Bijoy52 Light Italic.ttf",
+  "family": "FN Nuralam Sheikh Mujib B52",
+  "sub": "Italic",
+  "full": "FN Nuralam Sheikh Mujib B52 Light Italic",
+  "bengali": false,
+  "weight": 300,
+  "italic": true
+ },
+ {
+  "zip": "FN Nuralam Shakh Mujib.zip",
+  "file": "FN Nuralam Sheikh Mujib Font/FN Nuralam Shakh Mujib Bijoy52/FN Nuralam Shakh Mujib Bijoy52 Light.ttf",
+  "family": "FN Nuralam Sheikh Mujib B52",
+  "sub": "Light",
+  "full": "FN Nuralam Sheikh Mujib B52 Light",
+  "bengali": false,
+  "weight": 300,
+  "italic": false
+ },
+ {
+  "zip": "FN Nuralam Shakh Mujib.zip",
+  "file": "FN Nuralam Sheikh Mujib Font/FN Nuralam Shakh Mujib Bijoy52/FN Nuralam Sheikh Mujib Bijoy 52 Regular Italic.ttf",
+  "family": "FN Nuralam Sheikh Mujib B52",
+  "sub": "Italic",
+  "full": "FN Nuralam Sheikh Mujib B52 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN Nuralam Shakh Mujib.zip",
+  "file": "FN Nuralam Sheikh Mujib Font/FN Nuralam Shakh Mujib Bijoy52/FN Nuralam Sheikh Mujib Bijoy 52 Regular.ttf",
+  "family": "FN Nuralam Sheikh Mujib B52",
+  "sub": "Regular",
+  "full": "FN Nuralam Sheikh Mujib Bijoy52 Regular",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Nuralam Shakh Mujib.zip",
+  "file": "FN Nuralam Sheikh Mujib Font/FN Nuralam Sheikh Mujib Unicode/FN Nuralam Shakh Mujib Unicode Bold Italic.ttf",
+  "family": "FN Nuralam Sheikh Mujib Unicode",
+  "sub": "Bold Italic",
+  "full": "FN Nuralam Sheikh Mujib Unicode Bold Italic",
+  "bengali": true,
+  "weight": 700,
+  "italic": true
+ },
+ {
+  "zip": "FN Nuralam Shakh Mujib.zip",
+  "file": "FN Nuralam Sheikh Mujib Font/FN Nuralam Sheikh Mujib Unicode/FN Nuralam Shakh Mujib Unicode Bold.ttf",
+  "family": "FN Nuralam Sheikh Mujib Unicode",
+  "sub": "Bold",
+  "full": "FN Nuralam Sheikh Mujib Uni Bold",
+  "bengali": true,
+  "weight": 700,
+  "italic": false
+ },
+ {
+  "zip": "FN Nuralam Shakh Mujib.zip",
+  "file": "FN Nuralam Sheikh Mujib Font/FN Nuralam Sheikh Mujib Unicode/FN Nuralam Shakh Mujib Unicode Light Italic.ttf",
+  "family": "FN Nuralam Sheikh Mujib Unicode",
+  "sub": "Italic",
+  "full": "FN Nuralam Sheikh Mujib Unicode  Light Italic",
+  "bengali": true,
+  "weight": 300,
+  "italic": true
+ },
+ {
+  "zip": "FN Nuralam Shakh Mujib.zip",
+  "file": "FN Nuralam Sheikh Mujib Font/FN Nuralam Sheikh Mujib Unicode/FN Nuralam Shakh Mujib Unicode Light.otf",
+  "family": "FN Nuralam Sheikh Mujib Unicode",
+  "sub": "Regular",
+  "full": "FN Nuralam Sheikh Mujib Unicode Light",
+  "bengali": true,
+  "weight": 300,
+  "italic": false
+ },
+ {
+  "zip": "FN Nuralam Shakh Mujib.zip",
+  "file": "FN Nuralam Sheikh Mujib Font/FN Nuralam Sheikh Mujib Unicode/FN Nuralam Shakh Mujib Unicod-Italic.otf",
+  "family": "FN Nuralam Sheikh Mujib Unicode",
+  "sub": "Italic",
+  "full": "FN NuralamSheikhMujib Uni Iltalic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN Nuralam Shakh Mujib.zip",
+  "file": "FN Nuralam Sheikh Mujib Font/FN Nuralam Sheikh Mujib Unicode/FN Nuralam Sheikh Mujib Unicode Regular.ttf",
+  "family": "FN Nuralam Sheikh Mujib Unicode",
+  "sub": "Regular",
+  "full": "FN Nuralam Sheikh Mujib Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN PadmaPata.zip",
+  "file": "FN PadmaPata/Bijoy52/PadmaPata-Bijoy-52 .ttf",
+  "family": "FN PadmaPata Bijoy 52",
+  "sub": "Regular",
+  "full": "FN PadmaPata Bijoy52 Regular",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN PadmaPata.zip",
+  "file": "FN PadmaPata/Bijoy52/PadmaPata-Bijoy-52_italic.ttf",
+  "family": "FN PadmaPata Bijoy 52",
+  "sub": "Italic",
+  "full": "FN PadmaPata Bijoy52 talic",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN PadmaPata.zip",
+  "file": "FN PadmaPata/unicode/PadmaPata unicode reguler Italic.ttf",
+  "family": "PadmaPata",
+  "sub": "Italic",
+  "full": "PadmaPata Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN PadmaPata.zip",
+  "file": "FN PadmaPata/unicode/PadmaPata unicode reguler.ttf",
+  "family": "PadmaPata",
+  "sub": "Regular",
+  "full": "PadmaPata",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Sabina Shorolipi.zip",
+  "file": "FN Sabina Shorolipi/Unicode/FN_ Sabina Shorolipi Bangla Unicode Italic.ttf",
+  "family": "FN ‍Sabina Shorolipi Bangla Unicode",
+  "sub": "Italic",
+  "full": "FN ‍Sabina Shorolipi Bangla Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN Sabina Shorolipi.zip",
+  "file": "FN Sabina Shorolipi/Unicode/FN_ Sabina Shorolipi Bangla Unicode Regular.ttf",
+  "family": "FN ‍Sabina Shorolipi Bangla Unicode",
+  "sub": "Regular",
+  "full": "FN ‍Sabina Shorolipi Bangla Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Samprotik.zip",
+  "file": "Samprotik/FN Samprotik Bijoy52 Italic.ttf",
+  "family": "FN Samprotik Bijoy52 Italic",
+  "sub": "Italic",
+  "full": "FN Samprotik Bijoy52 Italic Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN Samprotik.zip",
+  "file": "Samprotik/FN Samprotik Bijoy52.ttf",
+  "family": "FN Samprotik Bijoy52",
+  "sub": "Bold",
+  "full": "FN Samprotik Bijoy52 Bold",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN Samprotik.zip",
+  "file": "Samprotik/FN Samprotik Unicode Italic.ttf",
+  "family": "FN Samprotik Unicode Italic",
+  "sub": "Italic",
+  "full": "FN Samprotik Unicode Italic Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN Samprotik.zip",
+  "file": "Samprotik/FN Samprotik Unicode.ttf",
+  "family": "FN Samprotik Unicode",
+  "sub": "Regular",
+  "full": "FN Samprotik Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN-Mamun-Bornolipi.zip",
+  "file": "Bijoy52/FN Mamun Bornolipi Bijoy52 Italic.otf",
+  "family": "FN Mamun Bornolipi Bijoy52",
+  "sub": "Italic",
+  "full": "FN Mamun Bornolipi Bijoy52 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN-Mamun-Bornolipi.zip",
+  "file": "Bijoy52/FN Mamun Bornolipi Bijoy52.otf",
+  "family": "FN Mamun Bornolipi Bijoy52",
+  "sub": "Regular",
+  "full": "FN Mamun Bornolipi Bijoy52",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN-Mamun-Bornolipi.zip",
+  "file": "Bijoy2003/FN Mamun Bornolipi Bijoy2003 Italic.otf",
+  "family": "FN Mamun Bornolipi Bijoy2003",
+  "sub": "Italic",
+  "full": "FN Mamun Bornolipi Bijoy2003 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN-Mamun-Bornolipi.zip",
+  "file": "Bijoy2003/FN Mamun Bornolipi Bijoy2003.otf",
+  "family": "FN Mamun Bornolipi Bijoy2003",
+  "sub": "Regular",
+  "full": "FN Mamun Bornolipi Bijoy2003",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN-Mamun-Bornolipi.zip",
+  "file": "Unicode/FN Mamun Bornolipi Unicode Italic.ttf",
+  "family": "FN Mamun Bornolipi Unicode",
+  "sub": "Italic",
+  "full": "FN Mamun Bornolipi Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FN-Mamun-Bornolipi.zip",
+  "file": "Unicode/FN Mamun Bornolipi Unicode.ttf",
+  "family": "FN Mamun Bornolipi Unicode",
+  "sub": "Regular",
+  "full": "FN Mamun Bornolipi Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FNAbdullahMomenshahi.zip",
+  "file": "FN Abdullah Momenshahi Ardha Matra/FN Abdullah Momenshahi Ardha Matra Italic.ttf",
+  "family": "FN Abdullah Momenshahi AM",
+  "sub": "Italic",
+  "full": "FN Abdullah Momenshahi AM Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FNAbdullahMomenshahi.zip",
+  "file": "FN Abdullah Momenshahi Ardha Matra/FN Abdullah Momenshahi Ardha Matra Regular.ttf",
+  "family": "FN Abdullah Momenshahi AM",
+  "sub": "Regular",
+  "full": "FN Abdullah Momenshahi AM",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FNAbdullahMomenshahi.zip",
+  "file": "FN Abdullah Momenshahi Purna Matra/FN Abdullah Momenshahi Purna Matra Italic.ttf",
+  "family": "FN Abdullah Momenshahi PM",
+  "sub": "Italic",
+  "full": "FN Abdullah Momenshahi PM Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FNAbdullahMomenshahi.zip",
+  "file": "FN Abdullah Momenshahi Purna Matra/FN Abdullah Momenshahi Purna Matra Regular.ttf",
+  "family": "FN Abdullah Momenshahi PM",
+  "sub": "Regular",
+  "full": "FN Abdullah Momenshahi PM",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FNMahfuzMaruf.zip",
+  "file": "FN Mahfuz Maruf Italic.ttf",
+  "family": "BAN Mahfuz Maruf",
+  "sub": "Italic",
+  "full": "BAN Mahfuz Maruf Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FNMahfuzMaruf.zip",
+  "file": "FN Mahfuz Maruf.ttf",
+  "family": "BAN Mahfuz Maruf",
+  "sub": "Regular",
+  "full": "BAN Mahfuz Maruf",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FNMahinAklima.zip",
+  "file": "FN Mahin Aklima/FN Mahin Aklima Italic.ttf",
+  "family": "FN Mahin Aklima",
+  "sub": "Italic",
+  "full": "FN Mahin Aklima Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "FNMahinAklima.zip",
+  "file": "FN Mahin Aklima/FN Mahin Aklima Regular.ttf",
+  "family": "FN Mahin Aklima",
+  "sub": "Regular",
+  "full": "FN Mahin Aklima",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FNMahinShukranLipi.zip",
+  "file": "FN Mahin Shukran Lipi Italic.ttf",
+  "family": "FN Mahin Shukran Lipi Unicode",
+  "sub": "Italic",
+  "full": "FN Mahin Shukran Lipi Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FNMahinShukranLipi.zip",
+  "file": "FN Mahin Shukran Lipi Regular.ttf",
+  "family": "FN Mahin Shukran Lipi Unicode",
+  "sub": "Regular",
+  "full": "FN Mahin Shukran Lipi Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN_Mahfuj_Headline_Unicode.zip",
+  "file": "FN_Mahfuj_Headline_Unicode/FN_Mahfuj_Headline_Unicode/Fn_Mahfuj_Headline_Bold_Unicode.ttf",
+  "family": "FN Mahfuj_Headline_Unicode",
+  "sub": "Bold",
+  "full": "FN Mahfuj_Headline_Unicode Bold",
+  "bengali": true,
+  "weight": 700,
+  "italic": false
+ },
+ {
+  "zip": "FN_Mahfuj_Headline_Unicode.zip",
+  "file": "FN_Mahfuj_Headline_Unicode/FN_Mahfuj_Headline_Unicode/FN_Mahfuj_Headline_light_Unicode.ttf",
+  "family": "FN  Mahfuj_Headline_Unicode",
+  "sub": "light",
+  "full": "FN  Mahfuj_Headline_Unicode light",
+  "bengali": true,
+  "weight": 300,
+  "italic": false
+ },
+ {
+  "zip": "FN_Mahfuj_Headline_Unicode.zip",
+  "file": "FN_Mahfuj_Headline_Unicode/FN_Mahfuj_Headline_Unicode/FN_Mahfuj_Headline_Mudium_Unicode.ttf",
+  "family": "FN  Mahfuj_Headline_Unicode",
+  "sub": "Mudium",
+  "full": "FN  Mahfuj_Headline_Unicode Mudium",
+  "bengali": true,
+  "weight": 500,
+  "italic": false
+ },
+ {
+  "zip": "FN_Mahfuj_Headline_Unicode.zip",
+  "file": "FN_Mahfuj_Headline_Unicode/FN_Mahfuj_Headline_Unicode/FN_Mahfuj_Headline_Regular_Unicode.ttf",
+  "family": "L52 Mahfuj_Headline_Unicode",
+  "sub": "Regular",
+  "full": "L52 Mahfuj_Headline_Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "FN_Mahfuj_Headline_Unicode.zip",
+  "file": "FN_Mahfuj_Headline_Unicode/FN_Mahfuj_Headline_Unicode/FN_Mahfuj_Headline_Semi-bold_Unicode.ttf",
+  "family": "FN Mahfuj_Headline_Unicode",
+  "sub": "Regular",
+  "full": "FN Mahfuj_Headline_Unicode Semi Bold",
+  "bengali": true,
+  "weight": 600,
+  "italic": false
+ },
+ {
+  "zip": "FN_Mahfuj_Headline_Unicode.zip",
+  "file": "FN_Mahfuj_Headline_Unicode/FN_Mahfuj_Headline_Unicode/FN_Mahfuj_Headline_Thin_Unicode.otf",
+  "family": "FN Mahfuj_Headline_Unicode",
+  "sub": "Thin",
+  "full": "FN Mahfuj_Headline_Unicode Thin",
+  "bengali": true,
+  "weight": 100,
+  "italic": false
+ },
+ {
+  "zip": "MahfuzHimadri.zip",
+  "file": "ANSI V1/Li Mahfuz Himadri ANSI V1 Italic.ttf",
+  "family": "Li Mahfuz Himadri ANSI V1",
+  "sub": "Italic",
+  "full": "Li Mahfuz Himadri ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "MahfuzHimadri.zip",
+  "file": "ANSI V1/Li Mahfuz Himadri ANSI V1.ttf",
+  "family": "Li Mahfuz Himadri ANSI V1",
+  "sub": "Regular",
+  "full": "Li Mahfuz Himadri ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "MahfuzHimadri.zip",
+  "file": "ANSI V2/Li Mahfuz Himadri ANSI V2 Italic.ttf",
+  "family": "Li Mahfuz Himadri ANSI V2",
+  "sub": "Italic",
+  "full": "Li Mahfuz Himadri ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "MahfuzHimadri.zip",
+  "file": "ANSI V2/Li Mahfuz Himadri ANSI V2.ttf",
+  "family": "Li Mahfuz Himadri ANSI V2",
+  "sub": "Regular",
+  "full": "Li Mahfuz Himadri ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "MahfuzHimadri.zip",
+  "file": "Unicode/Li Mahfuz Himadri Unicode Italic.ttf",
+  "family": "Li Mahfuz Himadri Unicode",
+  "sub": "Italic",
+  "full": "Li Mahfuz Himadri Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "MahfuzHimadri.zip",
+  "file": "Unicode/Li Mahfuz Himadri Unicode.ttf",
+  "family": "Li Mahfuz Himadri Unicode",
+  "sub": "Regular",
+  "full": "Li Mahfuz Himadri Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "Mahin Sayeedi.zip",
+  "file": "ANSI V1/FN Mahin Sayeedi ANSI V1 Italic.ttf",
+  "family": "FN Mahin Sayeedi ANSI V1",
+  "sub": "Italic",
+  "full": "FN Mahin Sayeedi ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "Mahin Sayeedi.zip",
+  "file": "ANSI V1/FN Mahin Sayeedi ANSI V1.ttf",
+  "family": "FN Mahin Sayeedi ANSI V1",
+  "sub": "Regular",
+  "full": "FN Mahin Sayeedi ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "Mahin Sayeedi.zip",
+  "file": "ANSI V2/FN Mahin Sayeedi ANSI V2 Italic.ttf",
+  "family": "FN Mahin Sayeedi ANSI V2",
+  "sub": "Italic",
+  "full": "FN Mahin Sayeedi ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "Mahin Sayeedi.zip",
+  "file": "ANSI V2/FN Mahin Sayeedi ANSI V2.ttf",
+  "family": "FN Mahin Sayeedi ANSI V2",
+  "sub": "Regular",
+  "full": "FN Mahin Sayeedi ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "Mahin Sayeedi.zip",
+  "file": "Unicode/FN Mahin Sayeedi Unicode Italic.ttf",
+  "family": "FN Mahin Sayeedi Unicode",
+  "sub": "Italic",
+  "full": "FN Mahin Sayeedi Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "Mahin Sayeedi.zip",
+  "file": "Unicode/FN Mahin Sayeedi Unicode.ttf",
+  "family": "FN Mahin Sayeedi Unicode",
+  "sub": "Regular",
+  "full": "FN Mahin Sayeedi Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "Mahin Shorif.zip",
+  "file": "ANSI V1/FN Mahin Shorif ANSI V1 Italic.ttf",
+  "family": "FN Mahin Shorif ANSI V1",
+  "sub": "Italic",
+  "full": "FN Mahin Shorif ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "Mahin Shorif.zip",
+  "file": "ANSI V1/FN Mahin Shorif ANSI V1.ttf",
+  "family": "FN Mahin Shorif ANSI V1",
+  "sub": "Regular",
+  "full": "FN Mahin Shorif ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "Mahin Shorif.zip",
+  "file": "ANSI V2/FN Mahin Shorif ANSI V2 Italic.ttf",
+  "family": "FN Mahin Shorif ANSI V2",
+  "sub": "Italic",
+  "full": "FN Mahin Shorif ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "Mahin Shorif.zip",
+  "file": "ANSI V2/FN Mahin Shorif ANSI V2.ttf",
+  "family": "FN Mahin Shorif ANSI V2",
+  "sub": "Regular",
+  "full": "FN Mahin Shorif ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "Mahin Shorif.zip",
+  "file": "Unicode/FN Mahin Shorif Unicode Italic.ttf",
+  "family": "FN Mahin Shorif Unicode",
+  "sub": "Italic",
+  "full": "FN Mahin Shorif Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "Mahin Shorif.zip",
+  "file": "Unicode/FN Mahin Shorif Unicode.ttf",
+  "family": "FN Mahin Shorif Unicode",
+  "sub": "Regular",
+  "full": "FN Mahin Shorif Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "ManowarMurshidabad.zip",
+  "file": "ANSI V1/Li Manowar Murshidabad ANSI V1 Italic.ttf",
+  "family": "Li Manowar Murshidabad ANSI V1",
+  "sub": "Italic",
+  "full": "Li Manowar Murshidabad ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "ManowarMurshidabad.zip",
+  "file": "ANSI V1/Li Manowar Murshidabad ANSI V1.ttf",
+  "family": "Li Manowar Murshidabad ANSI V1",
+  "sub": "Regular",
+  "full": "Li Manowar Murshidabad ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "ManowarMurshidabad.zip",
+  "file": "ANSI V2/Li Manowar Murshidabad ANSI V2 Italic.ttf",
+  "family": "Li Manowar Murshidabad ANSI V2",
+  "sub": "Italic",
+  "full": "Li Manowar Murshidabad ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "ManowarMurshidabad.zip",
+  "file": "ANSI V2/Li Manowar Murshidabad ANSI V2.ttf",
+  "family": "Li Manowar Murshidabad ANSI V2",
+  "sub": "Regular",
+  "full": "Li Manowar Murshidabad ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "ManowarMurshidabad.zip",
+  "file": "Unicode/Li Manowar Murshidabad Unicode Italic.ttf",
+  "family": "Li Manowar Murshidabad Unicode",
+  "sub": "Italic",
+  "full": "Li Manowar Murshidabad Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "ManowarMurshidabad.zip",
+  "file": "Unicode/Li Manowar Murshidabad Unicode.ttf",
+  "family": "Li Manowar Murshidabad Unicode",
+  "sub": "Regular",
+  "full": "Li Manowar Murshidabad Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "ManowarNihar.zip",
+  "file": "ANSI V1/Li Manowar Nihar ANSI V1 Italic.ttf",
+  "family": "Li Manowar Nihar ANSI V1",
+  "sub": "Italic",
+  "full": "Li Manowar Nihar ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "ManowarNihar.zip",
+  "file": "ANSI V1/Li Manowar Nihar ANSI V1.ttf",
+  "family": "Li Manowar Nihar ANSI V1",
+  "sub": "Regular",
+  "full": "Li Manowar Nihar ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "ManowarNihar.zip",
+  "file": "ANSI V2/Li Manowar Nihar ANSI V2 Italic.ttf",
+  "family": "Li Manowar Nihar ANSI V2",
+  "sub": "Italic",
+  "full": "Li Manowar Nihar ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "ManowarNihar.zip",
+  "file": "ANSI V2/Li Manowar Nihar ANSI V2.ttf",
+  "family": "Li Manowar Nihar ANSI V2",
+  "sub": "Regular",
+  "full": "Li Manowar Nihar ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "ManowarNihar.zip",
+  "file": "Unicode/Li Manowar Nihar Unicode Italic.ttf",
+  "family": "Li Manowar Nihar Unicode",
+  "sub": "Italic",
+  "full": "Li Manowar Nihar Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "ManowarNihar.zip",
+  "file": "Unicode/Li Manowar Nihar Unicode.ttf",
+  "family": "Li Manowar Nihar Unicode",
+  "sub": "Regular",
+  "full": "Li Manowar Nihar Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 1/ANSI V1/Li Sabbir Ashalota 1 ANSI V1 Italic.ttf",
+  "family": "Li Sabbir Ashalota 1 ANSI V1",
+  "sub": "Italic",
+  "full": "Li Sabbir Ashalota 1 ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 1/ANSI V1/Li Sabbir Ashalota 1 ANSI V1.ttf",
+  "family": "Li Sabbir Ashalota 1 ANSI V1",
+  "sub": "Regular",
+  "full": "Li Sabbir Ashalota 1 ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 1/ANSI V2/Li Sabbir Ashalota 1 ANSI V2 Italic.ttf",
+  "family": "Li Sabbir Ashalota 1 ANSI V2",
+  "sub": "Italic",
+  "full": "Li Sabbir Ashalota 1 ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 1/ANSI V2/Li Sabbir Ashalota 1 ANSI V2.ttf",
+  "family": "Li Sabbir Ashalota 1 ANSI V2",
+  "sub": "Regular",
+  "full": "Li Sabbir Ashalota 1 ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 2/ANSI V1/Li Sabbir Ashalota 2 ANSI V1 Italic.ttf",
+  "family": "Li Sabbir Ashalota 2 ANSI V1",
+  "sub": "Italic",
+  "full": "Li Sabbir Ashalota 2 ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 2/ANSI V1/Li Sabbir Ashalota 2 ANSI V1.ttf",
+  "family": "Li Sabbir Ashalota 2 ANSI V1",
+  "sub": "Regular",
+  "full": "Li Sabbir Ashalota 2 ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 2/ANSI V2/Li Sabbir Ashalota 2 ANSI V2 Italic.ttf",
+  "family": "Li Sabbir Ashalota 2 ANSI V2",
+  "sub": "Italic",
+  "full": "Li Sabbir Ashalota 2 ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 2/ANSI V2/Li Sabbir Ashalota 2 ANSI V2.ttf",
+  "family": "Li Sabbir Ashalota 2 ANSI V2",
+  "sub": "Regular",
+  "full": "Li Sabbir Ashalota 2 ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 3/ANSI V1/Li Sabbir Ashalota 3 ANSI V1 Italic.ttf",
+  "family": "Li Sabbir Ashalota 3 ANSI V1",
+  "sub": "Italic",
+  "full": "Li Sabbir Ashalota 3 ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 3/ANSI V1/Li Sabbir Ashalota 3 ANSI V1.ttf",
+  "family": "Li Sabbir Ashalota 3 ANSI V1",
+  "sub": "Regular",
+  "full": "Li Sabbir Ashalota 3 ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 3/ANSI V2/Li Sabbir Ashalota 3 ANSI V2 Italic.ttf",
+  "family": "Li Sabbir Ashalota 3 ANSI V2",
+  "sub": "Italic",
+  "full": "Li Sabbir Ashalota 3 ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 3/ANSI V2/Li Sabbir Ashalota 3 ANSI V2.ttf",
+  "family": "Li Sabbir Ashalota 3 ANSI V2",
+  "sub": "Regular",
+  "full": "Li Sabbir Ashalota 3 ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 1/Unicode/Li Sabbir Ashalota 1 Unicode Italic.ttf",
+  "family": "Li Sabbir Ashalota 1 Unicode",
+  "sub": "Italic",
+  "full": "Li Sabbir Ashalota 1 Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 1/Unicode/Li Sabbir Ashalota 1 Unicode.ttf",
+  "family": "Li Sabbir Ashalota 1 Unicode",
+  "sub": "Regular",
+  "full": "Li Sabbir Ashalota 1 Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 2/Unicode/Li Sabbir Ashalota 2 Unicode Italic.ttf",
+  "family": "Li Sabbir Ashalota 2 Unicode",
+  "sub": "Italic",
+  "full": "Li Sabbir Ashalota 2 Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 2/Unicode/Li Sabbir Ashalota 2 Unicode.ttf",
+  "family": "Li Sabbir Ashalota 2 Unicode",
+  "sub": "Regular",
+  "full": "Li Sabbir Ashalota 2 Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 3/Unicode/Li Sabbir Ashalota 3 Unicode Italic.ttf",
+  "family": "Li Sabbir Ashalota 3 Unicode",
+  "sub": "Italic",
+  "full": "Li Sabbir Ashalota 3 Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "SabbirAshalota.zip",
+  "file": "Sabbir Ashalota 3/Unicode/Li Sabbir Ashalota 3 Unicode.ttf",
+  "family": "Li Sabbir Ashalota 3 Unicode",
+  "sub": "Regular",
+  "full": "Li Sabbir Ashalota 3 Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "SabbirSorolota.zip",
+  "file": "Unicode/Li Sabbir Sorolota Unicode Italic.ttf",
+  "family": "Li Sabbir Sorolota Unicode",
+  "sub": "Italic",
+  "full": "Li Sabbir Sorolota Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "SabbirSorolota.zip",
+  "file": "Unicode/Li Sabbir Sorolota Unicode.ttf",
+  "family": "Li Sabbir Sorolota Unicode",
+  "sub": "Regular",
+  "full": "Li Sabbir Sorolota Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "SabbirSorolota.zip",
+  "file": "ANSI V1/Li Sabbir Sorolota ANSI V1 Italic.ttf",
+  "family": "Li Sabbir Sorolota ANSI V1",
+  "sub": "Italic",
+  "full": "Li Sabbir Sorolota ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "SabbirSorolota.zip",
+  "file": "ANSI V1/Li Sabbir Sorolota ANSI V1.ttf",
+  "family": "Li Sabbir Sorolota ANSI V1",
+  "sub": "Regular",
+  "full": "Li Sabbir Sorolota ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "SabbirSorolota.zip",
+  "file": "ANSI V2/Li Sabbir Sorolota ANSI V2 Italic.ttf",
+  "family": "Li Sabbir Sorolota ANSI V2",
+  "sub": "Italic",
+  "full": "Li Sabbir Sorolota ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "SabbirSorolota.zip",
+  "file": "ANSI V2/Li Sabbir Sorolota ANSI V2.ttf",
+  "family": "Li Sabbir Sorolota ANSI V2",
+  "sub": "Regular",
+  "full": "Li Sabbir Sorolota ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "Samsur-Dhansiri.zip",
+  "file": "Samsur Dhansiri/Bijoy2003/BanglarveniceBijoy2003-Regular.ttf",
+  "family": "Banglar venice Bijoy2003",
+  "sub": "Regular",
+  "full": "Banglar venice Bijoy2003",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "Samsur-Dhansiri.zip",
+  "file": "Samsur Dhansiri/Bijoy2003/BanglarveniceItalicBijoy2003-Regular.ttf",
+  "family": "Banglar venice Italic Bijoy2003",
+  "sub": "Regular",
+  "full": "Banglar venice Italic Bijoy2003",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "Samsur-Dhansiri.zip",
+  "file": "Samsur Dhansiri/Bijoy52/SamsurDhansiriBijoy52-Regular.ttf",
+  "family": "Samsur Dhansiri  Bijoy52",
+  "sub": "Regular",
+  "full": "Samsur Dhansiri  Bijoy52",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "Samsur-Dhansiri.zip",
+  "file": "Samsur Dhansiri/Bijoy52/SamsurDhansiriItalicBijoy52-Regular.ttf",
+  "family": "Samsur Dhansiri Italic  Bijoy52",
+  "sub": "Regular",
+  "full": "Samsur Dhansiri Italic  Bijoy52",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "Samsur-Dhansiri.zip",
+  "file": "Samsur Dhansiri/Unicode/SamsurDhansiriitalicUnicode-Regular.ttf",
+  "family": "Samsur Dhansiri italic Unicode",
+  "sub": "Regular",
+  "full": "Samsur Dhansiri italic Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "Samsur-Dhansiri.zip",
+  "file": "Samsur Dhansiri/Unicode/SamsurDhansiriUnicode-Regular.ttf",
+  "family": "Samsur Dhansiri Unicode",
+  "sub": "Regular",
+  "full": "Samsur Dhansiri Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "SweetShreyam.zip",
+  "file": "ANSI V1/Li Sweet Shreyam ANSI V1 Italic.ttf",
+  "family": "Li Sweet Shreyam ANSI V1",
+  "sub": "Italic",
+  "full": "Li Sweet Shreyam ANSI V1 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "SweetShreyam.zip",
+  "file": "ANSI V1/Li Sweet Shreyam ANSI V1.ttf",
+  "family": "Li Sweet Shreyam ANSI V1",
+  "sub": "Regular",
+  "full": "Li Sweet Shreyam ANSI V1",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "SweetShreyam.zip",
+  "file": "ANSI V2/Li Sweet Shreyam ANSI V2 Italic.ttf",
+  "family": "Li Sweet Shreyam ANSI V2",
+  "sub": "Italic",
+  "full": "Li Sweet Shreyam ANSI V2 Italic",
+  "bengali": false,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "SweetShreyam.zip",
+  "file": "ANSI V2/Li Sweet Shreyam ANSI V2.ttf",
+  "family": "Li Sweet Shreyam ANSI V2",
+  "sub": "Regular",
+  "full": "Li Sweet Shreyam ANSI V2",
+  "bengali": false,
+  "weight": 400,
+  "italic": false
+ },
+ {
+  "zip": "SweetShreyam.zip",
+  "file": "Unicode/Li Sweet Shreyam Unicode Italic.ttf",
+  "family": "Li Sweet Shreyam Unicode",
+  "sub": "Italic",
+  "full": "Li Sweet Shreyam Unicode Italic",
+  "bengali": true,
+  "weight": 400,
+  "italic": true
+ },
+ {
+  "zip": "SweetShreyam.zip",
+  "file": "Unicode/Li Sweet Shreyam Unicode.ttf",
+  "family": "Li Sweet Shreyam Unicode",
+  "sub": "Regular",
+  "full": "Li Sweet Shreyam Unicode",
+  "bengali": true,
+  "weight": 400,
+  "italic": false
+ }
+]

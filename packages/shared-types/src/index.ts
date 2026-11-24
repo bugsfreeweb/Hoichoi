@@ -1290,6 +1290,12 @@ export interface SiteAppConfig {  /** Masthead "newsroom in numbers" hero sectio
   default_post_image: string;
   /** Motion applied to the site name / logo in the masthead. */
   brand_animation: BrandAnimation;
+  /**
+   * Bundled Bangla typefaces for the public site. Empty means "keep the
+   * shipped face". Ids come from `@hoichoi/bangla-fonts`; an unknown id falls
+   * back to the shipped family rather than leaving the site unstyled.
+   */
+  typography: SiteTypography;
   /** Decorative effect toggles for the home-page hero. */
   hero_effects: HeroEffects;
   /**
@@ -1322,6 +1328,12 @@ export interface SiteAppConfig {  /** Masthead "newsroom in numbers" hero sectio
    * `sidebar-templates.ts` is the only list of allowed values.
    */
   admin_sidebar_style: SidebarStyleId;
+}
+
+/** Chosen families from the bundled Bangla type library. */
+export interface SiteTypography {
+  headline: string;
+  body: string;
 }
 
 export type LiveThemeKey = "stage" | "broadsheet" | "scoreboard" | "timeline" | "compact" | "studio";
@@ -1563,6 +1575,7 @@ export const DEFAULT_APP_CONFIG: SiteAppConfig = {
   },
   hero_headline_motion: "sheen",
   hero_scene_style: "rail",
+  typography: { headline: "", body: "" },
   admin_sidebar_style: DEFAULT_SIDEBAR_STYLE,
 };
 

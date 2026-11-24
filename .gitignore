@@ -86,3 +86,6 @@ media/
 .tmp/
 .tmp-poster-*
 apps/scraper/.tmp-*
+
+# Source font zips stay local; the built, subset package is committed.
+/Bangla Fonts/

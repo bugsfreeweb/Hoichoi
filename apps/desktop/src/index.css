@@ -1,3 +1,4 @@
+@import "@hoichoi/bangla-fonts/fonts.css";
 @import "@hoichoi/dash/styles.css";
 
 @tailwind base;
@@ -173,7 +174,7 @@ body,
 body {
   background: var(--color-window-border);
   color: var(--color-main-tx);
-  font-family: "Hind Siliguri", "Space Grotesk", sans-serif;
+  font-family: var(--desk-font, "Hind Siliguri", "Space Grotesk", sans-serif);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
   transition: background-color 0.35s ease, color 0.35s ease;

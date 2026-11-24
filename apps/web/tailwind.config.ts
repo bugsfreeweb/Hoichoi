@@ -32,8 +32,10 @@ export default {
         "rose-400": "var(--color-rose-400)",
       },
       fontFamily: {
-        "serif-bn": ['"Noto Serif Bengali"', "serif"],
-        "sans-bn": ['"Hind Siliguri"', "sans-serif"],
+        // Resolve through the tokens so Settings → ডিজাইন can point the site
+        // at any bundled family without regenerating the Tailwind build.
+        "serif-bn": ['var(--font-serif-bn, "Noto Serif Bengali", serif)'],
+        "sans-bn": ['var(--font-sans-bn, "Hind Siliguri", sans-serif)'],
         sans: ['"Space Grotesk"', "sans-serif"],
         "mono-x": ['"JetBrains Mono"', "monospace"],
       },

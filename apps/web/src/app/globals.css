@@ -192,6 +192,13 @@ body {
   transition: background-color 0.35s ease, color 0.35s ease;
 }
 
+/* The public site's body face follows the type-library choice. The admin
+   console keeps its own chrome: editors pick a reader-facing face, not one
+   that would restyle the controls they are clicking. */
+.page-chrome {
+  font-family: var(--font-sans-bn, "Hind Siliguri", sans-serif);
+}
+
 body.grain {
   position: relative;
 }

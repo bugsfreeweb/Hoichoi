@@ -24,6 +24,7 @@ import { OperationsSection } from "./OperationsSection";
 import { MailSection } from "./MailSection";
 import { MediaStorageSection } from "./MediaStorageSection";
 import { VariantSwitcher } from "@/components/admin/VariantSwitcher";
+import { TypographySection } from "./TypographySection";
 
 type Tab =
   | "site"
@@ -123,6 +124,7 @@ export function SettingsConsole({
         ...parsed,
         maintenance: { ...base.maintenance, ...(parsed.maintenance ?? {}) },
         live_events: { ...base.live_events, ...(parsed.live_events ?? {}) },
+        typography: { ...base.typography, ...(parsed.typography ?? {}) },
       };
     } catch {
       return JSON.parse(JSON.stringify(DEFAULT_APP_CONFIG));
@@ -269,6 +271,7 @@ export function SettingsConsole({
                 accentColor={initial.accent_color}
                 fullWidth
               />
+              <TypographySection />
             </div>
           )}
           {tab === "media" && (

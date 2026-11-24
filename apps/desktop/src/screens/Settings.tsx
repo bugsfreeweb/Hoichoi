@@ -32,6 +32,7 @@ import {
   type CredentialName,
 } from "../lib/vault";
 import { SECRET_SPECS, LLM_SECRET_NAMES } from "../lib/secret-specs";
+import { BANGLA_FONTS, banglaFontStack } from "@hoichoi/bangla-fonts";
 import { toast } from "../lib/toast";
 import {
   settingsGet,
@@ -178,6 +179,8 @@ const PREF_DEFAULTS = {
   commit: true,
   deploy: true,
   fact: true,
+  /** Local desk typeface; empty keeps the shipped Hind Siliguri. */
+  desk_font: "",
 };
 type Prefs = typeof PREF_DEFAULTS;
 
@@ -287,6 +290,12 @@ export default function Settings({
   const [webErr, setWebErr] = useState<string | null>(null);
 
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--desk-font",
+      banglaFontStack(prefs.desk_font, "Hind Siliguri", "sans-serif"),
+    );
+  }, [prefs.desk_font]);
   const updatePref = <K extends keyof Prefs>(k: K, v: Prefs[K]) => {
     setPrefs((prev) => {
       const next = { ...prev, [k]: v };
@@ -452,6 +461,7 @@ export default function Settings({
             ...parsed,
             hero_effects: { ...DEFAULT_APP_CONFIG.hero_effects, ...(parsed.hero_effects ?? {}) },
             live_events: { ...DEFAULT_APP_CONFIG.live_events, ...(parsed.live_events ?? {}) },
+            typography: { ...DEFAULT_APP_CONFIG.typography, ...(parsed.typography ?? {}) },
           });
         } catch {
           setVis(VIS_DEFAULTS);
@@ -1035,6 +1045,35 @@ export default function Settings({
 
               <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
                 <p className="flex items-center gap-2 text-[13px] font-bold text-white">
+                  <Palette size={14} className="text-lime" /> ডেস্কের বাংলা ফন্ট
+                </p>
+                <label className="mt-4 block text-[11px] text-white/45">ফন্ট পরিবার</label>
+                <select
+                  value={prefs.desk_font}
+                  onChange={(e) => updatePref("desk_font", e.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 text-[12px] text-white outline-none"
+                >
+                  <option value="">ডিফল্ট — Hind Siliguri</option>
+                  {BANGLA_FONTS.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+                <p
+                  className="mt-3 truncate text-[17px] leading-snug text-white/85"
+                  style={{ fontFamily: banglaFontStack(prefs.desk_font, "Hind Siliguri", "sans-serif") }}
+                >
+                  হৈচৈ ডেস্ক — সংবাদের ভাষা ১২৩
+                </p>
+                <p className="mt-2 text-[11px] leading-relaxed text-white/35">
+                  লাইসেন্স-ক্লিয়ার করা {BANGLA_FONTS.length}টি পরিবার ডেস্কেই বান্ডল করা;
+                  পছন্দ শুধু এই মেশিনে থাকে। বাংলা ফন্ট: লিপিঘর (lipighor.com)।
+                </p>
+              </section>
+
+              <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+                <p className="flex items-center gap-2 text-[13px] font-bold text-white">
                   <Camera size={14} className="text-sky-300" /> পাইপলাইন টগল
                 </p>
                 <ul className="mt-4 space-y-3">
@@ -1392,6 +1431,56 @@ export default function Settings({
                       </button>
                     );
                   })}
+                </div>
+              </div>
+
+              <div className="mt-4 border-t border-white/10 pt-3">
+                <p className="text-[11.5px] font-bold text-white">ওয়েবসাইটের বাংলা ফন্ট</p>
+                <p className="mt-1 text-[10.5px] leading-relaxed text-white/40">
+                  ওয়েব অ্যাডমিনের ডিজাইন ট্যাবের সঙ্গে একই পছন্দ — শিরোনাম ও বডির জন্য
+                  বান্ডল করা {BANGLA_FONTS.length}টি পরিবার থেকে বেছে নিন।
+                </p>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="text-[10.5px] text-white/45">শিরোনাম</span>
+                    <select
+                      className="field mt-1 w-full"
+                      value={vis.typography?.headline ?? ""}
+                      onChange={(e) =>
+                        setVis({
+                          ...vis,
+                          typography: { ...(vis.typography ?? { headline: "", body: "" }), headline: e.target.value },
+                        })
+                      }
+                    >
+                      <option value="">ডিফল্ট — Noto Serif Bengali</option>
+                      {BANGLA_FONTS.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-[10.5px] text-white/45">বডি</span>
+                    <select
+                      className="field mt-1 w-full"
+                      value={vis.typography?.body ?? ""}
+                      onChange={(e) =>
+                        setVis({
+                          ...vis,
+                          typography: { ...(vis.typography ?? { headline: "", body: "" }), body: e.target.value },
+                        })
+                      }
+                    >
+                      <option value="">ডিফল্ট — Hind Siliguri</option>
+                      {BANGLA_FONTS.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
               </div>
 

@@ -45,6 +45,7 @@ export { listMigrations } from "./migrations";
 
 import {
   DEFAULT_APP_CONFIG,
+  type SiteTypography,
   DEFAULT_VARIANT,
   SECTION_REGISTRY,
   sidebarStyleOr,
@@ -180,6 +181,14 @@ export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
       if (v === undefined || v === null) continue;
       if (k === "maintenance") {
         merged.maintenance = parseMaintenanceConfig(v);
+      } else if (k === "typography") {
+        if (v && typeof v === "object") {
+          const t = v as Partial<SiteTypography>;
+          merged.typography = {
+            headline: typeof t.headline === "string" ? t.headline.slice(0, 64) : "",
+            body: typeof t.body === "string" ? t.body.slice(0, 64) : "",
+          };
+        }
       } else if (k === "footer_socials") {
         if (Array.isArray(v)) {
           merged.footer_socials = (v as unknown[])
