@@ -7,7 +7,7 @@ import { createInterface } from "node:readline";
 import { parsePipelineLimit, runPipeline, type PipelineOptions } from "./pipeline";
 import { runArchivePass } from "./archive";
 import { cleanupMedia, storageRegistryCount } from "./storage";
-import { backfillMissingMedia, recoverOrphanedMedia, syncExistingMediaToWeb, aiFillMissingHeroes, generateManualImage } from "./media-backfill";
+import { backfillMissingMedia, recoverOrphanedMedia, syncExistingMediaToWeb, aiFillMissingHeroes, generateManualImage, repairMissingMedia } from "./media-backfill";
 import { POSTER_LAYOUTS, POSTER_THEMES, isPosterLayout, isPosterTheme } from "@hoichoi/poster";
 import { isVideoUrl } from "./media";
 import { buildImageBrief, gatewayProviderFromEnv, newResolver } from "@hoichoi/llm";
@@ -694,6 +694,28 @@ media
       process.exitCode = 1;
     }
   });
+media
+  .command("repair")
+  .description("rebuild posts whose media_path points at a file that no longer exists, then mirror it")
+  .option("--limit <n>", "maximum posts to repair")
+  .option("--dry-run", "only count candidates, generate nothing")
+  .action(async (opts: { limit?: string; dryRun?: boolean }) => {
+    try {
+      await ensureSchema(getClient());
+      const limit = opts.limit !== undefined ? Number(opts.limit) : undefined;
+      const result = await repairMissingMedia({
+        limit,
+        dryRun: opts.dryRun ?? false,
+        log: (m: string) => console.error(m),
+      });
+      const sync = await syncExistingMediaToWeb();
+      console.log(JSON.stringify({ ok: true, ...result, sync }, null, 2));
+    } catch (err) {
+      console.error("[fatal]", (err as Error).message);
+      process.exitCode = 1;
+    }
+  });
+
 media
   .command("ai-fill")
   .description("generate AI hero images (Gemini) for posts that have no media and no media URLs")

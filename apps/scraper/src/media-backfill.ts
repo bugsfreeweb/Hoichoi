@@ -349,6 +349,89 @@ export async function aiFillMissingHeroes(opts: {
   return { candidates: rows.length, generated, skippedSensitive, failed, dryRun: Boolean(opts.dryRun) };
 }
 
+/**
+ * Rebuild posts whose `media_path` names a file that no local root holds.
+ *
+ * The collector can finish a run while its media root is a temporary or
+ * already-cleaned directory: the database keeps a relative path, the deployed
+ * site asks for it, and every card shows a broken image. `syncExistingMediaToWeb`
+ * cannot help because there are no bytes left to copy, so this pass draws a
+ * fresh AI plate from the story itself, mirrors it into every root and rewrites
+ * `media_path` to the file that now exists.
+ */
+export async function repairMissingMedia(opts: {
+  limit?: number;
+  dryRun?: boolean;
+  log?: (msg: string) => void;
+} = {}): Promise<{
+  checked: number;
+  missing: number;
+  repaired: number;
+  failed: number;
+  dryRun: boolean;
+}> {
+  const log = opts.log ?? (() => undefined);
+  const client = getClient();
+  const limit = Math.max(1, Math.min(500, opts.limit ?? 200));
+  const res = await client.execute(
+    `SELECT p.id, p.raw_post_id, p.category, p.title_bn, p.summary_bn, p.body_bn, p.source_name, p.media_path
+     FROM posts p
+     WHERE p.media_path IS NOT NULL AND p.media_path <> '' AND p.media_path NOT LIKE 'http%'
+     ORDER BY p.created_at DESC`,
+  );
+  const rows = res.rows as unknown as Array<
+    PostNeedingAIHero & { source_name: string | null; media_path: string }
+  >;
+  const missing = rows.filter((row) => existingLocalCopies(row.media_path).length === 0);
+  const targets = missing.slice(0, limit);
+  let repaired = 0;
+  let failed = 0;
+
+  for (const row of targets) {
+    if (opts.dryRun) {
+      repaired += 1;
+      continue;
+    }
+    if (!aiHeroEligible(row.category)) {
+      failed += 1;
+      log(`[repair] ${row.id.slice(0, 8)} skipped: sensitive category`);
+      continue;
+    }
+    const rel = await generateAIHero({
+      title: row.title_bn ?? `post ${row.id.slice(0, 8)}`,
+      summary: row.summary_bn ?? "",
+      body: row.body_bn ?? "",
+      category: row.category,
+      source: row.source_name,
+      log,
+    });
+    if (!rel) {
+      failed += 1;
+      continue;
+    }
+    mirrorMediaFile(rel);
+    const pub = await uploadRemote(rel);
+    await client.execute({
+      sql: "UPDATE posts SET media_path = ?, media_kind = 'image', media_origin = 'ai', updated_at = ? WHERE id = ?",
+      args: [rel, nowIso(), row.id],
+    });
+    await client.execute({
+      sql: "UPDATE raw_posts SET raw_meta = json_set(COALESCE(raw_meta,'{}'), '$.ai_generated', 1) WHERE id = ?",
+      args: [row.raw_post_id],
+    });
+    // The editor gallery keeps its own copy of the path; leaving it behind
+    // shows a broken thumbnail even though the post itself was repaired.
+    await client.execute({
+      sql: "UPDATE post_images SET path = ? WHERE post_id = ? AND path = ?",
+      args: [rel, row.id, row.media_path],
+    });
+    log(`[repair] ${row.id.slice(0, 8)} ${row.media_path} -> ${pub ?? rel}`);
+    repaired += 1;
+  }
+
+  return { checked: rows.length, missing: missing.length, repaired, failed, dryRun: Boolean(opts.dryRun) };
+}
+
 /** Re-download media that exists remotely but is missing from every local root. */
 export async function verifyMediaFiles(): Promise<{ total: number; present: number; absent: string[] }> {
   const client = getClient();

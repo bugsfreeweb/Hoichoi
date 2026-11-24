@@ -342,6 +342,7 @@ Run from anywhere with `npx tsx --env-file=.env apps/scraper/src/cli.ts <cmd>`.
 | `sources add --page-url <url> --page-name <n> --category <slug> --platform <p>` | Add a source; `news`/`magazine` use RSS/Atom |
 | `media status` / `media backfill [--recover]` / `media cleanup` | Remote-media storage, redownload missing media |
 | `media ai-fill [--limit N] [--dry-run]` | Generate AI hero images for media-less posts |
+| `media repair [--limit N] [--dry-run]` | Rebuild posts whose `media_path` file is gone, rewrite the gallery copy, and mirror the new image |
 | `media generate <postId>` | Generate one hero image on demand for a specific post |
 | `traffic [--range 24h\|7d\|30d]` | First-party analytics snapshot as JSON (web admin + desk) |
 | `storage` | DB + media storage snapshot as JSON (web admin + desk) |
