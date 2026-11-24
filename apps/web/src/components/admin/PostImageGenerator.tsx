@@ -78,9 +78,12 @@ const btnLime =
 export function PostImageGenerator({
   postId,
   onAttached,
+  socialAspect = "4:5",
 }: {
   postId: string;
   onAttached: (mediaPath: string) => void;
+  /** The saved share-frame preference, so the switch starts truthful. */
+  socialAspect?: "4:5" | "16:9";
 }) {
   const [opts, setOpts] = useState<Options | null>(null);
   const [providerId, setProviderId] = useState("");
@@ -118,6 +121,14 @@ export function PostImageGenerator({
   const [activeAspect, setActiveAspect] = useState<PosterAspect>("16:9");
   const [bothFrames, setBothFrames] = useState(true);
   const [posterMsg, setPosterMsg] = useState<string | null>(null);
+  /**
+   * The link-preview frame is a per-post preference, saved immediately rather
+   * than with the article form: a social card is a publishing decision, and an
+   * editor who changes it expects the next share to use it.
+   */
+  const [shareAspect, setShareAspect] = useState<"4:5" | "16:9">(socialAspect);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareMsg, setShareMsg] = useState<string | null>(null);
 
   /** `media_path` as of the last successful check — the poll watches for a change. */
   const baseRef = useRef<string | null>(null);
@@ -273,6 +284,33 @@ export function PostImageGenerator({
       setPosterMsg(`✕ ${e instanceof Error ? e.message : "পোস্টার তৈরি ব্যর্থ"}`);
     } finally {
       setPosterBusy(false);
+    }
+  };
+
+  const saveShareAspect = async (next: "4:5" | "16:9") => {
+    if (shareBusy || next === shareAspect) return;
+    const previous = shareAspect;
+    setShareAspect(next);
+    setShareBusy(true);
+    setShareMsg(null);
+    try {
+      const res = await fetch(`/api/posts/${postId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ social_share_aspect: next }),
+      });
+      const j = (await res.json().catch(() => null)) as { error?: string } | null;
+      if (!res.ok) throw new Error(j?.error ?? `HTTP ${res.status}`);
+      setShareMsg(
+        next === "4:5"
+          ? "✓ শেয়ার কার্ড ৪:৫ — ফেসবুক/ইনস্টাগ্রামে পোর্ট্রেট পোস্টার যাবে"
+          : "✓ শেয়ার কার্ড ১৬:৯ — পোস্টের মূল ছবি যাবে",
+      );
+    } catch (e) {
+      setShareAspect(previous);
+      setShareMsg(`✕ ${e instanceof Error ? e.message : "শেয়ার সেটিং সংরক্ষণ ব্যর্থ"}`);
+    } finally {
+      setShareBusy(false);
     }
   };
 
@@ -559,6 +597,28 @@ export function PostImageGenerator({
             {posterMsg}
           </p>
         )}
+
+        <div className="mt-3 border border-ink/15 bg-paper px-3 py-2.5">
+          <label className="flex w-fit items-center gap-2 text-[12px] font-bold text-ink">
+            <input
+              type="checkbox"
+              checked={shareAspect === "4:5"}
+              disabled={shareBusy}
+              onChange={(e) => void saveShareAspect(e.target.checked ? "4:5" : "16:9")}
+            />
+            ফেসবুক / ইনস্টাগ্রামে ৪:৫ শেয়ার কার্ড
+          </label>
+          <p className="mt-1 text-[10.5px] text-ink-soft">
+            {shareAspect === "4:5"
+              ? "লিংক প্রিভিউতে ৪:৫ পোস্টার যাবে; না থাকলে পোস্টের ১৬:৯ ছবি ব্যবহার হবে।"
+              : "লিংক প্রিভিউতে পোস্টের মূল ১৬:৯ ছবি যাবে; ৪:৫ পোস্টার সংরক্ষিত থাকবে।"}
+          </p>
+          {shareMsg && (
+            <p className={`mt-1 text-[10.5px] ${shareMsg.startsWith("✕") ? "text-red-700" : "text-ink-soft"}`}>
+              {shareMsg}
+            </p>
+          )}
+        </div>
 
         {posters.length > 0 && (
           <div className="mt-3 flex flex-wrap items-start gap-3">

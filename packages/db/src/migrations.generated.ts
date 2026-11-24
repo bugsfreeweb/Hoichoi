@@ -183,4 +183,8 @@ export const EMBEDDED_MIGRATIONS: readonly EmbeddedMigration[] = [
     name: "041_poster_design_aspect",
     sql: "-- The same art direction is published in two frames.\n--\n-- 16:9 is the web card and the video thumbnail; 4:5 is the uncropped Facebook\n-- and Instagram feed post. The design row needs to say which frame it is, so\n-- the CMS history can show both and the anti-repetition window can tell a\n-- portrait from its landscape sibling.\n\nALTER TABLE poster_designs ADD COLUMN aspect TEXT NOT NULL DEFAULT '16:9';\n",
   },
+  {
+    name: "042_post_social_aspect",
+    sql: "-- Which frame the link preview uses.\n--\n-- Facebook and Instagram do not crop 4:5, so the portrait poster is the better\n-- default when one exists. Some stories are stronger in landscape, though, and\n-- the editor should be able to say so without deleting the portrait. The value\n-- is a preference, not a guarantee: if 4:5 is chosen but no portrait has been\n-- rendered, metadata falls back to the post's own image.\n\nALTER TABLE posts ADD COLUMN social_share_aspect TEXT NOT NULL DEFAULT '4:5';\n",
+  },
 ];

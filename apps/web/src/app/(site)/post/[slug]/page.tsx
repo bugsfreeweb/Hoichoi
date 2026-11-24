@@ -40,7 +40,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // card, because `summary_large_image` is a 1.91:1 slot. The post's own
   // `media_path` is still the image the article shows; only the share preview
   // switches frames.
-  const portrait = await latestPosterDesign(postRaw.id, "4:5").catch(() => null);
+  const wantsPortrait = (postRaw.social_share_aspect ?? "4:5") === "4:5";
+  const portrait = wantsPortrait
+    ? await latestPosterDesign(postRaw.id, "4:5").catch(() => null)
+    : null;
   const portraitUrl = portrait?.media_path
     ? mediaUrl({ media_path: portrait.media_path, media_kind: "image" })
     : null;
@@ -148,7 +151,9 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     getPostComments(post.id, commentLimit),
     getPostCommentCount(post.id),
     listPostImages(post.id),
-    latestPosterDesign(post.id, "4:5").catch(() => null),
+    post.social_share_aspect === "16:9"
+      ? Promise.resolve(null)
+      : latestPosterDesign(post.id, "4:5").catch(() => null),
   ]);
   const related = withDefaultImages(relatedRaw, cfg.default_post_image);
   const cat = await findCategory(post.category);

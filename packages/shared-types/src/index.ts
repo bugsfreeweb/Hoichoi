@@ -196,6 +196,12 @@ export interface Post {
    */
   media_origin?: MediaOrigin | null;
   /**
+   * Which poster frame the link preview prefers: the uncropped 4:5 social card
+   * or the story's own 16:9 image. A preference, not a guarantee — if 4:5 is
+   * chosen but no portrait exists, metadata falls back to `media_path`.
+   */
+  social_share_aspect?: "4:5" | "16:9";
+  /**
    * Claim grade, backed by the `claims` table and (for `human_verified`) a named
    * editor. See packages/db/src/verification.ts — a badge is only rendered when
    * `showsBadge()` allows it, so absence of evidence means absence of a badge.

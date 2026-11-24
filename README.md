@@ -721,6 +721,12 @@ The newest 4:5 row now feeds the story's share preview: `generateMetadata` asks
 the post's 16:9 image because `summary_large_image` is a landscape slot, and the
 NewsArticle JSON-LD uses the same share image as the OG tag.
 
+The choice is per post, not global: **ফেসবুক / ইনস্টাগ্রামে ৪:৫ শেয়ার কার্ড** in the CMS
+PATCHes `posts.social_share_aspect` (migration `042`) immediately, so a story whose
+landscape art is stronger can keep the 16:9 card while its portrait poster stays stored.
+The preference is honest about absence — choosing 4:5 with no portrait falls back to the
+post's own image rather than shipping a broken preview.
+
 Verified by rendering all five layouts at `3840×2160` (zero clipped lines measured in the
 DOM), by a live art-direction call and a live FLUX render (WebP, 450 KB), and by
 `design-poster` (8 checks) and `art-director` (10 checks) test files.

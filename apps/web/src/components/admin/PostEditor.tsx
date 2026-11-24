@@ -625,6 +625,7 @@ export function PostEditor({ post }: { post: Post }) {
 
         <PostImageGenerator
           postId={post.id}
+          socialAspect={post.social_share_aspect ?? "4:5"}
           onAttached={(path) => {
             setMediaPath(path);
             setMediaMsg("✓ এআই-তৈরি ছবি যুক্ত হয়েছে");

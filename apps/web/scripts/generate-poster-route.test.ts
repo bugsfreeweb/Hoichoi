@@ -37,6 +37,8 @@ const route = read("apps/web/src/app/api/generate-poster/route.ts");
 const panel = read("apps/web/src/components/admin/PostImageGenerator.tsx");
 const postPage = read("apps/web/src/app/(site)/post/[slug]/page.tsx");
 const posterDb = read("packages/db/src/poster-designs.ts");
+const postApi = read("apps/web/src/app/api/posts/[id]/route.ts");
+const postPreferenceMigration = read("packages/db/migrations/042_post_social_aspect.sql");
 const migration = read("packages/db/migrations/040_poster_designs.sql");
 const aspectMigration = read("packages/db/migrations/041_poster_design_aspect.sql");
 const embedded = read("packages/db/src/migrations.generated.ts");
@@ -93,6 +95,19 @@ check("the 4:5 poster becomes the social image, while Twitter keeps 16:9", () =>
   assert.match(postPage, /card: "summary_large_image"[\s\S]*?images: webImage \? \[webImage\]/);
   assert.match(postPage, /const shareSrc = portrait\?\.media_path/);
   assert.match(posterDb, /WHERE post_id = \? AND aspect = \? AND media_path IS NOT NULL/);
+});
+
+check("the editor can choose the share frame per post", () => {
+  assert.match(postPreferenceMigration, /social_share_aspect TEXT NOT NULL DEFAULT '4:5'/);
+  assert.match(embedded, /042_post_social_aspect/);
+  assert.match(route, /focalAspectFor\(plan\.layout, aspect\)/);
+  assert.match(postApi, /social_share_aspect !== "4:5" && body\.social_share_aspect !== "16:9"/);
+  assert.match(postApi, /fields\.social_share_aspect = body\.social_share_aspect/);
+  assert.match(postPage, /postRaw\.social_share_aspect \?\? "4:5"/);
+  assert.match(postPage, /const wantsPortrait =/);
+  assert.match(panel, /ফেসবুক \/ ইনস্টাগ্রামে ৪:৫ শেয়ার কার্ড/);
+  assert.match(panel, /saveShareAspect/);
+  assert.match(panel, /social_share_aspect: next/);
 });
 
 check("the vocabulary is the brief's, once", () => {

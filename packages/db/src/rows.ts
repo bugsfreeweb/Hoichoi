@@ -79,6 +79,7 @@ export function mapPost(row: Record<string, unknown>): Post {
     media_path: (row.media_path as string | null) ?? null,
     media_kind: (row.media_kind as MediaKind) ?? "none",
     media_origin: (row.media_origin as Post["media_origin"]) ?? null,
+    social_share_aspect: row.social_share_aspect === "16:9" ? "16:9" : "4:5",
     // Verification grade travels with the post so a badge can never be rendered
     // from a value the caller had to guess.
     verification_status: (row.verification_status as Post["verification_status"]) ?? "unverified",

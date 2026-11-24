@@ -66,6 +66,19 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     }
   }
 
+  // A share-frame preference is an exact vocabulary, not a free string: a
+  // typo must fail here rather than quietly leaving the old preview in place.
+  if (body.social_share_aspect !== undefined) {
+    if (body.social_share_aspect !== "4:5" && body.social_share_aspect !== "16:9") {
+      return NextResponse.json(
+        { error: "social_share_aspect must be 4:5 or 16:9" },
+        { status: 400 },
+      );
+    }
+    fields.social_share_aspect = body.social_share_aspect;
+    applied.push("social_share_aspect");
+  }
+
   // AI provenance travels with the same PATCH as the text it describes, so a
   // post can never claim or hide authorship in a second, forgettable request.
   if (typeof body.ai_assisted === "boolean") {
