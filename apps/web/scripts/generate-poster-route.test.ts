@@ -122,13 +122,14 @@ check("the editor sees the share card before publishing", () => {
   assert.match(panel, /লিংক প্রিভিউ/);
   assert.match(panel, /const sharePortrait = shareAspect === "4:5" && Boolean\(portraitSrc\)/);
   assert.match(panel, /৪:৫ পোস্টার নেই — পোস্টের মূল ছবি দেখানো হচ্ছে/);
-  assert.match(panel, /aspectRatio: sharePortrait \? "4 \/ 5" : "1\.91 \/ 1"/);
+  assert.match(panel, /aspectRatio: cardPortrait \? "4 \/ 5" : "1\.91 \/ 1"/);
   assert.match(panel, /p\.startsWith\("\/"\)/);
   assert.match(panel, /const titleLength = Array\.from/);
-  assert.match(panel, /const titleWarn = titleLength > 60/);
-  assert.match(panel, /const descWarn = descLength > 110/);
-  assert.match(panel, /শিরোনাম ৬০ অক্ষরের বেশি/);
-  assert.match(panel, /বিবরণ ১১০ অক্ষরের বেশি/);
+  assert.match(panel, /const titleWarn = titleLength > titleMax/);
+  assert.match(panel, /const descWarn = descLength > descMax/);
+  assert.match(panel, /Facebook ডিবাগারে প্রিভিউ যাচাই করুন/);
+  assert.match(panel, /শিরোনাম \{bnCount\(titleMax\)\} অক্ষরের বেশি/);
+  assert.match(panel, /বিবরণ \{bnCount\(descMax\)\} অক্ষরের বেশি/);
   assert.match(panel, /function bnCount/);
   assert.match(adminPostPage, /shareUrl=\{\`\$\{siteUrl\(\)\}\/post\/\$\{post\.slug\}\`\}/);
   assert.match(panel, /developers\.facebook\.com\/tools\/debug/);
@@ -151,6 +152,19 @@ check("the share card can have copy of its own", () => {
   assert.match(panel, /const cardTitle = socialTitle\.trim\(\) \|\| shareTitle/);
   assert.match(panel, /const cardDescription = socialDescription\.trim\(\) \|\| shareDescription/);
   assert.match(postEditor, /initialSocialTitle=\{post\.social_title \?\? ""\}/);
+});
+
+check("Facebook and X get the card each actually renders", () => {
+  assert.match(panel, /const \[previewPlatform, setPreviewPlatform\] = useState<"facebook" \| "x">/);
+  assert.match(panel, /role="tablist"/);
+  assert.match(panel, /aria-selected=\{previewPlatform === id\}/);
+  assert.match(panel, /const previewIsX = previewPlatform === "x"/);
+  assert.match(panel, /const cardSrc = previewIsX \? webSrc : shareSrc/);
+  assert.match(panel, /const cardPortrait = !previewIsX && sharePortrait/);
+  assert.match(panel, /facebook: \{ title: 60, desc: 110 \}/);
+  assert.match(panel, /x: \{ title: 70, desc: 200 \}/);
+  assert.match(panel, /X ল্যান্ডস্কেপ কার্ড দেখায়/);
+  assert.match(panel, /\{shareUrl && !previewIsX && \(/);
 });
 
 check("the vocabulary is the brief's, once", () => {

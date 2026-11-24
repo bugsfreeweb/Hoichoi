@@ -746,6 +746,12 @@ rather than storing an empty string, so the fallback is always the article itsel
 PATCH caps them at 160 and 400 code points — generous enough for a tight hook, firm
 enough that the column cannot become a second body.
 
+The preview has two tabs because the platforms disagree. **ফেসবুক** can show the 4:5
+portrait and cuts around 60/110 code points. **X** only ever reads the landscape
+`twitter:image`, so the tab refuses to show a portrait even when the Facebook switch is
+on, and it warns at roughly 70/200. The debugger link appears only on the Facebook tab,
+because X has no equivalent scraper tool.
+
 Verified by rendering all five layouts at `3840×2160` (zero clipped lines measured in the
 DOM), by a live art-direction call and a live FLUX render (WebP, 450 KB), and by
 `design-poster` (8 checks) and `art-director` (10 checks) test files.

@@ -163,6 +163,12 @@ export function PostImageGenerator({
   });
   const [socialBusy, setSocialBusy] = useState(false);
   const [socialMsg, setSocialMsg] = useState<string | null>(null);
+  /**
+   * The two platforms do not render the same card. Facebook can show the 4:5
+   * portrait; X only ever takes the landscape `twitter:image`, and it truncates
+   * at different widths. One card pretending to be both would be a lie.
+   */
+  const [previewPlatform, setPreviewPlatform] = useState<"facebook" | "x">("facebook");
 
   /** `media_path` as of the last successful check — the poll watches for a change. */
   const baseRef = useRef<string | null>(null);
@@ -456,23 +462,33 @@ export function PostImageGenerator({
   const webSrc = webImagePath ? previewSrc(webImagePath) : null;
   const sharePortrait = shareAspect === "4:5" && Boolean(portraitSrc);
   const shareSrc = sharePortrait ? portraitSrc : webSrc;
-  const shareNote = !shareSrc
-    ? "কোনো ছবি নেই — লিংক কার্ডে ছবি ছাড়াই শিরোনাম দেখাবে।"
-    : sharePortrait
-      ? "সোর্স: ৪:৫ পোস্টার"
-      : shareAspect === "4:5"
-        ? "৪:৫ পোস্টার নেই — পোস্টের মূল ছবি দেখানো হচ্ছে।"
-        : "সোর্স: পোস্টের মূল ছবি";
-  // Facebook truncates by rendered width, not by a hard rule, so these are
-  // warnings rather than refusals: 60/110 is where the card starts cutting in
-  // the common desktop and mobile widths. Count code points, not UTF-16 units,
-  // because a Bengali cluster is often two units and would overstate length.
+  const previewIsX = previewPlatform === "x";
+  // X's `summary_large_image` is always landscape and reads its own image tag,
+  // so switching the Facebook frame must not change what this tab promises.
+  const cardSrc = previewIsX ? webSrc : shareSrc;
+  const cardPortrait = !previewIsX && sharePortrait;
+  const shareNote = previewIsX
+    ? webSrc
+      ? "সোর্স: পোস্টের মূল ১৬:৯ ছবি — X ল্যান্ডস্কেপ কার্ড দেখায়।"
+      : "পোস্টে ছবি নেই — X কার্ডে ছবি ছাড়া শিরোনাম দেখাবে।"
+    : !shareSrc
+      ? "কোনো ছবি নেই — লিংক কার্ডে ছবি ছাড়াই শিরোনাম দেখাবে।"
+      : sharePortrait
+        ? "সোর্স: ৪:৫ পোস্টার"
+        : shareAspect === "4:5"
+          ? "৪:৫ পোস্টার নেই — পোস্টের মূল ছবি দেখানো হচ্ছে।"
+          : "সোর্স: পোস্টের মূল ছবি";
+  // Platforms cut by rendered width, not by a hard rule, so these are warnings
+  // rather than refusals. Count code points, not UTF-16 units, because a Bengali
+  // cluster is often two units and would overstate length.
   const cardTitle = socialTitle.trim() || shareTitle;
   const cardDescription = socialDescription.trim() || shareDescription;
+  const titleMax = CARD_LIMITS[previewPlatform].title;
+  const descMax = CARD_LIMITS[previewPlatform].desc;
   const titleLength = Array.from(cardTitle.trim()).length;
   const descLength = Array.from(cardDescription.trim()).length;
-  const titleWarn = titleLength > 60;
-  const descWarn = descLength > 110;
+  const titleWarn = titleLength > titleMax;
+  const descWarn = descLength > descMax;
 
   return (
     <div className="mt-4 border border-ink/15 bg-paper p-4">
@@ -747,17 +763,42 @@ export function PostImageGenerator({
           </div>
 
           <div className="mt-3 border-t border-ink/10 pt-3">
-            <p className="font-mono-x text-[9.5px] uppercase tracking-wide text-ink-soft">
-              লিংক প্রিভিউ
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-mono-x text-[9.5px] uppercase tracking-wide text-ink-soft">
+                লিংক প্রিভিউ
+              </p>
+              <div role="tablist" aria-label="কোন প্ল্যাটফর্মের প্রিভিউ" className="flex gap-1">
+                {(
+                  [
+                    ["facebook", "ফেসবুক"],
+                    ["x", "X"],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={previewPlatform === id}
+                    onClick={() => setPreviewPlatform(id)}
+                    className={`border px-2 py-0.5 text-[10px] font-bold ${
+                      previewPlatform === id
+                        ? "border-ink bg-ink text-paper"
+                        : "border-ink/20 text-ink-soft hover:text-ink"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="mt-2 max-w-[360px] overflow-hidden border border-ink/20 bg-white shadow-sm">
-              {shareSrc ? (
+              {cardSrc ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={shareSrc}
+                  src={cardSrc}
                   alt="শেয়ার কার্ডের ছবি"
                   className="w-full bg-ink/5 object-cover"
-                  style={{ aspectRatio: sharePortrait ? "4 / 5" : "1.91 / 1" }}
+                  style={{ aspectRatio: cardPortrait ? "4 / 5" : "1.91 / 1" }}
                 />
               ) : (
                 <div
@@ -768,19 +809,26 @@ export function PostImageGenerator({
                 </div>
               )}
               <div className="px-3 py-2.5">
-                <p className="font-mono-x text-[9px] uppercase tracking-wide text-ink-soft">
-                  {shareDomain}
-                </p>
+                {!previewIsX && (
+                  <p className="font-mono-x text-[9px] uppercase tracking-wide text-ink-soft">
+                    {shareDomain}
+                  </p>
+                )}
                 <p className="mt-0.5 line-clamp-2 font-serif-bn text-[14px] font-extrabold leading-snug text-ink">
                   {cardTitle || "শিরোনাম"}
                 </p>
                 <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-ink-soft">
                   {cardDescription || "সারসংক্ষেপ"}
                 </p>
+                {previewIsX && (
+                  <p className="mt-1 font-mono-x text-[9px] uppercase tracking-wide text-ink-soft">
+                    {shareDomain}
+                  </p>
+                )}
               </div>
             </div>
             <p className="mt-1.5 text-[10px] text-ink-soft">{shareNote}</p>
-            {shareUrl && (
+            {shareUrl && !previewIsX && (
               <a
                 href={`https://developers.facebook.com/tools/debug/?q=${encodeURIComponent(shareUrl)}`}
                 target="_blank"
@@ -792,20 +840,22 @@ export function PostImageGenerator({
             )}
             <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 font-mono-x text-[10px]">
               <span className={titleWarn ? "font-bold text-red-700" : "text-ink-soft"}>
-                শিরোনাম {bnCount(titleLength)}/৬০
+                শিরোনাম {bnCount(titleLength)}/{bnCount(titleMax)}
               </span>
               <span className={descWarn ? "font-bold text-red-700" : "text-ink-soft"}>
-                বিবরণ {bnCount(descLength)}/১১০
+                বিবরণ {bnCount(descLength)}/{bnCount(descMax)}
               </span>
             </div>
             {titleWarn && (
               <p className="mt-1 text-[10px] text-red-700">
-                শিরোনাম ৬০ অক্ষরের বেশি — ফেসবুকে কেটে যেতে পারে।
+                শিরোনাম {bnCount(titleMax)} অক্ষরের বেশি —{" "}
+                {previewIsX ? "X-এ" : "ফেসবুকে"} কেটে যেতে পারে।
               </p>
             )}
             {descWarn && (
               <p className="mt-1 text-[10px] text-red-700">
-                বিবরণ ১১০ অক্ষরের বেশি — ফেসবুকে কেটে যেতে পারে।
+                বিবরণ {bnCount(descMax)} অক্ষরের বেশি —{" "}
+                {previewIsX ? "X-এ" : "ফেসবুকে"} কেটে যেতে পারে।
               </p>
             )}
           </div>
@@ -845,6 +895,12 @@ export function PostImageGenerator({
     </div>
   );
 }
+
+/** Where each platform starts cutting a large-image card, in code points. */
+const CARD_LIMITS = {
+  facebook: { title: 60, desc: 110 },
+  x: { title: 70, desc: 200 },
+} as const;
 
 const BN_DIGITS = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"] as const;
 
