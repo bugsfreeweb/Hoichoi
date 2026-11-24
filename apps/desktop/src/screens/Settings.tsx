@@ -1437,10 +1437,10 @@ export default function Settings({
               <div className="mt-4 border-t border-white/10 pt-3">
                 <p className="text-[11.5px] font-bold text-white">ওয়েবসাইটের বাংলা ফন্ট</p>
                 <p className="mt-1 text-[10.5px] leading-relaxed text-white/40">
-                  ওয়েব অ্যাডমিনের ডিজাইন ট্যাবের সঙ্গে একই পছন্দ — শিরোনাম ও বডির জন্য
-                  বান্ডল করা {BANGLA_FONTS.length}টি পরিবার থেকে বেছে নিন।
+                  ওয়েব অ্যাডমিনের ডিজাইন ট্যাবের সঙ্গে একই পছন্দ — টাইটেল, বর্ণনা ও
+                  ট্যাগ/বিভাগের জন্য বান্ডল করা {BANGLA_FONTS.length}টি পরিবার থেকে বেছে নিন।
                 </p>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <div className="mt-2 grid gap-2 sm:grid-cols-3">
                   <label className="block">
                     <span className="text-[10.5px] text-white/45">শিরোনাম</span>
                     <select
@@ -1449,7 +1449,7 @@ export default function Settings({
                       onChange={(e) =>
                         setVis({
                           ...vis,
-                          typography: { ...(vis.typography ?? { headline: "", body: "" }), headline: e.target.value },
+                          typography: { ...(vis.typography ?? { headline: "", body: "", meta: "" }), headline: e.target.value },
                         })
                       }
                     >
@@ -1469,11 +1469,31 @@ export default function Settings({
                       onChange={(e) =>
                         setVis({
                           ...vis,
-                          typography: { ...(vis.typography ?? { headline: "", body: "" }), body: e.target.value },
+                          typography: { ...(vis.typography ?? { headline: "", body: "", meta: "" }), body: e.target.value },
                         })
                       }
                     >
                       <option value="">ডিফল্ট — Hind Siliguri</option>
+                      {BANGLA_FONTS.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-[10.5px] text-white/45">ট্যাগ ও বিভাগ</span>
+                    <select
+                      className="field mt-1 w-full"
+                      value={vis.typography?.meta ?? ""}
+                      onChange={(e) =>
+                        setVis({
+                          ...vis,
+                          typography: { ...(vis.typography ?? { headline: "", body: "", meta: "" }), meta: e.target.value },
+                        })
+                      }
+                    >
+                      <option value="">বডির ফন্টই ব্যবহার হবে</option>
                       {BANGLA_FONTS.map((f) => (
                         <option key={f.id} value={f.id}>
                           {f.label}

@@ -38,7 +38,7 @@ export default async function AboutPage() {
         <ul>
           {active.map((cat) => (
             <li key={cat.slug}>
-              <Link className="font-bold text-alizarin hover:underline" href={`/category/${cat.slug}`}>
+              <Link className="font-meta-bn font-bold text-alizarin hover:underline" href={`/category/${cat.slug}`}>
                 {cat.displayNameBn || cat.displayNameEn || cat.slug}
               </Link>
               {cat.descriptionBn ? ` — ${cat.descriptionBn}` : ""}

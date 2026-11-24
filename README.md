@@ -706,27 +706,25 @@ design in one click.
 ## The Bangla type library is local
 
 `packages/bangla-fonts` turns the repository's `Bangla Fonts/` zips into one workspace
-package: **18 Lipighor Unicode families, 36 faces**, subset to Bengali + Latin and converted
-to WOFF2 (about 2.8 MB total). Import `@hoichoi/bangla-fonts/fonts.css` once and every family
-is available; the browser downloads only the faces actually selected. Legacy ANSI/Bijoy
-files are deliberately excluded — their byte mapping produces garbage when interpreted as
+package: **47 Unicode families, 106 faces**, subset to Bengali + Latin and converted to
+WOFF2 (about 7 MB total). Import `@hoichoi/bangla-fonts/fonts.css` once and every family is
+available; the browser downloads only the faces actually selected. Legacy ANSI/Bijoy files
+are deliberately excluded — their byte mapping produces garbage when interpreted as
 Unicode.
 
 The web app, the admin console and the Tauri desk all import the same stylesheet. The
-Settings → ডিজাইন tab shows a **বাংলা ফন্ট লাইব্রেরি** gallery with live samples; its two
-selects write `app_config_json.typography.headline` and `.body`, and the public site applies
-them by overriding `--font-serif-bn` and `--font-sans-bn`. The desktop's প্রেফারেন্স tab has
+Settings → ডিজাইন tab shows a **বাংলা ফন্ট লাইব্রেরি** gallery with live samples; its three
+selects write `app_config_json.typography.headline`, `.body` and `.meta`, and the root layout
+applies them by overriding `--font-serif-bn`, `--font-sans-bn` and `--font-meta-bn` for both
+the public site and the admin console. The desktop's প্রেফারেন্স tab has
 its own local **ডেস্কের বাংলা ফন্ট** choice (`localStorage`), while the shared site choice is
 edited under সাইট. Any family can also be used in ad/notice HTML with `.bnfont-<id>`.
 
-Each source zip's readme/terms travels to `packages/bangla-fonts/licenses/`. The build
-refuses to bundle a family it cannot clear for webfont use: FontBD's readme explicitly
-forbids webfonts, BL Masud's terms do not grant distribution, and sixteen zips shipped no
-licence document. Those **29 families** are listed in `EXCLUDED_BANGLA_FONTS` with the
-reason and no font file is served. Lipighor allows webfont use with permission and a footer
-backlink, so the site renders **বাংলা ফন্ট: লিপিঘর** whenever one of its families is chosen;
-obtain the permission email before launch. The build never invents a licence for someone
-else's typeface.
+Each source zip's readme/terms travels to `packages/bangla-fonts/licenses/`. All 47 families
+ship because the operator confirmed they are free to use; the manifest keeps the source
+licence label as metadata. Lipighor asks for a footer backlink, so the site renders
+**বাংলা ফন্ট: লিপিঘর** whenever one of its families is selected. The build never invents a
+licence for someone else's typeface.
 
 **Step 5 — one direction, two frames.** `aspects: ["16:9", "4:5"]` renders the same
 art-directed page twice: the web/YouTube card and the uncropped Facebook/Instagram feed

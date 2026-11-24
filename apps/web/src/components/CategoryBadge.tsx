@@ -20,8 +20,8 @@ export function CategoryBadge({
       href={`/category/${slug}`}
       className={
         size === "lg"
-          ? "inline-flex items-center gap-1 px-3 py-1 text-[11.5px] font-bold text-white"
-          : "inline-flex items-center gap-1 px-2.5 py-1 text-[10.5px] font-bold text-white"
+          ? "font-meta-bn inline-flex items-center gap-1 px-3 py-1 text-[11.5px] font-bold text-white"
+          : "font-meta-bn inline-flex items-center gap-1 px-2.5 py-1 text-[10.5px] font-bold text-white"
       }
       style={{ background: color }}
     >

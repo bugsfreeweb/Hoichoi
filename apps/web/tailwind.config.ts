@@ -36,6 +36,7 @@ export default {
         // at any bundled family without regenerating the Tailwind build.
         "serif-bn": ['var(--font-serif-bn, "Noto Serif Bengali", serif)'],
         "sans-bn": ['var(--font-sans-bn, "Hind Siliguri", sans-serif)'],
+        "meta-bn": ['var(--font-meta-bn, "Hind Siliguri", sans-serif)'],
         sans: ['"Space Grotesk"', "sans-serif"],
         "mono-x": ['"JetBrains Mono"', "monospace"],
       },

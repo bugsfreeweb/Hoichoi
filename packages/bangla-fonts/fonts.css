@@ -3,6 +3,99 @@
  * Unicode faces only: legacy ANSI/Bijoy files map Bengali bytes to the
  * wrong code points and would render as garbage in a browser.
  */
+@font-face{font-family:'BAN Mahfuz Maruf';font-style:normal;font-weight:400;font-display:swap;src:url('./files/ban-mahfuz-maruf-400.woff2') format('woff2');}
+@font-face{font-family:'BAN Mahfuz Maruf';font-style:italic;font-weight:400;font-display:swap;src:url('./files/ban-mahfuz-maruf-400-italic.woff2') format('woff2');}
+.bnfont-ban-mahfuz-maruf{font-family:'BAN Mahfuz Maruf',sans-serif;}
+@font-face{font-family:'BL Masud Mosaic';font-style:normal;font-weight:900;font-display:swap;src:url('./files/bl-masud-mosaic-900.woff2') format('woff2');}
+@font-face{font-family:'BL Masud Mosaic';font-style:italic;font-weight:900;font-display:swap;src:url('./files/bl-masud-mosaic-900-italic.woff2') format('woff2');}
+.bnfont-bl-masud-mosaic{font-family:'BL Masud Mosaic',sans-serif;}
+@font-face{font-family:'Dhaleshwari';font-style:normal;font-weight:400;font-display:swap;src:url('./files/dhaleshwari-400.woff2') format('woff2');}
+@font-face{font-family:'Dhaleshwari';font-style:italic;font-weight:400;font-display:swap;src:url('./files/dhaleshwari-400-italic.woff2') format('woff2');}
+.bnfont-dhaleshwari{font-family:'Dhaleshwari',sans-serif;}
+@font-face{font-family:'FN Abdullah Momenshahi AM';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-abdullah-momenshahi-am-400.woff2') format('woff2');}
+@font-face{font-family:'FN Abdullah Momenshahi AM';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-abdullah-momenshahi-am-400-italic.woff2') format('woff2');}
+.bnfont-fn-abdullah-momenshahi-am{font-family:'FN Abdullah Momenshahi AM',sans-serif;}
+@font-face{font-family:'FN Abdullah Momenshahi PM';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-abdullah-momenshahi-pm-400.woff2') format('woff2');}
+@font-face{font-family:'FN Abdullah Momenshahi PM';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-abdullah-momenshahi-pm-400-italic.woff2') format('woff2');}
+.bnfont-fn-abdullah-momenshahi-pm{font-family:'FN Abdullah Momenshahi PM',sans-serif;}
+@font-face{font-family:'FN Badhon Bhasha-17';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-badhon-bhasha-17-400.woff2') format('woff2');}
+@font-face{font-family:'FN Badhon Bhasha-17';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-badhon-bhasha-17-400-italic.woff2') format('woff2');}
+.bnfont-fn-badhon-bhasha-17{font-family:'FN Badhon Bhasha-17',sans-serif;}
+@font-face{font-family:'FN Badhon Ikra';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-badhon-ikra-400.woff2') format('woff2');}
+@font-face{font-family:'FN Badhon Ikra';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-badhon-ikra-400-italic.woff2') format('woff2');}
+.bnfont-fn-badhon-ikra{font-family:'FN Badhon Ikra',sans-serif;}
+@font-face{font-family:'FN Dukkho Bilashi';font-style:normal;font-weight:300;font-display:swap;src:url('./files/fn-dukkho-bilashi-300.woff2') format('woff2');}
+@font-face{font-family:'FN Dukkho Bilashi';font-style:italic;font-weight:300;font-display:swap;src:url('./files/fn-dukkho-bilashi-300-italic.woff2') format('woff2');}
+.bnfont-fn-dukkho-bilashi{font-family:'FN Dukkho Bilashi',sans-serif;}
+@font-face{font-family:'FN Faruq Noakhali';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-faruq-noakhali-400.woff2') format('woff2');}
+@font-face{font-family:'FN Faruq Noakhali';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-faruq-noakhali-400-italic.woff2') format('woff2');}
+.bnfont-fn-faruq-noakhali{font-family:'FN Faruq Noakhali',sans-serif;}
+@font-face{font-family:'FN Helal Arafat';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-helal-arafat-400.woff2') format('woff2');}
+@font-face{font-family:'FN Helal Arafat';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-helal-arafat-400-italic.woff2') format('woff2');}
+.bnfont-fn-helal-arafat{font-family:'FN Helal Arafat',sans-serif;}
+@font-face{font-family:'FN Helal Laveriya';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-helal-laveriya-400.woff2') format('woff2');}
+@font-face{font-family:'FN Helal Laveriya';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-helal-laveriya-400-italic.woff2') format('woff2');}
+.bnfont-fn-helal-laveriya{font-family:'FN Helal Laveriya',sans-serif;}
+@font-face{font-family:'FN Kothakoli';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-kothakoli-400.woff2') format('woff2');}
+@font-face{font-family:'FN Kothakoli';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-kothakoli-400-italic.woff2') format('woff2');}
+.bnfont-fn-kothakoli{font-family:'FN Kothakoli',sans-serif;}
+@font-face{font-family:'FN Lipika Azhari';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-lipika-azhari-400.woff2') format('woff2');}
+@font-face{font-family:'FN Lipika Azhari';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-lipika-azhari-400-italic.woff2') format('woff2');}
+@font-face{font-family:'FN Lipika Azhari';font-style:normal;font-weight:500;font-display:swap;src:url('./files/fn-lipika-azhari-500.woff2') format('woff2');}
+@font-face{font-family:'FN Lipika Azhari';font-style:italic;font-weight:500;font-display:swap;src:url('./files/fn-lipika-azhari-500-italic.woff2') format('woff2');}
+@font-face{font-family:'FN Lipika Azhari';font-style:normal;font-weight:700;font-display:swap;src:url('./files/fn-lipika-azhari-700.woff2') format('woff2');}
+@font-face{font-family:'FN Lipika Azhari';font-style:italic;font-weight:800;font-display:swap;src:url('./files/fn-lipika-azhari-800-italic.woff2') format('woff2');}
+.bnfont-fn-lipika-azhari{font-family:'FN Lipika Azhari',sans-serif;}
+@font-face{font-family:'FN Mahbub Samira';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-mahbub-samira-400.woff2') format('woff2');}
+@font-face{font-family:'FN Mahbub Samira';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-mahbub-samira-400-italic.woff2') format('woff2');}
+.bnfont-fn-mahbub-samira{font-family:'FN Mahbub Samira',sans-serif;}
+@font-face{font-family:'FN Mahfuj Headline';font-style:normal;font-weight:100;font-display:swap;src:url('./files/fn-mahfuj-headline-100.woff2') format('woff2');}
+@font-face{font-family:'FN Mahfuj Headline';font-style:normal;font-weight:300;font-display:swap;src:url('./files/fn-mahfuj-headline-300.woff2') format('woff2');}
+@font-face{font-family:'FN Mahfuj Headline';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-mahfuj-headline-400.woff2') format('woff2');}
+@font-face{font-family:'FN Mahfuj Headline';font-style:normal;font-weight:500;font-display:swap;src:url('./files/fn-mahfuj-headline-500.woff2') format('woff2');}
+@font-face{font-family:'FN Mahfuj Headline';font-style:normal;font-weight:600;font-display:swap;src:url('./files/fn-mahfuj-headline-600.woff2') format('woff2');}
+@font-face{font-family:'FN Mahfuj Headline';font-style:normal;font-weight:700;font-display:swap;src:url('./files/fn-mahfuj-headline-700.woff2') format('woff2');}
+.bnfont-fn-mahfuj-headline{font-family:'FN Mahfuj Headline',sans-serif;}
+@font-face{font-family:'FN Mahfuz Metro';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-mahfuz-metro-400.woff2') format('woff2');}
+@font-face{font-family:'FN Mahfuz Metro';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-mahfuz-metro-400-italic.woff2') format('woff2');}
+.bnfont-fn-mahfuz-metro{font-family:'FN Mahfuz Metro',sans-serif;}
+@font-face{font-family:'FN Mahin Aklima';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-mahin-aklima-400.woff2') format('woff2');}
+@font-face{font-family:'FN Mahin Aklima';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-mahin-aklima-400-italic.woff2') format('woff2');}
+.bnfont-fn-mahin-aklima{font-family:'FN Mahin Aklima',sans-serif;}
+@font-face{font-family:'FN Mahin Jubayer';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-mahin-jubayer-400.woff2') format('woff2');}
+@font-face{font-family:'FN Mahin Jubayer';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-mahin-jubayer-400-italic.woff2') format('woff2');}
+.bnfont-fn-mahin-jubayer{font-family:'FN Mahin Jubayer',sans-serif;}
+@font-face{font-family:'FN Mahin Sayeedi';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-mahin-sayeedi-400.woff2') format('woff2');}
+@font-face{font-family:'FN Mahin Sayeedi';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-mahin-sayeedi-400-italic.woff2') format('woff2');}
+.bnfont-fn-mahin-sayeedi{font-family:'FN Mahin Sayeedi',sans-serif;}
+@font-face{font-family:'FN Mahin Shorif';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-mahin-shorif-400.woff2') format('woff2');}
+@font-face{font-family:'FN Mahin Shorif';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-mahin-shorif-400-italic.woff2') format('woff2');}
+.bnfont-fn-mahin-shorif{font-family:'FN Mahin Shorif',sans-serif;}
+@font-face{font-family:'FN Mahin Shukran Lipi';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-mahin-shukran-lipi-400.woff2') format('woff2');}
+@font-face{font-family:'FN Mahin Shukran Lipi';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-mahin-shukran-lipi-400-italic.woff2') format('woff2');}
+.bnfont-fn-mahin-shukran-lipi{font-family:'FN Mahin Shukran Lipi',sans-serif;}
+@font-face{font-family:'FN Mamun Bornolipi';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-mamun-bornolipi-400.woff2') format('woff2');}
+@font-face{font-family:'FN Mamun Bornolipi';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-mamun-bornolipi-400-italic.woff2') format('woff2');}
+.bnfont-fn-mamun-bornolipi{font-family:'FN Mamun Bornolipi',sans-serif;}
+@font-face{font-family:'FN Mamun Mahfuz';font-style:normal;font-weight:700;font-display:swap;src:url('./files/fn-mamun-mahfuz-700.woff2') format('woff2');}
+@font-face{font-family:'FN Mamun Mahfuz';font-style:italic;font-weight:700;font-display:swap;src:url('./files/fn-mamun-mahfuz-700-italic.woff2') format('woff2');}
+.bnfont-fn-mamun-mahfuz{font-family:'FN Mamun Mahfuz',sans-serif;}
+@font-face{font-family:'FN Nuralam Sheikh Mujib';font-style:normal;font-weight:300;font-display:swap;src:url('./files/fn-nuralam-sheikh-mujib-300.woff2') format('woff2');}
+@font-face{font-family:'FN Nuralam Sheikh Mujib';font-style:italic;font-weight:300;font-display:swap;src:url('./files/fn-nuralam-sheikh-mujib-300-italic.woff2') format('woff2');}
+@font-face{font-family:'FN Nuralam Sheikh Mujib';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-nuralam-sheikh-mujib-400.woff2') format('woff2');}
+@font-face{font-family:'FN Nuralam Sheikh Mujib';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-nuralam-sheikh-mujib-400-italic.woff2') format('woff2');}
+@font-face{font-family:'FN Nuralam Sheikh Mujib';font-style:normal;font-weight:700;font-display:swap;src:url('./files/fn-nuralam-sheikh-mujib-700.woff2') format('woff2');}
+@font-face{font-family:'FN Nuralam Sheikh Mujib';font-style:italic;font-weight:700;font-display:swap;src:url('./files/fn-nuralam-sheikh-mujib-700-italic.woff2') format('woff2');}
+.bnfont-fn-nuralam-sheikh-mujib{font-family:'FN Nuralam Sheikh Mujib',sans-serif;}
+@font-face{font-family:'FN Sabina Shorolipi Bangla';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-sabina-shorolipi-bangla-400.woff2') format('woff2');}
+@font-face{font-family:'FN Sabina Shorolipi Bangla';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-sabina-shorolipi-bangla-400-italic.woff2') format('woff2');}
+.bnfont-fn-sabina-shorolipi-bangla{font-family:'FN Sabina Shorolipi Bangla',sans-serif;}
+@font-face{font-family:'FN Samprotik';font-style:normal;font-weight:400;font-display:swap;src:url('./files/fn-samprotik-400.woff2') format('woff2');}
+@font-face{font-family:'FN Samprotik';font-style:italic;font-weight:400;font-display:swap;src:url('./files/fn-samprotik-400-italic.woff2') format('woff2');}
+.bnfont-fn-samprotik{font-family:'FN Samprotik',sans-serif;}
+@font-face{font-family:'Kopotakkho';font-style:normal;font-weight:400;font-display:swap;src:url('./files/kopotakkho-400.woff2') format('woff2');}
+@font-face{font-family:'Kopotakkho';font-style:italic;font-weight:400;font-display:swap;src:url('./files/kopotakkho-400-italic.woff2') format('woff2');}
+.bnfont-kopotakkho{font-family:'Kopotakkho',sans-serif;}
 @font-face{font-family:'Li Abu J M Akkas';font-style:normal;font-weight:400;font-display:swap;src:url('./files/li-abu-j-m-akkas-400.woff2') format('woff2');}
 @font-face{font-family:'Li Abu J M Akkas';font-style:italic;font-weight:400;font-display:swap;src:url('./files/li-abu-j-m-akkas-400-italic.woff2') format('woff2');}
 .bnfont-li-abu-j-m-akkas{font-family:'Li Abu J M Akkas',sans-serif;}
@@ -57,3 +150,9 @@
 @font-face{font-family:'Li Sweet Shreyam';font-style:normal;font-weight:400;font-display:swap;src:url('./files/li-sweet-shreyam-400.woff2') format('woff2');}
 @font-face{font-family:'Li Sweet Shreyam';font-style:italic;font-weight:400;font-display:swap;src:url('./files/li-sweet-shreyam-400-italic.woff2') format('woff2');}
 .bnfont-li-sweet-shreyam{font-family:'Li Sweet Shreyam',sans-serif;}
+@font-face{font-family:'PadmaPata';font-style:normal;font-weight:400;font-display:swap;src:url('./files/padmapata-400.woff2') format('woff2');}
+@font-face{font-family:'PadmaPata';font-style:italic;font-weight:400;font-display:swap;src:url('./files/padmapata-400-italic.woff2') format('woff2');}
+.bnfont-padmapata{font-family:'PadmaPata',sans-serif;}
+@font-face{font-family:'Samsur Dhansiri';font-style:normal;font-weight:400;font-display:swap;src:url('./files/samsur-dhansiri-400.woff2') format('woff2');}
+@font-face{font-family:'Samsur Dhansiri';font-style:italic;font-weight:400;font-display:swap;src:url('./files/samsur-dhansiri-400-italic.woff2') format('woff2');}
+.bnfont-samsur-dhansiri{font-family:'Samsur Dhansiri',sans-serif;}

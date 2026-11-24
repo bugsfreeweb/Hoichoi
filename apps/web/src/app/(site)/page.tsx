@@ -161,7 +161,7 @@ export default async function HomePage({
                 <Link
                   key={category.slug}
                   href={`/category/${category.slug}`}
-                  className="group flex items-center gap-2 border border-ink/20 bg-paper px-3.5 py-1.5 text-[12.5px] font-bold text-ink transition-all duration-300 hover:border-ink hover:bg-ink hover:text-paper"
+                  className="font-meta-bn group flex items-center gap-2 border border-ink/20 bg-paper px-3.5 py-1.5 text-[12.5px] font-bold text-ink transition-all duration-300 hover:border-ink hover:bg-ink hover:text-paper"
                 >
                   <span
                     className="h-1.5 w-1.5 rounded-full"

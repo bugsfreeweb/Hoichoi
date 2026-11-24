@@ -87,7 +87,7 @@ export default function ArticleCard({ post, index, categories }: ArticleCardProp
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <span
-          className="flex items-center gap-1.5 px-3 py-1 text-[11.5px] font-bold"
+          className="font-meta-bn flex items-center gap-1.5 px-3 py-1 text-[11.5px] font-bold"
           style={{ background: tint, color: readableOn(tint) }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>

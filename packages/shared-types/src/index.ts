@@ -1332,8 +1332,12 @@ export interface SiteAppConfig {  /** Masthead "newsroom in numbers" hero sectio
 
 /** Chosen families from the bundled Bangla type library. */
 export interface SiteTypography {
+  /** Article/headline face. */
   headline: string;
+  /** Description, body copy and interface text. */
   body: string;
+  /** Tags and category labels. */
+  meta: string;
 }
 
 export type LiveThemeKey = "stage" | "broadsheet" | "scoreboard" | "timeline" | "compact" | "studio";
@@ -1575,7 +1579,7 @@ export const DEFAULT_APP_CONFIG: SiteAppConfig = {
   },
   hero_headline_motion: "sheen",
   hero_scene_style: "rail",
-  typography: { headline: "", body: "" },
+  typography: { headline: "", body: "", meta: "" },
   admin_sidebar_style: DEFAULT_SIDEBAR_STYLE,
 };
 

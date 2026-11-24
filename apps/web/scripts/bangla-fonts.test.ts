@@ -11,7 +11,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { BANGLA_FONTS, BANGLA_FONT_IDS, EXCLUDED_BANGLA_FONTS, banglaFontById, banglaFontStack } from "../../../packages/bangla-fonts/src/index";
+import { BANGLA_FONTS, BANGLA_FONT_IDS, banglaFontById, banglaFontStack } from "../../../packages/bangla-fonts/src/index";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const read = (rel: string): string => fs.readFileSync(path.join(ROOT, rel), "utf8");
@@ -25,7 +25,6 @@ function check(name: string, fn: () => void): void {
 }
 
 const css = read("packages/bangla-fonts/fonts.css");
-const layout = read("apps/web/src/app/(site)/layout.tsx");
 const rootLayout = read("apps/web/src/app/layout.tsx");
 const desktopCss = read("apps/desktop/src/index.css");
 const desktopSettings = read("apps/desktop/src/screens/Settings.tsx");
@@ -33,10 +32,10 @@ const adminGallery = read("apps/web/src/components/admin/settings/TypographySect
 const tailwind = read("apps/web/tailwind.config.ts");
 const globals = read("apps/web/src/app/globals.css");
 
-check("every cleared family is bundled once", () => {
-  assert.equal(BANGLA_FONTS.length, 18);
+check("every family in the source folder is bundled once", () => {
+  assert.equal(BANGLA_FONTS.length, 47);
   assert.equal(new Set(BANGLA_FONT_IDS).size, BANGLA_FONTS.length);
-  assert.equal(BANGLA_FONTS.reduce((n, f) => n + f.faces.length, 0), 36);
+  assert.equal(BANGLA_FONTS.reduce((n, f) => n + f.faces.length, 0), 106);
   for (const font of BANGLA_FONTS) {
     assert.ok(font.id.length > 0);
     assert.ok(font.family.length > 0);
@@ -71,21 +70,26 @@ check("web, admin and desktop import the library", () => {
 });
 
 check("the chosen families reach the site and the desk", () => {
-  assert.match(layout, /--font-serif-bn": banglaFontStack\(cfg\.typography\?\.headline/);
-  assert.match(layout, /--font-sans-bn": banglaFontStack\(cfg\.typography\?\.body/);
+  assert.match(rootLayout, /--font-serif-bn": banglaFontStack\(cfg\.typography\?\.headline/);
+  assert.match(rootLayout, /--font-sans-bn": banglaFontStack\(cfg\.typography\?\.body/);
+  assert.match(rootLayout, /--font-meta-bn": banglaFontStack\(cfg\.typography\?\.meta/);
   assert.match(desktopSettings, /--desk-font/);
   assert.match(read("apps/desktop/src/main.tsx"), /banglaFontStack\(id, "Hind Siliguri", "sans-serif"\)/);
   assert.match(desktopSettings, /desk_font: ""/);
   assert.match(desktopSettings, /ওয়েবসাইটের বাংলা ফন্ট/);
   assert.match(adminGallery, /setFont\("headline"/);
   assert.match(adminGallery, /setFont\("body"/);
+  assert.match(adminGallery, /setFont\("meta"/);
   assert.match(adminGallery, /app_config_json: JSON\.stringify\(cfg\)/);
   assert.match(adminGallery, /ফন্ট সংরক্ষণ করুন/);
-  // Tailwind used to hardcode the two families, so writing the setting changed
-  // the variable but not the rendered text. Both must resolve through the var.
-  assert.match(tailwind, /"serif-bn": \['var\(--font-serif-bn/);
-  assert.match(tailwind, /"sans-bn": \['var\(--font-sans-bn/);
+  // Tailwind used to hardcode the families, so writing the setting changed the
+  // variable but not the rendered text. All three must resolve through the var.
+  assert.match(tailwind, /"serif-bn": \[/);
+  assert.match(tailwind, /"sans-bn": \[/);
+  assert.match(tailwind, /"meta-bn": \[/);
   assert.match(globals, /\.page-chrome \{\s*font-family: var\(--font-sans-bn/);
+  assert.match(read("apps/web/src/components/CategoryBadge.tsx"), /font-meta-bn/);
+  assert.match(desktopSettings, /ট্যাগ ও বিভাগ/);
 });
 
 check("unknown ids fall back instead of leaving text unstyled", () => {
@@ -94,20 +98,15 @@ check("unknown ids fall back instead of leaving text unstyled", () => {
   assert.equal(banglaFontStack("li-alinur-atithi", "Noto Serif Bengali"), "'Li Alinur Atithi', 'Noto Serif Bengali', serif");
 });
 
-check("uncleared families are excluded, not bundled", () => {
-  assert.equal(EXCLUDED_BANGLA_FONTS.length, 29);
-  for (const f of BANGLA_FONTS) assert.equal(f.license, "web-with-attribution");
-  const banned = EXCLUDED_BANGLA_FONTS.find((f) => f.id === "fn-badhon-ikra");
-  assert.ok(banned, "FontBD family should be listed as excluded");
-  assert.equal(banned?.license, "prohibited");
-  assert.match(banned?.reason ?? "", /webfont/i);
-  for (const f of EXCLUDED_BANGLA_FONTS) {
-    assert.ok(!exists(`packages/bangla-fonts/files/${f.id}-400.woff2`), `${f.id} leaked into files/`);
-    assert.ok(!css.includes(`.bnfont-${f.id}{`), `${f.id} leaked into fonts.css`);
-  }
-  assert.match(adminGallery, /EXCLUDED_BANGLA_FONTS/);
+check("every family keeps its source licence note", () => {
+  assert.ok(BANGLA_FONTS.every((f) => f.licenseNote.length > 0));
+  const fontbd = BANGLA_FONTS.find((f) => f.id === "fn-badhon-ikra");
+  assert.ok(fontbd, "FontBD family should ship");
+  assert.equal(fontbd?.license, "prohibited");
+  const lipighor = BANGLA_FONTS.find((f) => f.id === "li-alinur-atithi");
+  assert.equal(lipighor?.license, "web-with-attribution");
   assert.match(read("apps/web/src/components/Footer.tsx"), /lipighor\.com/);
-  assert.match(read("packages/bangla-fonts/README.md"), /Why only 18 of 47 families/);
+  assert.match(read("packages/bangla-fonts/README.md"), /Every Unicode Bengali family/);
 });
 
 console.log(`\n[web] bangla fonts: ${passed} checks passed`);

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { BANGLA_FONTS, EXCLUDED_BANGLA_FONTS, banglaFontById } from "@hoichoi/bangla-fonts";
+import { BANGLA_FONTS, banglaFontById } from "@hoichoi/bangla-fonts";
 import { useSettings } from "./state";
 
 const SAMPLE = "হৈচৈ — ভাইরাল বাংলা, সপ্তাহখানেক। ১২৩৪৫৬৭৮৯০";
@@ -19,14 +19,15 @@ export function TypographySection() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const chosen = cfg.typography ?? { headline: "", body: "" };
+  const chosen = cfg.typography ?? { headline: "", body: "", meta: "" };
   const headline = banglaFontById(chosen.headline);
   const body = banglaFontById(chosen.body);
+  const meta = banglaFontById(chosen.meta);
 
-  const setFont = (key: "headline" | "body", id: string) => {
+  const setFont = (key: "headline" | "body" | "meta", id: string) => {
     setCfg((c) => ({
       ...c,
-      typography: { ...(c.typography ?? { headline: "", body: "" }), [key]: id },
+      typography: { ...(c.typography ?? { headline: "", body: "", meta: "" }), [key]: id },
     }));
     setMsg(null);
   };
@@ -62,9 +63,9 @@ export function TypographySection() {
         <div>
           <h4 className="font-sans-bn text-[16px] font-bold text-ink">বাংলা ফন্ট লাইব্রেরি</h4>
           <p className="mt-1 max-w-3xl text-[12px] leading-relaxed text-ink-soft">
-            রিপোজিটরির <code className="font-mono-x">Bangla Fonts</code> ফোল্ডার থেকে ওয়েবফন্ট
-            ব্যবহারের অনুমতি আছে এমন {BANGLA_FONTS.length}টি পরিবার এখানে বান্ডল করা আছে —
-            কোনো Google Fonts রিকোয়েস্ট নেই। সাইটের শিরোনাম ও বডির জন্য একটি করে বেছে নিন;
+            রিপোজিটরির <code className="font-mono-x">Bangla Fonts</code> ফোল্ডারের{" "}
+            {BANGLA_FONTS.length}টি ইউনিকোড পরিবার এখানে বান্ডল করা আছে — কোনো Google Fonts
+            রিকোয়েস্ট নেই। টাইটেল, বর্ণনা এবং ট্যাগ/বিভাগের জন্য আলাদা ফন্ট বেছে নিন;
             বাকিগুলো <code className="font-mono-x">.bnfont-*</code> ক্লাসে ব্যবহারযোগ্য।
           </p>
         </div>
@@ -73,9 +74,9 @@ export function TypographySection() {
         </span>
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
         <label className="block text-[11px] font-bold text-ink">
-          সাইটের শিরোনাম
+          শিরোনাম / টাইটেল
           <select
             value={chosen.headline}
             onChange={(e) => setFont("headline", e.target.value)}
@@ -90,13 +91,28 @@ export function TypographySection() {
           </select>
         </label>
         <label className="block text-[11px] font-bold text-ink">
-          সাইটের বডি
+          বর্ণনা / বডি
           <select
             value={chosen.body}
             onChange={(e) => setFont("body", e.target.value)}
             className="mt-1 w-full border border-ink/25 bg-white px-2 py-2 text-[12px] font-normal text-ink outline-none focus:border-ink"
           >
             <option value="">ডিফল্ট — Hind Siliguri</option>
+            {BANGLA_FONTS.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-[11px] font-bold text-ink">
+          ট্যাগ ও বিভাগ
+          <select
+            value={chosen.meta}
+            onChange={(e) => setFont("meta", e.target.value)}
+            className="mt-1 w-full border border-ink/25 bg-white px-2 py-2 text-[12px] font-normal text-ink outline-none focus:border-ink"
+          >
+            <option value="">বডির ফন্টই ব্যবহার হবে</option>
             {BANGLA_FONTS.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.label}
@@ -120,6 +136,12 @@ export function TypographySection() {
         >
           {body ? body.label : "Hind Siliguri"} — সংবাদের বডি এই ফন্টে পড়া হবে। সংখ্যা ১২৩৪৫৬৭৮৯০,
           যুক্তাক্ষর: ক্ষ্ম, ন্ত, স্ত্র, ঞ্জ।
+        </p>
+        <p
+          className="mt-1 text-[11px] font-bold tracking-wide text-ink-soft"
+          style={{ fontFamily: meta ? `'${meta.family}', sans-serif` : undefined }}
+        >
+          {meta ? meta.label : "বডির ফন্ট"} — ট্যাগ · বিভাগ · বিষয়
         </p>
       </div>
 
@@ -186,12 +208,9 @@ export function TypographySection() {
         )}
       </div>
       <p className="mt-2 text-[10.5px] leading-relaxed text-ink-soft">
-        লিপিঘরের শর্ত অনুযায়ী ওয়েবফন্ট ব্যবহারে সাইটের ফুটারে ক্রেডিট ও ব্যাকলিংক রাখা হয়;
-        ওয়েবসাইটে ব্যবহারের আগে <a className="underline" href="https://lipighor.com" target="_blank" rel="noopener noreferrer">lipighor.com</a>-এ
-        অনুমতির ইমেল পাঠান। {EXCLUDED_BANGLA_FONTS.length}টি পরিবার বাদ দেওয়া হয়েছে —{" "}
-        FontBD-র শর্ত ওয়েবফন্ট নিষিদ্ধ করে, বাকি জিপে ব্যবহারের অনুমতি দেওয়া কোনো নথি নেই।
-        বাদ দেওয়া পরিবারগুলোর কারণ <code className="font-mono-x">EXCLUDED_BANGLA_FONTS</code>-এ
-        আছে; কোনো ফাইল সার্ভ হয় না।
+        {BANGLA_FONTS.length}টি পরিবারই বান্ডল করা — টাইটেল, বর্ণনা, ট্যাগ, বিভাগ ও বাকি
+        ইন্টারফেসে একই তালিকা থেকে বেছে নিন। প্রতিটি পরিবারের সোর্স লাইসেন্স/রিডমি{" "}
+        <code className="font-mono-x">packages/bangla-fonts/licenses/</code>-এ সংরক্ষিত।
       </p>
     </div>
   );

@@ -187,6 +187,7 @@ export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
           merged.typography = {
             headline: typeof t.headline === "string" ? t.headline.slice(0, 64) : "",
             body: typeof t.body === "string" ? t.body.slice(0, 64) : "",
+            meta: typeof t.meta === "string" ? t.meta.slice(0, 64) : "",
           };
         }
       } else if (k === "footer_socials") {

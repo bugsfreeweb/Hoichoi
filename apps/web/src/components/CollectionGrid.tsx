@@ -70,7 +70,7 @@ export function CollectionGrid({
               key={c.slug}
               href={`/category/${c.slug}`}
               aria-current={c.slug === effective ? "page" : undefined}
-              className={`rounded-full border px-4 py-1.5 text-[12.5px] font-medium transition-colors ${
+              className={`font-meta-bn rounded-full border px-4 py-1.5 text-[12.5px] font-medium transition-colors ${
                 c.slug === effective
                   ? "border-ink bg-ink text-paper"
                   : "border-ink/25 text-ink-soft hover:border-ink hover:text-ink"
@@ -82,7 +82,7 @@ export function CollectionGrid({
             <button
               key={c.slug}
               onClick={() => setActive(c.slug)}
-              className={`rounded-full border px-4 py-1.5 text-[12.5px] font-medium transition-colors ${
+              className={`font-meta-bn rounded-full border px-4 py-1.5 text-[12.5px] font-medium transition-colors ${
                 effective === c.slug ? "border-ink bg-ink text-paper" : "border-ink/25 text-ink-soft hover:border-ink hover:text-ink"
               }`}
             >

@@ -7,6 +7,8 @@ import "@hoichoi/bangla-fonts/fonts.css";
 import "./fonts.css";
 import "./globals.css";
 import { siteUrl } from "../lib/site";
+import { getSettings, parseAppConfig } from "@hoichoi/db";
+import { banglaFontStack } from "@hoichoi/bangla-fonts";
 import { getLocale } from "../lib/locale";
 import { LocaleProvider } from "../components/i18n/LocaleProvider";
 
@@ -38,9 +40,20 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // The reader's language is decided once, on the server, before anything paints:
   // a reader who chose English never sees a flash of Bangla.
-  const locale = await getLocale();
+  const [locale, settings] = await Promise.all([
+    getLocale(),
+    getSettings().catch(() => null),
+  ]);
+  const cfg = parseAppConfig(settings?.app_config_json);
+  // Apply the type library at the root so the public site and the admin console
+  // read the same choice. The admin gallery writes these exact ids.
+  const typeStyle = {
+    "--font-serif-bn": banglaFontStack(cfg.typography?.headline, "Noto Serif Bengali", "serif"),
+    "--font-sans-bn": banglaFontStack(cfg.typography?.body, "Hind Siliguri", "sans-serif"),
+    "--font-meta-bn": banglaFontStack(cfg.typography?.meta || cfg.typography?.body, "Hind Siliguri", "sans-serif"),
+  } as React.CSSProperties;
   return (
-    <html lang={locale} dir="ltr" suppressHydrationWarning>
+    <html lang={locale} dir="ltr" suppressHydrationWarning style={typeStyle}>
       <head>
         <script
           dangerouslySetInnerHTML={{

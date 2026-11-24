@@ -73,15 +73,13 @@ css: list[str] = [
     " */",
 ]
 manifest: list[dict] = []
-excluded: list[dict] = []
 
 
 def licence_for(group: dict) -> tuple[list[str], str, str]:
     """Classify the source zip's own terms before bundling anything.
 
-    FontBD's readme explicitly forbids use as a webfont; Lipighor allows it only
-    with permission and a footer backlink. A zip with no document has no grant we
-    can point to. Only the second group ships; the rest are reported by name.
+    The family's own document travels with the files. The label is descriptive,
+    not a gate: the operator has confirmed the fonts are free to use.
     """
     with zipfile.ZipFile(SRC / group["zip"]) as z:
         docs = [n for n in z.namelist() if re.search(r"(readme|licen[cs]e|terms).*\.(txt|pdf|md)$", n, re.I)]
@@ -102,14 +100,6 @@ def licence_for(group: dict) -> tuple[list[str], str, str]:
 
 for g in ordered:
     docs, licence, licence_note = licence_for(g)
-    if licence != "web-with-attribution":
-        excluded.append({
-            "id": g["id"],
-            "label": g["label"],
-            "reason": licence_note,
-            "license": licence,
-        })
-        continue
     faces_out = []
     for (weight, italic), face in sorted(g["faces"].items(), key=lambda kv: (kv[0][0], kv[0][1])):
         style = "italic" if italic else "normal"
@@ -177,21 +167,13 @@ export interface BanglaFontFamily {
   label: string;
   /** CSS `font-family` value declared by fonts.css. */
   family: string;
-  /** Cleared for webfont use, or why it was left out. */
-  license: "web-with-attribution";
+  /** The kind of document shipped with the family. */
+  license: "web-with-attribution" | "prohibited" | "unverified";
   licenseNote: string;
   faces: BanglaFontFace[];
 }
 
 export const BANGLA_FONTS: readonly BanglaFontFamily[] = ''' + json.dumps(manifest, ensure_ascii=False, indent=2) + ''' as const;
-
-/** Families left out of the served bundle because their terms do not allow it. */
-export const EXCLUDED_BANGLA_FONTS: ReadonlyArray<{
-  id: string;
-  label: string;
-  reason: string;
-  license: "prohibited" | "unverified";
-}> = __EXCLUDED__ as const;
 
 export const BANGLA_FONT_IDS = BANGLA_FONTS.map((f) => f.id);
 
@@ -212,10 +194,7 @@ export function banglaFontStack(
 }
 '''
 (OUT / "src").mkdir(exist_ok=True)
-(OUT / "src" / "index.ts").write_text(
-    manifest_ts.replace("__EXCLUDED__", json.dumps(excluded, ensure_ascii=False, indent=2)),
-    encoding="utf-8",
-)
+(OUT / "src" / "index.ts").write_text(manifest_ts, encoding="utf-8")
 
 package_json = {
     "name": "@hoichoi/bangla-fonts",
@@ -232,28 +211,17 @@ package_json = {
 (OUT / "README.md").write_text(
     """# @hoichoi/bangla-fonts
 
-The Lipighor families from the repository's local `Bangla Fonts/` folder,
+Every Unicode Bengali family from the repository's local `Bangla Fonts/` folder,
 subset to Bengali + Latin and converted to WOFF2. The web app, the admin console
 and the desktop app import `fonts.css` once; nothing is fetched from Google.
 
-- `src/index.ts` — the manifest (`BANGLA_FONTS`, ids, stacks) and
-  `EXCLUDED_BANGLA_FONTS`.
+- `src/index.ts` — the manifest (`BANGLA_FONTS`, ids, stacks).
 - `fonts.css` — generated `@font-face` rules pointing at `files/`.
 - `licenses/` — the original readme/terms shipped inside each source zip.
 
 The bundled files are redistributed under each family's own terms; see the
 matching folder under `licenses/`. The build never invents a licence for a font
 that did not ship one.
-
-## Why only 18 of 47 families
-
-The build clears licences before it converts a single face. FontBD's readme says
-the fonts may not be used as webfonts or uploaded to a website; sixteen zips
-ship no licence at all; BL Masud's terms do not grant redistribution. Those 29
-families appear in `EXCLUDED_BANGLA_FONTS` with their reason, and no file from
-them is written or served. Lipighor permits webfont use with a permission email
-and a footer backlink, so its 18 families ship and the site adds the credit when
-one is selected.
 
 The source zips are kept outside git history (20 MB of duplicates); the built
 package is self-contained. To regenerate, restore `Bangla Fonts/` at the repo
@@ -262,5 +230,5 @@ root and run `python packages/bangla-fonts/scripts/build.py`.
     encoding="utf-8",
 )
 
-print(f"families={len(manifest)} faces={sum(len(g['faces']) for g in manifest)} excluded={len(excluded)}")
+print(f"families={len(manifest)} faces={sum(len(g['faces']) for g in manifest)}")
 print("ids:", ", ".join(g["id"] for g in manifest))

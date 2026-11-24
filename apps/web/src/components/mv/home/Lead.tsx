@@ -31,7 +31,7 @@ function MetaRow({ post }: { post: PostRecord }) {
       <Badge tone="hot">
         <LiveDot tone="hot" /> LEAD STORY
       </Badge>
-      <span className="mono-label text-mist-400">{post.category}</span>
+      <span className="mono-label font-meta-bn text-mist-400">{post.category}</span>
       <span className="mono-label text-mist-400/60">·</span>
       <span className="mono-label text-mist-400">SYNCED {timeAgo(post.publishedAt)}</span>
       <span className="mono-label text-mist-400/60">·</span>
@@ -220,7 +220,7 @@ function SpotlightCard({ post, density }: { post: PostRecord; density: "compact"
                 </div>
                 <div className="mt-9 flex flex-wrap gap-2">
                   {post.tags.map((t) => (
-                    <span key={t} className="mono-label rounded-full border border-white/10 px-2.5 py-1 text-mist-400 transition-colors hover:border-white/25 hover:text-mist-200">
+                    <span key={t} className="mono-label font-meta-bn rounded-full border border-white/10 px-2.5 py-1 text-mist-400 transition-colors hover:border-white/25 hover:text-mist-200">
                       #{t}
                     </span>
                   ))}

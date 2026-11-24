@@ -18,7 +18,7 @@ import ScrollToTop from "@/components/ScrollToTop";
 import ConsentBanner from "@/components/ConsentBanner";
 import { PlatformAdSlot } from "@/components/ads/PlatformAdSlot";
 import { JsonLd, siteJsonLd } from "@/components/JsonLd";
-import { banglaFontStack } from "@hoichoi/bangla-fonts";
+
 import { preload } from "react-dom";
 import type { Metadata } from "next";
 
@@ -55,12 +55,6 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const [settings, specialNotice] = await Promise.all([getSettings(), getSpecialNotice()]);
   const cfg = parseAppConfig(settings.app_config_json);
   const themeDefault = cfg.theme_default ?? "light";
-  // The type library is bundled, so a chosen family is already an @font-face
-  // rule; these two variables only point the existing tokens at it.
-  const typeStyle = {
-    "--font-serif-bn": banglaFontStack(cfg.typography?.headline, "Noto Serif Bengali", "serif"),
-    "--font-sans-bn": banglaFontStack(cfg.typography?.body, "Hind Siliguri", "sans-serif"),
-  } as React.CSSProperties;
   // Global footer links, resolved once for every theme (default, mockup,
   // maintenance) so the admin edits them in exactly one place.
   const footerSocials = resolveFooterSocials(cfg);
@@ -74,7 +68,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       recentPipelineRuns(1).catch(() => []),
     ]);
     return (
-      <div className="page-chrome" style={typeStyle}>
+      <div className="page-chrome">
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{if(localStorage.getItem("hoichoi-theme-explicit")!=="1"){document.documentElement.setAttribute("data-theme","${themeDefault}")}}catch(e){}})();`,
@@ -110,7 +104,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
     const mvData = await buildMvData().catch(() => EMPTY_MV_DATA);
     return (
       <MvDataProvider value={mvData}>
-        <div style={typeStyle}>
+        <div>
         <MvChrome live={live} accent={settings.accent_color} socials={footerSocials}>
           <TrafficTracker />
           {children}
@@ -125,7 +119,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <div className="page-chrome" style={typeStyle}>
+    <div className="page-chrome">
       <script
         dangerouslySetInnerHTML={{
           __html: `(function(){try{if(localStorage.getItem("hoichoi-theme-explicit")!=="1"){document.documentElement.setAttribute("data-theme","${themeDefault}")}}catch(e){}})();`,

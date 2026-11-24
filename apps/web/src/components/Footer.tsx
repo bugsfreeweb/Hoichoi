@@ -31,7 +31,11 @@ export async function Footer() {
   const about = locale === "en" ? aboutDefault : settings.footer_about_bn || aboutDefault;
   // Lipighor's terms allow webfont use only with a footer backlink, so the
   // credit appears exactly when one of its families is actually selected.
-  const creditFont = [appConfig.typography?.headline, appConfig.typography?.body]
+  const creditFont = [
+    appConfig.typography?.headline,
+    appConfig.typography?.body,
+    appConfig.typography?.meta,
+  ]
     .map((id) => (id ? banglaFontById(id) : null))
     .find((font) => font?.license === "web-with-attribution");
   // The submit link is the site's only growth channel, so it is surfaced in the
@@ -176,7 +180,7 @@ function CategoryColumns({
           {column.map((cat) => (
             <li key={cat.slug} className="flex items-center gap-2">
               <span className="h-1 w-1 rotate-45 bg-alizarin" />
-              <Link href={`/category/${cat.slug}`} className="hover:text-alizarin">
+              <Link href={`/category/${cat.slug}`} className="font-meta-bn hover:text-alizarin">
                 {(locale === "en" ? cat.displayNameEn || cat.displayNameBn : cat.displayNameBn || cat.displayNameEn)}
               </Link>
             </li>

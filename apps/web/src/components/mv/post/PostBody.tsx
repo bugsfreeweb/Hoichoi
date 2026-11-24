@@ -744,7 +744,7 @@ export function PostVerify({
             </div>
             <div className="mt-6 flex flex-wrap gap-2">
               {post.tags.map((t) => (
-                <span key={t} className="mono-label rounded-full border border-white/10 px-2.5 py-1 text-mist-400">
+                <span key={t} className="mono-label font-meta-bn rounded-full border border-white/10 px-2.5 py-1 text-mist-400">
                   #{t}
                 </span>
               ))}

@@ -87,6 +87,9 @@
 [data-mv] .font-bangla {
   font-family: var(--font-bangla);
 }
+[data-mv] .font-meta-bn {
+  font-family: var(--font-meta-bn);
+}
 [data-mv] .mono-label {
   font-family: var(--font-mono);
   font-size: 10px;
