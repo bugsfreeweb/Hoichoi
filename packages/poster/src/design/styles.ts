@@ -13,7 +13,8 @@
  *     card, a solid column or a tinted scrim, depending on the layout.
  */
 import type { DesignPosterContent } from "./tokens";
-import { DESIGN_FRAME, SAFE, onAccent } from "./tokens";
+import { SAFE, frameFor, onAccent } from "./tokens";
+import { portraitStyles } from "./portrait-styles";
 import { textureDataUri } from "./textures";
 
 function fontCss(fonts: DesignPosterContent["fonts"]): string {
@@ -29,8 +30,9 @@ export function designStyles(content: DesignPosterContent): string {
   const { palette } = content;
   const accentInk = onAccent(palette);
   const texture = textureDataUri(content.texture, palette, content.seed);
-  const w = DESIGN_FRAME.width;
-  const h = DESIGN_FRAME.height;
+  const frame = frameFor(content.aspect);
+  const w = frame.width;
+  const h = frame.height;
 
   return `${fontCss(content.fonts)}
 :root{
@@ -113,7 +115,7 @@ h1,h2,h3,p,ul,figure{margin:0;}
 .footer .readmore{font-size:17px;font-weight:700;letter-spacing:0.4px;color:var(--text-primary);white-space:nowrap;}
 .footer .readmore b{color:var(--accent-color);}
 
-.watermark{position:absolute;right:${SAFE}px;bottom:${SAFE - 26}px;display:flex;align-items:center;gap:10px;opacity:0.24;pointer-events:none;}
+.watermark{position:absolute;right:${SAFE}px;bottom:${SAFE - 26}px;display:flex;align-items:center;gap:10px;opacity:0.32;pointer-events:none;}
 .watermark img{width:38px;height:38px;object-fit:contain;filter:grayscale(1) brightness(2);}
 .watermark span{font-family:"Noto Serif Bengali",serif;font-size:30px;font-weight:700;}
 
@@ -193,5 +195,7 @@ body[data-layout="breaking_spotlight"] .spot-footer .source{font-size:15px;color
 body[data-layout="breaking_spotlight"] .spot-footer .readmore{font-size:15px;font-weight:700;color:var(--text-primary);}
 body[data-layout="breaking_spotlight"] .spot-footer .readmore b{color:var(--accent-color);}
 body[data-layout="breaking_spotlight"] .watermark--spot{bottom:176px;right:${SAFE}px;}
+
+${content.aspect === "4:5" ? portraitStyles() : ""}
 `;
 }

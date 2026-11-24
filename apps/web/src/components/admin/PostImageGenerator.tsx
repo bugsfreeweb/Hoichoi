@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 // The frame vocabulary, not the renderer: this is a client component and
 // `@hoichoi/poster` carries sharp and playwright.
-import { POSTER_LAYOUTS, POSTER_THEMES } from "@hoichoi/shared-types";
+import { POSTER_LAYOUTS, POSTER_THEMES, type PosterAspect } from "@hoichoi/shared-types";
 
 interface ImageProvider {
   id: string;
@@ -26,6 +26,35 @@ interface Options {
 }
 
 type Via = "runner" | "local";
+
+interface PosterFrame {
+  aspect?: PosterAspect;
+  data_url?: string;
+  media_path?: string | null;
+  width?: number | null;
+  height?: number | null;
+  attached?: boolean;
+}
+
+interface PosterResponse {
+  ok?: boolean;
+  error?: string;
+  warnings?: string[];
+  design?: { layout?: string; aspect?: PosterAspect; palette?: { label?: string }; directed_by?: string };
+  image?: PosterFrame;
+  posters?: Array<{ design?: PosterResponse["design"]; image?: PosterFrame }>;
+}
+
+interface PosterPreview {
+  dataUrl: string;
+  aspect: PosterAspect;
+  layout: string;
+  palette: string;
+  mediaPath: string | null;
+  directedBy: string;
+  width: number | null;
+  height: number | null;
+}
 
 /** How often the panel re-checks for a queued image. */
 const POLL_MS = 6000;
@@ -85,13 +114,9 @@ export function PostImageGenerator({
    * editor has just approved by accident.
    */
   const [posterBusy, setPosterBusy] = useState(false);
-  const [poster, setPoster] = useState<{
-    dataUrl: string;
-    layout: string;
-    palette: string;
-    mediaPath: string | null;
-    directedBy: string;
-  } | null>(null);
+  const [posters, setPosters] = useState<PosterPreview[]>([]);
+  const [activeAspect, setActiveAspect] = useState<PosterAspect>("16:9");
+  const [bothFrames, setBothFrames] = useState(true);
   const [posterMsg, setPosterMsg] = useState<string | null>(null);
 
   /** `media_path` as of the last successful check — the poll watches for a change. */
@@ -205,36 +230,44 @@ export function PostImageGenerator({
       const res = await fetch("/api/generate-poster", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ postId, regenerate: true, attach: true, format: "webp" }),
+        body: JSON.stringify({
+          postId,
+          regenerate: true,
+          attach: true,
+          format: "webp",
+          aspects: bothFrames ? ["16:9", "4:5"] : ["16:9"],
+        }),
       });
-      const j = (await res.json().catch(() => null)) as
-        | {
-            ok?: boolean;
-            error?: string;
-            warnings?: string[];
-            design?: { layout?: string; palette?: { label?: string }; directed_by?: string };
-            image?: { data_url?: string; media_path?: string | null; attached?: boolean };
-          }
-        | null;
-      if (!res.ok || !j?.ok || !j.image?.data_url) {
+      const j = (await res.json().catch(() => null)) as PosterResponse | null;
+      if (!res.ok || !j?.ok) {
         throw new Error(j?.error ?? `HTTP ${res.status}`);
       }
-      setPoster({
-        dataUrl: j.image.data_url,
-        layout: j.design?.layout ?? "—",
-        palette: j.design?.palette?.label ?? "—",
-        mediaPath: j.image.media_path ?? null,
-        directedBy: j.design?.directed_by ?? "fallback",
-      });
-      if (j.image.attached && j.image.media_path) {
+      const frames: PosterPreview[] = (j.posters?.length ? j.posters : [j])
+        .filter((p) => Boolean(p.image?.data_url))
+        .map((p) => ({
+          dataUrl: p.image!.data_url!,
+          aspect: p.image!.aspect ?? p.design?.aspect ?? "16:9",
+          layout: p.design?.layout ?? "—",
+          palette: p.design?.palette?.label ?? "—",
+          mediaPath: p.image!.media_path ?? null,
+          directedBy: p.design?.directed_by ?? "fallback",
+          width: p.image!.width ?? null,
+          height: p.image!.height ?? null,
+        }));
+      if (!frames.length) throw new Error("পোস্টার তৈরি হয়নি");
+      setPosters(frames);
+      setActiveAspect(frames[0]!.aspect);
+
+      const primary = frames[0]!;
+      if (j.image?.attached && j.image.media_path) {
         baseRef.current = j.image.media_path;
         setPreview(previewSrc(j.image.media_path));
         onAttached(j.image.media_path);
       }
       setPosterMsg(
-        `✓ নতুন পোস্টার · ${j.design?.layout ?? "—"} · ${j.design?.palette?.label ?? "—"}${
-          j.warnings?.length ? ` · ${j.warnings[0]}` : ""
-        }`,
+        `✓ নতুন পোস্টার · ${primary.layout} · ${primary.palette}${
+          frames.length > 1 ? " · ১৬:৯ + ৪:৫" : ""
+        }${j.warnings?.length ? ` · ${j.warnings[0]}` : ""}`,
       );
     } catch (e) {
       setPosterMsg(`✕ ${e instanceof Error ? e.message : "পোস্টার তৈরি ব্যর্থ"}`);
@@ -244,10 +277,12 @@ export function PostImageGenerator({
   };
 
   const downloadPoster = () => {
-    if (!poster) return;
+    const chosen = posters.find((p) => p.aspect === activeAspect) ?? posters[0];
+    if (!chosen) return;
     const a = document.createElement("a");
-    a.href = poster.dataUrl;
-    a.download = `poster-${poster.layout}-${postId.slice(0, 8)}.webp`;
+    a.href = chosen.dataUrl;
+    const suffix = chosen.aspect === "4:5" ? "4x5" : "16x9";
+    a.download = `poster-${chosen.layout}-${suffix}-${postId.slice(0, 8)}.webp`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -476,14 +511,23 @@ export function PostImageGenerator({
 
       <div className="mt-5 border-t border-ink/15 pt-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h5 className="font-sans-bn text-[13px] font-bold text-ink">🎨 ডাইনামিক পোস্টার (১৬:৯)</h5>
+          <h5 className="font-sans-bn text-[13px] font-bold text-ink">🎨 ডাইনামিক পোস্টার (১৬:৯ + ৪:৫)</h5>
           <span className="font-mono-x text-[10px] text-ink-soft">
-            ৫ লেআউট × ৫ প্যালেট · বাংলা টেক্সট HTML-এ, ছবিতে নয়
+            ৫ লেআউট × ৫ প্যালেট · একই গল্প, দুটি ফ্রেম
           </span>
         </div>
         <p className="mt-1 text-[11px] text-ink-soft">
           এআই আর্ট ডিরেক্টর গল্প বুঝে লেআউট ও রং বাছেন; টাইপোগ্রাফি ব্রাউজারে রেন্ডার হয় — যুক্তাক্ষর নিখুঁত থাকে।
         </p>
+
+        <label className="mt-3 flex w-fit items-center gap-2 text-[11px] font-bold text-ink-soft">
+          <input
+            type="checkbox"
+            checked={bothFrames}
+            onChange={(e) => setBothFrames(e.target.checked)}
+          />
+          ৪:৫ পোর্ট্রেটও তৈরি করুন (ফেসবুক / ইনস্টাগ্রাম)
+        </label>
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <button
@@ -497,15 +541,15 @@ export function PostImageGenerator({
           <button
             className="border-2 border-ink bg-paper px-4 py-2.5 text-[13px] font-bold text-ink transition hover:bg-lime disabled:opacity-40"
             onClick={downloadPoster}
-            disabled={!poster}
+            disabled={posters.length === 0}
             type="button"
           >
-            ⬇ পোস্টার ডাউনলোড
+            ⬇ পোস্টার ডাউনলোড {activeAspect === "4:5" ? "(৪:৫)" : "(১৬:৯)"}
           </button>
-          {poster && (
+          {posters[0] && (
             <span className="text-[11px] text-ink-soft">
-              {poster.layout} · {poster.palette} ·{" "}
-              {poster.directedBy === "llm" ? "আর্ট ডিরেক্টর" : "ফলব্যাক প্ল্যানার"}
+              {posters[0].layout} · {posters[0].palette} ·{" "}
+              {posters[0].directedBy === "llm" ? "আর্ট ডিরেক্টর" : "ফলব্যাক প্ল্যানার"}
             </span>
           )}
         </div>
@@ -516,14 +560,34 @@ export function PostImageGenerator({
           </p>
         )}
 
-        {poster && (
-          <div className="mt-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={poster.dataUrl}
-              alt="ডাইনামিক পোস্টার প্রিভিউ"
-              className="w-full max-w-2xl border border-ink/20 object-contain"
-            />
+        {posters.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-start gap-3">
+            {posters.map((p) => {
+              const active = p.aspect === activeAspect;
+              return (
+                <button
+                  key={p.aspect}
+                  type="button"
+                  onClick={() => setActiveAspect(p.aspect)}
+                  className={`border-2 p-1 text-left transition ${
+                    active ? "border-ink bg-lime/20" : "border-ink/20 hover:border-ink/50"
+                  }`}
+                  aria-pressed={active}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={p.dataUrl}
+                    alt={`${p.aspect} পোস্টার প্রিভিউ`}
+                    className="h-64 w-auto border border-ink/15 object-contain"
+                  />
+                  <span className="mt-1 block font-mono-x text-[10px] text-ink-soft">
+                    {p.aspect}
+                    {p.width && p.height ? ` · ${p.width}×${p.height}` : ""}
+                    {active ? " · নির্বাচিত" : ""}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>

@@ -63,7 +63,7 @@ function watermark(content: DesignPosterContent, extra = ""): string {
 }
 
 function headline(content: DesignPosterContent): string {
-  const size = headlineSizeFor(content.layout, content.headline);
+  const size = headlineSizeFor(content.layout, content.headline, content.aspect);
   return `<h1 class="headline" style="--headline-size:${size}px">${headlineHtml(content.headline, content.highlightWord)}</h1>`;
 }
 

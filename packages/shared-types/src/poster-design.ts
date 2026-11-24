@@ -17,6 +17,21 @@
  */
 
 /**
+ * The two frames one design is published in.
+ *
+ * 16:9 is the web card, the YouTube thumbnail and the og:image. 4:5 is the
+ * tallest portrait Facebook and Instagram give a feed post without cropping.
+ * They are not two designs: the art director runs once, and the same headline,
+ * palette and layout are recomposed for the second frame.
+ */
+export const POSTER_ASPECTS = ["16:9", "4:5"] as const;
+export type PosterAspect = (typeof POSTER_ASPECTS)[number];
+
+export function isPosterAspect(v: unknown): v is PosterAspect {
+  return typeof v === "string" && (POSTER_ASPECTS as readonly string[]).includes(v);
+}
+
+/**
  * The five 16:9 shapes. Names are the brief's, including the underscores, so a
  * request, a DB row and a log line all use one spelling.
  */

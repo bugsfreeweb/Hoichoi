@@ -19,6 +19,7 @@ export interface PosterDesignRecord {
   post_id: string | null;
   layout_variant: string;
   palette_id: string;
+  aspect: string;
   visual_style: string;
   texture: string | null;
   headline: string;
@@ -31,6 +32,8 @@ export interface PosterDesignInput {
   postId?: string | null;
   layout: string;
   palette: string;
+  /** "16:9" or "4:5"; defaults to the landscape frame. */
+  aspect?: string | null;
   visualStyle: string;
   texture?: string | null;
   headline: string;
@@ -46,6 +49,7 @@ function mapRow(row: Record<string, unknown>): PosterDesignRecord {
     post_id: row.post_id == null ? null : String(row.post_id),
     layout_variant: String(row.layout_variant),
     palette_id: String(row.palette_id),
+    aspect: row.aspect == null ? "16:9" : String(row.aspect),
     visual_style: String(row.visual_style),
     texture: row.texture == null ? null : String(row.texture),
     headline: String(row.headline),
@@ -85,6 +89,7 @@ export async function recordPosterDesign(input: PosterDesignInput): Promise<Post
     post_id: input.postId ?? null,
     layout_variant: input.layout,
     palette_id: input.palette,
+    aspect: input.aspect ?? "16:9",
     visual_style: input.visualStyle,
     texture: input.texture ?? null,
     headline: input.headline,
@@ -93,12 +98,13 @@ export async function recordPosterDesign(input: PosterDesignInput): Promise<Post
     created_at: nowIso(),
   };
   await client.execute({
-    sql: "INSERT INTO poster_designs (id, post_id, layout_variant, palette_id, visual_style, texture, headline, media_path, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    sql: "INSERT INTO poster_designs (id, post_id, layout_variant, palette_id, aspect, visual_style, texture, headline, media_path, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     args: [
       row.id,
       row.post_id,
       row.layout_variant,
       row.palette_id,
+      row.aspect,
       row.visual_style,
       row.texture,
       row.headline,

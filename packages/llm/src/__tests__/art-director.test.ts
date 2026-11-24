@@ -13,6 +13,7 @@ import {
   avoidRepetition,
   directPosterDesign,
   normalisePlan,
+  orientImagePrompt,
   paletteSummary,
 } from "../art-director";
 import { POSTER_DESIGN_LAYOUTS, POSTER_PALETTES } from "@hoichoi/shared-types";
@@ -114,6 +115,16 @@ check("the schema enumerates the renderer's actual vocabulary", () => {
     [...(props.palette_id?.enum ?? [])],
     POSTER_PALETTES.map((p) => p.id),
   );
+});
+
+check("a portrait render re-aims the prompt without touching the landscape one", () => {
+  const wide = "A wide 16:9 editorial illustration of a data centre, no text.";
+  assert.equal(orientImagePrompt(wide, "16:9"), wide);
+  const tall = orientImagePrompt(wide, "4:5");
+  assert.match(tall, /vertical 4:5 composition/i);
+  assert.ok(!/wide/i.test(tall));
+  assert.ok(!/16:9/.test(tall));
+  assert.equal(orientImagePrompt(tall, "4:5"), tall, "already-oriented prompts are not stacked");
 });
 
 check("paletteSummary reports real tokens, not the model's prose", () => {

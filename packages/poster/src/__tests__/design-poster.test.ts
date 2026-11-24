@@ -10,7 +10,9 @@ import assert from "node:assert/strict";
 import { POSTER_DESIGN_LAYOUTS, POSTER_PALETTES } from "@hoichoi/shared-types";
 import {
   DESIGN_FRAME,
+  DESIGN_PORTRAIT_FRAME,
   DESIGN_SCALE,
+  frameFor,
   focalAspectFor,
   designHeadlineSizeFor,
   designPosterHtml,
@@ -35,6 +37,7 @@ const base: DesignPosterContent = {
   badgeText: "প্রযুক্তি",
   footerText: "সূত্র: হৈচৈ | ২৪ নভেম্বর ২০২৬",
   layout: "split_left_media",
+  aspect: "16:9",
   palette,
   visualStyle: "3D isometric render",
   texture: "dot_grid",
@@ -85,6 +88,29 @@ check("split layouts ask for a square visual; hero and spotlight ask for 16:9", 
   assert.equal(focalAspectFor("editorial_magazine_grid"), "1:1");
   assert.equal(focalAspectFor("hero_overlay_gradient"), "16:9");
   assert.equal(focalAspectFor("breaking_spotlight"), "16:9");
+});
+
+check("the 4:5 frame changes the visual ratio, not the design", () => {
+  assert.equal(focalAspectFor("hero_overlay_gradient", "4:5"), "9:16");
+  assert.equal(focalAspectFor("breaking_spotlight", "4:5"), "9:16");
+  assert.equal(focalAspectFor("split_left_media", "4:5"), "1:1");
+  assert.deepEqual(frameFor("16:9"), DESIGN_FRAME);
+  assert.deepEqual(frameFor("4:5"), DESIGN_PORTRAIT_FRAME);
+  assert.deepEqual(DESIGN_PORTRAIT_FRAME, { width: 1080, height: 1350 });
+});
+
+check("portrait overrides are present without a second markup tree", () => {
+  const html = designPosterHtml({ ...base, aspect: "4:5" });
+  assert.ok(html.includes('data-aspect="4:5"'));
+  assert.ok(html.includes('[data-aspect="4:5"]'), "the portrait overrides are inlined");
+  assert.ok(html.includes('4:5"][data-layout="split_left_media"]'));
+});
+
+check("portrait headline type is smaller than landscape for the same words", () => {
+  assert.ok(
+    designHeadlineSizeFor("split_left_media", "প্রযুক্তি খাতে নতুন বিনিয়োগ", "4:5") <
+      designHeadlineSizeFor("split_left_media", "প্রযুক্তি খাতে নতুন বিনিয়োগ", "16:9"),
+  );
 });
 
 check("headline type steps down as the headline grows", () => {

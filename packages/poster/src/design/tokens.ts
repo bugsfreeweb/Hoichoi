@@ -6,6 +6,7 @@
  * so every layout decision can be unit-tested without a browser.
  */
 import type {
+  PosterAspect,
   PosterDesignLayout,
   PosterPalette,
   PosterTexture,
@@ -14,6 +15,12 @@ import type {
 import { POSTER_PALETTES, paletteById } from "@hoichoi/shared-types";
 
 export const DESIGN_FRAME = { width: 1920, height: 1080 } as const;
+/** 4:5 portrait: the tallest feed frame Facebook and Instagram do not crop. */
+export const DESIGN_PORTRAIT_FRAME = { width: 1080, height: 1350 } as const;
+export const DESIGN_FRAMES = {
+  "16:9": DESIGN_FRAME,
+  "4:5": DESIGN_PORTRAIT_FRAME,
+} as const;
 /** The brief's `deviceScaleFactor: 2`. Exported so the test can assert it. */
 export const DESIGN_SCALE = 2;
 
@@ -32,6 +39,7 @@ export interface DesignPosterContent {
   badgeText: string;
   footerText: string;
   layout: PosterDesignLayout;
+  aspect: PosterAspect;
   palette: PosterPalette;
   visualStyle: PosterVisualStyle;
   texture: PosterTexture;
@@ -48,6 +56,16 @@ export interface DesignPosterContent {
 
 /** Safe-zone inset used by every layout (the brief's newspaper margin). */
 export const SAFE = 64;
+/** Portrait has less horizontal room, so its margin is a little tighter. */
+export const SAFE_PORTRAIT = 48;
+
+export function frameFor(aspect: PosterAspect): { width: number; height: number } {
+  return DESIGN_FRAMES[aspect];
+}
+
+export function safeFor(aspect: PosterAspect): number {
+  return aspect === "16:9" ? SAFE : SAFE_PORTRAIT;
+}
 
 export function escapeHtml(text: string): string {
   return text
@@ -101,24 +119,40 @@ function longestWords(text: string, count: number): string[] {
  * own surface; the split layouts share the frame with a full-height image and
  * therefore start one step smaller.
  */
-export function headlineSizeFor(layout: PosterDesignLayout, headline: string): number {
+export function headlineSizeFor(
+  layout: PosterDesignLayout,
+  headline: string,
+  aspect: PosterAspect = "16:9",
+): number {
   const len = headline.replace(/\s+/g, " ").trim().length;
-  const scale: Record<PosterDesignLayout, [number, number, number]> = {
+  const landscape: Record<PosterDesignLayout, [number, number, number]> = {
     hero_overlay_gradient: [92, 76, 62],
     breaking_spotlight: [80, 66, 54],
     editorial_magazine_grid: [86, 70, 56],
     split_left_media: [80, 64, 52],
     split_right_media: [80, 64, 52],
   };
-  const [short, medium, long] = scale[layout];
+  const portrait: Record<PosterDesignLayout, [number, number, number]> = {
+    hero_overlay_gradient: [78, 66, 54],
+    breaking_spotlight: [68, 58, 48],
+    editorial_magazine_grid: [70, 60, 50],
+    split_left_media: [64, 56, 46],
+    split_right_media: [64, 56, 46],
+  };
+  const [short, medium, long] = (aspect === "4:5" ? portrait : landscape)[layout];
   if (len < 32) return short;
   if (len <= 52) return medium;
   return long;
 }
 
 /** Image aspect ratio the focal visual must be generated at. */
-export function focalAspectFor(layout: PosterDesignLayout): "1:1" | "16:9" {
-  return layout === "hero_overlay_gradient" || layout === "breaking_spotlight" ? "16:9" : "1:1";
+export function focalAspectFor(
+  layout: PosterDesignLayout,
+  aspect: PosterAspect = "16:9",
+): "1:1" | "16:9" | "9:16" {
+  const wide = layout === "hero_overlay_gradient" || layout === "breaking_spotlight";
+  if (!wide) return "1:1";
+  return aspect === "4:5" ? "9:16" : "16:9";
 }
 
 /** A palette by id, with the tech/navy palette as the never-fail default. */

@@ -65,8 +65,12 @@ export {
 export { designPosterHtml } from "./design/compose";
 export {
   DESIGN_FRAME,
+  DESIGN_FRAMES,
+  DESIGN_PORTRAIT_FRAME,
   DESIGN_SCALE,
+  SAFE_PORTRAIT,
   focalAspectFor,
+  frameFor,
   headlineSizeFor as designHeadlineSizeFor,
   paletteVars,
   resolvePalette,

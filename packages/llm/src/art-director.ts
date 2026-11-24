@@ -131,7 +131,7 @@ export const ART_DIRECTOR_SCHEMA = {
     layout_variant: {
       type: "STRING",
       enum: [...POSTER_DESIGN_LAYOUTS],
-      description: "Choose the 16:9 layout that fits this story and avoid recently_used_designs.",
+      description: "Choose the layout that fits this story and avoid recently_used_designs. The design is later recomposed to 4:5 as well.",
     },
     palette_id: {
       type: "STRING",
@@ -534,6 +534,25 @@ export async function directPosterDesign(
       warning: `art director unavailable: ${message}`,
     };
   }
+}
+
+/** Exposed for the route's response and for the CMS label. */
+/**
+ * Re-aim a landscape image prompt at the portrait frame.
+ *
+ * The art director writes for 16:9 because that is the primary card. When the
+ * same plan is also drawn at 4:5, reusing "wide composition" would ask the image
+ * model for a subject that the vertical crop cuts in half. The aspect ratio is
+ * passed to the image API separately; this only fixes the prose.
+ */
+export function orientImagePrompt(prompt: string, aspect: "16:9" | "4:5"): string {
+  if (aspect === "16:9" || /vertical 4:5 composition/i.test(prompt)) return prompt;
+  const vertical = prompt
+    .replace(/\bwide\b/gi, "vertical")
+    .replace(/\blandscape\b/gi, "portrait")
+    .replace(/16:9/g, "4:5")
+    .replace(/[\s.]+$/, "");
+  return `${vertical}. Vertical 4:5 composition, the subject in the upper two thirds with calm space below for a headline.`;
 }
 
 /** Exposed for the route's response and for the CMS label. */

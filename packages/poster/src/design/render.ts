@@ -11,6 +11,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type {
+  PosterAspect,
   PosterDesignLayout,
   PosterPaletteId,
   PosterTexture,
@@ -21,10 +22,10 @@ import { dataUrlForImage } from "../html/image";
 import { renderHtmlToPng } from "../html/render";
 import { designPosterHtml } from "./compose";
 import {
-  DESIGN_FRAME,
   DESIGN_SCALE,
   type DesignFontFace,
   type DesignPosterContent,
+  frameFor,
   resolvePalette,
 } from "./tokens";
 
@@ -54,6 +55,8 @@ export interface DesignPosterOptions {
   site?: string;
   dateText?: string | null;
   seed?: string;
+  /** "16:9" (default) or "4:5". The same plan can be drawn in either frame. */
+  aspect?: PosterAspect;
   format?: "png" | "webp";
   quality?: number;
 }
@@ -63,6 +66,7 @@ export interface DesignPosterResult {
   contentType: string;
   width: number;
   height: number;
+  aspect: PosterAspect;
   layout: PosterDesignLayout;
   paletteId: PosterPaletteId;
   visualStyle: PosterVisualStyle;
@@ -155,6 +159,7 @@ export async function designContent(
     badgeText: opts.plan.badgeText,
     footerText: opts.plan.footerText,
     layout: opts.plan.layout,
+    aspect: opts.aspect ?? "16:9",
     palette,
     visualStyle: opts.plan.visualStyle,
     texture: opts.plan.texture,
@@ -173,14 +178,15 @@ export async function renderDesignPoster(
   opts: DesignPosterOptions,
 ): Promise<DesignPosterResult> {
   const content = await designContent(opts);
+  const frame = frameFor(content.aspect);
   const png = await renderHtmlToPng(designPosterHtml(content), {
-    width: DESIGN_FRAME.width,
-    height: DESIGN_FRAME.height,
+    width: frame.width,
+    height: frame.height,
     scale: DESIGN_SCALE,
   });
 
-  const width = DESIGN_FRAME.width * DESIGN_SCALE;
-  const height = DESIGN_FRAME.height * DESIGN_SCALE;
+  const width = frame.width * DESIGN_SCALE;
+  const height = frame.height * DESIGN_SCALE;
   const format = opts.format ?? "png";
 
   if (format === "png") {
@@ -189,6 +195,7 @@ export async function renderDesignPoster(
       contentType: "image/png",
       width,
       height,
+      aspect: content.aspect,
       layout: content.layout,
       paletteId: content.palette.id,
       visualStyle: content.visualStyle,
@@ -208,6 +215,7 @@ export async function renderDesignPoster(
     contentType: "image/webp",
     width,
     height,
+    aspect: content.aspect,
     layout: content.layout,
     paletteId: content.palette.id,
     visualStyle: content.visualStyle,

@@ -2,7 +2,7 @@
  * POST /api/generate-poster
  *
  * The dynamic poster service: one Bengali article in, one complete, unique,
- * editorial-grade 16:9 poster out.
+ * editorial-grade poster out — in 16:9, in 4:5, or in both from one direction.
  *
  * The pipeline is deliberately four separable steps, because each one has a
  * different failure mode and a different guarantee:
@@ -15,17 +15,20 @@
  *                       renderer draws a branded textured wash instead.
  *   3. composition    — five HTML/CSS layouts, palette variables, a seeded SVG
  *                       texture, Bengali fonts inlined, rendered by Chromium at
- *                       1920×1080 @2×. This is where Bengali stays correct.
+ *                       1920×1080 @2× (or 1080×1350 @2×). This is where Bengali
+ *                       stays correct.
  *   4. memory         — the rendered design is recorded and the next call reads
  *                       the last five, so consecutive posters cannot repeat a
  *                       layout/palette pair.
  *
  * Body (either an explicit article or a saved post):
  *   { postId?, title?, content?, summary?, category?, source?, publishedAt?,
- *     regenerate?, attach?, format?, inline?, brand?, site?, accent?, bg? }
+ *     aspect?: "16:9" | "4:5", aspects?: ["16:9", "4:5"],
+ *     regenerate?, attach?, format?, brand?, site?, accent?, bg? }
  *
- * Response: JSON with the encoded image as a data URL plus its design tokens,
- * or the raw bytes when `format=image`.
+ * Response: JSON with the encoded image as a data URL plus its design tokens.
+ * With `aspects`, `posters` holds one entry per frame and `design`/`image` mirror
+ * the first. `?format=image` (optionally `&aspect=4:5`) returns raw bytes.
  */
 import { NextRequest, NextResponse } from "next/server";
 import * as fs from "node:fs";
@@ -47,22 +50,27 @@ import {
   directPosterDesign,
   extensionForMime,
   generateImage,
+  orientImagePrompt,
   paletteSummary,
   type PosterArticle,
 } from "@hoichoi/llm";
 import {
   DESIGN_FRAME,
+  DESIGN_FRAMES,
   DESIGN_SCALE,
   PosterBrowserUnavailable,
   focalAspectFor,
   renderDesignPoster,
 } from "@hoichoi/poster";
 import {
+  POSTER_ASPECTS,
   POSTER_DESIGN_LAYOUTS,
   POSTER_PALETTES,
   POSTER_TEXTURES,
   POSTER_VISUAL_STYLES,
   isHexColor,
+  isPosterAspect,
+  type PosterAspect,
 } from "@hoichoi/shared-types";
 import { forbidden, requireApiRole } from "@/lib/auth";
 
@@ -93,6 +101,65 @@ async function writeLocalMirror(rel: string, bytes: Uint8Array): Promise<void> {
   await fs.promises.writeFile(full, bytes);
 }
 
+/** Store one encoded poster: remote first, then the media root, then public. */
+async function persistPoster(
+  bytes: Buffer,
+  contentType: string,
+  postId: string,
+  warnings: string[],
+): Promise<{ rel: string; mediaPath: string | null; stored: "remote" | "local" | "none" }> {
+  const rel = randomMediaName("poster", extensionForMime(contentType));
+  let mediaPath: string | null = null;
+  let stored: "remote" | "local" | "none" = "none";
+  try {
+    const url = await uploadBufferRemote(rel, bytes, postId || "poster");
+    if (url) {
+      mediaPath = url;
+      stored = "remote";
+    }
+  } catch (err) {
+    warnings.push(`রিমোট স্টোরেজ: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  if (!mediaPath) {
+    try {
+      await writeGeneratedMedia(rel, bytes);
+    } catch {
+      /* media root may be read-only; the public mirror below is enough locally */
+    }
+    try {
+      await writeLocalMirror(rel, bytes);
+      mediaPath = rel;
+      stored = "local";
+    } catch {
+      warnings.push("ছবিটি সংরক্ষণ করা যায়নি — শুধু ইনলাইন ডেটা পাঠানো হয়েছে।");
+    }
+  }
+  return { rel, mediaPath, stored };
+}
+
+function designPayload(
+  plan: Awaited<ReturnType<typeof directPosterDesign>>["plan"],
+  directedBy: string,
+  imagePrompt: string,
+  aspect: PosterAspect,
+) {
+  return {
+    layout: plan.layout,
+    aspect,
+    palette: paletteSummary(plan),
+    visual_style: plan.visualStyle,
+    texture: plan.texture,
+    headline: plan.headline,
+    highlight_word: plan.highlightWord,
+    bullets: plan.bullets,
+    pull_quote: plan.pullQuote,
+    badge_text: plan.badgeText,
+    footer_text: plan.footerText,
+    image_prompt: imagePrompt,
+    directed_by: directedBy,
+  };
+}
+
 /** GET — the vocabulary and the recent design window, for the CMS. */
 export async function GET() {
   const guard = await requireApiRole("editor");
@@ -109,6 +176,8 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     frame: { ...DESIGN_FRAME, scale: DESIGN_SCALE },
+    frames: DESIGN_FRAMES,
+    aspects: POSTER_ASPECTS,
     layouts: POSTER_DESIGN_LAYOUTS,
     palettes: POSTER_PALETTES,
     visualStyles: POSTER_VISUAL_STYLES,
@@ -157,13 +226,46 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "bg অবশ্যই #rrggbb হতে হবে" }, { status: 400 });
   }
 
+  // One art direction, one or two frames. The LLM must not run twice for the
+  // portrait: the story has one mood, and the point of 4:5 is that it is the
+  // same page in a different shape, not a second opinion.
+  const aspects: PosterAspect[] = [];
+  const rawAspects = body?.aspects;
+  if (rawAspects !== undefined) {
+    if (!Array.isArray(rawAspects) || rawAspects.some((a) => !isPosterAspect(a))) {
+      return NextResponse.json(
+        { error: `aspects অবশ্যই ${POSTER_ASPECTS.join(" / ")}-এর একটি তালিকা হতে হবে` },
+        { status: 400 },
+      );
+    }
+    for (const a of rawAspects) {
+      if (isPosterAspect(a) && !aspects.includes(a)) aspects.push(a);
+    }
+  } else if (body?.aspect !== undefined) {
+    if (!isPosterAspect(body.aspect)) {
+      return NextResponse.json(
+        { error: `aspect অবশ্যই ${POSTER_ASPECTS.join(" / ")} হতে হবে` },
+        { status: 400 },
+      );
+    }
+    aspects.push(body.aspect);
+  }
+  if (aspects.length === 0) aspects.push("16:9");
+
   // The anti-repetition window. `regenerate` does not bypass it; it is the same
   // window read again, which is exactly what forces a fresh combination when
-  // the editor clicks the button twice on one story.
+  // the editor clicks the button twice on one story. Portrait and landscape
+  // siblings share a pair, so the window is de-duplicated before the prompt.
   let recentlyUsed: Array<{ layout: string; palette: string }> = [];
   try {
     const recent = await recentPosterDesigns(5);
-    recentlyUsed = recent.map((r) => ({ layout: r.layout_variant, palette: r.palette_id }));
+    const seen = new Set<string>();
+    for (const r of recent) {
+      const key = `${r.layout_variant}|${r.palette_id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      recentlyUsed.push({ layout: r.layout_variant, palette: r.palette_id });
+    }
   } catch {
     /* first run before migration: an empty window is a valid window */
   }
@@ -177,103 +279,124 @@ export async function POST(req: NextRequest) {
   // The desk gives the masthead its date and lets the image prompt carry the
   // publication's own framing of the category.
   const desk = post?.category ? await deskForCategory(post.category) : null;
-  const dateText = article.publishedAt && !Number.isNaN(new Date(article.publishedAt).getTime())
-    ? banglaDate(new Date(article.publishedAt))
-    : banglaDate();
+  const dateText =
+    article.publishedAt && !Number.isNaN(new Date(article.publishedAt).getTime())
+      ? banglaDate(new Date(article.publishedAt))
+      : banglaDate();
 
   const warnings: string[] = [];
   if (direction.warning) warnings.push(direction.warning);
 
-  let background: Buffer | null = null;
-  let imageProvider: string | null = null;
-  let imageModel: string | null = null;
-  let imagePrompt = plan.imagePrompt;
-  try {
-    const result = await generateImage(
-      {
-        prompt: imagePrompt,
-        aspectRatio: focalAspectFor(plan.layout),
-        negativePrompt: DESIGN_IMAGE_NEGATIVE,
-        count: 1,
-      },
-      AbortSignal.timeout(110_000),
-    );
-    background = Buffer.from(result.bytes);
-    imageProvider = result.provider;
-    imageModel = result.model;
-    imagePrompt = result.prompt;
-  } catch (err) {
-    // A missing visual is not a missing poster: the textured wash is drawn in
-    // the palette and the headline still publishes.
-    warnings.push(
-      `ফোকাল ছবি তৈরি হয়নি — টেক্সচার্ড পটভূমি ব্যবহার হয়েছে (${err instanceof Error ? err.message : String(err)})`,
-    );
+  // The focal visual is cached by ratio: both split layouts share one 1:1
+  // image, and only the full-bleed shapes need a second, vertical render.
+  interface Visual {
+    background: Buffer;
+    provider: string;
+    model: string;
+    prompt: string;
+  }
+  const visuals = new Map<string, Visual | null>();
+  const promptFor = new Map<PosterAspect, string>();
+
+  for (const aspect of aspects) {
+    const ratio = focalAspectFor(plan.layout, aspect);
+    const prompt = orientImagePrompt(plan.imagePrompt, aspect);
+    promptFor.set(aspect, prompt);
+    if (visuals.has(ratio)) continue;
+
+    try {
+      const result = await generateImage(
+        {
+          prompt,
+          aspectRatio: ratio,
+          negativePrompt: DESIGN_IMAGE_NEGATIVE,
+          count: 1,
+        },
+        AbortSignal.timeout(110_000),
+      );
+      visuals.set(ratio, {
+        background: Buffer.from(result.bytes),
+        provider: result.provider,
+        model: result.model,
+        prompt: result.prompt,
+      });
+      promptFor.set(aspect, result.prompt);
+    } catch (err) {
+      visuals.set(ratio, null);
+      // A missing visual is not a missing poster: the textured wash is drawn in
+      // the palette and the headline still publishes.
+      warnings.push(
+        `ফোকাল ছবি (${ratio}) তৈরি হয়নি — টেক্সচার্ড পটভূমি ব্যবহার হয়েছে (${err instanceof Error ? err.message : String(err)})`,
+      );
+    }
   }
 
   const format = str(body?.format) === "webp" ? "webp" : "png";
-  let rendered: Awaited<ReturnType<typeof renderDesignPoster>>;
-  try {
-    rendered = await renderDesignPoster({
-      plan,
-      background,
-      accent: accent || undefined,
-      bg: bg || undefined,
-      brand: str(body?.brand) || undefined,
-      site: str(body?.site) || undefined,
-      dateText,
-      seed: post?.slug ?? post?.id ?? article.title,
-      format,
-      quality: 92,
-    });
-  } catch (err) {
-    if (err instanceof PosterBrowserUnavailable) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "এই পরিবেশে Chromium নেই, তাই বাংলা টাইপোগ্রাফি নিরাপদে রেন্ডার করা যাবে না। সার্ভারে Playwright ব্রাউজার ইনস্টল করুন।",
-          detail: err.message,
-        },
-        { status: 503 },
-      );
-    }
-    throw err;
-  }
-
-  // Persist. The bytes are always returned inline as well, because a serverless
-  // runtime may not be able to serve a file it just wrote — the CMS must still
-  // be able to show and download the poster it asked for.
-  const rel = randomMediaName("poster", extensionForMime(rendered.contentType));
   const attach = postId ? bool(body?.attach, true) : false;
-  let mediaPath: string | null = null;
-  let stored: "remote" | "local" | "none" = "none";
-  try {
-    const url = await uploadBufferRemote(rel, rendered.bytes, postId || "poster");
-    if (url) {
-      mediaPath = url;
-      stored = "remote";
-    }
-  } catch (err) {
-    warnings.push(`রিমোট স্টোরেজ: ${err instanceof Error ? err.message : String(err)}`);
-  }
-  if (!mediaPath) {
+  const outputs: Array<{
+    aspect: PosterAspect;
+    rendered: Awaited<ReturnType<typeof renderDesignPoster>>;
+    rel: string;
+    mediaPath: string | null;
+    stored: "remote" | "local" | "none";
+    visual: Visual | null;
+    prompt: string;
+  }> = [];
+
+  for (const aspect of aspects) {
+    const visual = visuals.get(focalAspectFor(plan.layout, aspect)) ?? null;
+    let rendered: Awaited<ReturnType<typeof renderDesignPoster>>;
     try {
-      await writeGeneratedMedia(rel, rendered.bytes);
-    } catch {
-      /* media root may be read-only; the public mirror below is enough locally */
+      rendered = await renderDesignPoster({
+        plan,
+        aspect,
+        background: visual?.background ?? null,
+        accent: accent || undefined,
+        bg: bg || undefined,
+        brand: str(body?.brand) || undefined,
+        site: str(body?.site) || undefined,
+        dateText,
+        seed: post?.slug ?? post?.id ?? article.title,
+        format,
+        quality: 92,
+      });
+    } catch (err) {
+      if (err instanceof PosterBrowserUnavailable) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "এই পরিবেশে Chromium নেই, তাই বাংলা টাইপোগ্রাফি নিরাপদে রেন্ডার করা যাবে না। সার্ভারে Playwright ব্রাউজার ইনস্টল করুন।",
+            detail: err.message,
+          },
+          { status: 503 },
+        );
+      }
+      throw err;
     }
-    try {
-      await writeLocalMirror(rel, rendered.bytes);
-      mediaPath = rel;
-      stored = "local";
-    } catch {
-      warnings.push("ছবিটি সংরক্ষণ করা যায়নি — শুধু ইনলাইন ডেটা পাঠানো হয়েছে।");
-    }
+
+    // Persist. The bytes are always returned inline as well, because a
+    // serverless runtime may not be able to serve a file it just wrote — the
+    // CMS must still be able to show and download the poster it asked for.
+    const saved = await persistPoster(rendered.bytes, rendered.contentType, postId, warnings);
+    outputs.push({
+      aspect,
+      rendered,
+      rel: saved.rel,
+      mediaPath: saved.mediaPath,
+      stored: saved.stored,
+      visual,
+      prompt: promptFor.get(aspect) ?? visual?.prompt ?? plan.imagePrompt,
+    });
   }
 
-  if (attach && mediaPath) {
+  const primary = outputs[0]!;
+
+  // The first frame is the story's social card, so that is the one attached to
+  // the post. The portrait is published alongside it, not instead of it.
+  if (attach && primary.mediaPath) {
     try {
-      await updatePost(postId, { media_path: mediaPath, media_origin: "ai" });
+      await updatePost(postId, { media_path: primary.mediaPath, media_origin: "ai" });
     } catch (err) {
       warnings.push(`পোস্টে যুক্ত করা যায়নি: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -286,7 +409,12 @@ export async function POST(req: NextRequest) {
           user.user_id,
           "post.generate_poster",
           postId,
-          JSON.stringify({ layout: plan.layout, palette: plan.paletteId, media_path: mediaPath }),
+          JSON.stringify({
+            layout: plan.layout,
+            palette: plan.paletteId,
+            media_path: primary.mediaPath,
+            aspects: outputs.map((o) => o.aspect),
+          }),
           nowIso(),
         ],
       });
@@ -296,61 +424,71 @@ export async function POST(req: NextRequest) {
   }
 
   // Memory is written only after a successful render, so a failed call cannot
-  // poison the rotation with a design nobody ever saw.
-  try {
-    await recordPosterDesign({
-      postId: postId || null,
-      layout: plan.layout,
-      palette: plan.paletteId,
-      visualStyle: plan.visualStyle,
-      texture: plan.texture,
-      headline: plan.headline,
-      mediaPath,
-      createdBy: user.email,
-    });
-  } catch {
-    warnings.push("ডিজাইন-ইতিহাস সংরক্ষণ করা যায়নি (মাইগ্রেশন ০৪০ চালান)।");
+  // poison the rotation with a design nobody ever saw. Both frames are rows;
+  // the read above de-duplicates their shared pair.
+  for (const output of outputs) {
+    try {
+      await recordPosterDesign({
+        postId: postId || null,
+        layout: plan.layout,
+        palette: plan.paletteId,
+        aspect: output.aspect,
+        visualStyle: plan.visualStyle,
+        texture: plan.texture,
+        headline: plan.headline,
+        mediaPath: output.mediaPath,
+        createdBy: user.email,
+      });
+    } catch {
+      warnings.push("ডিজাইন-ইতিহাস সংরক্ষণ করা যায়নি (মাইগ্রেশন ০৪০/০৪১ চালান)।");
+      break;
+    }
   }
 
   if (str(req.nextUrl.searchParams.get("format")) === "image") {
-    return new Response(rendered.bytes as unknown as BodyInit, {
+    const wanted = req.nextUrl.searchParams.get("aspect");
+    const chosen =
+      outputs.find((o) => o.aspect === wanted) ??
+      outputs.find((o) => o.aspect === aspects[0]) ??
+      primary;
+    return new Response(chosen.rendered.bytes as unknown as BodyInit, {
       headers: {
-        "content-type": rendered.contentType,
-        "content-disposition": `inline; filename="${rel}"`,
+        "content-type": chosen.rendered.contentType,
+        "content-disposition": `inline; filename="${chosen.rel}"`,
         "cache-control": "no-store",
       },
     });
   }
 
+  const imagePayload = (output: (typeof outputs)[number]) => ({
+    aspect: output.aspect,
+    media_path: output.mediaPath,
+    stored: output.stored,
+    content_type: output.rendered.contentType,
+    width: output.rendered.width,
+    height: output.rendered.height,
+    bytes: output.rendered.bytes.length,
+    provider: output.visual?.provider ?? null,
+    model: output.visual?.model ?? null,
+    used_fallback_visual: output.rendered.usedFallbackVisual,
+    data_url: `data:${output.rendered.contentType};base64,${output.rendered.bytes.toString("base64")}`,
+  });
+
   return NextResponse.json({
     ok: true,
-    design: {
-      layout: plan.layout,
-      palette: paletteSummary(plan),
-      visual_style: plan.visualStyle,
-      texture: plan.texture,
-      headline: plan.headline,
-      highlight_word: plan.highlightWord,
-      bullets: plan.bullets,
-      pull_quote: plan.pullQuote,
-      badge_text: plan.badgeText,
-      footer_text: plan.footerText,
-      image_prompt: imagePrompt,
-      directed_by: direction.source,
-    },
+    design: designPayload(plan, direction.source, primary.prompt, primary.aspect),
     image: {
-      media_path: mediaPath,
-      stored,
-      attached: attach && Boolean(mediaPath),
-      content_type: rendered.contentType,
-      width: rendered.width,
-      height: rendered.height,
-      bytes: rendered.bytes.length,
-      provider: imageProvider,
-      model: imageModel,
-      used_fallback_visual: rendered.usedFallbackVisual,
-      data_url: `data:${rendered.contentType};base64,${rendered.bytes.toString("base64")}`,
+      ...imagePayload(primary),
+      attached: attach && Boolean(primary.mediaPath),
     },
+    posters: outputs.map((output) => ({
+      design: designPayload(plan, direction.source, output.prompt, output.aspect),
+      image: {
+        ...imagePayload(output),
+        attached:
+          output.aspect === primary.aspect && attach && Boolean(output.mediaPath),
+      },
+    })),
     desk: desk?.label ?? null,
     warnings,
   });

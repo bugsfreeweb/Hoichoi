@@ -680,7 +680,8 @@ complete, story-specific plan. The poster never depends on the model being awake
 | `breaking_spotlight` | centred circular focal visual, crimson spotlight, bottom ticker |
 
 **Step 2 — the visual has no words in it.** The image model draws only the focal picture,
-at `1:1` for the split/grid layouts and `16:9` for the hero and spotlight. The negative
+at `1:1` for the split/grid layouts and `16:9` for the hero and spotlight (a portrait
+request asks the same shapes for `9:16`). The negative
 prompt (`DESIGN_IMAGE_NEGATIVE`) forbids text, letters, numbers, logos and identifiable
 faces — and deliberately does *not* forbid illustration, because the art director may have
 chosen one. If the image chain fails, the renderer draws the palette's textured wash.
@@ -693,7 +694,7 @@ not share a background. Fonts are the real Google families — **Hind Siliguri**
 **Noto Sans Bengali** as fallback, **Galada** for pull-quotes — bundled and base64-inlined,
 so conjuncts are shaped by HarfBuzz with `document.fonts.ready` awaited before capture.
 Chromium screenshots at `deviceScaleFactor: 2`: a `3840×2160` PNG or WebP from a
-`1920×1080` frame.
+`1920×1080` frame, or `2160×2700` from the `1080×1350` portrait frame.
 
 **Step 4 — no two neighbours look alike.** Every render writes a `poster_designs` row. The
 next call reads the last five and passes them to the model as `recently_used_designs`; the
@@ -701,6 +702,18 @@ renderer then *enforces* the rule, moving a repeated `(layout, palette)` pair to
 unused combination and barring the immediately previous palette. The CMS panel offers
 **🎲 রিজেনারেট স্টাইল** beside **⬇ পোস্টার ডাউনলোড**, so an editor can cycle the whole
 design in one click.
+
+**Step 5 — one direction, two frames.** `aspects: ["16:9", "4:5"]` renders the same
+art-directed page twice: the web/YouTube card and the uncropped Facebook/Instagram feed
+post. The LLM runs once, not twice — a story has one mood, and 4:5 is the same page in a
+different shape. Portrait is a CSS recomposition of the same semantic markup (masthead,
+badge, headline, support, footer), so there is no second template tree to keep in sync.
+The route caches the focal visual by ratio (split/grid reuse one `1:1` image; hero and
+spotlight get a `9:16` render for portrait), stores both files, and returns a `posters`
+array with per-frame dimensions. In the CMS the **৪:৫ পোর্ট্রেটও তৈরি করুন** checkbox is
+on by default; both previews appear, and the download button follows the selected frame.
+`poster_designs.aspect` (migration `041`) records which frame was published, while the
+anti-repetition window de-duplicates the shared design pair.
 
 Verified by rendering all five layouts at `3840×2160` (zero clipped lines measured in the
 DOM), by a live art-direction call and a live FLUX render (WebP, 450 KB), and by
