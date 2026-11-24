@@ -81,6 +81,30 @@ export async function posterDesignsForPost(postId: string, limit = 10): Promise<
   return res.rows.map((r) => mapRow(r as unknown as Record<string, unknown>));
 }
 
+/**
+ * The newest stored poster for a post, optionally in one frame.
+ *
+ * Social metadata asks this for `4:5`: Facebook and Instagram do not crop that
+ * frame, while the post's own `media_path` stays the 16:9 web card.
+ */
+export async function latestPosterDesign(
+  postId: string,
+  aspect?: "16:9" | "4:5",
+): Promise<PosterDesignRecord | null> {
+  const client = getClient();
+  const res = aspect
+    ? await client.execute({
+        sql: "SELECT * FROM poster_designs WHERE post_id = ? AND aspect = ? AND media_path IS NOT NULL ORDER BY created_at DESC LIMIT 1",
+        args: [postId, aspect],
+      })
+    : await client.execute({
+        sql: "SELECT * FROM poster_designs WHERE post_id = ? AND media_path IS NOT NULL ORDER BY created_at DESC LIMIT 1",
+        args: [postId],
+      });
+  const row = res.rows[0];
+  return row ? mapRow(row as unknown as Record<string, unknown>) : null;
+}
+
 /** Write one rendered design. Never throws for a null post id. */
 export async function recordPosterDesign(input: PosterDesignInput): Promise<PosterDesignRecord> {
   const client = getClient();

@@ -715,6 +715,12 @@ on by default; both previews appear, and the download button follows the selecte
 `poster_designs.aspect` (migration `041`) records which frame was published, while the
 anti-repetition window de-duplicates the shared design pair.
 
+The newest 4:5 row now feeds the story's share preview: `generateMetadata` asks
+`latestPosterDesign(postId, "4:5")` and uses that file as `og:image` with its real
+`1080×1350` dimensions, so Facebook and Instagram get an uncropped card. Twitter keeps
+the post's 16:9 image because `summary_large_image` is a landscape slot, and the
+NewsArticle JSON-LD uses the same share image as the OG tag.
+
 Verified by rendering all five layouts at `3840×2160` (zero clipped lines measured in the
 DOM), by a live art-direction call and a live FLUX render (WebP, 450 KB), and by
 `design-poster` (8 checks) and `art-director` (10 checks) test files.

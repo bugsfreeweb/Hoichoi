@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Fragment } from "react";
 import { notFound } from "next/navigation";
-import { getPublicPostBySlug, relatedPosts, getPostComments, getPostCommentCount, parseAppConfig, listPostImages } from "@hoichoi/db";
+import { getPublicPostBySlug, relatedPosts, getPostComments, getPostCommentCount, parseAppConfig, listPostImages, latestPosterDesign } from "@hoichoi/db";
 import { getCategories, findCategory } from "@/lib/categories-server";
 import { readMinutesBn, shortId } from "@/lib/bn";
 import { bnDate, bnTime } from "@/lib/format";
@@ -34,6 +34,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!postRaw) return { title: "পোস্টটি খুঁজে পাওয়া যায়নি" };
   const cfg = parseAppConfig(settings?.app_config_json);
   const post = withDefaultImage(postRaw, cfg.default_post_image);
+
+  // Facebook and Instagram crop a 16:9 card, so the 4:5 poster is the better
+  // og:image when the CMS has rendered one. Twitter keeps the landscape web
+  // card, because `summary_large_image` is a 1.91:1 slot. The post's own
+  // `media_path` is still the image the article shows; only the share preview
+  // switches frames.
+  const portrait = await latestPosterDesign(postRaw.id, "4:5").catch(() => null);
+  const portraitUrl = portrait?.media_path
+    ? mediaUrl({ media_path: portrait.media_path, media_kind: "image" })
+    : null;
+  const webImage = mediaUrl(post);
+  const shareImage = portraitUrl ?? webImage;
+
   // The same story is syndicated from Facebook and reachable under a few
   // slugs; a canonical URL plus og:url tells crawlers and social scrapers
   // which one is authoritative instead of treating each as duplicate content.
@@ -47,14 +60,22 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       url,
       title: post.title_bn,
       description: post.summary_bn ?? undefined,
-      images: mediaUrl(post) ? [{ url: mediaUrl(post)!, alt: post.title_bn }] : undefined,
+      images: shareImage
+        ? [
+            {
+              url: shareImage,
+              alt: post.title_bn,
+              ...(portraitUrl ? { width: 1080, height: 1350 } : {}),
+            },
+          ]
+        : undefined,
       publishedTime: post.published_at ?? undefined,
     },
     twitter: {
       card: "summary_large_image",
       title: post.title_bn,
       description: post.summary_bn ?? undefined,
-      images: mediaUrl(post) ? [mediaUrl(post)!] : undefined,
+      images: webImage ? [webImage] : undefined,
     },
   };
 }
@@ -121,12 +142,13 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   const relatedCount = Math.min(8, Math.max(1, cfg.detail_similar_count));
   const commentLimit = Math.max(1, cfg.comments_show_count);
 
-  const [cats, relatedRaw, initialComments, commentCount, galleryRaw] = await Promise.all([
+  const [cats, relatedRaw, initialComments, commentCount, galleryRaw, portrait] = await Promise.all([
     getCategories(),
     relatedPosts(post, relatedCount),
     getPostComments(post.id, commentLimit),
     getPostCommentCount(post.id),
     listPostImages(post.id),
+    latestPosterDesign(post.id, "4:5").catch(() => null),
   ]);
   const related = withDefaultImages(relatedRaw, cfg.default_post_image);
   const cat = await findCategory(post.category);
@@ -134,6 +156,11 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   const showHelplines = post.category === "missing-children";
   const isMissingActive = post.category === "missing-children" && post.case_status === "active";
   const src = mediaUrl(postMedia);
+  // Structured data should point at the same share image as og:image, so a
+  // search result and a Facebook card do not tell two different visual stories.
+  const shareSrc = portrait?.media_path
+    ? mediaUrl({ media_path: portrait.media_path, media_kind: "image" }) ?? src
+    : src;
   // Extra gallery images (resolved to loadable URLs), excluding any whose path
   // equals the primary so the hero is never duplicated in the strip.
   const galleryImages = galleryRaw
@@ -167,7 +194,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     summary: post.summary_bn || post.title_bn,
     publishedAt: post.published_at,
     updatedAt: post.updated_at,
-    image: src,
+    image: shareSrc,
     category: post.category,
     categoryBn: cat?.displayNameBn ?? post.category,
     siteName: settings.site_name,

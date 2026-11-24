@@ -35,6 +35,8 @@ let passed = 0;
 
 const route = read("apps/web/src/app/api/generate-poster/route.ts");
 const panel = read("apps/web/src/components/admin/PostImageGenerator.tsx");
+const postPage = read("apps/web/src/app/(site)/post/[slug]/page.tsx");
+const posterDb = read("packages/db/src/poster-designs.ts");
 const migration = read("packages/db/migrations/040_poster_designs.sql");
 const aspectMigration = read("packages/db/migrations/041_poster_design_aspect.sql");
 const embedded = read("packages/db/src/migrations.generated.ts");
@@ -81,6 +83,16 @@ check("the CMS offers regenerate style beside download poster", () => {
   assert.match(panel, /aspects: bothFrames \? \["16:9", "4:5"\]/);
   assert.match(panel, /৪:৫ পোর্ট্রেটও তৈরি করুন/);
   assert.match(panel, /setActiveAspect/);
+});
+
+check("the 4:5 poster becomes the social image, while Twitter keeps 16:9", () => {
+  assert.match(postPage, /latestPosterDesign\(postRaw\.id, "4:5"\)/);
+  assert.match(postPage, /const shareImage = portraitUrl \?\? webImage/);
+  assert.match(postPage, /images: shareImage\s*\?/);
+  assert.match(postPage, /width: 1080, height: 1350/);
+  assert.match(postPage, /card: "summary_large_image"[\s\S]*?images: webImage \? \[webImage\]/);
+  assert.match(postPage, /const shareSrc = portrait\?\.media_path/);
+  assert.match(posterDb, /WHERE post_id = \? AND aspect = \? AND media_path IS NOT NULL/);
 });
 
 check("the vocabulary is the brief's, once", () => {
