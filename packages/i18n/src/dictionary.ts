@@ -164,6 +164,7 @@ export const DICTIONARY = {
   // ── Public site: footer ──────────────────────────────────────────────────
   "site.footer.about": { bn: "আমাদের সম্পর্কে", en: "About" },
   "site.footer.contact": { bn: "যোগাযোগ", en: "Contact" },
+  "site.footer.fontCredit": { bn: "বাংলা ফন্ট: লিপিঘর", en: "Bangla type: Lipighor" },
   "site.footer.privacy": { bn: "গোপনীয়তা", en: "Privacy" },
   "site.footer.cookies": { bn: "কুকি নীতি", en: "Cookies" },
   "site.footer.dmca": { bn: "ডিএমসিএ", en: "DMCA" },

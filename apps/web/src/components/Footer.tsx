@@ -140,7 +140,7 @@ export async function Footer() {
               <>
                 <span aria-hidden>·</span>
                 <a href="https://lipighor.com" target="_blank" rel="noopener noreferrer" className="hover:text-alizarin">
-                  বাংলা ফন্ট: লিপিঘর
+                  {tr("site.footer.fontCredit")}
                 </a>
               </>
             )}
