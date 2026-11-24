@@ -752,6 +752,9 @@ portrait and cuts around 60/110 code points. **X** only ever reads the landscape
 on, and it warns at roughly 70/200. The debugger link appears only on the Facebook tab,
 because X has no equivalent scraper tool.
 
+**কপি লিংক** copies the canonical URL from either tab, with the old selection fallback for
+insecure origins and embedded browsers where the Clipboard API is blocked.
+
 Verified by rendering all five layouts at `3840×2160` (zero clipped lines measured in the
 DOM), by a live art-direction call and a live FLUX render (WebP, 450 KB), and by
 `design-poster` (8 checks) and `art-director` (10 checks) test files.

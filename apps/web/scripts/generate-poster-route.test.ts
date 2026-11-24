@@ -164,7 +164,9 @@ check("Facebook and X get the card each actually renders", () => {
   assert.match(panel, /facebook: \{ title: 60, desc: 110 \}/);
   assert.match(panel, /x: \{ title: 70, desc: 200 \}/);
   assert.match(panel, /X ল্যান্ডস্কেপ কার্ড দেখায়/);
-  assert.match(panel, /\{shareUrl && !previewIsX && \(/);
+  assert.match(panel, /navigator\.clipboard\.writeText\(shareUrl\)/);
+  assert.match(panel, /document\.execCommand\("copy"\)/);
+  assert.match(panel, /কপি লিংক/);
 });
 
 check("the vocabulary is the brief's, once", () => {

@@ -169,6 +169,7 @@ export function PostImageGenerator({
    * at different widths. One card pretending to be both would be a lie.
    */
   const [previewPlatform, setPreviewPlatform] = useState<"facebook" | "x">("facebook");
+  const [copyMsg, setCopyMsg] = useState<string | null>(null);
 
   /** `media_path` as of the last successful check — the poll watches for a change. */
   const baseRef = useRef<string | null>(null);
@@ -384,6 +385,28 @@ export function PostImageGenerator({
     } finally {
       setSocialBusy(false);
     }
+  };
+
+  const copyShareUrl = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopyMsg("✓ লিংক কপি হয়েছে");
+    } catch {
+      // Clipboard access is blocked on insecure origins and in some embedded
+      // browsers; the old selection trick still works there.
+      const area = document.createElement("textarea");
+      area.value = shareUrl;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(area);
+      setCopyMsg(ok ? "✓ লিংক কপি হয়েছে" : "✕ কপি ব্যর্থ — ম্যানুয়ালি কপি করুন");
+    }
+    window.setTimeout(() => setCopyMsg(null), 2500);
   };
 
   const downloadPoster = () => {
@@ -828,15 +851,34 @@ export function PostImageGenerator({
               </div>
             </div>
             <p className="mt-1.5 text-[10px] text-ink-soft">{shareNote}</p>
-            {shareUrl && !previewIsX && (
-              <a
-                href={`https://developers.facebook.com/tools/debug/?q=${encodeURIComponent(shareUrl)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-1.5 inline-block text-[10.5px] font-bold text-ink underline decoration-ink/40 underline-offset-2 hover:text-alizarin"
-              >
-                Facebook ডিবাগারে প্রিভিউ যাচাই করুন ↗
-              </a>
+            {shareUrl && (
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <button
+                  type="button"
+                  onClick={() => void copyShareUrl()}
+                  className="text-[10.5px] font-bold text-ink underline decoration-ink/40 underline-offset-2 hover:text-alizarin"
+                >
+                  কপি লিংক
+                </button>
+                {!previewIsX && (
+                  <a
+                    href={`https://developers.facebook.com/tools/debug/?q=${encodeURIComponent(shareUrl)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[10.5px] font-bold text-ink underline decoration-ink/40 underline-offset-2 hover:text-alizarin"
+                  >
+                    Facebook ডিবাগারে প্রিভিউ যাচাই করুন ↗
+                  </a>
+                )}
+                {copyMsg && (
+                  <span
+                    role="status"
+                    className={`text-[10px] ${copyMsg.startsWith("✕") ? "text-red-700" : "text-ink-soft"}`}
+                  >
+                    {copyMsg}
+                  </span>
+                )}
+              </div>
             )}
             <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 font-mono-x text-[10px]">
               <span className={titleWarn ? "font-bold text-red-700" : "text-ink-soft"}>
