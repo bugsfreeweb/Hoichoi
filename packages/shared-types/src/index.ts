@@ -202,6 +202,12 @@ export interface Post {
    */
   social_share_aspect?: "4:5" | "16:9";
   /**
+   * Optional link-card copy. Null means the article title/summary is used;
+   * an editor sets these when the page headline is too long for a feed card.
+   */
+  social_title?: string | null;
+  social_description?: string | null;
+  /**
    * Claim grade, backed by the `claims` table and (for `human_verified`) a named
    * editor. See packages/db/src/verification.ts — a badge is only rendered when
    * `showsBadge()` allows it, so absence of evidence means absence of a badge.

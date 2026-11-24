@@ -2023,6 +2023,9 @@ export interface PostUpdateFields {
   media_origin?: "collector" | "ai" | "admin" | "external" | "plate" | null;
   /** The frame the link preview prefers; falls back if no portrait exists. */
   social_share_aspect?: "4:5" | "16:9";
+  /** Link-card copy overrides; null clears the override. */
+  social_title?: string | null;
+  social_description?: string | null;
   /**
    * Provenance of the text: set when an AI task wrote or rewrote a field, with
    * the prompt/task version that produced it. Never inferred — an editor who
@@ -2129,6 +2132,14 @@ export async function updatePost(id: string, fields: PostUpdateFields): Promise<
   if (fields.social_share_aspect !== undefined) {
     sets.push("social_share_aspect = ?");
     args.push(fields.social_share_aspect);
+  }
+  if ("social_title" in fields && fields.social_title !== undefined) {
+    sets.push("social_title = ?");
+    args.push(fields.social_title?.trim() || null);
+  }
+  if ("social_description" in fields && fields.social_description !== undefined) {
+    sets.push("social_description = ?");
+    args.push(fields.social_description?.trim() || null);
   }
   if ("media_path" in fields && fields.media_path !== undefined) {
     // Throws on anything unsafe, so a bad URL can never reach the page.

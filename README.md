@@ -739,6 +739,13 @@ keeps the number honest for Bengali clusters. Next to them, **Facebook ডিব
 যাচাই করুন** opens the Sharing Debugger for the post's canonical URL, which is how an
 editor forces Facebook to re-scrape after the card changes.
 
+The card can also carry copy of its own. Optional **শেয়ার শিরোনাম** and **শেয়ার বিবরণ**
+(migration `043`) override the article title and summary for the link preview only; the
+page headline, slug, and JSON-LD stay the article's. Emptying a field clears the override
+rather than storing an empty string, so the fallback is always the article itself. The
+PATCH caps them at 160 and 400 code points — generous enough for a tight hook, firm
+enough that the column cannot become a second body.
+
 Verified by rendering all five layouts at `3840×2160` (zero clipped lines measured in the
 DOM), by a live art-direction call and a live FLUX render (WebP, 450 KB), and by
 `design-poster` (8 checks) and `art-director` (10 checks) test files.

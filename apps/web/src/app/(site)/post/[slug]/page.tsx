@@ -50,6 +50,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const webImage = mediaUrl(post);
   const shareImage = portraitUrl ?? webImage;
 
+  // A link card is read in a feed, not on the page. Keep the article headline
+  // as the document title, but let an editor supply a tighter card hook.
+  const ogTitle = post.social_title?.trim() || post.title_bn;
+  const ogDescription =
+    post.social_description?.trim() || post.summary_bn || post.body_bn.slice(0, 160);
+
   // The same story is syndicated from Facebook and reachable under a few
   // slugs; a canonical URL plus og:url tells crawlers and social scrapers
   // which one is authoritative instead of treating each as duplicate content.
@@ -61,8 +67,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     openGraph: {
       type: "article",
       url,
-      title: post.title_bn,
-      description: post.summary_bn ?? undefined,
+      title: ogTitle,
+      description: ogDescription,
       images: shareImage
         ? [
             {
@@ -76,8 +82,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     },
     twitter: {
       card: "summary_large_image",
-      title: post.title_bn,
-      description: post.summary_bn ?? undefined,
+      title: ogTitle,
+      description: ogDescription,
       images: webImage ? [webImage] : undefined,
     },
   };

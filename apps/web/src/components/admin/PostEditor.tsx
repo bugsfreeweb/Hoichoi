@@ -640,6 +640,8 @@ export function PostEditor({
           webImagePath={mediaPath || post.media_path || null}
           shareTitle={title || post.title_bn}
           shareDescription={summary || post.summary_bn || body.slice(0, 160)}
+          initialSocialTitle={post.social_title ?? ""}
+          initialSocialDescription={post.social_description ?? ""}
           shareDomain={shareDomain}
           shareUrl={shareUrl}
           onAttached={(path) => {

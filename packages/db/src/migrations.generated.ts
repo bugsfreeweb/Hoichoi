@@ -187,4 +187,8 @@ export const EMBEDDED_MIGRATIONS: readonly EmbeddedMigration[] = [
     name: "042_post_social_aspect",
     sql: "-- Which frame the link preview uses.\n--\n-- Facebook and Instagram do not crop 4:5, so the portrait poster is the better\n-- default when one exists. Some stories are stronger in landscape, though, and\n-- the editor should be able to say so without deleting the portrait. The value\n-- is a preference, not a guarantee: if 4:5 is chosen but no portrait has been\n-- rendered, metadata falls back to the post's own image.\n\nALTER TABLE posts ADD COLUMN social_share_aspect TEXT NOT NULL DEFAULT '4:5';\n",
   },
+  {
+    name: "043_post_social_copy",
+    sql: "-- Optional copy for the link card.\n--\n-- The article headline is written for the page; a link card is read in a feed,\n-- often at half the width and beside someone else's post. Editors need to\n-- tighten the hook without changing the published headline. Null means \"use the\n-- article title/summary\", so old rows and untouched posts behave exactly as\n-- before.\n\nALTER TABLE posts ADD COLUMN social_title TEXT;\nALTER TABLE posts ADD COLUMN social_description TEXT;\n",
+  },
 ];

@@ -39,6 +39,7 @@ const postPage = read("apps/web/src/app/(site)/post/[slug]/page.tsx");
 const posterDb = read("packages/db/src/poster-designs.ts");
 const postApi = read("apps/web/src/app/api/posts/[id]/route.ts");
 const postPreferenceMigration = read("packages/db/migrations/042_post_social_aspect.sql");
+const socialCopyMigration = read("packages/db/migrations/043_post_social_copy.sql");
 const adminPostPage = read("apps/web/src/app/admin/(console)/posts/[id]/page.tsx");
 const postEditor = read("apps/web/src/components/admin/PostEditor.tsx");
 const migration = read("packages/db/migrations/040_poster_designs.sql");
@@ -133,6 +134,23 @@ check("the editor sees the share card before publishing", () => {
   assert.match(panel, /developers\.facebook\.com\/tools\/debug/);
   assert.match(panel, /encodeURIComponent\(shareUrl\)/);
   assert.match(panel, /Facebook ডিবাগারে প্রিভিউ যাচাই করুন/);
+});
+
+check("the share card can have copy of its own", () => {
+  assert.match(socialCopyMigration, /ADD COLUMN social_title TEXT/);
+  assert.match(socialCopyMigration, /ADD COLUMN social_description TEXT/);
+  assert.match(postPage, /post\.social_title\?\.trim\(\) \|\| post\.title_bn/);
+  assert.match(postPage, /post\.social_description\?\.trim\(\) \|\| post\.summary_bn/);
+  assert.match(postApi, /\["social_title", 160\]/);
+  assert.match(postApi, /\["social_description", 400\]/);
+  assert.match(postApi, /Array\.from\(clean\)\.length > max/);
+  assert.match(panel, /শেয়ার শিরোনাম \(ঐচ্ছিক\)/);
+  assert.match(panel, /শেয়ার বিবরণ \(ঐচ্ছিক\)/);
+  assert.match(panel, /social_title: title \|\| null/);
+  assert.match(panel, /social_description: description \|\| null/);
+  assert.match(panel, /const cardTitle = socialTitle\.trim\(\) \|\| shareTitle/);
+  assert.match(panel, /const cardDescription = socialDescription\.trim\(\) \|\| shareDescription/);
+  assert.match(postEditor, /initialSocialTitle=\{post\.social_title \?\? ""\}/);
 });
 
 check("the vocabulary is the brief's, once", () => {

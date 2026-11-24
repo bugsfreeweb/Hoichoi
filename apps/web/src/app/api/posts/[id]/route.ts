@@ -79,6 +79,29 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     applied.push("social_share_aspect");
   }
 
+  // Social copy is optional and nullable: null means "use the article
+  // title/summary". Count code points, because a Bengali cluster is often two
+  // UTF-16 units and a raw `.length` cap would reject valid short copy.
+  for (const [key, max] of [
+    ["social_title", 160],
+    ["social_description", 400],
+  ] as const) {
+    if (!(key in body)) continue;
+    const v = body[key];
+    if (v !== null && typeof v !== "string") {
+      return NextResponse.json({ error: `invalid ${key}` }, { status: 400 });
+    }
+    const clean = typeof v === "string" ? v.trim() : null;
+    if (clean && Array.from(clean).length > max) {
+      return NextResponse.json(
+        { error: `${key} must be at most ${max} characters` },
+        { status: 400 },
+      );
+    }
+    fields[key] = clean || null;
+    applied.push(key);
+  }
+
   // AI provenance travels with the same PATCH as the text it describes, so a
   // post can never claim or hide authorship in a second, forgettable request.
   if (typeof body.ai_assisted === "boolean") {

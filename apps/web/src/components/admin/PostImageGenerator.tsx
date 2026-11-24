@@ -85,6 +85,8 @@ export function PostImageGenerator({
   shareDescription = "",
   shareDomain = "hoichoifeed.vercel.app",
   shareUrl = null,
+  initialSocialTitle = "",
+  initialSocialDescription = "",
 }: {
   postId: string;
   onAttached: (mediaPath: string) => void;
@@ -100,6 +102,9 @@ export function PostImageGenerator({
   shareDomain?: string;
   /** Canonical public URL, used to open Facebook's scraper debugger. */
   shareUrl?: string | null;
+  /** Saved link-card copy overrides; empty means "use the article". */
+  initialSocialTitle?: string;
+  initialSocialDescription?: string;
 }) {
   const [opts, setOpts] = useState<Options | null>(null);
   const [providerId, setProviderId] = useState("");
@@ -145,6 +150,19 @@ export function PostImageGenerator({
   const [shareAspect, setShareAspect] = useState<"4:5" | "16:9">(socialAspect);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
+  /**
+   * Link-card copy is separate from the article headline because the two are
+   * read at different widths. Empty means "fall back to the article", which is
+   * also how a cleared override is stored — there is no separate clear button.
+   */
+  const [socialTitle, setSocialTitle] = useState(initialSocialTitle);
+  const [socialDescription, setSocialDescription] = useState(initialSocialDescription);
+  const [savedSocial, setSavedSocial] = useState({
+    title: initialSocialTitle.trim(),
+    description: initialSocialDescription.trim(),
+  });
+  const [socialBusy, setSocialBusy] = useState(false);
+  const [socialMsg, setSocialMsg] = useState<string | null>(null);
 
   /** `media_path` as of the last successful check — the poll watches for a change. */
   const baseRef = useRef<string | null>(null);
@@ -330,6 +348,38 @@ export function PostImageGenerator({
     }
   };
 
+  const saveSocialCopy = async () => {
+    const title = socialTitle.trim();
+    const description = socialDescription.trim();
+    if (socialBusy || (title === savedSocial.title && description === savedSocial.description)) {
+      return;
+    }
+    setSocialBusy(true);
+    setSocialMsg(null);
+    try {
+      const res = await fetch(`/api/posts/${postId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          social_title: title || null,
+          social_description: description || null,
+        }),
+      });
+      const j = (await res.json().catch(() => null)) as { error?: string } | null;
+      if (!res.ok) throw new Error(j?.error ?? `HTTP ${res.status}`);
+      setSavedSocial({ title, description });
+      setSocialMsg(
+        title || description
+          ? "✓ শেয়ার লেখা সংরক্ষিত"
+          : "✓ ওভাররাইড মুছে গেছে — নিবন্ধের শিরোনাম/সারসংক্ষেপ ব্যবহার হবে",
+      );
+    } catch (e) {
+      setSocialMsg(`✕ ${e instanceof Error ? e.message : "শেয়ার লেখা সংরক্ষণ ব্যর্থ"}`);
+    } finally {
+      setSocialBusy(false);
+    }
+  };
+
   const downloadPoster = () => {
     const chosen = posters.find((p) => p.aspect === activeAspect) ?? posters[0];
     if (!chosen) return;
@@ -417,8 +467,10 @@ export function PostImageGenerator({
   // warnings rather than refusals: 60/110 is where the card starts cutting in
   // the common desktop and mobile widths. Count code points, not UTF-16 units,
   // because a Bengali cluster is often two units and would overstate length.
-  const titleLength = Array.from(shareTitle.trim()).length;
-  const descLength = Array.from(shareDescription.trim()).length;
+  const cardTitle = socialTitle.trim() || shareTitle;
+  const cardDescription = socialDescription.trim() || shareDescription;
+  const titleLength = Array.from(cardTitle.trim()).length;
+  const descLength = Array.from(cardDescription.trim()).length;
   const titleWarn = titleLength > 60;
   const descWarn = descLength > 110;
 
@@ -659,6 +711,41 @@ export function PostImageGenerator({
             </p>
           )}
 
+          <div className="mt-3 grid gap-2 border-t border-ink/10 pt-3">
+            <label className="block text-[11px] font-bold text-ink">
+              শেয়ার শিরোনাম (ঐচ্ছিক)
+              <input
+                value={socialTitle}
+                maxLength={160}
+                disabled={socialBusy}
+                onChange={(e) => setSocialTitle(e.target.value)}
+                onBlur={() => void saveSocialCopy()}
+                placeholder={shareTitle}
+                className="mt-1 w-full border border-ink/20 bg-white px-2 py-1.5 text-[12px] font-normal text-ink outline-none focus:border-ink"
+              />
+            </label>
+            <label className="block text-[11px] font-bold text-ink">
+              শেয়ার বিবরণ (ঐচ্ছিক)
+              <textarea
+                value={socialDescription}
+                maxLength={400}
+                rows={2}
+                disabled={socialBusy}
+                onChange={(e) => setSocialDescription(e.target.value)}
+                onBlur={() => void saveSocialCopy()}
+                placeholder={shareDescription}
+                className="mt-1 w-full resize-y border border-ink/20 bg-white px-2 py-1.5 text-[12px] font-normal leading-relaxed text-ink outline-none focus:border-ink"
+              />
+            </label>
+            {socialMsg && (
+              <p
+                className={`text-[10.5px] ${socialMsg.startsWith("✕") ? "text-red-700" : "text-ink-soft"}`}
+              >
+                {socialMsg}
+              </p>
+            )}
+          </div>
+
           <div className="mt-3 border-t border-ink/10 pt-3">
             <p className="font-mono-x text-[9.5px] uppercase tracking-wide text-ink-soft">
               লিংক প্রিভিউ
@@ -685,10 +772,10 @@ export function PostImageGenerator({
                   {shareDomain}
                 </p>
                 <p className="mt-0.5 line-clamp-2 font-serif-bn text-[14px] font-extrabold leading-snug text-ink">
-                  {shareTitle || "শিরোনাম"}
+                  {cardTitle || "শিরোনাম"}
                 </p>
                 <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-ink-soft">
-                  {shareDescription || "সারসংক্ষেপ"}
+                  {cardDescription || "সারসংক্ষেপ"}
                 </p>
               </div>
             </div>
