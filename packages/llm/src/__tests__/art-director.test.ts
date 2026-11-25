@@ -16,7 +16,7 @@ import {
   orientImagePrompt,
   paletteSummary,
 } from "../art-director";
-import { publicFigureFor } from "../image-prompt";
+import { publicFigureFor, storyAnchors } from "../image-prompt";
 import { extractVisualSubjects, visualBriefLine } from "../visual-brief";
 import { POSTER_DESIGN_LAYOUTS, POSTER_PALETTES } from "@hoichoi/shared-types";
 
@@ -366,6 +366,17 @@ check(
     assert.doesNotMatch(plan.footerText, /রিবিম|২৮ নভেম্বর/);
   },
 );
+
+check("a sentence-opening capital is not a named subject", () => {
+  const a = storyAnchors({
+    title: "Small cars gain popularity among young people in Europe",
+    summary: "Europe's urban youth are buying compact hatchbacks.",
+  });
+  assert.ok(!a.includes("Small"), "the headline's first capital leaked in");
+  assert.ok(a.some((x) => /young adults/.test(x)));
+  assert.ok(a.some((x) => /compact hatchback/.test(x)));
+  assert.ok(a.some((x) => /European/.test(x)));
+});
 
 console.log(`
 [art-director] ${passed} checks passed`);

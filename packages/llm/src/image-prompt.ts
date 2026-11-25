@@ -373,11 +373,23 @@ export function storyAnchors(input: {
   // `extractVisualCues` also collects every Latin word (gain, among,
   // popularity). Those are not drawable subjects; proper nouns keep their
   // capital, so only capitalised cues and figures survive into the anchors.
+  //
+  // A capital is not proof of a name: the first word of a headline is always
+  // capitalised, so "Small cars gain popularity…" was sending the literal
+  // anchor "Small" to the image model. Ordinary sentence-openers and adjectives
+  // are stopped by this list; "Europe" is not on it and still reaches the brief
+  // through the country lexicon as "a European setting".
+  const CAP_OPENERS = new Set(
+    "A An The This That These Those It Its In On At For With From After Before As But And Or If When While How Why What Who Where New Small Big Young Old Good Bad More Most Less First Last Next Many Some All Two Three Report Story News".split(
+      " ",
+    ),
+  );
   const rest = cues.filter(
     (cue) =>
       !named.includes(cue) &&
       !cities.includes(cue) &&
       !cue.startsWith("figure ") &&
+      !CAP_OPENERS.has(cue) &&
       !/^(Facebook|Instagram|Twitter|YouTube|TikTok|BBC|CNN|Reuters|TechCrunch)$/i.test(
         cue,
       ) &&
