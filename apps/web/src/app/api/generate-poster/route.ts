@@ -54,6 +54,7 @@ import {
   imageSizeFor,
   orientImagePrompt,
   paletteSummary,
+  publicFigureFor,
   type PosterArticle,
 } from "@hoichoi/llm";
 import {
@@ -246,6 +247,7 @@ async function handlePost(req: NextRequest) {
     const stages: Record<string, unknown> = { stage: "start" };
     try {
       stages.stage = "portrait";
+      stages.figure = publicFigureFor({ title: str(body?.title) || "Jensen Huang" });
       const portrait = await publicFigurePortrait({
         title: str(body?.title) || "Jensen Huang",
       });
