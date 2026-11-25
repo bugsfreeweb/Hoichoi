@@ -7,6 +7,7 @@ import CredentialList from "@/components/admin/CredentialList";
 import LoginLogViewer from "@/components/admin/LoginLogViewer";
 import SecurityAlertsPanel from "@/components/admin/SecurityAlertsPanel";
 import { currentSession, requiresRole } from "@/lib/auth";
+import { serverBi } from "@/lib/bi-server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,26 +22,31 @@ export const dynamic = "force-dynamic";
 export default async function AdminSecurityPage() {
   const session = await currentSession();
   const canSeeAll = requiresRole(session?.user ?? null, "admin");
+  const { b } = await serverBi();
 
   return (
     <div>
       <PageHeading
         emoji="🔐"
         kicker="CREDENTIALS + DEVICES"
-        title="নিরাপত্তা"
-        description="কোন ডিভাইসে কনসোল খোলা আছে, কখন শেষবার ব্যবহার হয়েছে, কত দিনে সেশন শেষ হবে — এবং যেকোনো ডিভাইস এক ক্লিকে বাতিল।"
+        title={b("নিরাপত্তা", "Security")}
+        description={b(
+          "কোন ডিভাইসে কনসোল খোলা আছে, কখন শেষবার ব্যবহার হয়েছে, কত দিনে সেশন শেষ হবে — এবং যেকোনো ডিভাইস এক ক্লিকে বাতিল।",
+          "Which devices have the console open, when each was last used, how many days remain before the session ends — and one-click revocation.",
+        )}
       />
 
       <div className="mt-6 grid gap-10">
         {canSeeAll ? (
           <section id="code-alerts">
             <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">
-              কোড-স্ক্যানিং অ্যালার্ট
+              {b("কোড-স্ক্যানিং অ্যালার্ট", "Code-scanning alerts")}
             </h2>
             <p className="mt-1 max-w-2xl font-mono-x text-[10.5px] leading-relaxed text-ink-soft">
-              GitHub CodeQL যে সমস্যাগুলো এখনো খোলা দেখছে — প্রতিটি সারির পাশে ঠিক
-              করার নির্দেশনা আছে, আর অ্যালার্টটি খুললে কোডের ঠিকানা ও পূর্ণ বিবরণ দেখা
-              যাবে।
+              {b(
+                "GitHub CodeQL যে সমস্যাগুলো এখনো খোলা দেখছে — প্রতিটি সারির পাশে ঠিক করার নির্দেশনা আছে, আর অ্যালার্টটি খুললে কোডের ঠিকানা ও পূর্ণ বিবরণ দেখা যাবে।",
+                "What GitHub CodeQL still sees open — every row carries the fix, and opening the alert shows the exact file and full detail.",
+              )}
             </p>
             <div className="mt-3">
               <SecurityAlertsPanel canSee={canSeeAll} />
@@ -50,7 +56,7 @@ export default async function AdminSecurityPage() {
 
         <section>
           <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">
-            দুই-ধাপ যাচাই (2FA)
+            {b("দুই-ধাপ যাচাই (2FA)", "Two-step verification (2FA)")}
           </h2>
           <div className="mt-3">
             <MfaPanel />
@@ -59,14 +65,14 @@ export default async function AdminSecurityPage() {
 
         <section>
           <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">
-            ডেস্কটপ ডিভাইস
+            {b("ডেস্কটপ ডিভাইস", "Desktop devices")}
           </h2>
           <div className="mt-3">{canSeeAll ? <DeskDevicesPanel /> : null}</div>
         </section>
 
         <section>
           <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">
-            সেশন ও ডিভাইস
+            {b("সেশন ও ডিভাইস", "Sessions & devices")}
           </h2>
           <div className="mt-3">
             <SessionList canSeeAll={canSeeAll} />
@@ -76,12 +82,13 @@ export default async function AdminSecurityPage() {
 
         <section>
           <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">
-            ক্রেডেনশিয়ালের মেয়াদ
+            {b("ক্রেডেনশিয়ালের মেয়াদ", "Credential expiry")}
           </h2>
           <p className="mt-1 font-mono-x text-[10.5px] text-ink-soft">
-            প্রোভাইডার কী, টোকেন বা স্টোরেজ সিক্রেটের মেয়াদ এখানে লিখে রাখুন — মেয়াদ
-            শেষের ৭ দিন আগে ডেইলি চেক ইমেইল পাঠাবে। এখানে কোনো সিক্রেট সংরক্ষিত হয়
-            না।
+            {b(
+              "প্রোভাইডার কী, টোকেন বা স্টোরেজ সিক্রেটের মেয়াদ এখানে লিখে রাখুন — মেয়াদ শেষের ৭ দিন আগে ডেইলি চেক ইমেইল পাঠাবে। এখানে কোনো সিক্রেট সংরক্ষিত হয় না।",
+              "Record when provider keys, tokens and storage secrets expire — a daily check emails seven days before. No secret is stored here.",
+            )}
           </p>
           <div className="mt-3">
             <CredentialList canEdit={canSeeAll} />
@@ -90,11 +97,13 @@ export default async function AdminSecurityPage() {
 
         <section>
           <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">
-            লগইন লগ
+            {b("লগইন লগ", "Login log")}
           </h2>
           <p className="mt-1 font-mono-x text-[10.5px] text-ink-soft">
-            সফল ও ব্যর্থ দুটোই রেকর্ড হয়। অচেনা ডিভাইস থেকে সফল লগইন দেখলে সাথে সাথে
-            সেশন বাতিল করুন।
+            {b(
+              "সফল ও ব্যর্থ দুটোই রেকর্ড হয়। অচেনা ডিভাইস থেকে সফল লগইন দেখলে সাথে সাথে সেশন বাতিল করুন।",
+              "Both successful and failed attempts are recorded. If you see a successful login from an unknown device, revoke that session immediately.",
+            )}
           </p>
           <div className="mt-3">
             <LoginLogViewer />
