@@ -263,7 +263,45 @@ async function handlePost(req: NextRequest) {
             },
           );
           stages.wikiStatus = res.status;
-          stages.wikiBody = (await res.text()).slice(0, 120);
+          const wikiBody = await res.text();
+          stages.wikiBody = wikiBody.slice(0, 120);
+          const wiki = JSON.parse(wikiBody) as {
+            originalimage?: { source?: string };
+            thumbnail?: { source?: string };
+          };
+          const candidates = [wiki.thumbnail?.source, wiki.originalimage?.source].filter(
+            (u): u is string => Boolean(u),
+          );
+          stages.imageTries = [];
+          for (const url of candidates) {
+            try {
+              const img = await fetch(url, {
+                signal: AbortSignal.timeout(8_000),
+                headers: {
+                  "user-agent": "HoichoiPoster/1.0 (https://hoichoifeed.vercel.app)",
+                  accept: "image/*",
+                  referer: "https://en.wikipedia.org/",
+                },
+              });
+              stages.imageTries.push({
+                host: new URL(url).host,
+                status: img.status,
+                type: img.headers.get("content-type"),
+                length: (await img.arrayBuffer()).byteLength,
+              });
+            } catch (err) {
+              stages.imageTries.push({
+                host: (() => {
+                  try {
+                    return new URL(url).host;
+                  } catch {
+                    return url;
+                  }
+                })(),
+                error: err instanceof Error ? err.message : String(err),
+              });
+            }
+          }
         } catch (err) {
           stages.wikiError = err instanceof Error ? err.message : String(err);
         }
