@@ -665,9 +665,12 @@ deserves.
 
 **Step 1 — the art director.** A text model (Gemini structured output, with the free-first
 provider chain behind it) is asked for Bengali copy and design tokens in one JSON object:
-`headline` (≤ 45 characters), `highlight_word`, exactly three bullets *or* one pull-quote,
-`badge_text`, `footer_text`, a `layout_variant`, a `palette_id`, a `visual_style`, a
-procedural `texture`, and an English `image_prompt` that bans lettering. The schema lives
+`headline` (≤ 48 characters, cut at a word boundary), `highlight_word`, exactly three
+bullets *or* one pull-quote, `badge_text`, `footer_text`, a `layout_variant`, a `palette_id`,
+a `visual_style`, a procedural `texture`, and an English `image_prompt` that bans lettering.
+A model headline that is only a truncated prefix of the article title is rebuilt from the
+title, and a pull-quote that the story does not actually contain is replaced by its first
+sentence — a poster may not invent a quotation. The schema lives
 in `packages/llm/src/art-director.ts`. A model that answers badly is repaired, field by
 field; a model that is down is replaced by a deterministic planner that still writes a
 complete, story-specific plan. The poster never depends on the model being awake.
@@ -683,9 +686,18 @@ complete, story-specific plan. The poster never depends on the model being awake
 **Step 2 — the visual has no words in it.** The image model draws only the focal picture,
 at `1:1` for the split/grid layouts and `16:9` for the hero and spotlight (a portrait
 request asks the same shapes for `9:16`). The negative
-prompt (`DESIGN_IMAGE_NEGATIVE`) forbids text, letters, numbers, logos and identifiable
-faces — and deliberately does *not* forbid illustration, because the art director may have
-chosen one. If the image chain fails, the renderer draws the palette's textured wash.
+prompt (`DESIGN_IMAGE_NEGATIVE`) forbids text, letters, numbers and logos, but allows a
+recognisable public figure. Brand names are rewritten out of the provider prompt ("the GPU
+company", not "NVIDIA"), because a model cannot draw a wordmark without turning it into
+garbled lettering; the story still determines the person, the setting and the colour.
+If the image chain fails, the renderer draws the palette's textured wash.
+
+**A real person gets a real photograph.** When `storyAnchors()` finds a known public figure
+(Jensen Huang, Sam Altman, Elon Musk, Satya Nadella, Tim Cook, Mark Zuckerberg),
+`apps/web/src/lib/public-figure.ts` fetches that person's Wikipedia lead portrait and uses
+it as the focal visual for both frames. The image model is skipped, the footer carries
+`ছবি: উইকিমিডিয়া কমন্স`, and the fake `3D isometric render` style label is removed. A
+failed fetch falls through to the generated visual; a poster is never blocked on Wikipedia.
 
 **Step 3 — Bengali is HTML, never pixels from a model.** Five `1920×1080` layouts in
 `packages/poster/src/design/` receive `--bg-color`, `--accent-color`, `--card-bg`,
