@@ -250,6 +250,24 @@ async function handlePost(req: NextRequest) {
         title: str(body?.title) || "Jensen Huang",
       });
       stages.portrait = portrait ? `${portrait.name} (${portrait.bytes.length} bytes)` : null;
+      if (!portrait) {
+        try {
+          const res = await fetch(
+            "https://en.wikipedia.org/api/rest_v1/page/summary/Jensen_Huang",
+            {
+              signal: AbortSignal.timeout(6_000),
+              headers: {
+                "user-agent": "HoichoiPoster/1.0 (https://hoichoifeed.vercel.app; editorial poster)",
+                accept: "application/json",
+              },
+            },
+          );
+          stages.wikiStatus = res.status;
+          stages.wikiBody = (await res.text()).slice(0, 120);
+        } catch (err) {
+          stages.wikiError = err instanceof Error ? err.message : String(err);
+        }
+      }
       stages.stage = "browser";
       const png = await renderHtmlToPng("<html><body><h1>ok</h1></body></html>", {
         width: 200,
