@@ -699,6 +699,12 @@ it as the focal visual for both frames. The image model is skipped, the footer c
 `ছবি: উইকিমিডিয়া কমন্স`, and the fake `3D isometric render` style label is removed. A
 failed fetch falls through to the generated visual; a poster is never blocked on Wikipedia.
 
+**The inline copy is WebP.** Vercel caps a function response at 4.5 MB, and a 4:5 PNG plus
+its base64 envelope is ~4.8 MB — production answered with a blank 500 while the same render
+succeeded locally. The saved file is still the full-quality PNG; the `data_url` the CMS
+previews is a quality-88 WebP, so two frames fit in ~2 MB. `?format=image` continues to
+serve the PNG.
+
 **Step 3 — Bengali is HTML, never pixels from a model.** Five `1920×1080` layouts in
 `packages/poster/src/design/` receive `--bg-color`, `--accent-color`, `--card-bg`,
 `--text-primary` and `--text-muted` from the chosen palette. Each gets a seeded, code-drawn
