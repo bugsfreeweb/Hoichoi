@@ -354,9 +354,16 @@ export function storyAnchors(input: {
   title?: string | null;
   summary?: string | null;
   body?: string | null;
+  content?: string | null;
   tags?: string[] | null;
 }): string[] {
-  const text = [input.title, input.summary, input.body, ...(input.tags ?? [])]
+  const text = [
+    input.title,
+    input.summary,
+    input.body,
+    input.content,
+    ...(input.tags ?? []),
+  ]
     .filter(Boolean)
     .join(" ");
   const cues = extractVisualCues(text);

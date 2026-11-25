@@ -395,5 +395,17 @@ check(
   },
 );
 
+check("story content, not only the summary, reaches the anchors", () => {
+  const a = storyAnchors({
+    title: "Sylhet floods displace thousands",
+    content:
+      "Volunteers in raincoats unload sacks of rice from wooden boats at a relief camp.",
+  });
+  assert.ok(a.some((x) => /relief volunteers/.test(x)));
+  assert.ok(a.some((x) => /rescue boats/.test(x)));
+  assert.ok(a.some((x) => /sacks of rice/.test(x)));
+  assert.ok(!a.some((x) => /receding toward the horizon/.test(x)));
+});
+
 console.log(`
 [art-director] ${passed} checks passed`);

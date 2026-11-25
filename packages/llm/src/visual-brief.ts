@@ -344,9 +344,14 @@ const ENTRY: readonly Entry[] = [
     label: "medicine vials and a syringe tray",
   },
   {
-    re: /খাবার|food|meal|grain|\brice\b/i,
+    re: /sacks?\s+of\s+rice|bags?\s+of\s+rice|চালের\s+বস্তা/i,
     kind: "object",
-    label: "a plate of simple food",
+    label: "sacks of rice",
+  },
+  {
+    re: /rice\s+padd(?:y|ies)|paddy\s+field|ধান\s+খেত/i,
+    kind: "exterior",
+    label: "rice paddies",
   },
   {
     re: /টাকা|অর্থ|নোট|নগদ|money|cash|currency|banknote/i,
@@ -490,9 +495,16 @@ export function extractVisualSubjects(input: {
   title?: string | null;
   summary?: string | null;
   body?: string | null;
+  content?: string | null;
   tags?: string[] | null;
 }): VisualSubjects {
-  const text = [input.title, input.summary, input.body, ...(input.tags ?? [])]
+  const text = [
+    input.title,
+    input.summary,
+    input.body,
+    input.content,
+    ...(input.tags ?? []),
+  ]
     .filter(Boolean)
     .join(" ");
   if (!text) return empty();
@@ -553,10 +565,19 @@ export function extractVisualSubjects(input: {
   // A flooded road is a specific exterior; the generic rural road beside it
   // only asks the model to draw two settings.
   if (out.exteriors.includes("floodwater covering a village road")) {
-    out.exteriors = out.exteriors.filter((label) => label !== rural);
+    out.exteriors = out.exteriors.filter(
+      (label) =>
+        label !== rural && label !== "a road receding toward the horizon",
+    );
   }
 
-  out.labels = ORDER.flatMap((key) => out[key]).slice(0, 10);
+  // A crowd is not five near-duplicate people. Keep the four strongest roles
+  // so the setting, objects and weather still fit in the ten-label budget.
+  const people = out.people.slice(0, 4);
+  out.labels = [
+    ...people,
+    ...ORDER.filter((key) => key !== "people").flatMap((key) => out[key]),
+  ].slice(0, 10);
   return out;
 }
 
