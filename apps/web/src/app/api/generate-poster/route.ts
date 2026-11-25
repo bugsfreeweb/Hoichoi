@@ -482,7 +482,10 @@ async function handlePost(req: NextRequest) {
   // the post. The portrait is published alongside it, not instead of it.
   if (attach && primary.mediaPath) {
     try {
-      await updatePost(postId, { media_path: primary.mediaPath, media_origin: "ai" });
+      // `media_path` is stored relative; the API-served poster is rooted, so
+      // drop the slash and let mediaUrl() re-root it on read.
+      const attachPath = primary.mediaPath.replace(/^\/(?=api\/posters\/)/, "");
+      await updatePost(postId, { media_path: attachPath, media_origin: "ai" });
     } catch (err) {
       warnings.push(`পোস্টে যুক্ত করা যায়নি: ${err instanceof Error ? err.message : String(err)}`);
     }

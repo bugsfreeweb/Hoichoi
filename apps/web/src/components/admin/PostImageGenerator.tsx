@@ -991,5 +991,7 @@ function bnCount(n: number): string {
 
 function previewSrc(p: string): string {
   if (/^https?:\/\//i.test(p) || p.startsWith("/")) return p;
+  // A poster kept in `poster_images` is served from the API, not `/uploads`.
+  if (p.startsWith("api/posters/")) return `/${p}`;
   return `/uploads/${p.replace(/\\/g, "/")}`;
 }

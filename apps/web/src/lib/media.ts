@@ -18,6 +18,8 @@ export function mediaUrl(post: Pick<Post, "media_path" | "media_kind">): string 
   // `/uploads/…` or `/media/…`): use as-is. Stored media paths are always
   // relative, so this branch never changes existing behaviour.
   if (p.startsWith("/")) return p;
+  // A poster stored in the database is addressed by the public route.
+  if (p.startsWith("api/posters/")) return `/${p}`;
   return `/uploads/${p.replace(/\\/g, "/")}`;
 }
 

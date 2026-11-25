@@ -47,6 +47,7 @@ const publicFigure = read("apps/web/src/lib/public-figure.ts");
 const posterImages = read("packages/db/src/poster-images.ts");
 const posterImageRoute = read("apps/web/src/app/api/posters/[id]/route.ts");
 const posterImageMigration = read("packages/db/migrations/044_poster_images.sql");
+const mediaLib = read("apps/web/src/lib/media.ts");
 const aspectMigration = read("packages/db/migrations/041_poster_design_aspect.sql");
 const embedded = read("packages/db/src/migrations.generated.ts");
 
@@ -197,6 +198,8 @@ check("a poster survives a runtime with no writable disk", () => {
   assert.match(posterImageRoute, /max-age=31536000, immutable/);
   assert.match(posterImages, /INSERT INTO poster_images/);
   assert.match(postPage, /const shareImage = absolute\(portraitUrl \?\? webImage\)/);
+  assert.ok(route.includes('api/posters/'));
+  assert.match(mediaLib, /if \(p\.startsWith\("api\/posters\/"\)\) return `\/\$\{p\}`/);
 });
 
 check("the vocabulary is the brief's, once", () => {
