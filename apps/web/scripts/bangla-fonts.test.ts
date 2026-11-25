@@ -186,4 +186,21 @@ check("every family keeps its source licence note", () => {
   );
 });
 
+check("the font library lives in its own settings tab", () => {
+  const console_ = read("apps/web/src/components/admin/settings/SettingsConsole.tsx");
+  assert.match(console_, /key: "fonts"/);
+  assert.match(console_, /ফন্ট স্টুডিও/);
+  assert.match(console_, /tab === "fonts"/);
+  // It must not be buried inside the design tab any more.
+  const design = console_.slice(
+    console_.indexOf('tab === "design"'),
+    console_.indexOf('tab === "fonts"'),
+  );
+  assert.ok(!design.includes("TypographySection"));
+  assert.match(
+    read("apps/web/src/app/admin/(console)/settings/page.tsx"),
+    /initialTab=\{tab\}/,
+  );
+});
+
 console.log(`\n[web] bangla fonts: ${passed} checks passed`);

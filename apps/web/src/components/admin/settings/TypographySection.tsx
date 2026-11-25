@@ -73,8 +73,8 @@ export function TypographySection() {
             রিপোজিটরির <code className="font-mono-x">Bangla Fonts</code>{" "}
             ফোল্ডারের {BANGLA_FONTS.length}টি ইউনিকোড পরিবার এখানে বান্ডল করা আছে
             — কোনো Google Fonts রিকোয়েস্ট নেই। টাইটেল, বর্ণনা এবং ট্যাগ/বিভাগের জন্য
-            আলাদা ফন্ট বেছে নিন; বাকিগুলো{" "}
-            <code className="font-mono-x">.bnfont-*</code> ক্লাসে ব্যবহারযোগ্য।
+            এখনই আলাদা ফন্ট বেছে নিন। হেডার, সাইডবার, ফুটার, মন্তব্য, রিপোর্ট ও
+            অ্যাডমিন প্যানেলের নিজস্ব স্লট পরের ধাপে এই স্টুডিওতেই যোগ হবে।
           </p>
         </div>
         <span className="font-mono-x text-[10px] text-ink-soft">

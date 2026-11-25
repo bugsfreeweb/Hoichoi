@@ -32,6 +32,7 @@ type Tab =
   | "live-events"
   | "ads"
   | "design"
+  | "fonts"
   | "media"
   | "mail"
   | "maintenance"
@@ -43,6 +44,7 @@ const TABS: Array<{ key: Tab; emoji: string; bn: string; en: string }> = [
   { key: "live-events", emoji: "📡", bn: "লাইভ ইভেন্ট", en: "Live events" },
   { key: "ads", emoji: "📣", bn: "বিজ্ঞাপন", en: "Ads" },
   { key: "design", emoji: "🎨", bn: "ডিজাইন", en: "Design" },
+  { key: "fonts", emoji: "🔤", bn: "ফন্ট স্টুডিও", en: "Fonts Studio" },
   { key: "media", emoji: "🖼️", bn: "মিডিয়া স্টোরেজ", en: "Media Storage" },
   { key: "mail", emoji: "✉️", bn: "মেইল", en: "Mail" },
   { key: "maintenance", emoji: "🛠️", bn: "রক্ষণাবেক্ষণ", en: "Maintenance" },
@@ -271,6 +273,22 @@ export function SettingsConsole({
                 accentColor={initial.accent_color}
                 fullWidth
               />
+            </div>
+          )}
+          {tab === "fonts" && (
+            <div className="border border-ink/15 bg-paper-deep/40 p-2 sm:p-4">
+              <div className="mb-4">
+                <h3 className="font-sans-bn text-[17px] font-bold text-ink">
+                  ফন্ট স্টুডিও
+                </h3>
+                <p className="mt-1 max-w-4xl text-[12.5px] leading-relaxed text-ink-soft">
+                  পুরো সাইট, অ্যাডমিন কনসোল ও ডেস্কটপ অ্যাপের টাইপোগ্রাফি এখান থেকেই
+                  নিয়ন্ত্রণ হবে। এখন শিরোনাম, বডি ও ট্যাগ/বিভাগ আলাদা বেছে নেওয়া
+                  যায়; প্রতিটি সেকশনের নিজস্ব ফন্ট এই স্টুডিওতেই যোগ হবে। ফন্টের
+                  পরিবর্তন সঙ্গে সঙ্গে সংরক্ষিত হয় — নিচের “সংরক্ষণ করুন” বোতাম লাগবে
+                  না।
+                </p>
+              </div>
               <TypographySection />
             </div>
           )}
@@ -299,7 +317,7 @@ export function SettingsConsole({
           )}
         </div>
 
-        {tab !== "design" && tab !== "media" && (
+        {tab !== "design" && tab !== "fonts" && tab !== "media" && (
           <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-ink/15 pt-4">
             <button
               onClick={() => void save()}
