@@ -48,7 +48,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     ? mediaUrl({ media_path: portrait.media_path, media_kind: "image" })
     : null;
   const webImage = mediaUrl(post);
-  const shareImage = portraitUrl ?? webImage;
+  // og:image must be an absolute URL; a stored poster is served from this site
+  // (`/api/posters/…`) and a local media path is `/uploads/…`.
+  const absolute = (url: string | null): string | null =>
+    url && url.startsWith("/") ? `${siteUrl()}${url}` : url;
+  const shareImage = absolute(portraitUrl ?? webImage);
+  const twitterImage = absolute(webImage);
 
   // A link card is read in a feed, not on the page. Keep the article headline
   // as the document title, but let an editor supply a tighter card hook.
@@ -84,7 +89,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       card: "summary_large_image",
       title: ogTitle,
       description: ogDescription,
-      images: webImage ? [webImage] : undefined,
+      images: twitterImage ? [twitterImage] : undefined,
     },
   };
 }

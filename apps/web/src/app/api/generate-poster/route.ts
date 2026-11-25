@@ -77,6 +77,7 @@ import {
 } from "@hoichoi/shared-types";
 import { forbidden, requireApiRole } from "@/lib/auth";
 import { publicFigurePortrait } from "@/lib/public-figure";
+import { savePosterImage } from "@hoichoi/db";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -110,11 +111,16 @@ async function persistPoster(
   bytes: Buffer,
   contentType: string,
   postId: string,
+  aspect: PosterAspect,
   warnings: string[],
-): Promise<{ rel: string; mediaPath: string | null; stored: "remote" | "local" | "none" }> {
+): Promise<{
+  rel: string;
+  mediaPath: string | null;
+  stored: "remote" | "local" | "db" | "none";
+}> {
   const rel = randomMediaName("poster", extensionForMime(contentType));
   let mediaPath: string | null = null;
-  let stored: "remote" | "local" | "none" = "none";
+  let stored: "remote" | "local" | "db" | "none" = "none";
   try {
     const url = await uploadBufferRemote(rel, bytes, postId || "poster");
     if (url) {
@@ -135,7 +141,26 @@ async function persistPoster(
       mediaPath = rel;
       stored = "local";
     } catch {
-      warnings.push("ছবিটি সংরক্ষণ করা যায়নি — শুধু ইনলাইন ডেটা পাঠানো হয়েছে।");
+      /* no writable disk on a serverless runtime: use the database below */
+    }
+  }
+  if (!mediaPath) {
+    // A JPEG is both smaller than the print PNG and accepted by every social
+    // crawler; a WebP OG image is not universally supported.
+    try {
+      const jpeg = await sharp(bytes).jpeg({ quality: 86, mozjpeg: true }).toBuffer();
+      const id = await savePosterImage({
+        postId: postId || null,
+        aspect,
+        contentType: "image/jpeg",
+        bytes: jpeg,
+      });
+      mediaPath = `/api/posters/${id}`;
+      stored = "db";
+    } catch (err) {
+      warnings.push(
+        `ছবিটি সংরক্ষণ করা যায়নি — শুধু ইনলাইন ডেটা পাঠানো হয়েছে (${err instanceof Error ? err.message : String(err)})`,
+      );
     }
   }
   return { rel, mediaPath, stored };
@@ -420,7 +445,7 @@ async function handlePost(req: NextRequest) {
     rendered: Awaited<ReturnType<typeof renderDesignPoster>>;
     rel: string;
     mediaPath: string | null;
-    stored: "remote" | "local" | "none";
+    stored: "remote" | "local" | "db" | "none";
     visual: Visual | null;
     prompt: string;
   }> = [];
@@ -460,7 +485,13 @@ async function handlePost(req: NextRequest) {
     // Persist. The bytes are always returned inline as well, because a
     // serverless runtime may not be able to serve a file it just wrote — the
     // CMS must still be able to show and download the poster it asked for.
-    const saved = await persistPoster(rendered.bytes, rendered.contentType, postId, warnings);
+    const saved = await persistPoster(
+      rendered.bytes,
+      rendered.contentType,
+      postId,
+      aspect,
+      warnings,
+    );
     outputs.push({
       aspect,
       rendered,

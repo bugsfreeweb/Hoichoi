@@ -18,6 +18,7 @@ export * from "./source-errors";
 export * from "./media-objects";
 export * from "./post-images";
 export * from "./poster-designs";
+export * from "./poster-images";
 export * from "./traffic";
 export * from "./storage-report";
 export * from "./live-events";

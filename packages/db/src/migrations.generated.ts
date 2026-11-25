@@ -191,4 +191,8 @@ export const EMBEDDED_MIGRATIONS: readonly EmbeddedMigration[] = [
     name: "043_post_social_copy",
     sql: "-- Optional copy for the link card.\n--\n-- The article headline is written for the page; a link card is read in a feed,\n-- often at half the width and beside someone else's post. Editors need to\n-- tighten the hook without changing the published headline. Null means \"use the\n-- article title/summary\", so old rows and untouched posts behave exactly as\n-- before.\n\nALTER TABLE posts ADD COLUMN social_title TEXT;\nALTER TABLE posts ADD COLUMN social_description TEXT;\n",
   },
+  {
+    name: "044_poster_images",
+    sql: "-- A rendered poster has to outlive the request that made it.\n-- Vercel's filesystem is read-only and a function response is capped at 4.5 MB,\n-- so when no remote media adapter is configured the generated JPEG is stored\n-- here and served by GET /api/posters/:id.\nCREATE TABLE IF NOT EXISTS poster_images (\n  id TEXT PRIMARY KEY,\n  post_id TEXT REFERENCES posts(id) ON DELETE CASCADE,\n  aspect TEXT NOT NULL,\n  content_type TEXT NOT NULL DEFAULT 'image/jpeg',\n  data TEXT NOT NULL,\n  bytes INTEGER NOT NULL,\n  created_at TEXT NOT NULL\n);\nCREATE INDEX IF NOT EXISTS idx_poster_images_post ON poster_images (post_id, created_at DESC);\n",
+  },
 ];

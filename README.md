@@ -705,6 +705,13 @@ succeeded locally. The saved file is still the full-quality PNG; the `data_url` 
 previews is a quality-88 WebP, so two frames fit in ~2 MB. `?format=image` continues to
 serve the PNG.
 
+**A poster outlives the request.** Vercel's filesystem is read-only and a GitHub media
+adapter needs a token production may not carry. When neither remote nor local storage is
+available, the generated JPEG is written to `poster_images` (`044_poster_images.sql`) and
+served from the public, immutable `GET /api/posters/:id`; the post's `media_path` and its
+`og:image` point at that URL. This is why a generated poster can still become a share card
+on a serverless deploy with no bucket configured.
+
 **Step 3 — Bengali is HTML, never pixels from a model.** Five `1920×1080` layouts in
 `packages/poster/src/design/` receive `--bg-color`, `--accent-color`, `--card-bg`,
 `--text-primary` and `--text-muted` from the chosen palette. Each gets a seeded, code-drawn

@@ -44,6 +44,9 @@ const adminPostPage = read("apps/web/src/app/admin/(console)/posts/[id]/page.tsx
 const postEditor = read("apps/web/src/components/admin/PostEditor.tsx");
 const migration = read("packages/db/migrations/040_poster_designs.sql");
 const publicFigure = read("apps/web/src/lib/public-figure.ts");
+const posterImages = read("packages/db/src/poster-images.ts");
+const posterImageRoute = read("apps/web/src/app/api/posters/[id]/route.ts");
+const posterImageMigration = read("packages/db/migrations/044_poster_images.sql");
 const aspectMigration = read("packages/db/migrations/041_poster_design_aspect.sql");
 const embedded = read("packages/db/src/migrations.generated.ts");
 
@@ -93,10 +96,10 @@ check("the CMS offers regenerate style beside download poster", () => {
 
 check("the 4:5 poster becomes the social image, while Twitter keeps 16:9", () => {
   assert.match(postPage, /latestPosterDesign\(postRaw\.id, "4:5"\)/);
-  assert.match(postPage, /const shareImage = portraitUrl \?\? webImage/);
+  assert.match(postPage, /const shareImage = absolute\(portraitUrl \?\? webImage\)/);
   assert.match(postPage, /images: shareImage\s*\?/);
   assert.match(postPage, /width: 1080, height: 1350/);
-  assert.match(postPage, /card: "summary_large_image"[\s\S]*?images: webImage \? \[webImage\]/);
+  assert.match(postPage, /card: "summary_large_image"[\s\S]*?images: twitterImage \? \[twitterImage\]/);
   assert.match(postPage, /const shareSrc = portrait\?\.media_path/);
   assert.match(posterDb, /WHERE post_id = \? AND aspect = \? AND media_path IS NOT NULL/);
 });
@@ -184,6 +187,16 @@ check("the inline preview stays under the serverless response limit", () => {
   assert.match(route, /webp\(\{ quality: 88, effort: 4 \}\)/);
   assert.match(route, /preview\.length \* 1\.37 < 4_200_000/);
   assert.match(route, /content_type: inlineType/);
+});
+
+check("a poster survives a runtime with no writable disk", () => {
+  assert.match(posterImageMigration, /CREATE TABLE IF NOT EXISTS poster_images/);
+  assert.match(route, /savePosterImage\("?/);
+  assert.match(route, /mediaPath = `\/api\/posters\/\$\{id\}`/);
+  assert.match(posterImageRoute, /getPosterImage\(id\)/);
+  assert.match(posterImageRoute, /max-age=31536000, immutable/);
+  assert.match(posterImages, /INSERT INTO poster_images/);
+  assert.match(postPage, /const shareImage = absolute\(portraitUrl \?\? webImage\)/);
 });
 
 check("the vocabulary is the brief's, once", () => {
