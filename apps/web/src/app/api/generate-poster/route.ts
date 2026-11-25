@@ -120,6 +120,7 @@ async function persistPoster(
   const rel = randomMediaName("poster", extensionForMime(contentType));
   let mediaPath: string | null = null;
   let stored: "remote" | "local" | "db" | "none" = "none";
+  let storageError: string | null = null;
   try {
     const url = await uploadBufferRemote(rel, bytes, postId || "poster");
     if (url) {
@@ -127,7 +128,7 @@ async function persistPoster(
       stored = "remote";
     }
   } catch (err) {
-    warnings.push(`রিমোট স্টোরেজ: ${err instanceof Error ? err.message : String(err)}`);
+    storageError = `রিমোট স্টোরেজ: ${err instanceof Error ? err.message : String(err)}`;
   }
   if (!mediaPath) {
     try {
@@ -157,11 +158,12 @@ async function persistPoster(
       mediaPath = `/api/posters/${id}`;
       stored = "db";
     } catch (err) {
-      warnings.push(
-        `ছবিটি সংরক্ষণ করা যায়নি — শুধু ইনলাইন ডেটা পাঠানো হয়েছে (${err instanceof Error ? err.message : String(err)})`,
-      );
+      storageError = `ছবিটি সংরক্ষণ করা যায়নি — শুধু ইনলাইন ডেটা পাঠানো হয়েছে (${err instanceof Error ? err.message : String(err)})`;
     }
   }
+  // A working database fallback is not a warning: production has no bucket and
+  // the editor should not see a red storage notice on every successful poster.
+  if (!mediaPath && storageError) warnings.push(storageError);
   return { rel, mediaPath, stored };
 }
 
