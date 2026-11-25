@@ -58,6 +58,10 @@ check("the web panel explains the fix and links to the alert", () => {
     throw new Error("no explicit refresh");
   if (!src.includes("GH_SECURITY_TOKEN"))
     throw new Error("unconfigured state does not say what to add");
+  // A single backslash in a JS string is dropped by the runtime: the hint then
+  // reads "s{0,64}", which is not a regex. It must be written escaped.
+  if (!src.includes('\\s{0,64}'))
+    throw new Error("the ReDoS hint lost its backslash");
 });
 
 check("the bell carries the count for admins only", () => {
