@@ -191,13 +191,7 @@ const HEADLINE_MAX = 48;
 
 /** Cut at a word boundary, so a headline never ends in half a conjunct. */
 function clipHeadline(value: string, max = HEADLINE_MAX): string {
-  const text = value.replace(/\s+/g, " ").trim();
-  const chars = Array.from(text);
-  if (chars.length <= max) return text;
-  const cut = chars.slice(0, max).join("");
-  const space = cut.lastIndexOf(" ");
-  const base = space >= Math.floor(max * 0.55) ? cut.slice(0, space) : cut;
-  return base.replace(/[।,;:\-–—\s]+$/u, "").trim() || cut.trim();
+  return clipPhrase(value, max);
 }
 
 /**
@@ -380,7 +374,7 @@ function fallbackPlan(
   const isQuoteStory = /culture|opinion|lifestyle/i.test(article.category ?? "");
   const bullets = isQuoteStory
     ? []
-    : sentences.slice(0, 3).map((s) => clampText(s, 72));
+    : sentences.slice(0, 3).map((s) => clipPhrase(s, 72));
   const dateText = banglaDateLine(article.publishedAt);
   const source = clampText(article.source, 40) || "হৈচৈ";
   const wanted = avoidRepetition(
@@ -493,6 +487,31 @@ function groundedPrompt(
   return out.replace(/\s+/g, " ").trim();
 }
 
+/** A Bengali-aware phrase cut: grapheme-safe and never mid-word. */
+function clipPhrase(value: string, max: number): string {
+  const text = value.replace(/\s+/g, " ").trim();
+  if (Array.from(text).length <= max) return text;
+  // Segmenter keeps a conjunct with its vowel signs together; the *budget* is
+  // still counted in code points, which is what the renderer's line length is
+  // measured in. Counting graphemes instead lets a Bengali sentence run 30%
+  // past its column.
+  let cut = "";
+  let used = 0;
+  try {
+    for (const part of new Intl.Segmenter("bn", { granularity: "grapheme" }).segment(text)) {
+      const width = Array.from(part.segment).length;
+      if (used + width > max) break;
+      cut += part.segment;
+      used += width;
+    }
+  } catch {
+    cut = Array.from(text).slice(0, max).join("");
+  }
+  const space = cut.lastIndexOf(" ");
+  const base = space >= Math.floor(max * 0.55) ? cut.slice(0, space) : cut;
+  return base.replace(/[।,;:\-–—\s]+$/u, "").trim() || cut.trim();
+}
+
 /** The first real sentence of the article, used when a model quote is invented. */
 function firstSentence(article: PosterArticle): string {
   const text = [article.summary, article.content].filter(Boolean).join(" ").trim();
@@ -547,9 +566,9 @@ export function normalisePlan(
 
   const mode = obj.content_mode === "quote" ? "quote" : obj.content_mode === "bullets" ? "bullets" : null;
   const rawBullets = Array.isArray(obj.bullets)
-    ? obj.bullets.map((b) => clampText(b, 78)).filter(Boolean)
+    ? obj.bullets.map((b) => clipPhrase(b, 78)).filter(Boolean)
     : [];
-  const rawQuote = clampText(obj.pull_quote, 140);
+  const rawQuote = clipPhrase(clampText(obj.pull_quote, 220), 140);
   let bullets: string[] = [];
   let pullQuote: string | null = null;
   if (mode === "quote" || (!mode && rawQuote && rawBullets.length === 0)) {
@@ -597,7 +616,7 @@ export function normalisePlan(
     bullets,
     pullQuote,
     badgeText: correctedBadge(obj.badge_text, article, fallback.badgeText),
-    footerText: clampText(obj.footer_text, 90) || fallback.footerText,
+    footerText: clipPhrase(clampText(obj.footer_text, 140), 90) || fallback.footerText,
     layout: rotated.layout,
     paletteId: rotated.paletteId,
     visualStyle: style,

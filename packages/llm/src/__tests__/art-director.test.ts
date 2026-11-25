@@ -180,6 +180,15 @@ check("a truncated model headline is rebuilt from the title at a word boundary",
   assert.ok(plan.headline.includes("নিভিডিয়ার"));
 });
 
+check("a fallback bullet ends on a word, not half a conjunct", () => {
+  const plan = normalisePlan(null, nvidia, []);
+  assert.ok(plan.bullets.length >= 1);
+  for (const bullet of plan.bullets) {
+    assert.ok(Array.from(bullet).length <= 72, `${Array.from(bullet).length}`);
+    assert.ok(!bullet.endsWith("হ"), bullet);
+  }
+});
+
 check("an invented quote is replaced by a sentence the story actually contains", () => {
   const plan = normalisePlan(
     { content_mode: "quote", pull_quote: "‘আমি এখানে ফিরে এসে গর্বিত’ – জেসেন হুয়াং" },

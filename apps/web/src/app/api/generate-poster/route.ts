@@ -54,8 +54,6 @@ import {
   imageSizeFor,
   orientImagePrompt,
   paletteSummary,
-  publicFigureFor,
-  storyAnchors,
   type PosterArticle,
 } from "@hoichoi/llm";
 import {
@@ -65,7 +63,6 @@ import {
   PosterBrowserUnavailable,
   focalAspectFor,
   renderDesignPoster,
-  renderHtmlToPng,
 } from "@hoichoi/poster";
 import {
   POSTER_ASPECTS,
@@ -241,95 +238,6 @@ async function handlePost(req: NextRequest) {
   if (user.role !== "admin" && user.role !== "editor") return forbidden();
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
-
-  // Admin-only deployment probe: tells the operator which step a serverless
-  // runtime can actually reach, without spending a text or image generation.
-  if (body?.diagnose === true) {
-    const stages: Record<string, unknown> = { stage: "start" };
-    try {
-      stages.stage = "portrait";
-      const probeTitle = str(body?.title) || "Jensen Huang";
-      stages.probeTitle = probeTitle;
-      stages.anchors = storyAnchors({ title: probeTitle });
-      stages.figure = publicFigureFor({ title: probeTitle });
-      const portrait = await publicFigurePortrait({
-        title: str(body?.title) || "Jensen Huang",
-      });
-      stages.portrait = portrait ? `${portrait.name} (${portrait.bytes.length} bytes)` : null;
-      if (!portrait) {
-        try {
-          const res = await fetch(
-            "https://en.wikipedia.org/api/rest_v1/page/summary/Jensen_Huang",
-            {
-              signal: AbortSignal.timeout(6_000),
-              headers: {
-                "user-agent": "HoichoiPoster/1.0 (https://hoichoifeed.vercel.app; editorial poster)",
-                accept: "application/json",
-              },
-            },
-          );
-          stages.wikiStatus = res.status;
-          const wikiBody = await res.text();
-          stages.wikiBody = wikiBody.slice(0, 120);
-          const wiki = JSON.parse(wikiBody) as {
-            originalimage?: { source?: string };
-            thumbnail?: { source?: string };
-          };
-          const candidates = [wiki.thumbnail?.source, wiki.originalimage?.source].filter(
-            (u): u is string => Boolean(u),
-          );
-          const imageTries: Array<Record<string, unknown>> = [];
-          for (const url of candidates) {
-            try {
-              const img = await fetch(url, {
-                signal: AbortSignal.timeout(8_000),
-                headers: {
-                  "user-agent": "HoichoiPoster/1.0 (https://hoichoifeed.vercel.app)",
-                  accept: "image/*",
-                  referer: "https://en.wikipedia.org/",
-                },
-              });
-              imageTries.push({
-                host: new URL(url).host,
-                status: img.status,
-                type: img.headers.get("content-type"),
-                length: (await img.arrayBuffer()).byteLength,
-              });
-            } catch (err) {
-              imageTries.push({
-                host: (() => {
-                  try {
-                    return new URL(url).host;
-                  } catch {
-                    return url;
-                  }
-                })(),
-                error: err instanceof Error ? err.message : String(err),
-              });
-            }
-          }
-          stages.imageTries = imageTries;
-        } catch (err) {
-          stages.wikiError = err instanceof Error ? err.message : String(err);
-        }
-      }
-      stages.stage = "browser";
-      const png = await renderHtmlToPng("<html><body><h1>ok</h1></body></html>", {
-        width: 200,
-        height: 100,
-      });
-      stages.stage = "done";
-      stages.png = png.length;
-      return NextResponse.json({ ok: true, ...stages });
-    } catch (err) {
-      return NextResponse.json({
-        ok: false,
-        ...stages,
-        detail: err instanceof Error ? err.message : String(err),
-        stack: err instanceof Error ? err.stack?.split("\n").slice(0, 4) : null,
-      });
-    }
-  }
 
   const postId = str(body?.postId);
 
