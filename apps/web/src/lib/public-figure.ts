@@ -27,7 +27,10 @@ async function fetchBytes(url: string, signal: AbortSignal): Promise<Buffer | nu
     headers: {
       // Wikimedia asks API clients to identify themselves.
       "user-agent": "HoichoiPoster/1.0 (https://hoichoifeed.vercel.app; editorial poster)",
-      accept: "image/jpeg,image/png,image/webp",
+      accept: "image/jpeg,image/png,image/webp,image/*;q=0.8",
+      "accept-language": "en-US,en;q=0.9",
+      // Wikimedia's upload host treats a bare API client as a hotlink.
+      referer: "https://en.wikipedia.org/",
     },
   });
   if (!res.ok) return null;
@@ -53,6 +56,7 @@ export async function publicFigurePortrait(input: {
     accept: "application/json",
   };
   const urls: string[] = [];
+  const thumbUrls: string[] = [];
   // The REST summary is the shortest path, but some cloud egress ranges get a
   // 403 there. The Action API and the Wikimedia core API expose the same lead
   // image, so try all three before giving up.
@@ -70,19 +74,22 @@ export async function publicFigurePortrait(input: {
         title?: string;
         query?: { pages?: Array<{ title?: string; thumbnail?: { source?: string } }> };
       };
-      const url =
-        data.originalimage?.source ??
-        data.thumbnail?.source ??
-        data.query?.pages?.[0]?.thumbnail?.source;
-      if (url) {
-        urls.push(url);
-        break;
+      const original = data.originalimage?.source;
+      const thumb =
+        data.thumbnail?.source ?? data.query?.pages?.[0]?.thumbnail?.source;
+      if (thumb) {
+        // The thumbnail host is served separately from upload.wikimedia.org and
+        // is more reliable from cloud egress. Ask it for a print-sized copy.
+        thumbUrls.push(thumb.replace(/\/\d+px-/, "/1400px-"));
+        thumbUrls.push(thumb);
       }
+      if (original) urls.push(original);
+      if (original || thumb) break;
     } catch {
       continue;
     }
   }
-  for (const url of urls) {
+  for (const url of [...thumbUrls, ...urls]) {
     const bytes = await fetchBytes(url, AbortSignal.timeout(10_000)).catch(() => null);
     if (!bytes) continue;
     return {
