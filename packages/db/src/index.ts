@@ -4,7 +4,13 @@
  */
 export * from "./client";
 export * from "./rows";
-export { banglaDate, deskAccent, deskFor, deskForCategory, deskLabel } from "./plate-meta";
+export {
+  banglaDate,
+  deskAccent,
+  deskFor,
+  deskForCategory,
+  deskLabel,
+} from "./plate-meta";
 export * from "./archive";
 export * from "./media";
 export * from "./media-storage";
@@ -83,24 +89,34 @@ import { randomUUID } from "node:crypto";
 import { getClient, isRemoteDatabaseUrl, nowIso } from "./client";
 import { logDeletion } from "./deletion-log";
 import { purgePostMedia } from "./post-media-cleanup";
-import { mapCategory, mapNotice, mapPost, parseJson, pickCategoryDot } from "./rows";
+import {
+  mapCategory,
+  mapNotice,
+  mapPost,
+  parseJson,
+  pickCategoryDot,
+} from "./rows";
 import { DEFAULT_MEDIA_STORAGE } from "./media-storage";
 
 /** Deep-merge a raw nested `maintenance` value over the blueprint. */
-export function parseMaintenanceConfig(
-  value: unknown,
-): MaintenanceSiteConfig {
-  const merged: MaintenanceSiteConfig = JSON.parse(JSON.stringify(DEFAULT_APP_CONFIG.maintenance));
-  if (!value || typeof value !== "object" || Array.isArray(value)) return merged;
+export function parseMaintenanceConfig(value: unknown): MaintenanceSiteConfig {
+  const merged: MaintenanceSiteConfig = JSON.parse(
+    JSON.stringify(DEFAULT_APP_CONFIG.maintenance),
+  );
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    return merged;
   const p = value as Record<string, unknown>;
 
-  if (typeof p.theme === "string") merged.theme = p.theme as MaintenanceSiteConfig["theme"];
-  if (typeof p.language === "string") merged.language = p.language as MaintenanceSiteConfig["language"];
+  if (typeof p.theme === "string")
+    merged.theme = p.theme as MaintenanceSiteConfig["theme"];
+  if (typeof p.language === "string")
+    merged.language = p.language as MaintenanceSiteConfig["language"];
   if (p.brand && typeof p.brand === "object") {
     const b = p.brand as Record<string, unknown>;
     if (typeof b.mark === "string" && b.mark) merged.brand.mark = b.mark;
     if (typeof b.name === "string" && b.name) merged.brand.name = b.name;
-    if (typeof b.nameBn === "string" && b.nameBn) merged.brand.nameBn = b.nameBn;
+    if (typeof b.nameBn === "string" && b.nameBn)
+      merged.brand.nameBn = b.nameBn;
   }
   const copy = (key: "copyBn" | "copyEn") => {
     const c = p[key] as Record<string, unknown> | undefined;
@@ -111,11 +127,25 @@ export function parseMaintenanceConfig(
   };
   copy("copyBn");
   copy("copyEn");
-  for (const key of ["footerNoteBn", "footerNoteEn", "contactEmail", "contactPhone"] as const) {
-    if (typeof p[key] === "string") (merged as unknown as Record<string, string>)[key] = p[key];
+  for (const key of [
+    "footerNoteBn",
+    "footerNoteEn",
+    "contactEmail",
+    "contactPhone",
+  ] as const) {
+    if (typeof p[key] === "string")
+      (merged as unknown as Record<string, string>)[key] = p[key];
   }
-  for (const key of ["showPipeline", "showStats", "showTicker", "showNewsletter", "showContact", "socialsEnabled"] as const) {
-    if (typeof p[key] === "boolean") (merged as unknown as Record<string, boolean>)[key] = p[key];
+  for (const key of [
+    "showPipeline",
+    "showStats",
+    "showTicker",
+    "showNewsletter",
+    "showContact",
+    "socialsEnabled",
+  ] as const) {
+    if (typeof p[key] === "boolean")
+      (merged as unknown as Record<string, boolean>)[key] = p[key];
   }
   if (p.countdown && typeof p.countdown === "object") {
     const c = p.countdown as Record<string, unknown>;
@@ -125,7 +155,8 @@ export function parseMaintenanceConfig(
   if (p.progress && typeof p.progress === "object") {
     const c = p.progress as Record<string, unknown>;
     if (typeof c.enabled === "boolean") merged.progress.enabled = c.enabled;
-    if (typeof c.value === "number" && Number.isFinite(c.value)) merged.progress.value = Math.max(0, Math.min(100, c.value));
+    if (typeof c.value === "number" && Number.isFinite(c.value))
+      merged.progress.value = Math.max(0, Math.min(100, c.value));
   }
   if (p.schedule && typeof p.schedule === "object") {
     const c = p.schedule as Record<string, unknown>;
@@ -135,11 +166,21 @@ export function parseMaintenanceConfig(
     if (typeof c.autoLive === "boolean") merged.schedule.autoLive = c.autoLive;
   }
   for (const lang of ["tickerBn", "tickerEn"] as const) {
-    if (Array.isArray(p[lang])) merged[lang] = (p[lang] as unknown[]).filter((x) => typeof x === "string").map(String);
+    if (Array.isArray(p[lang]))
+      merged[lang] = (p[lang] as unknown[])
+        .filter((x) => typeof x === "string")
+        .map(String);
   }
   if (p.socials && typeof p.socials === "object") {
     const s = p.socials as Record<string, unknown>;
-    for (const key of ["facebook", "x", "instagram", "youtube", "github", "linkedin"] as const) {
+    for (const key of [
+      "facebook",
+      "x",
+      "instagram",
+      "youtube",
+      "github",
+      "linkedin",
+    ] as const) {
       if (typeof s[key] === "string") merged.socials[key] = s[key];
     }
   }
@@ -158,7 +199,8 @@ export function parseMaintenanceConfig(
   if (p.seo && typeof p.seo === "object") {
     const s = p.seo as Record<string, unknown>;
     if (typeof s.title === "string") merged.seo.title = s.title;
-    if (typeof s.description === "string") merged.seo.description = s.description;
+    if (typeof s.description === "string")
+      merged.seo.description = s.description;
     if (typeof s.noIndex === "boolean") merged.seo.noIndex = s.noIndex;
   }
   return merged;
@@ -186,7 +228,8 @@ export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
         if (v && typeof v === "object") {
           const t = v as Partial<SiteTypography>;
           merged.typography = {
-            headline: typeof t.headline === "string" ? t.headline.slice(0, 64) : "",
+            headline:
+              typeof t.headline === "string" ? t.headline.slice(0, 64) : "",
             body: typeof t.body === "string" ? t.body.slice(0, 64) : "",
             meta: typeof t.meta === "string" ? t.meta.slice(0, 64) : "",
           };
@@ -194,7 +237,9 @@ export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
       } else if (k === "footer_socials") {
         if (Array.isArray(v)) {
           merged.footer_socials = (v as unknown[])
-            .filter((x): x is Record<string, unknown> => !!x && typeof x === "object")
+            .filter(
+              (x): x is Record<string, unknown> => !!x && typeof x === "object",
+            )
             .map((x) => ({
               label: String(x.label ?? "").slice(0, 60),
               url: String(x.url ?? "").slice(0, 500),
@@ -224,7 +269,8 @@ export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
           "typewriter",
         ];
         if (typeof v === "string" && allowed.includes(v)) {
-          merged.hero_headline_motion = v as SiteAppConfig["hero_headline_motion"];
+          merged.hero_headline_motion =
+            v as SiteAppConfig["hero_headline_motion"];
         }
       } else if (k === "hero_scene_style") {
         const allowed = [
@@ -251,23 +297,46 @@ export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
       } else if (k === "hero_effects") {
         if (v && typeof v === "object") {
           const he = v as Partial<HeroEffects>;
-          for (const key of Object.keys(merged.hero_effects) as Array<keyof HeroEffects>) {
-            if (typeof he[key] === "boolean") merged.hero_effects[key] = he[key] as boolean;
+          for (const key of Object.keys(merged.hero_effects) as Array<
+            keyof HeroEffects
+          >) {
+            if (typeof he[key] === "boolean")
+              merged.hero_effects[key] = he[key] as boolean;
           }
         }
       } else if (k === "live_events") {
         if (v && typeof v === "object" && !Array.isArray(v)) {
           const live = v as Partial<SiteAppConfig["live_events"]>;
-          const themes = ["stage", "broadsheet", "scoreboard", "timeline", "compact", "studio"];
-          if (typeof live.default_theme === "string" && themes.includes(live.default_theme)) {
-            merged.live_events.default_theme = live.default_theme as SiteAppConfig["live_events"]["default_theme"];
+          const themes = [
+            "stage",
+            "broadsheet",
+            "scoreboard",
+            "timeline",
+            "compact",
+            "studio",
+          ];
+          if (
+            typeof live.default_theme === "string" &&
+            themes.includes(live.default_theme)
+          ) {
+            merged.live_events.default_theme =
+              live.default_theme as SiteAppConfig["live_events"]["default_theme"];
           }
-          if (typeof live.refresh_seconds === "number" && Number.isFinite(live.refresh_seconds)) {
-            merged.live_events.refresh_seconds = Math.min(60, Math.max(4, Math.trunc(live.refresh_seconds)));
+          if (
+            typeof live.refresh_seconds === "number" &&
+            Number.isFinite(live.refresh_seconds)
+          ) {
+            merged.live_events.refresh_seconds = Math.min(
+              60,
+              Math.max(4, Math.trunc(live.refresh_seconds)),
+            );
           }
-          if (typeof live.floating_player === "boolean") merged.live_events.floating_player = live.floating_player;
-          if (typeof live.auto_moderation === "boolean") merged.live_events.auto_moderation = live.auto_moderation;
-          if (typeof live.ticker_label === "string") merged.live_events.ticker_label = live.ticker_label.slice(0, 60);
+          if (typeof live.floating_player === "boolean")
+            merged.live_events.floating_player = live.floating_player;
+          if (typeof live.auto_moderation === "boolean")
+            merged.live_events.auto_moderation = live.auto_moderation;
+          if (typeof live.ticker_label === "string")
+            merged.live_events.ticker_label = live.ticker_label.slice(0, 60);
           if (Array.isArray(live.banned_words)) {
             merged.live_events.banned_words = live.banned_words
               .filter((word): word is string => typeof word === "string")
@@ -321,17 +390,26 @@ export function mapSettings(row: Record<string, unknown>): SiteSettings {
   const str = (v: unknown, fallback = "") => String(v ?? fallback);
   return {
     id: 1,
-    pipeline_hours: Number(row.pipeline_hours ?? DEFAULT_SETTINGS.pipeline_hours),
+    pipeline_hours: Number(
+      row.pipeline_hours ?? DEFAULT_SETTINGS.pipeline_hours,
+    ),
     // Guard the range here rather than trusting a hand-edited row: a stored 90
     // would be sent straight to the provider and rejected mid-run.
-    llm_temperature: Math.min(1, Math.max(0, Number(row.llm_temperature ?? 0.3))),
+    llm_temperature: Math.min(
+      1,
+      Math.max(0, Number(row.llm_temperature ?? 0.3)),
+    ),
     fact_gate: Math.min(100, Math.max(0, Number(row.fact_gate ?? 90))),
     site_name: str(row.site_name, DEFAULT_SETTINGS.site_name),
     contact_email: str(row.contact_email),
     police_helpline: str(row.police_helpline, DEFAULT_SETTINGS.police_helpline),
     child_helpline: str(row.child_helpline, DEFAULT_SETTINGS.child_helpline),
-    archive_visible_days: Number(row.archive_visible_days ?? DEFAULT_SETTINGS.archive_visible_days),
-    archive_retention_days: Number(row.archive_retention_days ?? DEFAULT_SETTINGS.archive_retention_days),
+    archive_visible_days: Number(
+      row.archive_visible_days ?? DEFAULT_SETTINGS.archive_visible_days,
+    ),
+    archive_retention_days: Number(
+      row.archive_retention_days ?? DEFAULT_SETTINGS.archive_retention_days,
+    ),
     slogan_bn: str(row.slogan_bn, DEFAULT_SETTINGS.slogan_bn),
     tagline: str(row.tagline, DEFAULT_SETTINGS.tagline),
     logo_url: (row.logo_url as string | null) ?? null,
@@ -342,13 +420,19 @@ export function mapSettings(row: Record<string, unknown>): SiteSettings {
     ad_rect_html: (row.ad_rect_html as string | null) ?? null,
     ad_infeed_html: (row.ad_infeed_html as string | null) ?? null,
     ad_strip_html: (row.ad_strip_html as string | null) ?? null,
-    app_config_json: (row.app_config_json as string | null) ?? JSON.stringify(DEFAULT_APP_CONFIG),
-    media_storage_json: (row.media_storage_json as string | null) ?? JSON.stringify(DEFAULT_MEDIA_STORAGE),
+    app_config_json:
+      (row.app_config_json as string | null) ??
+      JSON.stringify(DEFAULT_APP_CONFIG),
+    media_storage_json:
+      (row.media_storage_json as string | null) ??
+      JSON.stringify(DEFAULT_MEDIA_STORAGE),
     default_variant: str(row.default_variant, DEFAULT_VARIANT),
     // Absent on a database that predates migration 034; the ALTER adds the
     // column, but an older worker may read before it runs.
     collection_paused: Number(row.collection_paused ?? 0) === 1 ? 1 : 0,
-    collection_paused_reason: row.collection_paused_reason ? String(row.collection_paused_reason) : null,
+    collection_paused_reason: row.collection_paused_reason
+      ? String(row.collection_paused_reason)
+      : null,
   };
 }
 
@@ -361,7 +445,9 @@ export async function getSettings(): Promise<SiteSettings> {
 }
 
 /** Whitelisted, idempotent settings update (skips unknown keys). */
-export async function updateSettings(fields: Partial<SiteSettings>): Promise<void> {
+export async function updateSettings(
+  fields: Partial<SiteSettings>,
+): Promise<void> {
   const client = getClient();
   const allowed: Array<keyof SiteSettings> = [
     "pipeline_hours",
@@ -393,7 +479,12 @@ export async function updateSettings(fields: Partial<SiteSettings>): Promise<voi
   if (fields.favicon_url === "") fields.favicon_url = null;
   if (fields.footer_about_bn === "") fields.footer_about_bn = null;
   if (fields.media_storage_json === "") fields.media_storage_json = null;
-  const adSlotKeys = ["ad_leaderboard_html", "ad_rect_html", "ad_infeed_html", "ad_strip_html"] as const;
+  const adSlotKeys = [
+    "ad_leaderboard_html",
+    "ad_rect_html",
+    "ad_infeed_html",
+    "ad_strip_html",
+  ] as const;
   for (const k of adSlotKeys) {
     if (fields[k] === "") fields[k] = null;
   }
@@ -402,14 +493,24 @@ export async function updateSettings(fields: Partial<SiteSettings>): Promise<voi
   for (const k of allowed) {
     const v = fields[k];
     if (v === undefined) continue;
-    if (v === null && k !== "logo_url" && k !== "favicon_url" && k !== "footer_about_bn" && !adSlotKeys.includes(k as (typeof adSlotKeys)[number])) continue;
+    if (
+      v === null &&
+      k !== "logo_url" &&
+      k !== "favicon_url" &&
+      k !== "footer_about_bn" &&
+      !adSlotKeys.includes(k as (typeof adSlotKeys)[number])
+    )
+      continue;
     sets.push(`${k} = ?`);
     args.push(v as InValue);
   }
   if (sets.length === 0) return;
   sets.push("updated_at = ?");
   args.push(nowIso());
-  await client.execute({ sql: `UPDATE settings SET ${sets.join(", ")} WHERE id = 1`, args });
+  await client.execute({
+    sql: `UPDATE settings SET ${sets.join(", ")} WHERE id = 1`,
+    args,
+  });
 }
 
 /* ---------------- section variant engine (scaffold, default-only) ---------------- */
@@ -419,7 +520,8 @@ function mapSectionRow(row: Record<string, unknown>): SectionRow {
   if (row.config_json) {
     try {
       const parsed = JSON.parse(String(row.config_json));
-      if (parsed && typeof parsed === "object") config = parsed as Record<string, unknown>;
+      if (parsed && typeof parsed === "object")
+        config = parsed as Record<string, unknown>;
     } catch {
       config = null;
     }
@@ -498,7 +600,9 @@ export async function getSiteVariant(): Promise<string> {
 
 /** Records the site-wide default variant. Reserved for the mockup variants. */
 export async function setSiteVariant(variant: string): Promise<boolean> {
-  const known = variant === DEFAULT_VARIANT || SECTION_REGISTRY.some((s) => s.variants.some((v) => v.id === variant));
+  const known =
+    variant === DEFAULT_VARIANT ||
+    SECTION_REGISTRY.some((s) => s.variants.some((v) => v.id === variant));
   if (!known) return false;
   await updateSettings({ default_variant: variant });
   return true;
@@ -574,7 +678,8 @@ export async function createNotice(input: {
   const client = getClient();
   const id = randomUUID();
   const now = nowIso();
-  const tone = input.tone && NOTICE_TONES.includes(input.tone) ? input.tone : "info";
+  const tone =
+    input.tone && NOTICE_TONES.includes(input.tone) ? input.tone : "info";
   await client.execute({
     sql: `INSERT INTO notices
       (id, title, body, tone, url, pinned, is_active, expires_at, created_by, created_at, updated_at)
@@ -599,7 +704,10 @@ export async function createNotice(input: {
 export async function updateNotice(
   id: string,
   fields: Partial<
-    Pick<Notice, "title" | "body" | "tone" | "url" | "pinned" | "is_active" | "expires_at">
+    Pick<
+      Notice,
+      "title" | "body" | "tone" | "url" | "pinned" | "is_active" | "expires_at"
+    >
   >,
 ): Promise<Notice | null> {
   const client = getClient();
@@ -611,11 +719,14 @@ export async function updateNotice(
   };
   if (fields.title !== undefined) put("title", fields.title);
   if (fields.body !== undefined) put("body", fields.body ?? null);
-  if (fields.tone !== undefined && NOTICE_TONES.includes(fields.tone)) put("tone", fields.tone);
+  if (fields.tone !== undefined && NOTICE_TONES.includes(fields.tone))
+    put("tone", fields.tone);
   if (fields.url !== undefined) put("url", fields.url ?? null);
   if (fields.pinned !== undefined) put("pinned", fields.pinned ? 1 : 0);
-  if (fields.is_active !== undefined) put("is_active", fields.is_active ? 1 : 0);
-  if (fields.expires_at !== undefined) put("expires_at", fields.expires_at ?? null);
+  if (fields.is_active !== undefined)
+    put("is_active", fields.is_active ? 1 : 0);
+  if (fields.expires_at !== undefined)
+    put("expires_at", fields.expires_at ?? null);
   if (sets.length === 0) return getNotice(id);
   sets.push("updated_at = ?");
   args.push(nowIso());
@@ -675,7 +786,9 @@ export async function getCategory(slug: string): Promise<CategoryMeta | null> {
 
 /** Active categories with a live published-post count — drives the public
  *  home-page category strip (a category only appears when it has content). */
-export async function categoriesWithCounts(): Promise<Array<{ category: CategoryMeta; count: number }>> {
+export async function categoriesWithCounts(): Promise<
+  Array<{ category: CategoryMeta; count: number }>
+> {
   const client = getClient();
   const cats = await listCategories();
   if (cats.length === 0) return [];
@@ -734,15 +847,21 @@ export async function createCategory(input: {
 }): Promise<void> {
   const client = getClient();
   const now = nowIso();
-  const existing = (await client.execute("SELECT dot, sort_order FROM category_configs")).rows as unknown as Array<{
+  const existing = (
+    await client.execute("SELECT dot, sort_order FROM category_configs")
+  ).rows as unknown as Array<{
     dot: string | null;
     sort_order: number | null;
   }>;
   // No color? Pick the palette entry fewest other categories use. No position?
   // Append after the current last section so admin-created categories never
   // collide with the seeded order or clobber an operator-assigned rank.
-  const dot = normalizeCategoryDot(input.dot) ?? pickCategoryDot(existing.map((r) => r.dot));
-  const sortOrder = input.sortOrder ?? Math.max(0, ...existing.map((r) => Number(r.sort_order ?? 0))) + 1;
+  const dot =
+    normalizeCategoryDot(input.dot) ??
+    pickCategoryDot(existing.map((r) => r.dot));
+  const sortOrder =
+    input.sortOrder ??
+    Math.max(0, ...existing.map((r) => Number(r.sort_order ?? 0))) + 1;
   const defaultConfig: CategoryConfig = {
     requires_double_approval: false,
     show_content_warning: false,
@@ -777,30 +896,57 @@ export async function createCategory(input: {
 }
 
 /** Update an existing category (admin). */
-export async function updateCategory(slug: string, fields: Partial<{
-  displayNameBn: string;
-  displayNameEn: string;
-  descriptionBn: string;
-  descriptionEn: string;
-  isActive: boolean;
-  sortOrder: number;
-  dot: string;
-  showInFooter: boolean;
-  config: Partial<CategoryConfig>;
-}>): Promise<void> {
+export async function updateCategory(
+  slug: string,
+  fields: Partial<{
+    displayNameBn: string;
+    displayNameEn: string;
+    descriptionBn: string;
+    descriptionEn: string;
+    isActive: boolean;
+    sortOrder: number;
+    dot: string;
+    showInFooter: boolean;
+    config: Partial<CategoryConfig>;
+  }>,
+): Promise<void> {
   const client = getClient();
   const sets: string[] = [];
   const args: InValue[] = [];
   const now = nowIso();
 
-  if (fields.displayNameBn !== undefined) { sets.push("display_name_bn = ?"); args.push(fields.displayNameBn); }
-  if (fields.displayNameEn !== undefined) { sets.push("display_name_en = ?"); args.push(fields.displayNameEn); }
-  if (fields.descriptionBn !== undefined) { sets.push("description_bn = ?"); args.push(fields.descriptionBn); }
-  if (fields.descriptionEn !== undefined) { sets.push("description_en = ?"); args.push(fields.descriptionEn); }
-  if (fields.isActive !== undefined) { sets.push("is_active = ?"); args.push(fields.isActive ? 1 : 0); }
-  if (fields.sortOrder !== undefined) { sets.push("sort_order = ?"); args.push(fields.sortOrder); }
-  if (fields.dot !== undefined) { sets.push("dot = ?"); args.push(normalizeCategoryDot(fields.dot)); }
-  if (fields.showInFooter !== undefined) { sets.push("show_in_footer = ?"); args.push(fields.showInFooter ? 1 : 0); }
+  if (fields.displayNameBn !== undefined) {
+    sets.push("display_name_bn = ?");
+    args.push(fields.displayNameBn);
+  }
+  if (fields.displayNameEn !== undefined) {
+    sets.push("display_name_en = ?");
+    args.push(fields.displayNameEn);
+  }
+  if (fields.descriptionBn !== undefined) {
+    sets.push("description_bn = ?");
+    args.push(fields.descriptionBn);
+  }
+  if (fields.descriptionEn !== undefined) {
+    sets.push("description_en = ?");
+    args.push(fields.descriptionEn);
+  }
+  if (fields.isActive !== undefined) {
+    sets.push("is_active = ?");
+    args.push(fields.isActive ? 1 : 0);
+  }
+  if (fields.sortOrder !== undefined) {
+    sets.push("sort_order = ?");
+    args.push(fields.sortOrder);
+  }
+  if (fields.dot !== undefined) {
+    sets.push("dot = ?");
+    args.push(normalizeCategoryDot(fields.dot));
+  }
+  if (fields.showInFooter !== undefined) {
+    sets.push("show_in_footer = ?");
+    args.push(fields.showInFooter ? 1 : 0);
+  }
   if (fields.config !== undefined) {
     // Merge with existing config
     const existing = await getCategory(slug);
@@ -812,7 +958,10 @@ export async function updateCategory(slug: string, fields: Partial<{
   if (sets.length === 0) return;
   sets.push("updated_at = ?");
   args.push(now, slug);
-  await client.execute({ sql: `UPDATE category_configs SET ${sets.join(", ")} WHERE slug = ?`, args });
+  await client.execute({
+    sql: `UPDATE category_configs SET ${sets.join(", ")} WHERE slug = ?`,
+    args,
+  });
 }
 
 /** Delete a category (admin) - only if no sources/posts reference it. */
@@ -820,16 +969,29 @@ export async function deleteCategory(slug: string): Promise<void> {
   const client = getClient();
   // Check references
   const [sourcesRef, postsRef] = await Promise.all([
-    client.execute({ sql: "SELECT 1 FROM source_categories WHERE category_slug = ? LIMIT 1", args: [slug] }),
-    client.execute({ sql: "SELECT 1 FROM posts WHERE category = ? LIMIT 1", args: [slug] }),
+    client.execute({
+      sql: "SELECT 1 FROM source_categories WHERE category_slug = ? LIMIT 1",
+      args: [slug],
+    }),
+    client.execute({
+      sql: "SELECT 1 FROM posts WHERE category = ? LIMIT 1",
+      args: [slug],
+    }),
   ]);
-  if (sourcesRef.rows.length > 0) throw new Error("Category is referenced by sources");
-  if (postsRef.rows.length > 0) throw new Error("Category is referenced by posts");
-  await client.execute({ sql: "DELETE FROM category_configs WHERE slug = ?", args: [slug] });
+  if (sourcesRef.rows.length > 0)
+    throw new Error("Category is referenced by sources");
+  if (postsRef.rows.length > 0)
+    throw new Error("Category is referenced by posts");
+  await client.execute({
+    sql: "DELETE FROM category_configs WHERE slug = ?",
+    args: [slug],
+  });
 }
 
 /** Get all category slugs for a source. */
-export async function getSourceCategories(sourceId: string): Promise<CategorySlug[]> {
+export async function getSourceCategories(
+  sourceId: string,
+): Promise<CategorySlug[]> {
   const client = getClient();
   const res = await client.execute({
     sql: "SELECT category_slug FROM source_categories WHERE source_id = ?",
@@ -838,17 +1000,25 @@ export async function getSourceCategories(sourceId: string): Promise<CategorySlu
   return res.rows
     .map((r) => String(r.category_slug))
     .sort((a, b) => a.localeCompare(b));
-
 }
 
 /** Set categories for a source (replaces existing). */
-export async function setSourceCategories(sourceId: string, categories: CategorySlug[]): Promise<void> {
+export async function setSourceCategories(
+  sourceId: string,
+  categories: CategorySlug[],
+): Promise<void> {
   const client = getClient();
-  await client.execute({ sql: "DELETE FROM source_categories WHERE source_id = ?", args: [sourceId] });
+  await client.execute({
+    sql: "DELETE FROM source_categories WHERE source_id = ?",
+    args: [sourceId],
+  });
   if (categories.length > 0) {
     const values = categories.map(() => "(?, ?)").join(", ");
-    const args = categories.flatMap(c => [sourceId, c]);
-    await client.execute({ sql: `INSERT INTO source_categories (source_id, category_slug) VALUES ${values}`, args });
+    const args = categories.flatMap((c) => [sourceId, c]);
+    await client.execute({
+      sql: `INSERT INTO source_categories (source_id, category_slug) VALUES ${values}`,
+      args,
+    });
   }
 }
 
@@ -888,7 +1058,9 @@ export async function windowPosts(
  * computed from the page's own rows — i.e. one category — so every other chip
  * read "০" and looked empty. This gives the page real totals for the chips.
  */
-export async function countWindowPostsByCategory(): Promise<Record<string, number>> {
+export async function countWindowPostsByCategory(): Promise<
+  Record<string, number>
+> {
   const client = getClient();
   const res = await client.execute(
     "SELECT category, count(*) AS n FROM posts_current_window GROUP BY category",
@@ -900,7 +1072,9 @@ export async function countWindowPostsByCategory(): Promise<Record<string, numbe
   return out;
 }
 
-export async function countWindowPosts(category?: CategorySlug): Promise<number> {
+export async function countWindowPosts(
+  category?: CategorySlug,
+): Promise<number> {
   const client = getClient();
   const res = category
     ? await client.execute({
@@ -943,10 +1117,7 @@ export async function getPostById(id: string): Promise<Post | null> {
   return mapPost(res.rows[0] as Record<string, unknown>);
 }
 
-export async function relatedPosts(
-  post: Post,
-  limit = 3,
-): Promise<Post[]> {
+export async function relatedPosts(post: Post, limit = 3): Promise<Post[]> {
   const client = getClient();
   const res = await client.execute({
     sql: "SELECT * FROM posts_current_window WHERE category = ? AND id != ? ORDER BY published_at DESC LIMIT ?",
@@ -974,34 +1145,42 @@ export async function mostRead(limit = 5): Promise<Post[]> {
 export async function statsSnapshot(): Promise<StatsSnapshot> {
   const client = getClient();
   const today = nowIso().slice(0, 10);
-  const [collected, dupes, published, publishedTodayRes, pending, byCat, lastRun, avgDur] =
-    await Promise.all([
-      client.execute({
-        sql: "SELECT count(*) AS n FROM raw_posts WHERE scraped_at LIKE ?",
-        args: [`${today}%`],
-      }),
-      client.execute(
-        "SELECT count(*) AS n FROM raw_posts WHERE phash IS NOT NULL AND phash IN (SELECT phash FROM raw_posts GROUP BY phash HAVING count(*) > 1)",
-      ),
-      client.execute("SELECT count(*) AS n FROM posts_current_window"),
-      client.execute({
-        sql: "SELECT count(*) AS n FROM posts WHERE status = ? AND published_at LIKE ?",
-        args: ["published", `${today}%`],
-      }),
-      client.execute({
-        sql: "SELECT count(*) AS n FROM posts WHERE status = ?",
-        args: ["pending_review"],
-      }),
-      client.execute(
-        "SELECT category, count(*) AS n FROM posts_current_window GROUP BY category",
-      ),
-      client.execute(
-        "SELECT status, error FROM pipeline_runs ORDER BY started_at DESC LIMIT 1",
-      ),
-      client.execute(
-        "SELECT AVG((julianday(finished_at) - julianday(started_at)) * 86400) AS avg_sec FROM pipeline_runs WHERE status = 'completed' AND finished_at IS NOT NULL",
-      ),
-    ]);
+  const [
+    collected,
+    dupes,
+    published,
+    publishedTodayRes,
+    pending,
+    byCat,
+    lastRun,
+    avgDur,
+  ] = await Promise.all([
+    client.execute({
+      sql: "SELECT count(*) AS n FROM raw_posts WHERE scraped_at LIKE ?",
+      args: [`${today}%`],
+    }),
+    client.execute(
+      "SELECT count(*) AS n FROM raw_posts WHERE phash IS NOT NULL AND phash IN (SELECT phash FROM raw_posts GROUP BY phash HAVING count(*) > 1)",
+    ),
+    client.execute("SELECT count(*) AS n FROM posts_current_window"),
+    client.execute({
+      sql: "SELECT count(*) AS n FROM posts WHERE status = ? AND published_at LIKE ?",
+      args: ["published", `${today}%`],
+    }),
+    client.execute({
+      sql: "SELECT count(*) AS n FROM posts WHERE status = ?",
+      args: ["pending_review"],
+    }),
+    client.execute(
+      "SELECT category, count(*) AS n FROM posts_current_window GROUP BY category",
+    ),
+    client.execute(
+      "SELECT status, error FROM pipeline_runs ORDER BY started_at DESC LIMIT 1",
+    ),
+    client.execute(
+      "SELECT AVG((julianday(finished_at) - julianday(started_at)) * 86400) AS avg_sec FROM pipeline_runs WHERE status = 'completed' AND finished_at IS NOT NULL",
+    ),
+  ]);
   const total = Number(published.rows[0]?.n ?? 0);
   const dupeCount = Number(dupes.rows[0]?.n ?? 0);
   const byCategory: Record<CategorySlug, number> = {
@@ -1024,7 +1203,10 @@ export async function statsSnapshot(): Promise<StatsSnapshot> {
   return {
     collectedToday: Number(collected.rows[0]?.n ?? 0),
     duplicatesBlocked: dupeCount,
-    dedupRate: total + dupeCount > 0 ? Math.round((dupeCount / (total + dupeCount)) * 100) : 0,
+    dedupRate:
+      total + dupeCount > 0
+        ? Math.round((dupeCount / (total + dupeCount)) * 100)
+        : 0,
     lastRunStatus,
     publishedToday: Number(publishedTodayRes.rows[0]?.n ?? 0),
     published: total,
@@ -1133,7 +1315,12 @@ export interface RadarStageCounts {
 export interface RadarSnapshot {
   categories: RadarCategorySummary[];
   stages: RadarStageCounts;
-  totals: { collected: number; queued: number; published: number; duplicate: number };
+  totals: {
+    collected: number;
+    queued: number;
+    published: number;
+    duplicate: number;
+  };
   generatedAt: string;
 }
 
@@ -1147,29 +1334,40 @@ export interface RadarSnapshot {
  */
 export async function radarSnapshot(): Promise<RadarSnapshot> {
   const client = getClient();
-  const toMap = (rows: Array<Record<string, unknown>>): Record<string, number> => {
+  const toMap = (
+    rows: Array<Record<string, unknown>>,
+  ): Record<string, number> => {
     const out: Record<string, number> = {};
     for (const r of rows) out[String(r.slug)] = Number(r.n ?? 0);
     return out;
   };
-  const [cats, collected, queued, published, duplicate, tCollected, tQueued, tPublished, tDuplicate] =
-    await Promise.all([
-      listCategories(),
-      client.execute(
-        `SELECT sc.category_slug AS slug, count(*) AS n
+  const [
+    cats,
+    collected,
+    queued,
+    published,
+    duplicate,
+    tCollected,
+    tQueued,
+    tPublished,
+    tDuplicate,
+  ] = await Promise.all([
+    listCategories(),
+    client.execute(
+      `SELECT sc.category_slug AS slug, count(*) AS n
          FROM raw_posts rp
          JOIN sources s ON s.id = rp.source_id
          JOIN source_categories sc ON sc.source_id = s.id
          GROUP BY sc.category_slug`,
-      ),
-      client.execute(
-        "SELECT category AS slug, count(*) AS n FROM posts WHERE status IN ('pending_review', 'approved') GROUP BY category",
-      ),
-      client.execute(
-        "SELECT category AS slug, count(*) AS n FROM posts WHERE status = 'published' GROUP BY category",
-      ),
-      client.execute(
-        `SELECT sc.category_slug AS slug, count(*) AS n
+    ),
+    client.execute(
+      "SELECT category AS slug, count(*) AS n FROM posts WHERE status IN ('pending_review', 'approved') GROUP BY category",
+    ),
+    client.execute(
+      "SELECT category AS slug, count(*) AS n FROM posts WHERE status = 'published' GROUP BY category",
+    ),
+    client.execute(
+      `SELECT sc.category_slug AS slug, count(*) AS n
          FROM raw_posts rp
          JOIN sources s ON s.id = rp.source_id
          JOIN source_categories sc ON sc.source_id = s.id
@@ -1177,16 +1375,24 @@ export async function radarSnapshot(): Promise<RadarSnapshot> {
            SELECT phash FROM raw_posts GROUP BY phash HAVING count(*) > 1
          )
          GROUP BY sc.category_slug`,
-      ),
-      client.execute("SELECT count(*) AS n FROM raw_posts"),
-      client.execute("SELECT count(*) AS n FROM posts WHERE status IN ('pending_review', 'approved')"),
-      client.execute("SELECT count(*) AS n FROM posts WHERE status = 'published'"),
-      client.execute(
-        "SELECT count(*) AS n FROM raw_posts WHERE phash IS NOT NULL AND phash IN (SELECT phash FROM raw_posts GROUP BY phash HAVING count(*) > 1)",
-      ),
-    ]);
+    ),
+    client.execute("SELECT count(*) AS n FROM raw_posts"),
+    client.execute(
+      "SELECT count(*) AS n FROM posts WHERE status IN ('pending_review', 'approved')",
+    ),
+    client.execute(
+      "SELECT count(*) AS n FROM posts WHERE status = 'published'",
+    ),
+    client.execute(
+      "SELECT count(*) AS n FROM raw_posts WHERE phash IS NOT NULL AND phash IN (SELECT phash FROM raw_posts GROUP BY phash HAVING count(*) > 1)",
+    ),
+  ]);
   return {
-    categories: cats.map((c) => ({ slug: c.slug, name: c.displayNameBn, dot: c.dot })),
+    categories: cats.map((c) => ({
+      slug: c.slug,
+      name: c.displayNameBn,
+      dot: c.dot,
+    })),
     stages: {
       collected: toMap(collected.rows as Array<Record<string, unknown>>),
       queued: toMap(queued.rows as Array<Record<string, unknown>>),
@@ -1241,12 +1447,19 @@ export async function analyticsSnapshot(
   const now = Date.now();
   const day = 86_400_000;
 
-  const all: Array<Record<string, unknown>> = posts.rows as unknown as Array<Record<string, unknown>>;
-  const raws: Array<Record<string, unknown>> = rawPosts.rows as unknown as Array<Record<string, unknown>>;
-  const comments = commentRows.rows as unknown as Array<Record<string, unknown>>;
+  const all: Array<Record<string, unknown>> = posts.rows as unknown as Array<
+    Record<string, unknown>
+  >;
+  const raws: Array<Record<string, unknown>> =
+    rawPosts.rows as unknown as Array<Record<string, unknown>>;
+  const comments = commentRows.rows as unknown as Array<
+    Record<string, unknown>
+  >;
   const sources = sourceRows.rows as unknown as Array<Record<string, unknown>>;
   const runs = runRows.rows as unknown as Array<Record<string, unknown>>;
-  const topPublished = published.rows as unknown as Array<Record<string, unknown>>;
+  const topPublished = published.rows as unknown as Array<
+    Record<string, unknown>
+  >;
 
   const collectedTimes = raws.map((r) => pt(r.scraped_at)).filter(Boolean);
   const publishedTimes = all
@@ -1285,12 +1498,22 @@ export async function analyticsSnapshot(
   // duplicate detection across the whole intake (a phash seen twice is a dup)
   const phashCount = new Map<string, number>();
   for (const r of raws) {
-    if (r.phash) phashCount.set(String(r.phash), (phashCount.get(String(r.phash)) ?? 0) + 1);
+    if (r.phash)
+      phashCount.set(
+        String(r.phash),
+        (phashCount.get(String(r.phash)) ?? 0) + 1,
+      );
   }
   const isDup = (r: Record<string, unknown>) =>
     !!r.phash && (phashCount.get(String(r.phash)) ?? 0) > 1;
 
-  const totals = { collected: 0, published: 0, duplicates: 0, approvedComments: 0, pendingArticles: 0 };
+  const totals = {
+    collected: 0,
+    published: 0,
+    duplicates: 0,
+    approvedComments: 0,
+    pendingArticles: 0,
+  };
   const allArticles = { published: 0, pending: 0, duplicate: 0 };
   const categoryCounts: Record<string, number> = {};
 
@@ -1315,7 +1538,8 @@ export async function analyticsSnapshot(
       const key = String(p.category);
       if (key) categoryCounts[key] = (categoryCounts[key] ?? 0) + 1;
     }
-    if (st === "pending_review" && inside(pt(p.created_at))) totals.pendingArticles++;
+    if (st === "pending_review" && inside(pt(p.created_at)))
+      totals.pendingArticles++;
   }
 
   for (const c of comments) {
@@ -1323,13 +1547,19 @@ export async function analyticsSnapshot(
     if (inside(at)) totals.approvedComments++;
   }
 
-  const sourceStates = { watching: 0, paused: 0, error: 0, total: sources.length };
+  const sourceStates = {
+    watching: 0,
+    paused: 0,
+    error: 0,
+    total: sources.length,
+  };
   for (const s of sources) {
     sourceStates[String(s.is_active) === "1" ? "watching" : "paused"]++;
   }
 
   const r0 = runs[0] as Record<string, unknown> | undefined;
-  let collectorStatus: AnalyticsSnapshot["collector"]["status"] = "not_connected";
+  let collectorStatus: AnalyticsSnapshot["collector"]["status"] =
+    "not_connected";
   if (r0) {
     const st = String(r0.status);
     const finished = pt(r0.finished_at ?? r0.started_at);
@@ -1358,7 +1588,11 @@ export async function analyticsSnapshot(
       href: `/post/${String(p.slug)}`,
     }));
 
-  const url = (process.env.TURSO_DATABASE_URL ?? process.env.DATABASE_URL ?? "").trim();
+  const url = (
+    process.env.TURSO_DATABASE_URL ??
+    process.env.DATABASE_URL ??
+    ""
+  ).trim();
   const remote = isRemoteDatabaseUrl(url);
   const driver = remote ? "TURSO" : url.startsWith("file:") ? "LOCAL" : "TURSO";
   const mode: "local" | "cloud" = remote ? "cloud" : "local";
@@ -1387,12 +1621,16 @@ export async function analyticsSnapshot(
       status: collectorStatus,
       lastSeenAt: r0 ? String(r0.started_at) : null,
     },
-    latestPublication: topPublished[0]?.published_at ? String(topPublished[0].published_at) : null,
+    latestPublication: topPublished[0]?.published_at
+      ? String(topPublished[0].published_at)
+      : null,
     activity: activities,
     runSummary: {
       count: selected.length,
       durationSec: selected.length
-        ? Math.round(selected.reduce((s, r) => s + r.durationSec, 0) / selected.length)
+        ? Math.round(
+            selected.reduce((s, r) => s + r.durationSec, 0) / selected.length,
+          )
         : null,
       lastAt: r0 ? String(r0.started_at) : null,
     },
@@ -1409,7 +1647,9 @@ export interface RecentPipelineRun {
   error: string | null;
 }
 
-export async function recentPipelineRuns(limit = 10): Promise<RecentPipelineRun[]> {
+export async function recentPipelineRuns(
+  limit = 10,
+): Promise<RecentPipelineRun[]> {
   const client = getClient();
   const res = await client.execute({
     sql: "SELECT * FROM pipeline_runs ORDER BY started_at DESC LIMIT ?",
@@ -1422,7 +1662,10 @@ export async function recentPipelineRuns(limit = 10): Promise<RecentPipelineRun[
       started_at: String(row.started_at),
       finished_at: (row.finished_at as string | null) ?? null,
       status: String(row.status),
-      stats: parseJson<Record<string, unknown> | null>(row.stats as string, null),
+      stats: parseJson<Record<string, unknown> | null>(
+        row.stats as string,
+        null,
+      ),
       provider_used: (row.provider_used as string | null) ?? null,
       error: (row.error as string | null) ?? null,
     };
@@ -1464,7 +1707,9 @@ export async function reapStalePipelineRuns(
   reason = "run did not finish (worker terminated or database unavailable)",
 ): Promise<number> {
   const client = getClient();
-  const cutoff = new Date(Date.now() - Math.max(1, maxAgeMinutes) * 60_000).toISOString();
+  const cutoff = new Date(
+    Date.now() - Math.max(1, maxAgeMinutes) * 60_000,
+  ).toISOString();
   const res = await client.execute({
     sql: `UPDATE pipeline_runs
              SET status = 'failed', finished_at = ?, error = COALESCE(error, ?)
@@ -1553,7 +1798,9 @@ export async function dashboardSources(): Promise<DashboardSourceRow[]> {
   const client = getClient();
   const today = nowIso().slice(0, 10);
   const [srcs, posts, errs] = await Promise.all([
-    client.execute("SELECT id, page_name, is_active FROM sources ORDER BY page_name"),
+    client.execute(
+      "SELECT id, page_name, is_active FROM sources ORDER BY page_name",
+    ),
     client.execute({
       sql: "SELECT source_id, count(*) AS n FROM raw_posts WHERE scraped_at LIKE ? GROUP BY source_id",
       args: [`${today}%`],
@@ -1564,7 +1811,8 @@ export async function dashboardSources(): Promise<DashboardSourceRow[]> {
     }),
   ]);
   const postMap = new Map<string, number>();
-  for (const r of posts.rows) postMap.set(String(r.source_id), Number(r.n ?? 0));
+  for (const r of posts.rows)
+    postMap.set(String(r.source_id), Number(r.n ?? 0));
   const errMap = new Map<string, number>();
   for (const r of errs.rows) errMap.set(String(r.source_id), Number(r.n ?? 0));
   return srcs.rows.map((r) => {
@@ -1598,13 +1846,17 @@ export interface MaintenanceMessage {
   created_at: string;
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,63}\.[^\s@]{2,63}$/;
 
 /** Maintenance-screen newsletter drop. `duplicate` = already subscribed. */
-export async function subscribeMaintenance(
-  input: { email: string; name?: string; locale?: string },
-): Promise<{ status: "subscribed" | "duplicate" }> {
-  const email = String(input.email ?? "").trim().toLowerCase();
+export async function subscribeMaintenance(input: {
+  email: string;
+  name?: string;
+  locale?: string;
+}): Promise<{ status: "subscribed" | "duplicate" }> {
+  const email = String(input.email ?? "")
+    .trim()
+    .toLowerCase();
   if (!EMAIL_RE.test(email)) {
     throw new Error("INVALID_EMAIL");
   }
@@ -1616,18 +1868,30 @@ export async function subscribeMaintenance(
   if (existing.rows.length > 0) return { status: "duplicate" };
   await client.execute({
     sql: "INSERT INTO maintenance_subscribers (id, email, name, locale, via, created_at) VALUES (?, ?, ?, ?, 'maintenance', ?)",
-    args: [randomUUID(), email, String(input.name ?? "").trim() || null, input.locale === "en" ? "en" : "bn", nowIso()],
+    args: [
+      randomUUID(),
+      email,
+      String(input.name ?? "").trim() || null,
+      input.locale === "en" ? "en" : "bn",
+      nowIso(),
+    ],
   });
   return { status: "subscribed" };
 }
 
 /** Maintenance-screen contact form submit. */
-export async function bookMaintenanceMessage(
-  input: { name: string; email: string; topic?: string; body: string; locale?: string },
-): Promise<void> {
+export async function bookMaintenanceMessage(input: {
+  name: string;
+  email: string;
+  topic?: string;
+  body: string;
+  locale?: string;
+}): Promise<void> {
   const client = getClient();
   const name = String(input.name ?? "").trim();
-  const email = String(input.email ?? "").trim().toLowerCase();
+  const email = String(input.email ?? "")
+    .trim()
+    .toLowerCase();
   const body = String(input.body ?? "").trim();
   if (!name || !EMAIL_RE.test(email) || !body) {
     throw new Error("INVALID_INPUT");
@@ -1662,7 +1926,9 @@ export async function maintenanceInboxSnapshot(): Promise<{
       args: [`${today}%`],
     }),
     client.execute("SELECT count(*) AS n FROM maintenance_messages"),
-    client.execute("SELECT count(*) AS n FROM maintenance_messages WHERE status = 'open'"),
+    client.execute(
+      "SELECT count(*) AS n FROM maintenance_messages WHERE status = 'open'",
+    ),
   ]);
   return {
     subscribers: Number(sCount.rows[0]?.n ?? 0),
@@ -1693,22 +1959,20 @@ export async function listStatusPosts(status: PostStatus): Promise<Post[]> {
  * filter and `__ORDER` for the sort. They are inlined rather than parameterised
  * because both are compile-time constants in the admin pages, never user input.
  */
-export async function pageRows<T>(
-  opts: {
-    /** e.g. "SELECT * FROM removal_requests" — constants only, never user input. */
-    sql: string;
-    /** SQL predicate without the WHERE keyword, or "" for the whole table. */
-    where?: string;
-    /** Sort clause without the ORDER BY keyword. */
-    order: string;
-    /** Values for `?` inside `where`, in order. */
-    args?: InValue[];
-    page?: number;
-    pageSize?: number;
-    /** Row mapper, normally one of the existing `map*` helpers. */
-    map?: (row: Record<string, unknown>) => T;
-  },
-): Promise<Page<T>> {
+export async function pageRows<T>(opts: {
+  /** e.g. "SELECT * FROM removal_requests" — constants only, never user input. */
+  sql: string;
+  /** SQL predicate without the WHERE keyword, or "" for the whole table. */
+  where?: string;
+  /** Sort clause without the ORDER BY keyword. */
+  order: string;
+  /** Values for `?` inside `where`, in order. */
+  args?: InValue[];
+  page?: number;
+  pageSize?: number;
+  /** Row mapper, normally one of the existing `map*` helpers. */
+  map?: (row: Record<string, unknown>) => T;
+}): Promise<Page<T>> {
   const pageSize = Math.max(1, Math.floor(opts.pageSize ?? 20));
   const client = getClient();
   const where = opts.where ? ` WHERE ${opts.where}` : "";
@@ -1736,7 +2000,7 @@ export async function pageRows<T>(
   return {
     rows: opts.map
       ? res.rows.map((r) => opts.map!(r as Record<string, unknown>))
-      : (res.rows as Record<string, unknown>[]) as T[],
+      : (res.rows as Record<string, unknown>[] as T[]),
     total,
     page: p,
     pageSize,
@@ -1751,13 +2015,7 @@ export async function updatePostStatus(
   const client = getClient();
   await client.execute({
     sql: "UPDATE posts SET status = ?, updated_at = ? , published_at = COALESCE(published_at, CASE WHEN ? = 1 THEN ? ELSE published_at END) WHERE id = ?",
-    args: [
-      status,
-      nowIso(),
-      extra.publishedAt ? 1 : 0,
-      nowIso(),
-      id,
-    ],
+    args: [status, nowIso(), extra.publishedAt ? 1 : 0, nowIso(), id],
   });
 }
 
@@ -1816,7 +2074,10 @@ export async function bulkModeratePosts(
   const byId = new Map(
     found.rows.map((r) => {
       const row = r as Record<string, unknown>;
-      return [String(row.id), { category: String(row.category), status: String(row.status) }];
+      return [
+        String(row.id),
+        { category: String(row.category), status: String(row.status) },
+      ];
     }),
   );
 
@@ -1831,7 +2092,9 @@ export async function bulkModeratePosts(
     let publishedAt = false;
     if (action === "approved") {
       const cat = await getCategory(row.category);
-      const needsDouble = Boolean(cat?.config.requires_double_approval) && row.status !== "approved";
+      const needsDouble =
+        Boolean(cat?.config.requires_double_approval) &&
+        row.status !== "approved";
       finalStatus = needsDouble ? "approved" : "published";
       publishedAt = !needsDouble;
       if (needsDouble) result.needsSecondApproval.push(id);
@@ -1865,7 +2128,11 @@ export async function bulkDeletePosts(ids: readonly string[]): Promise<{
   missing: string[];
 }> {
   const unique = [...new Set(ids.filter((id) => id.trim() !== ""))];
-  const out = { requested: unique.length, deleted: [] as string[], missing: [] as string[] };
+  const out = {
+    requested: unique.length,
+    deleted: [] as string[],
+    missing: [] as string[],
+  };
   if (unique.length === 0) return out;
 
   const client = getClient();
@@ -1943,7 +2210,9 @@ export async function listContentQueue(opts: {
   else if (tab === "pending") clauses.push("status != 'published'");
 
   if (q !== "") {
-    clauses.push("(title_bn LIKE ? ESCAPE '\\' OR source_name LIKE ? ESCAPE '\\')");
+    clauses.push(
+      "(title_bn LIKE ? ESCAPE '\\' OR source_name LIKE ? ESCAPE '\\')",
+    );
     const pattern = `%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`;
     args.push(pattern, pattern);
   }
@@ -1978,8 +2247,10 @@ export function normalizeMediaPath(input: string): string | null {
   let raw = input.trim();
   if (raw === "") return null; // empty = clear the image
   if (raw.length > 2000) throw new Error("media_path too long");
-  if (/[\u0000-\u001f]/.test(raw)) throw new Error("media_path contains control characters");
-  if (raw.includes("\\")) throw new Error("media_path must not contain backslashes");
+  if (/[\u0000-\u001f]/.test(raw))
+    throw new Error("media_path contains control characters");
+  if (raw.includes("\\"))
+    throw new Error("media_path must not contain backslashes");
 
   // The admin field tells the operator to paste the path they copied off the
   // site, which is served from /uploads/. Accept that public prefix in either
@@ -1990,7 +2261,8 @@ export function normalizeMediaPath(input: string): string | null {
   const uploadsPrefix = raw.replace(/^\/+/, "").match(/^uploads\/(.+)$/i);
   if (uploadsPrefix?.[1]) raw = uploadsPrefix[1];
 
-  if (/^\/+/.test(raw)) throw new Error("media_path must be relative (drop the leading slash)");
+  if (/^\/+/.test(raw))
+    throw new Error("media_path must be relative (drop the leading slash)");
 
   if (/^https?:\/\//i.test(raw)) {
     let url: URL;
@@ -2055,7 +2327,12 @@ export interface PostUpdateFields {
  */
 export async function listPostMediaCandidates(
   postId: string,
-): Promise<{ media_urls: string[]; source_url: string | null; current: string | null; kind: string | null }> {
+): Promise<{
+  media_urls: string[];
+  source_url: string | null;
+  current: string | null;
+  kind: string | null;
+}> {
   const client = getClient();
   const res = await client.execute({
     sql: `SELECT p.media_path, p.media_kind, p.source_url, r.media_urls
@@ -2067,7 +2344,10 @@ export async function listPostMediaCandidates(
   let media_urls: string[] = [];
   try {
     const parsed = JSON.parse(String(row.media_urls ?? "[]")) as unknown;
-    if (Array.isArray(parsed)) media_urls = parsed.filter((u): u is string => typeof u === "string" && u !== "");
+    if (Array.isArray(parsed))
+      media_urls = parsed.filter(
+        (u): u is string => typeof u === "string" && u !== "",
+      );
   } catch {
     media_urls = [];
   }
@@ -2090,7 +2370,10 @@ function inferMediaKind(path: string | null): "image" | "video" | "none" {
  * enums throw. `summary_bn` / `case_status` / `published_at` may be set to null
  * (clear). Status changes go through `updatePostStatus` (see API route).
  */
-export async function updatePost(id: string, fields: PostUpdateFields): Promise<void> {
+export async function updatePost(
+  id: string,
+  fields: PostUpdateFields,
+): Promise<void> {
   const client = getClient();
   const sets: string[] = [];
   const args: InValue[] = [];
@@ -2118,7 +2401,10 @@ export async function updatePost(id: string, fields: PostUpdateFields): Promise<
     args.push(fields.category);
   }
   if ("case_status" in fields && fields.case_status !== undefined) {
-    if (fields.case_status !== null && !CASE_STATUSES.includes(fields.case_status)) {
+    if (
+      fields.case_status !== null &&
+      !CASE_STATUSES.includes(fields.case_status)
+    ) {
       throw new Error(`invalid case_status: ${fields.case_status}`);
     }
     sets.push("case_status = ?");
@@ -2148,7 +2434,10 @@ export async function updatePost(id: string, fields: PostUpdateFields): Promise<
     sets.push("social_title = ?");
     args.push(fields.social_title?.trim() || null);
   }
-  if ("social_description" in fields && fields.social_description !== undefined) {
+  if (
+    "social_description" in fields &&
+    fields.social_description !== undefined
+  ) {
     sets.push("social_description = ?");
     args.push(fields.social_description?.trim() || null);
   }
@@ -2187,26 +2476,39 @@ export async function updatePost(id: string, fields: PostUpdateFields): Promise<
 
 /** Hard-delete a post (content manager); caller handles audit logging.
  *  Throws when the id doesn't exist so callers can't silently no-op. */
-export async function deletePost(id: string, opts: { actor?: string | null; reason?: string | null } = {}): Promise<void> {
+export async function deletePost(
+  id: string,
+  opts: { actor?: string | null; reason?: string | null } = {},
+): Promise<void> {
   const client = getClient();
   // Read before delete: a ledger entry that cannot say what was removed is a
   // useless apology.
   // `SELECT *` on purpose: a ledger entry must never be the reason a delete
   // fails, and the columns available differ between schema versions.
-  const before = await client.execute({ sql: "SELECT * FROM posts WHERE id = ?", args: [id] });
+  const before = await client.execute({
+    sql: "SELECT * FROM posts WHERE id = ?",
+    args: [id],
+  });
   const row = before.rows[0] as Record<string, unknown> | undefined;
   // Media paths must be captured *before* the delete: the gallery cascades with
   // the post, so afterwards there is nothing left to name the files by.
   const mediaPaths: string[] = [];
-  if (row && typeof row.media_path === "string" && row.media_path) mediaPaths.push(row.media_path);
+  if (row && typeof row.media_path === "string" && row.media_path)
+    mediaPaths.push(row.media_path);
   const galleryBefore = await client
-    .execute({ sql: "SELECT path FROM post_images WHERE post_id = ?", args: [id] })
+    .execute({
+      sql: "SELECT path FROM post_images WHERE post_id = ?",
+      args: [id],
+    })
     .catch(() => null);
   for (const g of galleryBefore?.rows ?? []) {
     const p = String((g as Record<string, unknown>).path);
     if (p) mediaPaths.push(p);
   }
-  const res = await client.execute({ sql: "DELETE FROM posts WHERE id = ?", args: [id] });
+  const res = await client.execute({
+    sql: "DELETE FROM posts WHERE id = ?",
+    args: [id],
+  });
   if (res.rowsAffected === 0) {
     throw new Error(`post not found: ${id}`);
   }
@@ -2251,7 +2553,7 @@ function mapComment(row: Record<string, unknown>): Comment {
     email: row.email ? String(row.email) : null,
     likes: Number(row.likes ?? 0),
     dislikes: Number(row.dislikes ?? 0),
-    status: (String(row.status ?? "pending") as CommentStatus),
+    status: String(row.status ?? "pending") as CommentStatus,
     created_at: String(row.created_at),
   };
 }
@@ -2261,7 +2563,10 @@ function mapComment(row: Record<string, unknown>): Comment {
  * recent (the post page shows a total counter beside them); `getPostCommentCount`
  * supplies the total.
  */
-export async function getPostComments(postId: string, limit = 10): Promise<Comment[]> {
+export async function getPostComments(
+  postId: string,
+  limit = 10,
+): Promise<Comment[]> {
   const client = getClient();
   const res = await client.execute({
     sql: "SELECT * FROM comments WHERE post_id = ? AND status = 'approved' ORDER BY created_at DESC LIMIT ?",
@@ -2330,7 +2635,12 @@ export async function createComment(input: {
   body: string;
   email?: string | null;
   /** Opaque guest handle + hashes from `identityFor()`; absent for anonymous posts. */
-  identity?: { guestId: string | null; emailHash: string | null; ipHash: string | null; trustScore: number | null };
+  identity?: {
+    guestId: string | null;
+    emailHash: string | null;
+    ipHash: string | null;
+    trustScore: number | null;
+  };
 }): Promise<Comment> {
   const client = getClient();
   const id = crypto.randomUUID();
@@ -2378,14 +2688,20 @@ export async function setCommentStatus(
 }
 
 /** Hard-delete a comment (moderation). */
-export async function deleteComment(id: string, opts: { actor?: string | null; reason?: string | null } = {}): Promise<void> {
+export async function deleteComment(
+  id: string,
+  opts: { actor?: string | null; reason?: string | null } = {},
+): Promise<void> {
   const client = getClient();
   const before = await client.execute({
     sql: "SELECT post_id, author FROM comments WHERE id = ?",
     args: [id],
   });
   const row = before.rows[0] as Record<string, unknown> | undefined;
-  await client.execute({ sql: "DELETE FROM comments WHERE id = ?", args: [id] });
+  await client.execute({
+    sql: "DELETE FROM comments WHERE id = ?",
+    args: [id],
+  });
   if (row) {
     await logDeletion({
       entityType: "comment",
@@ -2409,7 +2725,7 @@ export function mapReport(row: Record<string, unknown>): ReaderReport {
     reporter_email: (row.reporter_email as string | null) ?? null,
     reason: String(row.reason),
     details: (row.details as string | null) ?? null,
-    status: (String(row.status ?? "open") as ReaderReportStatus),
+    status: String(row.status ?? "open") as ReaderReportStatus,
     created_at: String(row.created_at),
     reviewed_at: (row.reviewed_at as string | null) ?? null,
   };
@@ -2422,7 +2738,12 @@ export async function createReaderReport(input: {
   reporterEmail?: string;
   reason: string;
   details?: string;
-  identity?: { guestId: string | null; emailHash: string | null; ipHash: string | null; trustScore: number | null };
+  identity?: {
+    guestId: string | null;
+    emailHash: string | null;
+    ipHash: string | null;
+    trustScore: number | null;
+  };
 }): Promise<ReaderReport> {
   const client = getClient();
   const id = crypto.randomUUID();
@@ -2459,7 +2780,9 @@ export async function createReaderReport(input: {
 }
 
 /** Admin queue — reports joined with parent post, newest first. */
-export async function listReaderReports(limit = 200): Promise<ReaderReportWithPost[]> {
+export async function listReaderReports(
+  limit = 200,
+): Promise<ReaderReportWithPost[]> {
   const client = getClient();
   const res = await client.execute({
     sql: `SELECT r.*, p.title_bn AS postTitle, p.slug AS postSlug, p.category AS postCategory
@@ -2514,7 +2837,7 @@ const SYNC_TABLES = [
   "redaction_blocklist",
 ] as const;
 
-type SyncTable = typeof SYNC_TABLES[number];
+type SyncTable = (typeof SYNC_TABLES)[number];
 
 interface SyncOptions {
   direction: "push" | "pull"; // push = local → cloud, pull = cloud → local
@@ -2532,7 +2855,10 @@ export async function syncDatabases(
   options: SyncOptions = { direction: "push" },
 ): Promise<{
   ok: true;
-  synced: Record<string, { inserted: number; updated: number; deleted: number }>;
+  synced: Record<
+    string,
+    { inserted: number; updated: number; deleted: number }
+  >;
   conflicts: number;
   durationMs: number;
 }> {
@@ -2541,7 +2867,10 @@ export async function syncDatabases(
   const direction = options.direction;
   const dryRun = options.dryRun ?? false;
 
-  const results: Record<string, { inserted: number; updated: number; deleted: number }> = {};
+  const results: Record<
+    string,
+    { inserted: number; updated: number; deleted: number }
+  > = {};
   let totalConflicts = 0;
 
   // Get or create sync checkpoints
@@ -2553,7 +2882,11 @@ export async function syncDatabases(
     return res.rows[0] as Record<string, unknown> | undefined;
   }
 
-  async function setCheckpoint(table: SyncTable, localMaxId: string | null, cloudMaxId: string | null) {
+  async function setCheckpoint(
+    table: SyncTable,
+    localMaxId: string | null,
+    cloudMaxId: string | null,
+  ) {
     await localClient.execute({
       sql: `INSERT OR REPLACE INTO sync_checkpoint (table_name, last_synced_at, last_local_max_id, last_cloud_max_id)
             VALUES (?, ?, ?, ?)`,
@@ -2595,22 +2928,37 @@ export async function syncDatabases(
         // Insert new
         if (!dryRun) {
           const cols = Object.keys(rowData).join(", ");
-          const placeholders = Object.keys(rowData).map(() => "?").join(", ");
+          const placeholders = Object.keys(rowData)
+            .map(() => "?")
+            .join(", ");
           const values = Object.values(rowData) as InValue[];
-          await dst.execute({ sql: `INSERT INTO ${table} (${cols}) VALUES (${placeholders})`, args: values });
+          await dst.execute({
+            sql: `INSERT INTO ${table} (${cols}) VALUES (${placeholders})`,
+            args: values,
+          });
         }
         inserted++;
       } else {
         // Conflict resolution: newer updated_at wins
         const existingRow = existing.rows[0];
-        const dstUpdated = existingRow ? String(existingRow.updated_at ?? "") : "";
+        const dstUpdated = existingRow
+          ? String(existingRow.updated_at ?? "")
+          : "";
         const srcUpdated = String(rowData.updated_at ?? "");
-        
+
         if (srcUpdated > dstUpdated) {
           if (!dryRun) {
-            const sets = Object.keys(rowData).filter(k => k !== "id").map(k => `${k} = ?`).join(", ");
-            const values = Object.entries(rowData).filter(([k]) => k !== "id").map(([, v]) => v) as InValue[];
-            await dst.execute({ sql: `UPDATE ${table} SET ${sets} WHERE id = ?`, args: [...values, id] });
+            const sets = Object.keys(rowData)
+              .filter((k) => k !== "id")
+              .map((k) => `${k} = ?`)
+              .join(", ");
+            const values = Object.entries(rowData)
+              .filter(([k]) => k !== "id")
+              .map(([, v]) => v) as InValue[];
+            await dst.execute({
+              sql: `UPDATE ${table} SET ${sets} WHERE id = ?`,
+              args: [...values, id],
+            });
           }
           updated++;
           totalConflicts++;
@@ -2622,12 +2970,15 @@ export async function syncDatabases(
     results[table] = { inserted, updated, deleted };
 
     // Update checkpoint
-    const newMaxId = changes.rows.length > 0 
-      ? String(changes.rows[changes.rows.length - 1]?.id ?? "")
-      : srcMaxId;
-    await setCheckpoint(table, 
+    const newMaxId =
+      changes.rows.length > 0
+        ? String(changes.rows[changes.rows.length - 1]?.id ?? "")
+        : srcMaxId;
+    await setCheckpoint(
+      table,
       direction === "push" ? newMaxId : localMaxId!,
-      direction === "push" ? cloudMaxId! : newMaxId);
+      direction === "push" ? cloudMaxId! : newMaxId,
+    );
   }
 
   // Log sync
@@ -2724,7 +3075,12 @@ export async function listAdminActionsPage(
     sql: `SELECT * FROM admin_actions${clause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
     args: [...args, pageSize, (p - 1) * pageSize],
   });
-  return { rows: res.rows as Record<string, unknown>[], total, page: p, pageSize };
+  return {
+    rows: res.rows as Record<string, unknown>[],
+    total,
+    page: p,
+    pageSize,
+  };
 }
 
 export async function listPipelineRunsPage(
@@ -2733,7 +3089,9 @@ export async function listPipelineRunsPage(
 ): Promise<Page<RecentPipelineRun>> {
   const p = safePage(page);
   const client = getClient();
-  const countRes = await client.execute("SELECT COUNT(*) AS n FROM pipeline_runs");
+  const countRes = await client.execute(
+    "SELECT COUNT(*) AS n FROM pipeline_runs",
+  );
   const total = Number((countRes.rows[0] as Record<string, unknown>).n ?? 0);
   const res = await client.execute({
     sql: "SELECT * FROM pipeline_runs ORDER BY started_at DESC LIMIT ? OFFSET ?",
@@ -2746,7 +3104,10 @@ export async function listPipelineRunsPage(
       started_at: String(row.started_at),
       finished_at: (row.finished_at as string | null) ?? null,
       status: String(row.status),
-      stats: parseJson<Record<string, unknown> | null>(row.stats as string, null),
+      stats: parseJson<Record<string, unknown> | null>(
+        row.stats as string,
+        null,
+      ),
       provider_used: (row.provider_used as string | null) ?? null,
       error: (row.error as string | null) ?? null,
     };
@@ -2789,7 +3150,9 @@ export async function trimHistory(olderThanDays = 90): Promise<{
   actions: number;
 }> {
   const client = getClient();
-  const cutoff = new Date(Date.now() - olderThanDays * 86_400_000).toISOString();
+  const cutoff = new Date(
+    Date.now() - olderThanDays * 86_400_000,
+  ).toISOString();
   const runs = await client.execute({
     sql: "DELETE FROM pipeline_runs WHERE started_at < ? AND status != 'running'",
     args: [cutoff],
@@ -2814,7 +3177,9 @@ export async function countTrimmableHistory(olderThanDays = 90): Promise<{
   actions: number;
 }> {
   const client = getClient();
-  const cutoff = new Date(Date.now() - olderThanDays * 86_400_000).toISOString();
+  const cutoff = new Date(
+    Date.now() - olderThanDays * 86_400_000,
+  ).toISOString();
   const runs = await client.execute({
     sql: "SELECT COUNT(*) AS n FROM pipeline_runs WHERE started_at < ? AND status != 'running'",
     args: [cutoff],
@@ -2823,7 +3188,8 @@ export async function countTrimmableHistory(olderThanDays = 90): Promise<{
     sql: "SELECT COUNT(*) AS n FROM admin_actions WHERE created_at < ?",
     args: [cutoff],
   });
-  const n = (r: { rows: unknown[] }) => Number((r.rows[0] as Record<string, unknown>)?.n ?? 0);
+  const n = (r: { rows: unknown[] }) =>
+    Number((r.rows[0] as Record<string, unknown>)?.n ?? 0);
   return { runs: n(runs), actions: n(actions) };
 }
 
@@ -2837,7 +3203,12 @@ export async function countTrimmableHistory(olderThanDays = 90): Promise<{
  * &ldquo;শিরোনাম ছাড়া&rdquo; ended up in the archive. The parser no longer
  * produces them, but rows written before the fix still exist.
  */
-const PLACEHOLDER_TITLES = ["শিরোনাম ছাড়া", "শিরোনাম ছাড়া।", "Untitled", "untitled"];
+const PLACEHOLDER_TITLES = [
+  "শিরোনাম ছাড়া",
+  "শিরোনাম ছাড়া।",
+  "Untitled",
+  "untitled",
+];
 
 /**
  * Quarantine posts that can never be published.

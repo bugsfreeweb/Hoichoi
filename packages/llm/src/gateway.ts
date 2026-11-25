@@ -16,7 +16,12 @@
  * task name plus raw material — because the endpoint is not a prompt proxy. A
  * caller cannot choose a model, a prompt or a provider.
  */
-import { ProviderError, type LLMProvider, type ParsedRewrite, type RewriteContext } from "./types";
+import {
+  ProviderError,
+  type LLMProvider,
+  type ParsedRewrite,
+  type RewriteContext,
+} from "./types";
 
 /** Where the gateway is and how to authenticate. Both come from the vault. */
 export interface GatewayConfig {
@@ -41,12 +46,21 @@ export class AiGatewayError extends ProviderError {
 }
 
 /** Normalise `base` + path without doubling or dropping the slash. */
+/** Strip trailing "/" without a regex: the URL is operator input. */
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) end -= 1;
+  return value.slice(0, end);
+}
+
 export function gatewayUrl(cfg: GatewayConfig, path = "/api/ai/task"): string {
-  return `${cfg.baseUrl.trim().replace(/\/+$/, "")}${path}`;
+  return `${trimTrailingSlashes(cfg.baseUrl.trim())}${path}`;
 }
 
 /** Read the connection from the environment; `null` when either half is missing. */
-export function gatewayConfigFromEnv(env: Record<string, string | undefined> = process.env): GatewayConfig | null {
+export function gatewayConfigFromEnv(
+  env: Record<string, string | undefined> = process.env,
+): GatewayConfig | null {
   const baseUrl = (env[GATEWAY_URL_ENV] ?? "").trim();
   const token = (env[GATEWAY_TOKEN_ENV] ?? "").trim();
   if (!baseUrl || !token) return null;
@@ -55,7 +69,9 @@ export function gatewayConfigFromEnv(env: Record<string, string | undefined> = p
 }
 
 /** The body the endpoint accepts. Kept next to the client so the two cannot drift. */
-export function gatewayRequestBody(ctx: RewriteContext): Record<string, string> {
+export function gatewayRequestBody(
+  ctx: RewriteContext,
+): Record<string, string> {
   const body: Record<string, string> = {
     // `draft` is the only task that returns title + summary + body, which is what
     // a pipeline rewrite needs. Never a prompt: the endpoint refuses extra keys.
@@ -77,7 +93,8 @@ const SAFETY_FLAGS = new Set<ParsedRewrite["safety_flag"]>([
 ]);
 
 function asSafetyFlag(value: unknown): ParsedRewrite["safety_flag"] {
-  return typeof value === "string" && SAFETY_FLAGS.has(value as ParsedRewrite["safety_flag"])
+  return typeof value === "string" &&
+    SAFETY_FLAGS.has(value as ParsedRewrite["safety_flag"])
     ? (value as ParsedRewrite["safety_flag"])
     : "none";
 }
@@ -90,7 +107,10 @@ function kindForStatus(status: number): ProviderError["kind"] {
   return "network";
 }
 
-export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
+export type FetchLike = (
+  input: string,
+  init?: RequestInit,
+) => Promise<Response>;
 
 /**
  * The pipeline's provider, but the generation happens on the server.
@@ -106,10 +126,14 @@ export class AiGatewayProvider implements LLMProvider {
 
   constructor(
     private readonly cfg: GatewayConfig,
-    private readonly fetchImpl: FetchLike = ((input, init) => fetch(input, init)) as FetchLike,
+    private readonly fetchImpl: FetchLike = ((input, init) =>
+      fetch(input, init)) as FetchLike,
   ) {}
 
-  async rewrite(ctx: RewriteContext, signal?: AbortSignal): Promise<ParsedRewrite> {
+  async rewrite(
+    ctx: RewriteContext,
+    signal?: AbortSignal,
+  ): Promise<ParsedRewrite> {
     let response: Response;
     try {
       response = await this.fetchImpl(gatewayUrl(this.cfg), {
@@ -125,7 +149,8 @@ export class AiGatewayProvider implements LLMProvider {
       const message = err instanceof Error ? err.message : "network error";
       // A caller's abort must not be reported as a provider fault: the pipeline
       // distinguishes "we ran out of time" from "the provider is broken".
-      if (/abort/i.test(message)) throw new AiGatewayError("network", "gateway deadline exceeded", 0);
+      if (/abort/i.test(message))
+        throw new AiGatewayError("network", "gateway deadline exceeded", 0);
       throw new AiGatewayError("network", `gateway unreachable: ${message}`, 0);
     }
 
@@ -139,17 +164,32 @@ export class AiGatewayProvider implements LLMProvider {
     const body = (parsed ?? {}) as {
       ok?: boolean;
       error?: string;
-      result?: { title_bn?: string; summary_bn?: string; body_bn?: string; safety_flag?: string };
+      result?: {
+        title_bn?: string;
+        summary_bn?: string;
+        body_bn?: string;
+        safety_flag?: string;
+      };
     };
 
     if (!response.ok) {
       // The server's own Bangla message is what an operator should see; never the
       // request, and never the token.
-      const message = body.error ? String(body.error).slice(0, 200) : `gateway returned ${response.status}`;
-      throw new AiGatewayError(kindForStatus(response.status), message, response.status);
+      const message = body.error
+        ? String(body.error).slice(0, 200)
+        : `gateway returned ${response.status}`;
+      throw new AiGatewayError(
+        kindForStatus(response.status),
+        message,
+        response.status,
+      );
     }
     if (!body.ok || !body.result) {
-      throw new AiGatewayError("bad_output", "gateway returned no draft", response.status);
+      throw new AiGatewayError(
+        "bad_output",
+        "gateway returned no draft",
+        response.status,
+      );
     }
 
     const result = body.result;
@@ -158,7 +198,11 @@ export class AiGatewayProvider implements LLMProvider {
     // A rewrite without a headline or a body is not a draft; refusing here keeps
     // an empty row out of the queue instead of publishing a blank story.
     if (!title || !draft) {
-      throw new AiGatewayError("bad_output", "gateway returned an incomplete draft", response.status);
+      throw new AiGatewayError(
+        "bad_output",
+        "gateway returned an incomplete draft",
+        response.status,
+      );
     }
     return {
       title_bn: title,
@@ -169,7 +213,9 @@ export class AiGatewayProvider implements LLMProvider {
   }
 
   /** The endpoint's `GET` is a free, cheap connection probe. */
-  async healthCheck(signal?: AbortSignal): Promise<{ ok: boolean; error?: string; latencyMs?: number }> {
+  async healthCheck(
+    signal?: AbortSignal,
+  ): Promise<{ ok: boolean; error?: string; latencyMs?: number }> {
     const started = Date.now();
     try {
       const response = await this.fetchImpl(gatewayUrl(this.cfg), {
@@ -183,7 +229,10 @@ export class AiGatewayProvider implements LLMProvider {
         error: response.ok ? undefined : `gateway returned ${response.status}`,
       };
     } catch (err) {
-      return { ok: false, error: err instanceof Error ? err.message : "gateway unreachable" };
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : "gateway unreachable",
+      };
     }
   }
 }

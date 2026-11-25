@@ -35,7 +35,12 @@ const client = getClient();
 const now = nowIso();
 const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
-const insert = async (id: string, priority: number, model: string, baseUrl: string) => {
+const insert = async (
+  id: string,
+  priority: number,
+  model: string,
+  baseUrl: string,
+) => {
   await client.execute({
     sql: `INSERT INTO llm_providers
       (id, provider_key, display_name, base_url, model_name, api_key_env_var,
@@ -58,7 +63,12 @@ await client.execute(
      created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
 );
 // Broken first: a chat gateway with no image endpoint (404 → bad_output).
-await insert("broken-chat-row", 1, "free/mimo-v2.6-pro", "https://api.example-chat.test");
+await insert(
+  "broken-chat-row",
+  1,
+  "free/mimo-v2.6-pro",
+  "https://api.example-chat.test",
+);
 // Working second: a Cloudflare Workers AI row.
 await insert(
   "working-image-row",
@@ -73,24 +83,31 @@ try {
   globalThis.fetch = async (input) => {
     const url = String(input);
     calls.push(url);
-    if (url.includes("example-chat.test")) {
+    if (new URL(url).hostname === "api.example-chat.test") {
       return new Response("not found", { status: 404 });
     }
     // Cloudflare answers a JSON envelope; the OpenAI-shaped hosts answer bytes.
-    if (url.includes("api.cloudflare.com")) {
+    if (new URL(url).hostname === "api.cloudflare.com") {
       return Response.json({ result: { image: png.toString("base64") } });
     }
     return new Response(png, { headers: { "content-type": "image/png" } });
   };
-  const result = await generateImage({ prompt: "A calm river", size: "512x512" });
-  assert.equal(result.provider, "working-image-row", "the working provider must still be tried");
+  const result = await generateImage({
+    prompt: "A calm river",
+    size: "512x512",
+  });
+  assert.equal(
+    result.provider,
+    "working-image-row",
+    "the working provider must still be tried",
+  );
   assert.deepEqual(Buffer.from(result.bytes), png);
   assert.ok(
-    calls.some((u) => u.includes("example-chat.test")),
+    calls.some((u) => new URL(u).hostname === "api.example-chat.test"),
     "the broken provider should have been attempted first",
   );
   assert.ok(
-    calls.some((u) => u.includes("api.cloudflare.com")),
+    calls.some((u) => new URL(u).hostname === "api.cloudflare.com"),
     "the chain must continue after a bad_output failure",
   );
   // A *pinned* provider is a preference, not a filter. Pinning the broken row
@@ -98,14 +115,26 @@ try {
   // chosen provider failed the request while the next row was healthy — the
   // exact mismatch between the web editor (pins a row) and the desktop (pins
   // nothing) reported by operators.
-  const pinned = await generateImage({ prompt: "A calm river", size: "512x512", providerId: "broken-chat-row" });
-  assert.equal(pinned.provider, "working-image-row", "a failing pinned provider must fall through");
+  const pinned = await generateImage({
+    prompt: "A calm river",
+    size: "512x512",
+    providerId: "broken-chat-row",
+  });
+  assert.equal(
+    pinned.provider,
+    "working-image-row",
+    "a failing pinned provider must fall through",
+  );
   assert.ok(
     calls.some((u) => u.includes("example-chat.test")),
     "the pinned provider should still be tried first",
   );
-  console.log("image-chain: broken provider no longer aborts the fallback chain");
-  console.log("image-chain: failing pinned provider falls through to the rest of the chain");
+  console.log(
+    "image-chain: broken provider no longer aborts the fallback chain",
+  );
+  console.log(
+    "image-chain: failing pinned provider falls through to the rest of the chain",
+  );
 } finally {
   globalThis.fetch = originalFetch;
   await client.close();

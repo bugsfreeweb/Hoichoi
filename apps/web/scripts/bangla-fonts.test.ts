@@ -177,7 +177,9 @@ check("every family keeps its source licence note", () => {
   assert.equal(fontbd?.license, "prohibited");
   const lipighor = BANGLA_FONTS.find((f) => f.id === "li-alinur-atithi");
   assert.equal(lipighor?.license, "web-with-attribution");
-  assert.match(read("apps/web/src/components/Footer.tsx"), /lipighor\.com/);
+  assert.ok(
+    read("apps/web/src/components/Footer.tsx").includes("lipighor.com"),
+  );
   assert.match(
     read("packages/bangla-fonts/README.md"),
     /Every Unicode Bengali family/,

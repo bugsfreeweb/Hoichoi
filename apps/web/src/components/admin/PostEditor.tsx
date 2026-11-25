@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { safeImageSrc } from "@/lib/safe-url";
 import { useRouter } from "next/navigation";
-import type { Post, PostStatus, CaseStatus, CategorySlug } from "@hoichoi/shared-types";
+import type {
+  Post,
+  PostStatus,
+  CaseStatus,
+  CategorySlug,
+} from "@hoichoi/shared-types";
 import { PostImageGenerator } from "./PostImageGenerator";
 import VerificationPanel from "@/components/admin/VerificationPanel";
 import ImageReviewPanel from "@/components/admin/ImageReviewPanel";
@@ -92,8 +98,12 @@ export function PostEditor({
     post.ai_prompt_version ?? (post.ai_assisted ? "legacy" : null),
   );
   const [category, setCategory] = useState<CategorySlug>(post.category);
-  const [caseStatus, setCaseStatus] = useState<CaseStatus | "">(post.case_status ?? "");
-  const [publishedAt, setPublishedAt] = useState(toLocalInput(post.published_at));
+  const [caseStatus, setCaseStatus] = useState<CaseStatus | "">(
+    post.case_status ?? "",
+  );
+  const [publishedAt, setPublishedAt] = useState(
+    toLocalInput(post.published_at),
+  );
   // Edited separately from `post` so the image can be saved without also
   // writing back whatever else is sitting in the text fields.
   const [mediaPath, setMediaPath] = useState(post.media_path ?? "");
@@ -113,9 +123,12 @@ export function PostEditor({
 
   // Candidate images, loaded on demand rather than on mount: this fires remote
   // HEAD requests, and most visits to the editor are about editing text.
-  const loadCandidates = async () => {    setMediaErr(null);
+  const loadCandidates = async () => {
+    setMediaErr(null);
     try {
-      const res = await fetch(`/api/posts/${post.id}/media`, { cache: "no-store" });
+      const res = await fetch(`/api/posts/${post.id}/media`, {
+        cache: "no-store",
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const j = (await res.json()) as { candidates?: MediaCandidate[] };
       setCandidates(j.candidates ?? []);
@@ -135,7 +148,9 @@ export function PostEditor({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ url }),
       });
-      const j = (await res.json().catch(() => null)) as { error?: string } | null;
+      const j = (await res.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       if (!res.ok) throw new Error(j?.error ?? `HTTP ${res.status}`);
       setMediaPath(url);
       setMediaMsg("✓ ছবিটি যুক্ত হয়েছে");
@@ -147,7 +162,8 @@ export function PostEditor({
   };
 
   const clearImage = async () => {
-    if (!window.confirm("ছবিটি মুছে ফেলবেন? পোস্টটি ছবি ছাড়া প্রকাশিত হবে।")) return;
+    if (!window.confirm("ছবিটি মুছে ফেলবেন? পোস্টটি ছবি ছাড়া প্রকাশিত হবে।"))
+      return;
     setMediaBusy("__clear__");
     setMediaErr(null);
     setMediaMsg(null);
@@ -157,7 +173,9 @@ export function PostEditor({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ media_path: "" }),
       });
-      const j = (await res.json().catch(() => null)) as { error?: string } | null;
+      const j = (await res.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       if (!res.ok) throw new Error(j?.error ?? `HTTP ${res.status}`);
       setMediaPath("");
       setMediaMsg("✓ ছবি মুছে ফেলা হয়েছে");
@@ -172,7 +190,9 @@ export function PostEditor({
   // strip reflects what the collector mirrored plus anything added here.
   const loadGallery = async () => {
     try {
-      const res = await fetch(`/api/posts/${post.id}/images`, { cache: "no-store" });
+      const res = await fetch(`/api/posts/${post.id}/images`, {
+        cache: "no-store",
+      });
       if (!res.ok) return;
       const j = (await res.json()) as { images?: GalleryImage[] };
       setGallery(j.images ?? []);
@@ -193,8 +213,12 @@ export function PostEditor({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ url: u }),
       });
-      const j = (await res.json().catch(() => null)) as { error?: string; image?: GalleryImage } | null;
-      if (!res.ok || !j?.image) throw new Error(j?.error ?? `HTTP ${res.status}`);
+      const j = (await res.json().catch(() => null)) as {
+        error?: string;
+        image?: GalleryImage;
+      } | null;
+      if (!res.ok || !j?.image)
+        throw new Error(j?.error ?? `HTTP ${res.status}`);
       setGallery((g) => [...g, j.image!]);
       setGalleryUrl("");
       setGalleryMsg("✓ গ্যালারিতে যুক্ত হয়েছে");
@@ -217,7 +241,9 @@ export function PostEditor({
         body: JSON.stringify({ id }),
       });
       if (!res.ok) {
-        const j = (await res.json().catch(() => null)) as { error?: string } | null;
+        const j = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         throw new Error(j?.error ?? `HTTP ${res.status}`);
       }
       setGallery((g) => g.filter((x) => x.id !== id));
@@ -239,7 +265,9 @@ export function PostEditor({
         body: JSON.stringify({ id: img.id }),
       });
       if (!res.ok) {
-        const j = (await res.json().catch(() => null)) as { error?: string } | null;
+        const j = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         throw new Error(j?.error ?? `HTTP ${res.status}`);
       }
       setMediaPath(img.path);
@@ -263,7 +291,10 @@ export function PostEditor({
         };
         const opts = (j.categories ?? []).map((c) => ({
           slug: c.slug as CategorySlug,
-          label: CATEGORY_LABELS[c.slug as CategorySlug] ?? c.display_name_bn ?? c.slug,
+          label:
+            CATEGORY_LABELS[c.slug as CategorySlug] ??
+            c.display_name_bn ??
+            c.slug,
         }));
         if (!opts.some((o) => o.slug === post.category)) {
           opts.unshift({
@@ -274,7 +305,10 @@ export function PostEditor({
         setCatOptions(opts);
       } catch {
         setCatOptions([
-          { slug: post.category, label: CATEGORY_LABELS[post.category] ?? post.category },
+          {
+            slug: post.category,
+            label: CATEGORY_LABELS[post.category] ?? post.category,
+          },
         ]);
       }
     })();
@@ -315,7 +349,9 @@ export function PostEditor({
         }),
       });
       if (!res.ok) {
-        const j = (await res.json().catch(() => null)) as { error?: string } | null;
+        const j = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         throw new Error(j?.error ?? `HTTP ${res.status}`);
       }
       window.location.reload();
@@ -327,7 +363,8 @@ export function PostEditor({
   };
 
   const toggleVisible = async () => {
-    const next: PostStatus = post.status === "published" ? "removed" : "published";
+    const next: PostStatus =
+      post.status === "published" ? "removed" : "published";
     setBusy(`tog-${next}`);
     setErr(null);
     try {
@@ -337,7 +374,11 @@ export function PostEditor({
         body: JSON.stringify({ status: next }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setMsg(next === "published" ? "পোস্টটি এখন পাবলিক দেখা যাবে।" : "পোস্টটি লুকানো হলো।");
+      setMsg(
+        next === "published"
+          ? "পোস্টটি এখন পাবলিক দেখা যাবে।"
+          : "পোস্টটি লুকানো হলো।",
+      );
       window.location.reload();
     } catch (e) {
       setErr(String(e));
@@ -347,7 +388,10 @@ export function PostEditor({
   };
 
   const destroy = async () => {
-    if (!window.confirm("পোস্টটি স্থায়ীভাবে মুছে ফেলবেন? একবার মুছলে ফেরানো যাবে না।")) return;
+    if (
+      !window.confirm("পোস্টটি স্থায়ীভাবে মুছে ফেলবেন? একবার মুছলে ফেরানো যাবে না।")
+    )
+      return;
     setBusy("delete");
     try {
       const res = await fetch(`/api/posts/${post.id}`, { method: "DELETE" });
@@ -364,8 +408,12 @@ export function PostEditor({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">✏️ POST EDITOR</p>
-          <h1 className="mt-1 max-w-xl font-serif-bn text-[28px] font-black leading-tight text-ink">{post.title_bn}</h1>
+          <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">
+            ✏️ POST EDITOR
+          </p>
+          <h1 className="mt-1 max-w-xl font-serif-bn text-[28px] font-black leading-tight text-ink">
+            {post.title_bn}
+          </h1>
         </div>
         <span className="rounded-full border border-ink/20 bg-paper-deep px-3 py-1 font-mono-x text-[10px] font-bold uppercase tracking-wide text-ink-soft">
           {STATUS_LABELS[post.status]}
@@ -373,11 +421,20 @@ export function PostEditor({
       </div>
 
       <p className="mt-2 font-mono-x text-[11px] text-ink-soft">
-        slug: <span className="text-ink">{post.slug}</span> · শিরোনাম বদলালেও URL অপরিবর্তিত থাকে।
+        slug: <span className="text-ink">{post.slug}</span> · শিরোনাম বদলালেও
+        URL অপরিবর্তিত থাকে।
       </p>
 
-      {msg && <p className="mt-4 border border-cat-teal bg-cat-teal/10 px-3 py-2 text-[12.5px] font-bold text-ink">✓ {msg}</p>}
-      {err && <p className="mt-4 border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">✕ {err}</p>}
+      {msg && (
+        <p className="mt-4 border border-cat-teal bg-cat-teal/10 px-3 py-2 text-[12.5px] font-bold text-ink">
+          ✓ {msg}
+        </p>
+      )}
+      {err && (
+        <p className="mt-4 border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">
+          ✕ {err}
+        </p>
+      )}
 
       <AiAssistPanel
         onAiAssisted={(task) => setAiAssisted(task)}
@@ -391,21 +448,47 @@ export function PostEditor({
 
       <div className="mt-5 space-y-4 border border-ink/20 bg-paper-deep p-5">
         <Field label="শিরোনাম (title_bn)">
-          <textarea className={field} rows={2} value={title} onChange={(e) => setTitle(e.target.value)} />
+          <textarea
+            className={field}
+            rows={2}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
         </Field>
 
         <Field label="বিবরণ / বডি (body_bn)">
-          <textarea className={field} rows={10} value={body} onChange={(e) => setBody(e.target.value)} />
+          <textarea
+            className={field}
+            rows={10}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+          />
         </Field>
 
         <Field label="সারাংশ (summary_bn — খালি = নেই)">
-          <textarea className={field} rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} />
+          <textarea
+            className={field}
+            rows={3}
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+          />
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="ক্যাটাগরি">
-            <select className={field} value={category} onChange={(e) => setCategory(e.target.value as CategorySlug)}>
-              {(catOptions ?? [{ slug: post.category, label: CATEGORY_LABELS[post.category] ?? post.category }]).map((c) => (
+            <select
+              className={field}
+              value={category}
+              onChange={(e) => setCategory(e.target.value as CategorySlug)}
+            >
+              {(
+                catOptions ?? [
+                  {
+                    slug: post.category,
+                    label: CATEGORY_LABELS[post.category] ?? post.category,
+                  },
+                ]
+              ).map((c) => (
                 <option key={c.slug} value={c.slug}>
                   {c.label}
                 </option>
@@ -413,7 +496,11 @@ export function PostEditor({
             </select>
           </Field>
           <Field label="কেস স্ট্যাটাস">
-            <select className={field} value={caseStatus} onChange={(e) => setCaseStatus(e.target.value as CaseStatus | "")}>
+            <select
+              className={field}
+              value={caseStatus}
+              onChange={(e) => setCaseStatus(e.target.value as CaseStatus | "")}
+            >
               <option value="">— নেই —</option>
               {CASE_LABELS.map((c) => (
                 <option key={c.value} value={c.value}>
@@ -451,7 +538,7 @@ export function PostEditor({
           <div className="mt-3 flex flex-wrap items-start gap-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={previewSrc(mediaPath)}
+              src={safeImageSrc(previewSrc(mediaPath))}
               alt=""
               className="h-40 w-auto max-w-full border border-ink/20 object-contain"
               onError={(e) => {
@@ -459,13 +546,20 @@ export function PostEditor({
               }}
             />
             <div className="min-w-0 flex-1">
-              <p className="break-all font-mono-x text-[11px] text-ink-soft">{mediaPath}</p>
-              {mediaMsg && <p className="mt-2 text-[12.5px] font-bold text-cat-teal">{mediaMsg}</p>}
+              <p className="break-all font-mono-x text-[11px] text-ink-soft">
+                {mediaPath}
+              </p>
+              {mediaMsg && (
+                <p className="mt-2 text-[12.5px] font-bold text-cat-teal">
+                  {mediaMsg}
+                </p>
+              )}
             </div>
           </div>
         ) : (
           <p className="mt-2 text-[12.5px] text-ink-soft">
-            এই পোস্টে কোনো ছবি নেই। নিচে লিঙ্ক পেস্ট করে সংরক্ষণ করুন, অথবা সংগ্রাহক যে ছবিটি দেখেছিল সেটি থেকে বেছে নিন।
+            এই পোস্টে কোনো ছবি নেই। নিচে লিঙ্ক পেস্ট করে সংরক্ষণ করুন, অথবা সংগ্রাহক
+            যে ছবিটি দেখেছিল সেটি থেকে বেছে নিন।
           </p>
         )}
 
@@ -508,7 +602,10 @@ export function PostEditor({
                 <p className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
                   সংগ্রাহক যে ছবিগুলো দেখেছিল
                 </p>
-                <button className="text-[11px] font-bold text-ink-soft underline" onClick={() => void loadCandidates()}>
+                <button
+                  className="text-[11px] font-bold text-ink-soft underline"
+                  onClick={() => void loadCandidates()}
+                >
                   আবার দেখুন
                 </button>
               </div>
@@ -533,7 +630,11 @@ export function PostEditor({
                         disabled={mediaBusy !== null}
                         title={c.ok ? c.url : `অনুপলব্ধ (HTTP ${c.status})`}
                       >
-                        {mediaBusy === c.url ? "যুক্ত হচ্ছে…" : c.ok ? "এটি নিন" : "মরা লিঙ্ক"}
+                        {mediaBusy === c.url
+                          ? "যুক্ত হচ্ছে…"
+                          : c.ok
+                            ? "এটি নিন"
+                            : "মরা লিঙ্ক"}
                       </button>
                       <button
                         className="mt-1 w-full truncate border border-ink/20 px-2 py-0.5 text-[10px] font-bold text-ink-soft transition hover:bg-ink hover:text-paper disabled:opacity-50"
@@ -559,12 +660,15 @@ export function PostEditor({
             <p className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
               গ্যালারি (অতিরিক্ত ছবি)
             </p>
-            <span className="font-mono-x text-[10.5px] text-ink-soft">· {gallery.length} টি</span>
+            <span className="font-mono-x text-[10.5px] text-ink-soft">
+              · {gallery.length} টি
+            </span>
           </div>
 
           {gallery.length === 0 ? (
             <p className="mt-2 text-[12.5px] text-ink-soft">
-              এখনো কোনো অতিরিক্ত ছবি নেই। নিচে লিঙ্ক পেস্ট করে যোগ করুন — সংগ্রাহক একাধিক ছবি পেলে সেগুলো স্বয়ংক্রিয়ভাবে এখানে থাকে।
+              এখনো কোনো অতিরিক্ত ছবি নেই। নিচে লিঙ্ক পেস্ট করে যোগ করুন — সংগ্রাহক
+              একাধিক ছবি পেলে সেগুলো স্বয়ংক্রিয়ভাবে এখানে থাকে।
             </p>
           ) : (
             <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
@@ -625,7 +729,11 @@ export function PostEditor({
               ➕ গ্যালারিতে যোগ
             </button>
           </div>
-          {galleryMsg && <p className="mt-2 text-[12.5px] font-bold text-cat-teal">{galleryMsg}</p>}
+          {galleryMsg && (
+            <p className="mt-2 text-[12.5px] font-bold text-cat-teal">
+              {galleryMsg}
+            </p>
+          )}
           {galleryErr && (
             <p className="mt-2 border border-alizarin bg-alizarin/10 px-3 py-2 text-[12.5px] font-bold text-ink">
               ✕ {galleryErr}
@@ -653,20 +761,41 @@ export function PostEditor({
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-2">
-        <button className={btnPrimary} onClick={() => void save()} disabled={busy !== null}>
+        <button
+          className={btnPrimary}
+          onClick={() => void save()}
+          disabled={busy !== null}
+        >
           💾 সংরক্ষণ (save)
         </button>
-        <button className={btnLime} onClick={() => void toggleVisible()} disabled={busy !== null}>
-          {post.status === "published" ? "🙈 লুকাও (hide)" : "👁 দেখাও (show/publish)"}
+        <button
+          className={btnLime}
+          onClick={() => void toggleVisible()}
+          disabled={busy !== null}
+        >
+          {post.status === "published"
+            ? "🙈 লুকাও (hide)"
+            : "👁 দেখাও (show/publish)"}
         </button>
-        <button className={btnGhost} onClick={() => void destroy()} disabled={busy !== null}>
+        <button
+          className={btnGhost}
+          onClick={() => void destroy()}
+          disabled={busy !== null}
+        >
           🗑 মুছে ফেল (delete)
         </button>
-        <button className={`${btnGhost} ml-auto`} onClick={() => router.push("/admin/posts")}>
+        <button
+          className={`${btnGhost} ml-auto`}
+          onClick={() => router.push("/admin/posts")}
+        >
           ← সব পোস্ট
         </button>
       </div>
-      {busy === "save" && <p className="mt-3 font-mono-x text-[11px] text-ink-soft">সংরক্ষণ হচ্ছে…</p>}
+      {busy === "save" && (
+        <p className="mt-3 font-mono-x text-[11px] text-ink-soft">
+          সংরক্ষণ হচ্ছে…
+        </p>
+      )}
 
       <ImageReviewPanel postId={post.id} canEdit />
       <VerificationPanel postId={post.id} canEdit />
@@ -682,10 +811,18 @@ function previewSrc(p: string): string {
   return /^https?:\/\//i.test(p) ? p : `/uploads/${p.replace(/\\/g, "/")}`;
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <label className="block">
-      <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">{label}</span>
+      <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+        {label}
+      </span>
       {children}
     </label>
   );

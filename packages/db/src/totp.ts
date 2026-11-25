@@ -28,7 +28,10 @@ export function base32Encode(buffer: Buffer): string {
 }
 
 export function base32Decode(input: string): Buffer {
-  const clean = input.toUpperCase().replace(/=+$/, "").replace(/\s+/g, "");
+  const clean = input
+    .toUpperCase()
+    .replace(/[=\s]{1,64}$/g, "")
+    .replace(/\s{1,64}/g, "");
   let bits = 0;
   let value = 0;
   const bytes: number[] = [];
@@ -53,7 +56,11 @@ export function generateTotpSecret(): string {
 export const TOTP_STEP_SECONDS = 30;
 
 /** HOTP value for an explicit counter, as a zero-padded string. */
-export function hotp(secretBase32: string, counter: number, digits = 6): string {
+export function hotp(
+  secretBase32: string,
+  counter: number,
+  digits = 6,
+): string {
   const key = base32Decode(secretBase32);
   const buf = Buffer.alloc(8);
   buf.writeBigUInt64BE(BigInt(counter));
@@ -71,7 +78,11 @@ export function totpStep(at: number = Date.now()): number {
   return Math.floor(at / 1000 / TOTP_STEP_SECONDS);
 }
 
-export function totp(secretBase32: string, at: number = Date.now(), digits = 6): string {
+export function totp(
+  secretBase32: string,
+  at: number = Date.now(),
+  digits = 6,
+): string {
   return hotp(secretBase32, totpStep(at), digits);
 }
 
@@ -99,7 +110,8 @@ export function verifyTotp(
     // but free to close.
     const a = Buffer.from(expected);
     const b = Buffer.from(clean);
-    if (a.length === b.length && crypto.timingSafeEqual(a, b)) return { ok: true, step };
+    if (a.length === b.length && crypto.timingSafeEqual(a, b))
+      return { ok: true, step };
   }
   return { ok: false };
 }
@@ -134,5 +146,8 @@ export function generateRecoveryCodes(count = 8): string[] {
 }
 
 export function hashRecoveryCode(code: string): string {
-  return crypto.createHash("sha256").update(code.trim().toUpperCase()).digest("hex");
+  return crypto
+    .createHash("sha256")
+    .update(code.trim().toUpperCase())
+    .digest("hex");
 }

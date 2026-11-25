@@ -22,7 +22,11 @@ export interface PreviewDraft {
 }
 
 function b64urlEncode(value: string): string {
-  return Buffer.from(value, "utf8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return Buffer.from(value, "utf8")
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/={1,8}$/, "");
 }
 
 function b64urlDecode(value: string): string | null {
@@ -47,7 +51,9 @@ export function decodePreviewDraft(raw: string): PreviewDraft | null {
   if (!json) return null;
   try {
     const parsed = JSON.parse(json) as unknown;
-    return parsed && typeof parsed === "object" ? (parsed as PreviewDraft) : null;
+    return parsed && typeof parsed === "object"
+      ? (parsed as PreviewDraft)
+      : null;
   } catch {
     return null;
   }
@@ -59,7 +65,10 @@ export function decodePreviewDraft(raw: string): PreviewDraft | null {
  * preview is a faithful, non-destructive render of the whole site.
  */
 export async function loadLive(draft?: PreviewDraft | null): Promise<MvLive> {
-  const [state, siteVariant] = await Promise.all([listSections(), getSiteVariant()]);
+  const [state, siteVariant] = await Promise.all([
+    listSections(),
+    getSiteVariant(),
+  ]);
 
   if (!draft) return { state, siteVariant };
 
@@ -69,12 +78,18 @@ export async function loadLive(draft?: PreviewDraft | null): Promise<MvLive> {
   if (typeof draft.site === "string") {
     if (draft.site === DEFAULT_VARIANT) {
       nextSite = DEFAULT_VARIANT;
-      nextState = nextState.map((s) => ({ ...s, variant: s.meta.defaultVariant }));
+      nextState = nextState.map((s) => ({
+        ...s,
+        variant: s.meta.defaultVariant,
+      }));
     } else {
       const preset = PRESETS.find((p) => p.id === draft.site);
       if (preset) {
         nextSite = preset.id;
-        nextState = nextState.map((s) => ({ ...s, variant: preset.values[s.key] ?? s.variant }));
+        nextState = nextState.map((s) => ({
+          ...s,
+          variant: preset.values[s.key] ?? s.variant,
+        }));
       }
     }
   }
@@ -83,7 +98,11 @@ export async function loadLive(draft?: PreviewDraft | null): Promise<MvLive> {
     nextState = nextState.map((s) => {
       const o = draft.overrides?.[s.key];
       if (!o) return s;
-      return { ...s, variant: o.variant ?? s.variant, enabled: o.enabled ?? s.enabled };
+      return {
+        ...s,
+        variant: o.variant ?? s.variant,
+        enabled: o.enabled ?? s.enabled,
+      };
     });
   }
 

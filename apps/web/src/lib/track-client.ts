@@ -11,7 +11,9 @@ function sessionId(): string {
   try {
     let s = sessionStorage.getItem("hoichoi-sid");
     if (!s) {
-      s = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+      const bytes = new Uint8Array(8);
+      crypto.getRandomValues(bytes);
+      s = Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("");
       sessionStorage.setItem("hoichoi-sid", s);
     }
     return s;
@@ -57,10 +59,19 @@ function send(payload: Record<string, unknown>): void {
 
 export function trackPageView(path: string, referrer?: string): void {
   if (!path) return;
-  send({ path, postSlug: slugFromPath(path), sessionId: sessionId(), referrer: referrer ?? "" });
+  send({
+    path,
+    postSlug: slugFromPath(path),
+    sessionId: sessionId(),
+    referrer: referrer ?? "",
+  });
 }
 
-export function trackAd(slot: string, event: "view" | "click", postSlug?: string | null): void {
+export function trackAd(
+  slot: string,
+  event: "view" | "click",
+  postSlug?: string | null,
+): void {
   if (!slot) return;
   const path = typeof window !== "undefined" ? window.location.pathname : "/";
   send({

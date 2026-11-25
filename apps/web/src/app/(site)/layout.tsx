@@ -6,7 +6,13 @@ import { MaintenanceScreen } from "@/components/maintenance/MaintenanceScreen";
 import TrafficTracker from "@/components/TrafficTracker";
 import { currentUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
-import { countReviewQueues, getSpecialNotice, parseAppConfig, recentPipelineRuns, statsSnapshot } from "@hoichoi/db";
+import {
+  countReviewQueues,
+  getSpecialNotice,
+  parseAppConfig,
+  recentPipelineRuns,
+  statsSnapshot,
+} from "@hoichoi/db";
 import { resolveFooterSocials } from "@/lib/socials";
 import { getLive } from "@/lib/mv/live";
 import { isMvMode } from "@/lib/mv/variant";
@@ -35,6 +41,19 @@ const PRELOAD_FONTS = [
   "/fonts/hYkhPvggTvnzO14VSXltirUdnnkt1pwmWrprmO7RjE0a5BtdKyg8JCJZ.woff2", // Noto Serif Bengali, bengali
 ];
 
+/**
+ * The theme boot line is a string of JavaScript, not HTML. JSON.stringify keeps
+ * a stored value from ending the script, and escaping `<` closes the remaining
+ * `</script>` route. The theme is the only interpolated value.
+ */
+function themeBoot(theme: string): string {
+  const literal = JSON.stringify(theme).replace(
+    /</g,
+    String.fromCharCode(92) + "u003c",
+  );
+  return `(function(){try{if(localStorage.getItem("hoichoi-theme-explicit")!=="1"){document.documentElement.setAttribute("data-theme",${literal})}}catch(e){}})();`;
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getSettings();
   const cfg = parseAppConfig(s.app_config_json);
@@ -46,13 +65,22 @@ export async function generateMetadata(): Promise<Metadata> {
     title: s.site_name,
     description: s.slogan_bn ? `${s.slogan_bn}. ${s.tagline}` : undefined,
     icons: s.favicon_url ? { icon: s.favicon_url } : undefined,
-    ...(inMaintenance ? { robots: { index: false, follow: false } as const } : {}),
+    ...(inMaintenance
+      ? { robots: { index: false, follow: false } as const }
+      : {}),
   };
 }
 
 /** পাবলিক সাইট শেল — টপ বার, টিকার, স্পেশাল নোটিশ, ফুটার। */
-export default async function SiteLayout({ children }: { children: React.ReactNode }) {
-  const [settings, specialNotice] = await Promise.all([getSettings(), getSpecialNotice()]);
+export default async function SiteLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [settings, specialNotice] = await Promise.all([
+    getSettings(),
+    getSpecialNotice(),
+  ]);
   const cfg = parseAppConfig(settings.app_config_json);
   const themeDefault = cfg.theme_default ?? "light";
   // Global footer links, resolved once for every theme (default, mockup,
@@ -71,7 +99,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <div className="page-chrome">
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{if(localStorage.getItem("hoichoi-theme-explicit")!=="1"){document.documentElement.setAttribute("data-theme","${themeDefault}")}}catch(e){}})();`,
+            __html: themeBoot(themeDefault),
           }}
         />
         <MaintenanceScreen
@@ -105,11 +133,15 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
     return (
       <MvDataProvider value={mvData}>
         <div>
-        <MvChrome live={live} accent={settings.accent_color} socials={footerSocials}>
-          <TrafficTracker />
-          {children}
-          <ConsentBanner />
-        </MvChrome>
+          <MvChrome
+            live={live}
+            accent={settings.accent_color}
+            socials={footerSocials}
+          >
+            <TrafficTracker />
+            {children}
+            <ConsentBanner />
+          </MvChrome>
         </div>
       </MvDataProvider>
     );
@@ -122,7 +154,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
     <div className="page-chrome">
       <script
         dangerouslySetInnerHTML={{
-          __html: `(function(){try{if(localStorage.getItem("hoichoi-theme-explicit")!=="1"){document.documentElement.setAttribute("data-theme","${themeDefault}")}}catch(e){}})();`,
+          __html: themeBoot(themeDefault),
         }}
       />
       <TrafficTracker />
@@ -141,7 +173,9 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       )}
       {cfg.show_footer && <Footer />}
       {/* ad · mobile anchor — dismissed for the session once closed */}
-      {cfg.show_ads && <PlatformAdSlot slotKey="global_mobile_anchor" layout="anchor" />}
+      {cfg.show_ads && (
+        <PlatformAdSlot slotKey="global_mobile_anchor" layout="anchor" />
+      )}
       <ScrollToTop />
       <ConsentBanner />
     </div>

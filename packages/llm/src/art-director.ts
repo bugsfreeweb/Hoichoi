@@ -198,7 +198,10 @@ Hard rules:
 
 function clampText(value: unknown, max: number): string {
   return typeof value === "string"
-    ? value.replace(/\s+/g, " ").trim().slice(0, max)
+    ? value
+        .replace(/\s{1,64}/g, " ")
+        .trim()
+        .slice(0, max)
     : "";
 }
 
@@ -668,7 +671,7 @@ function firstSentence(article: PosterArticle): string {
 function groundedQuote(quote: string, article: PosterArticle): boolean {
   const plain = quote
     .replace(/[“”‘’"']/g, "")
-    .replace(/\s*[–—-]\s*[^–—]{2,40}$/u, "")
+    .replace(/\s{0,8}[–—-]\s{0,8}[^–—]{2,40}$/u, "")
     .replace(/\s+/g, " ")
     .trim();
   if (Array.from(plain).length < 12) return false;

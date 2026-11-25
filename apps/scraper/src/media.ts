@@ -1,4 +1,9 @@
-import { mediaRoot, ensureMediaDir, localMediaPath, randomMediaName } from "@hoichoi/db";
+import {
+  mediaRoot,
+  ensureMediaDir,
+  localMediaPath,
+  randomMediaName,
+} from "@hoichoi/db";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -32,19 +37,42 @@ type SharpFactory = (input: Buffer) => import("sharp").Sharp;
 async function loadSharp(): Promise<SharpFactory> {
   const mod: unknown = await import("sharp");
   const factory =
-    typeof mod === "function" ? (mod as SharpFactory) : (mod as { default?: SharpFactory }).default;
+    typeof mod === "function"
+      ? (mod as SharpFactory)
+      : (mod as { default?: SharpFactory }).default;
   if (!factory) throw new Error("sharp module exposes no callable export");
   return factory;
 }
 
+const PRIVATE_HOST =
+  /^(localhost|127\.|0\.|10\.|192\.168\.|169\.254\.|172\.(?:1[6-9]|2\d|3[01])\.|\[?::1\]?)(?:$|[:.])/i;
+
+/** A scraped page must not be able to point the downloader at the local host. */
+function publicHttpUrl(raw: string): string {
+  const u = new URL(raw);
+  if (u.protocol !== "http:" && u.protocol !== "https:") {
+    throw new Error("media URL must be http(s)");
+  }
+  if (PRIVATE_HOST.test(u.hostname) || !u.hostname.includes(".")) {
+    throw new Error("media URL must be a public host");
+  }
+  return u.toString();
+}
+
 /** Download a remote media file to the local store. */
-export async function downloadMedia(url: string, outRel: string): Promise<string> {
+export async function downloadMedia(
+  url: string,
+  outRel: string,
+): Promise<string> {
   ensureMediaDir();
   const outPath = mkdirForFile(localMediaPath(outRel));
-  const res = await fetch(url, { headers: { "user-agent": UA } });
+  const res = await fetch(publicHttpUrl(url), {
+    headers: { "user-agent": UA },
+  });
   if (!res.ok) throw new Error(`download ${url} -> ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
-  if (buf.length < 1024) throw new Error(`download ${url} -> suspiciously small (${buf.length}B)`);
+  if (buf.length < 1024)
+    throw new Error(`download ${url} -> suspiciously small (${buf.length}B)`);
   fs.writeFileSync(outPath, buf);
   return outRel;
 }
@@ -74,5 +102,16 @@ export async function processImage(
 
 /** Detect whether a Facebook URL points at a video post. */
 export function isVideoUrl(url: string): boolean {
-  return /facebook\.com\/(?:watch|reel|video|videos|[^/]+\/videos)/i.test(url) || /\.(mp4|webm|m3u8)(\?|$)/i.test(url);
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    if (host === "facebook.com" || host.endsWith(".facebook.com")) {
+      if (/^\/(?:watch|reel|video|videos)(?:\/|$)/i.test(u.pathname))
+        return true;
+      if (/^\/[^/]+\/videos(?:\/|$)/i.test(u.pathname)) return true;
+    }
+    return /\.(?:mp4|webm|m3u8)$/i.test(u.pathname);
+  } catch {
+    return false;
+  }
 }

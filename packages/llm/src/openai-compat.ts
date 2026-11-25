@@ -132,14 +132,16 @@ export function summarizeProviderError(status: number, body: string): string {
   }
 
   if (!detail && /<(!doctype|html|head|body)/i.test(raw)) {
-    const title = /<title[^>]*>([^<]{1,120})<\/title>/i.exec(raw)?.[1]?.trim();
+    const title = /<title[^>]{0,300}>([^<]{1,120})<\/title>/i
+      .exec(raw)?.[1]
+      ?.trim();
     detail = title
       ? `HTML পৃষ্ঠা: ${title}`
       : "HTML পৃষ্ঠা ফিরেছে (কী বা হোস্ট প্রত্যাখ্যান)";
   }
   if (!detail && raw)
     detail = raw
-      .replace(/<[^>]*>/g, " ")
+      .replace(/<[^>]{0,500}>/g, " ")
       .replace(/\s+/g, " ")
       .slice(0, 200);
 
@@ -277,7 +279,10 @@ export class OpenAICompatProvider implements LLMProvider {
    * gateways in the provider chain reject that richer shape, while plain
    * `json_object` is understood almost everywhere.
    */
-  async generateJson(req: JsonGenRequest, signal?: AbortSignal): Promise<unknown> {
+  async generateJson(
+    req: JsonGenRequest,
+    signal?: AbortSignal,
+  ): Promise<unknown> {
     const text = await this.postUntilOk(
       this.chatCandidates(),
       {
@@ -294,7 +299,8 @@ export class OpenAICompatProvider implements LLMProvider {
       signal,
     );
     const parsed = parseJsonLoose(text);
-    if (!parsed) throw new ProviderError("bad_output", `${this.name} returned no JSON`);
+    if (!parsed)
+      throw new ProviderError("bad_output", `${this.name} returned no JSON`);
     return parsed;
   }
 

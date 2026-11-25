@@ -43,7 +43,7 @@ fn master_key(app: &tauri::AppHandle) -> Result<[u8; 32], String> {
         Ok(key)
     } else {
         let mut key = [0u8; 32];
-        rand::thread_rng().fill_bytes(&mut key);
+        rand::rngs::OsRng.fill_bytes(&mut key);
         std::fs::write(&path, key).map_err(|e| format!("write key failed: {e}"))?;
         Ok(key)
     }
@@ -81,7 +81,7 @@ fn encrypt(app: &tauri::AppHandle, plaintext: &[u8]) -> Result<String, String> {
     let key = master_key(app)?;
     let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| e.to_string())?;
     let mut nonce_bytes = [0u8; 12];
-    rand::thread_rng().fill_bytes(&mut nonce_bytes);
+    rand::rngs::OsRng.fill_bytes(&mut nonce_bytes);
     let ct = cipher
         .encrypt(Nonce::from_slice(&nonce_bytes), plaintext)
         .map_err(|e| format!("encrypt failed: {e}"))?;

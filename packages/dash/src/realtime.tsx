@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { cn } from "./cn";
 import { toBn } from "./hooks";
 import type { Series } from "./kit";
@@ -34,18 +40,27 @@ export function LivePulse({
       <div className="relative shrink-0" style={{ width: size, height: size }}>
         <span
           className="absolute inset-0 rounded-full border"
-          style={{ borderColor: `${tone}44`, animation: `rtRipple ${dur} ease-out infinite` }}
+          style={{
+            borderColor: `${tone}44`,
+            animation: `rtRipple ${dur} ease-out infinite`,
+          }}
         />
         <span
           className="absolute inset-0 rounded-full border"
-          style={{ borderColor: `${tone}33`, animation: `rtRipple ${dur} ease-out infinite`, animationDelay: `calc(${dur} / 3)` }}
+          style={{
+            borderColor: `${tone}33`,
+            animation: `rtRipple ${dur} ease-out infinite`,
+            animationDelay: `calc(${dur} / 3)`,
+          }}
         />
         <span
           className="absolute inset-[26%] rounded-full"
           style={{
             background: `radial-gradient(circle at 35% 30%, ${tone}cc, ${tone}22 70%)`,
             boxShadow: running ? `0 0 26px ${tone}66` : "none",
-            animation: running ? "rtBreathe 2.4s ease-in-out infinite" : undefined,
+            animation: running
+              ? "rtBreathe 2.4s ease-in-out infinite"
+              : undefined,
           }}
         />
         <span
@@ -54,12 +69,29 @@ export function LivePulse({
         />
       </div>
       <div className="min-w-0">
-        <p className="mono flex items-center gap-2 text-[9.5px] tracking-[0.2em] uppercase" style={{ color: tone }}>
-          <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone, animation: running ? "rtBlink 1.4s ease-in-out infinite" : undefined }} />
+        <p
+          className="mono flex items-center gap-2 text-[9.5px] tracking-[0.2em] uppercase"
+          style={{ color: tone }}
+        >
+          <span
+            className="h-1.5 w-1.5 rounded-full"
+            style={{
+              background: tone,
+              animation: running
+                ? "rtBlink 1.4s ease-in-out infinite"
+                : undefined,
+            }}
+          />
           {running ? "COLLECTOR · LIVE" : "COLLECTOR · IDLE"}
         </p>
-        {label && <p className="bn mt-1 text-[14px] font-semibold text-white/90">{label}</p>}
-        {sub && <p className="mono mt-0.5 text-[10.5px] text-white/45">{sub}</p>}
+        {label && (
+          <p className="bn mt-1 text-[14px] font-semibold text-white/90">
+            {label}
+          </p>
+        )}
+        {sub && (
+          <p className="mono mt-0.5 text-[10.5px] text-white/45">{sub}</p>
+        )}
       </div>
     </div>
   );
@@ -94,11 +126,23 @@ export function StreamArea({
 
   return (
     <div className="relative w-full" style={{ height }}>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-full w-full">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio="none"
+        className="h-full w-full"
+      >
         <defs>
           <linearGradient id="rt-stream-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={series[0]?.color ?? "#22d3ee"} stopOpacity="0.34" />
-            <stop offset="100%" stopColor={series[0]?.color ?? "#22d3ee"} stopOpacity="0" />
+            <stop
+              offset="0%"
+              stopColor={series[0]?.color ?? "#22d3ee"}
+              stopOpacity="0.34"
+            />
+            <stop
+              offset="100%"
+              stopColor={series[0]?.color ?? "#22d3ee"}
+              stopOpacity="0"
+            />
           </linearGradient>
         </defs>
         {series.map((s, si) => {
@@ -153,8 +197,14 @@ export interface FlowStage {
  * a dot travelling along it; the connectors only animate while a run is live, so
  * motion means "work is flowing right now", not decoration.
  */
-export function PipelineFlow({ stages, running }: { stages: FlowStage[]; running: boolean }) {
-  const uid = useMemo(() => `flow-${Math.random().toString(36).slice(2, 8)}`, []);
+export function PipelineFlow({
+  stages,
+  running,
+}: {
+  stages: FlowStage[];
+  running: boolean;
+}) {
+  const uid = `flow-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   return (
     <div className="relative overflow-x-auto pb-1">
       <div className="flex min-w-[560px] items-center gap-1.5">
@@ -172,21 +222,35 @@ export function PipelineFlow({ stages, running }: { stages: FlowStage[]; running
                 boxShadow: running ? `inset 0 0 22px ${s.color}1a` : undefined,
               }}
             >
-              <p className="mono text-[8.5px] tracking-[0.18em] text-white/40 uppercase">{s.id}</p>
-              <p className="bn mt-1 truncate text-[11px] text-white/70">{s.bn}</p>
-              <p className="mono mt-1 text-[16px] leading-none font-bold tabular" style={{ color: s.color }}>
+              <p className="mono text-[8.5px] tracking-[0.18em] text-white/40 uppercase">
+                {s.id}
+              </p>
+              <p className="bn mt-1 truncate text-[11px] text-white/70">
+                {s.bn}
+              </p>
+              <p
+                className="mono mt-1 text-[16px] leading-none font-bold tabular"
+                style={{ color: s.color }}
+              >
                 {toBn(s.value)}
               </p>
               {running && (
                 <span
                   className="absolute -right-0.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full"
-                  style={{ background: s.color, boxShadow: `0 0 10px ${s.color}` }}
+                  style={{
+                    background: s.color,
+                    boxShadow: `0 0 10px ${s.color}`,
+                  }}
                 />
               )}
             </div>
             {i < stages.length - 1 && (
               <div className="relative h-px w-6 shrink-0 bg-white/10">
-                <svg viewBox="0 0 24 2" className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
+                <svg
+                  viewBox="0 0 24 2"
+                  className="absolute inset-0 h-full w-full"
+                  preserveAspectRatio="none"
+                >
                   <line
                     x1="0"
                     y1="1"
@@ -282,7 +346,11 @@ export function ActivityStream({
   }, [shown.map((i) => i.id).join("|")]);
 
   if (shown.length === 0) {
-    return <div className="py-6 text-center text-[12px] text-white/40">{empty ?? "এখনো কোনো কার্যক্রম নেই।"}</div>;
+    return (
+      <div className="py-6 text-center text-[12px] text-white/40">
+        {empty ?? "এখনো কোনো কার্যক্রম নেই।"}
+      </div>
+    );
   }
 
   return (
@@ -290,7 +358,10 @@ export function ActivityStream({
       <span
         aria-hidden
         className="absolute bottom-2 left-[13px] top-2 w-px"
-        style={{ background: "linear-gradient(to bottom, rgba(255,255,255,0.16), rgba(255,255,255,0.02))" }}
+        style={{
+          background:
+            "linear-gradient(to bottom, rgba(255,255,255,0.16), rgba(255,255,255,0.02))",
+        }}
       />
       {shown.map((e, i) => {
         const kind = KINDS[e.kind ?? "system"] ?? KINDS.system!;
@@ -306,13 +377,26 @@ export function ActivityStream({
           >
             <span
               className="absolute left-[7px] top-[9px] grid h-[13px] w-[13px] place-items-center rounded-full text-[8px] font-bold"
-              style={{ background: `${kind.color}22`, color: kind.color, boxShadow: fresh ? `0 0 8px ${kind.color}66` : undefined }}
+              style={{
+                background: `${kind.color}22`,
+                color: kind.color,
+                boxShadow: fresh ? `0 0 8px ${kind.color}66` : undefined,
+              }}
             >
               {kind.icon}
             </span>
-            <span className="bn min-w-0 flex-1 truncate text-[12px] leading-relaxed text-white/75">{e.text}</span>
-            <span className="mono shrink-0 pt-0.5 text-[9.5px] text-white/30">{relTime(e.at, clock)}</span>
-            {fresh && <span className="h-1 w-1 shrink-0 animate-pulse rounded-full" style={{ background: kind.color }} />}
+            <span className="bn min-w-0 flex-1 truncate text-[12px] leading-relaxed text-white/75">
+              {e.text}
+            </span>
+            <span className="mono shrink-0 pt-0.5 text-[9.5px] text-white/30">
+              {relTime(e.at, clock)}
+            </span>
+            {fresh && (
+              <span
+                className="h-1 w-1 shrink-0 animate-pulse rounded-full"
+                style={{ background: kind.color }}
+              />
+            )}
           </li>
         );
       })}
@@ -363,7 +447,10 @@ export function HeatGrid({
           <span
             key={i}
             title={`${v}`}
-            className={cn("flex-1 rounded-[2px]", isLast && pct > 0 && "animate-pulse")}
+            className={cn(
+              "flex-1 rounded-[2px]",
+              isLast && pct > 0 && "animate-pulse",
+            )}
             style={{
               height: `${Math.max(8, pct * 100)}%`,
               background: v > 0 ? color : "rgba(255,255,255,0.07)",

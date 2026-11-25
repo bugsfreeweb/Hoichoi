@@ -101,7 +101,12 @@ function sha256Hex(data: string | Buffer): string {
   return createHash("sha256").update(data).digest("hex");
 }
 
-function signingKey(secret: string, dateStamp: string, region: string, service: string): Buffer {
+function signingKey(
+  secret: string,
+  dateStamp: string,
+  region: string,
+  service: string,
+): Buffer {
   const kDate = hmac(`AWS4${secret}`, dateStamp);
   const kRegion = hmac(kDate, region);
   const kService = hmac(kRegion, service);
@@ -134,7 +139,8 @@ function signS3V4(opts: {
     "x-amz-date": amzDate,
   };
   const sortedKeys = Object.keys(headers).sort();
-  const canonicalHeaders = sortedKeys.map((k) => `${k}:${headers[k]}`).join("\n") + "\n";
+  const canonicalHeaders =
+    sortedKeys.map((k) => `${k}:${headers[k]}`).join("\n") + "\n";
   const signedHeaders = sortedKeys.join(";");
   const canonicalRequest = [
     opts.method,
@@ -145,8 +151,16 @@ function signS3V4(opts: {
     payloadHash,
   ].join("\n");
   const scope = `${dateStamp}/${region}/${service}/aws4_request`;
-  const stringToSign = ["AWS4-HMAC-SHA256", amzDate, scope, sha256Hex(canonicalRequest)].join("\n");
-  const signature = hmac(signingKey(opts.secretKey, dateStamp, region, service), stringToSign).toString("hex");
+  const stringToSign = [
+    "AWS4-HMAC-SHA256",
+    amzDate,
+    scope,
+    sha256Hex(canonicalRequest),
+  ].join("\n");
+  const signature = hmac(
+    signingKey(opts.secretKey, dateStamp, region, service),
+    stringToSign,
+  ).toString("hex");
   const authorization = `AWS4-HMAC-SHA256 Credential=${opts.accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
   const url = `${opts.endpoint.replace(/\/+$/, "")}/${opts.bucket}/${opts.key.replace(/^\/+/, "")}`;
   return { url, headers: { ...headers, Authorization: authorization } };
@@ -154,8 +168,17 @@ function signS3V4(opts: {
 
 /** S3 SigV4 DELETE (body-less). */
 async function s3Delete(adapter: ResolvedAdapter, key: string): Promise<void> {
-  if (!adapter.endpoint || !adapter.bucket || !adapter.accessKey || !adapter.secretKey) {
+  if (
+    !adapter.endpoint ||
+    !adapter.bucket ||
+    !adapter.accessKey ||
+    !adapter.secretKey
+  ) {
     throw new Error(`${adapter.label}: S3 creds missing`);
+  }
+  const endpoint = new URL(adapter.endpoint);
+  if (endpoint.protocol !== "http:" && endpoint.protocol !== "https:") {
+    throw new Error(`${adapter.label} endpoint must be http(s)`);
   }
   const { url, headers } = signS3V4({
     method: "DELETE",
@@ -166,15 +189,30 @@ async function s3Delete(adapter: ResolvedAdapter, key: string): Promise<void> {
     accessKey: adapter.accessKey,
     secretKey: adapter.secretKey,
   });
-  const res = await fetch(url, { method: "DELETE", headers, signal: AbortSignal.timeout(120_000) });
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers,
+    signal: AbortSignal.timeout(120_000),
+  });
   if (!res.ok && res.status !== 404) {
-    throw new Error(`${adapter.label} delete failed: ${res.status} ${(await res.text()).slice(0, 300)}`);
+    throw new Error(
+      `${adapter.label} delete failed: ${res.status} ${(await res.text()).slice(0, 300)}`,
+    );
   }
 }
 
 /** Upload a buffer to S3-compatible storage; returns the public URL. */
-async function s3Upload(adapter: ResolvedAdapter, key: string, body: Buffer): Promise<string> {
-  if (!adapter.endpoint || !adapter.bucket || !adapter.accessKey || !adapter.secretKey) {
+async function s3Upload(
+  adapter: ResolvedAdapter,
+  key: string,
+  body: Buffer,
+): Promise<string> {
+  if (
+    !adapter.endpoint ||
+    !adapter.bucket ||
+    !adapter.accessKey ||
+    !adapter.secretKey
+  ) {
     throw new Error(`${adapter.label}: S3 creds missing`);
   }
   const { url, headers } = signS3V4({
@@ -194,7 +232,9 @@ async function s3Upload(adapter: ResolvedAdapter, key: string, body: Buffer): Pr
     signal: AbortSignal.timeout(180_000),
   });
   if (!res.ok) {
-    throw new Error(`${adapter.label} upload failed: ${res.status} ${(await res.text()).slice(0, 300)}`);
+    throw new Error(
+      `${adapter.label} upload failed: ${res.status} ${(await res.text()).slice(0, 300)}`,
+    );
   }
   return url;
 }
@@ -214,7 +254,11 @@ interface GitHubConfig {
 const legacyGithub: Omit<GitHubConfig, "repo"> = (() => {
   // Accept every documented spelling: MEDIA_GITHUB_TOKEN (dedicated media
   // credential), GITHUB_TOKEN (Actions env) and GITHUB_PAT (desktop .env).
-  const token = process.env.MEDIA_GITHUB_TOKEN ?? process.env.GITHUB_TOKEN ?? process.env.GITHUB_PAT ?? "";
+  const token =
+    process.env.MEDIA_GITHUB_TOKEN ??
+    process.env.GITHUB_TOKEN ??
+    process.env.GITHUB_PAT ??
+    "";
   const branch = process.env.GITHUB_BRANCH ?? "main";
   const mediaPath = process.env.GITHUB_MEDIA_PATH ?? "media/";
   const baseUrl = process.env.GITHUB_CDN_URL ?? null;
@@ -227,11 +271,15 @@ const legacyGithub: Omit<GitHubConfig, "repo"> = (() => {
  * uploads implicitly.
  */
 export function githubMediaReposFromEnv(): string[] {
-  const raw = process.env.GITHUB_MEDIA_REPOS ?? process.env.GITHUB_MEDIA_REPO ?? "";
+  const raw =
+    process.env.GITHUB_MEDIA_REPOS ?? process.env.GITHUB_MEDIA_REPO ?? "";
   const seen = new Set<string>();
   const out: string[] = [];
   for (const part of raw.split(",")) {
-    const repo = part.trim().replace(/^https?:\/\/github\.com\//i, "").replace(/\.git$/i, "");
+    const repo = part
+      .trim()
+      .replace(/^https?:\/\/github\.com\//i, "")
+      .replace(/\.git$/i, "");
     if (!repo || seen.has(repo.toLowerCase())) continue;
     seen.add(repo.toLowerCase());
     out.push(repo);
@@ -240,11 +288,16 @@ export function githubMediaReposFromEnv(): string[] {
 }
 
 function githubMediaUrl(key: string, cfg: GitHubConfig): string {
-  const base = cfg.baseUrl ?? `https://cdn.jsdelivr.net/gh/${cfg.repo}@${cfg.branch}`;
+  const base =
+    cfg.baseUrl ?? `https://cdn.jsdelivr.net/gh/${cfg.repo}@${cfg.branch}`;
   return `${base}/${key}`;
 }
 
-async function ghApi(cfg: GitHubConfig, path: string, init?: RequestInit): Promise<Response> {
+async function ghApi(
+  cfg: GitHubConfig,
+  path: string,
+  init?: RequestInit,
+): Promise<Response> {
   return fetch(`https://api.github.com/repos/${cfg.repo}${path}`, {
     ...init,
     headers: {
@@ -255,7 +308,10 @@ async function ghApi(cfg: GitHubConfig, path: string, init?: RequestInit): Promi
   });
 }
 
-async function ghGetSha(cfg: GitHubConfig, repoPath: string): Promise<string | null> {
+async function ghGetSha(
+  cfg: GitHubConfig,
+  repoPath: string,
+): Promise<string | null> {
   const res = await ghApi(cfg, `/contents/${repoPath}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
@@ -263,7 +319,11 @@ async function ghGetSha(cfg: GitHubConfig, repoPath: string): Promise<string | n
   return data.sha;
 }
 
-async function ghUpload(cfg: GitHubConfig, key: string, body: Buffer): Promise<string> {
+async function ghUpload(
+  cfg: GitHubConfig,
+  key: string,
+  body: Buffer,
+): Promise<string> {
   if (!cfg.token || !cfg.repo) throw new Error("GitHub: creds missing");
   const sha = await ghGetSha(cfg, key);
   // The contents API wants the file inline as base64; without it GitHub happily
@@ -280,7 +340,9 @@ async function ghUpload(cfg: GitHubConfig, key: string, body: Buffer): Promise<s
     body: payload,
   });
   if (!res.ok) {
-    throw new Error(`GitHub upload failed: ${res.status} ${(await res.text()).slice(0, 300)}`);
+    throw new Error(
+      `GitHub upload failed: ${res.status} ${(await res.text()).slice(0, 300)}`,
+    );
   }
   return githubMediaUrl(key, cfg);
 }
@@ -292,10 +354,15 @@ async function ghDelete(cfg: GitHubConfig, key: string): Promise<void> {
   const res = await ghApi(cfg, `/contents/${key}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message: `media delete: ${key} · ${new Date().toISOString()}`, sha }),
+    body: JSON.stringify({
+      message: `media delete: ${key} · ${new Date().toISOString()}`,
+      sha,
+    }),
   });
   if (!res.ok && res.status !== 404) {
-    throw new Error(`GitHub delete failed: ${res.status} ${(await res.text()).slice(0, 300)}`);
+    throw new Error(
+      `GitHub delete failed: ${res.status} ${(await res.text()).slice(0, 300)}`,
+    );
   }
 }
 
@@ -322,7 +389,10 @@ interface ProviderEnv {
   region: string;
 }
 
-const S3_PROVIDERS: Record<"idrivee2" | "backblaze", { label: string; env: ProviderEnv }> = {
+const S3_PROVIDERS: Record<
+  "idrivee2" | "backblaze",
+  { label: string; env: ProviderEnv }
+> = {
   idrivee2: {
     label: "IDrive e2",
     env: {
@@ -345,7 +415,10 @@ const S3_PROVIDERS: Record<"idrivee2" | "backblaze", { label: string; env: Provi
   },
 };
 
-function defaultRegion(provider: "idrivee2" | "backblaze", endpoint?: string): string {
+function defaultRegion(
+  provider: "idrivee2" | "backblaze",
+  endpoint?: string,
+): string {
   if (provider === "backblaze" && endpoint) {
     const m = /\/\/s3\.([a-z0-9-]+)\.backblazeb2\.com/.exec(endpoint);
     if (m) return m[1] ?? "us-east-1";
@@ -373,10 +446,17 @@ export async function buildAdapters(): Promise<ResolvedAdapter[]> {
   for (const a of cfg.adapters) {
     if (!a.enabled) continue;
     if (a.kind === "github") {
-      const token = process.env.MEDIA_GITHUB_TOKEN ?? process.env.GITHUB_TOKEN ?? process.env.GITHUB_PAT ?? "";
+      const token =
+        process.env.MEDIA_GITHUB_TOKEN ??
+        process.env.GITHUB_TOKEN ??
+        process.env.GITHUB_PAT ??
+        "";
       // The repository must be configured explicitly on the adapter. A blank
       // repo means "not configured yet", never "use the app repository".
-      const repo = (a.repo ?? "").trim().replace(/^https?:\/\/github\.com\//i, "").replace(/\.git$/i, "");
+      const repo = (a.repo ?? "")
+        .trim()
+        .replace(/^https?:\/\/github\.com\//i, "")
+        .replace(/\.git$/i, "");
       const baseUrl = (a.cdnBase ?? "").trim() || null;
       adapters.push({
         id: "github",
@@ -392,12 +472,18 @@ export async function buildAdapters(): Promise<ResolvedAdapter[]> {
         prefix: a.mediaPath ?? "media/",
       });
     } else if (a.provider === "idrivee2" || a.provider === "backblaze") {
-      const info = (a.provider === "idrivee2" ? S3_PROVIDERS.idrivee2 : S3_PROVIDERS.backblaze)!;
+      const info = (
+        a.provider === "idrivee2"
+          ? S3_PROVIDERS.idrivee2
+          : S3_PROVIDERS.backblaze
+      )!;
       const env = info.env;
       const accessKey = process.env[env.accessKey] ?? "";
       const secretKey = process.env[env.secretKey] ?? "";
       const bucket = process.env[env.bucket] || (a.bucket ?? "");
-      const endpoint = process.env[env.endpoint] ?? (a.provider === "backblaze" ? "" : "https://www.idrivee2.com");
+      const endpoint =
+        process.env[env.endpoint] ??
+        (a.provider === "backblaze" ? "" : "https://www.idrivee2.com");
       adapters.push({
         id: a.provider,
         tag: s3Tag(a.provider, bucket),
@@ -405,7 +491,10 @@ export async function buildAdapters(): Promise<ResolvedAdapter[]> {
         enabled: Boolean(accessKey && secretKey && bucket && endpoint),
         endpoint,
         bucket,
-        region: process.env[env.region] ?? a.region ?? defaultRegion(a.provider, endpoint),
+        region:
+          process.env[env.region] ??
+          a.region ??
+          defaultRegion(a.provider, endpoint),
         prefix: a.prefix ?? "media/",
         accessKey,
         secretKey,
@@ -446,7 +535,10 @@ export async function buildAdapters(): Promise<ResolvedAdapter[]> {
  * they must not be attributed to whichever repo happens to be configured now.
  * The dashboards show them as former targets with their own measured totals.
  */
-export function rowMatchesAdapter(rowAdapter: string, a: ResolvedAdapter): boolean {
+export function rowMatchesAdapter(
+  rowAdapter: string,
+  a: ResolvedAdapter,
+): boolean {
   return rowAdapter === a.tag;
 }
 
@@ -485,7 +577,10 @@ function orderForUpload(
   if (mode === "shard") {
     const i = shardIndex(rel, adapters.length);
     const primary = adapters[i]!;
-    return { targets: [primary, ...adapters.filter((_, j) => j !== i)], mirror: false };
+    return {
+      targets: [primary, ...adapters.filter((_, j) => j !== i)],
+      mirror: false,
+    };
   }
   return { targets: adapters, mirror: false };
 }
@@ -525,7 +620,10 @@ async function applyProviderHealth(
 ): Promise<ResolvedAdapter[]> {
   if (adapters.length === 0) return adapters;
   try {
-    const rows = new Map<string, Awaited<ReturnType<typeof getProviderHealth>>>();
+    const rows = new Map<
+      string,
+      Awaited<ReturnType<typeof getProviderHealth>>
+    >();
     for (const a of adapters) {
       const identity = storageProviderIdentity({
         kind: a.id === "github" ? "github" : "s3",
@@ -565,7 +663,12 @@ async function applyProviderHealth(
 }
 
 /** Report one attempt to the registry; never throws. */
-async function reportAttempt(a: ResolvedAdapter, ok: boolean, detail: string, bytes = 0): Promise<void> {
+async function reportAttempt(
+  a: ResolvedAdapter,
+  ok: boolean,
+  detail: string,
+  bytes = 0,
+): Promise<void> {
   try {
     const key = adapterProviderKey(a);
     if (ok) await recordProviderSuccess(key, bytes);
@@ -575,7 +678,9 @@ async function reportAttempt(a: ResolvedAdapter, ok: boolean, detail: string, by
   }
 }
 
-async function uploadAdapters(cfg: MediaStorageConfig): Promise<ResolvedAdapter[]> {
+async function uploadAdapters(
+  cfg: MediaStorageConfig,
+): Promise<ResolvedAdapter[]> {
   const configured = cfg.adapters.filter((adapter) => adapter.enabled);
   const adapters = (await buildAdapters()).filter((adapter) => adapter.enabled);
   if (adapters.length === 0 && configured.length > 0) {
@@ -585,7 +690,9 @@ async function uploadAdapters(cfg: MediaStorageConfig): Promise<ResolvedAdapter[
       }
       return `${adapter.label}: access key, secret key, bucket, and endpoint are required`;
     });
-    throw new Error(`No media storage adapter is ready: ${problems.join("; ")}`);
+    throw new Error(
+      `No media storage adapter is ready: ${problems.join("; ")}`,
+    );
   }
   return applyProviderHealth(adapters, cfg);
 }
@@ -599,7 +706,10 @@ function uploadFailureMessage(errors: string[]): Error {
  * configured distribution mode. Returns the public URL of the primary target,
  * or null when no upload worked.
  */
-export async function uploadRemote(rel: string, postId?: string | null): Promise<string | null> {
+export async function uploadRemote(
+  rel: string,
+  postId?: string | null,
+): Promise<string | null> {
   const cfg = await getMediaStorageConfig();
   const adapters = await uploadAdapters(cfg);
   if (adapters.length === 0) return null;
@@ -614,7 +724,9 @@ export async function uploadRemote(rel: string, postId?: string | null): Promise
     try {
       const key = adapterKey(a, rel);
       const url =
-        a.id === "github" ? await ghUpload(ghConfig(a), key, body) : await s3Upload(a, key, body);
+        a.id === "github"
+          ? await ghUpload(ghConfig(a), key, body)
+          : await s3Upload(a, key, body);
       await recordMediaObject({
         adapter: a.tag,
         key,
@@ -631,9 +743,10 @@ export async function uploadRemote(rel: string, postId?: string | null): Promise
       if (!mirror) {
         // Explain the fallback in the desk: which target failed and who absorbed it.
         for (const failed of failedThisUpload) {
-          await recordProviderSkip(adapterProviderKey(failed), `upload failed; fell back to ${a.label}`).catch(
-            () => undefined,
-          );
+          await recordProviderSkip(
+            adapterProviderKey(failed),
+            `upload failed; fell back to ${a.label}`,
+          ).catch(() => undefined);
         }
         break; // failover/shard: first success wins
       }
@@ -674,7 +787,9 @@ export async function uploadBufferRemote(
     try {
       const key = adapterKey(a, rel);
       const url =
-        a.id === "github" ? await ghUpload(ghConfig(a), key, body) : await s3Upload(a, key, body);
+        a.id === "github"
+          ? await ghUpload(ghConfig(a), key, body)
+          : await s3Upload(a, key, body);
       await recordMediaObject({
         adapter: a.tag,
         key,
@@ -689,9 +804,10 @@ export async function uploadBufferRemote(
       if (firstUrl == null) firstUrl = url;
       if (!mirror) {
         for (const failed of failedThisUpload) {
-          await recordProviderSkip(adapterProviderKey(failed), `upload failed; fell back to ${a.label}`).catch(
-            () => undefined,
-          );
+          await recordProviderSkip(
+            adapterProviderKey(failed),
+            `upload failed; fell back to ${a.label}`,
+          ).catch(() => undefined);
         }
         break;
       }
@@ -712,7 +828,10 @@ export async function uploadBufferRemote(
  * read-only/serverless filesystem this throws and the caller falls back to
  * uploading the buffer remotely.
  */
-export async function writeGeneratedMedia(rel: string, body: Buffer): Promise<string> {
+export async function writeGeneratedMedia(
+  rel: string,
+  body: Buffer,
+): Promise<string> {
   ensureMediaDir();
   const outPath = localMediaPath(rel);
   await mkdir(path.dirname(outPath), { recursive: true });
@@ -724,7 +843,9 @@ export async function writeGeneratedMedia(rel: string, body: Buffer): Promise<st
 export { mediaRoot };
 
 /** Delete a remote object (used by cleanup / media panel). */
-export async function deleteMediaObjectRowAndBlob(row: MediaObjectRow): Promise<void> {
+export async function deleteMediaObjectRowAndBlob(
+  row: MediaObjectRow,
+): Promise<void> {
   const adapters = await buildAdapters();
   const target = adapters.find((a) => rowMatchesAdapter(row.adapter, a));
   if (target) {
@@ -732,16 +853,19 @@ export async function deleteMediaObjectRowAndBlob(row: MediaObjectRow): Promise<
   }
   await deleteMediaObjectRow(row.id);
   // Quota accounting follows the object: a deleted blob must not keep counting.
-  await recordProviderRemoval(row.adapter, Number((row as { bytes?: number }).bytes ?? 0)).catch(
-    () => undefined,
-  );
+  await recordProviderRemoval(
+    row.adapter,
+    Number((row as { bytes?: number }).bytes ?? 0),
+  ).catch(() => undefined);
 }
 
 /**
  * Monthly retention: delete remote blobs registered older than the configured
  * window. `dryRun` returns the plan without touching storage or rows.
  */
-export async function cleanupMedia(opts: { dryRun?: boolean; months?: number } = {}): Promise<{
+export async function cleanupMedia(
+  opts: { dryRun?: boolean; months?: number } = {},
+): Promise<{
   dryRun: boolean;
   considered: number;
   removed: number;
@@ -750,7 +874,9 @@ export async function cleanupMedia(opts: { dryRun?: boolean; months?: number } =
 }> {
   const cfg = await getMediaStorageConfig();
   const months = opts.months ?? (cfg.retention_months || 1);
-  const cutoff = new Date(Date.now() - months * 30 * 24 * 60 * 60 * 1000).toISOString();
+  const cutoff = new Date(
+    Date.now() - months * 30 * 24 * 60 * 60 * 1000,
+  ).toISOString();
   const rows = await listMediaObjects(cutoff);
   const adapters = await buildAdapters();
 
@@ -769,5 +895,11 @@ export async function cleanupMedia(opts: { dryRun?: boolean; months?: number } =
     await deleteMediaObjectRowAndBlob(row);
     removed += 1;
   }
-  return { dryRun: Boolean(opts.dryRun), considered: rows.length, removed, skipped, cutoff };
+  return {
+    dryRun: Boolean(opts.dryRun),
+    considered: rows.length,
+    removed,
+    skipped,
+    cutoff,
+  };
 }

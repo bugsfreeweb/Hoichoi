@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { hostIs } from "../lib/safe-url";
 import {
   Check,
   ExternalLink,
@@ -34,7 +35,13 @@ interface Form {
   topics: string;
 }
 
-const EMPTY: Form = { pageUrl: "", pageName: "", kind: "page", selected: [], topics: "" };
+const EMPTY: Form = {
+  pageUrl: "",
+  pageName: "",
+  kind: "page",
+  selected: [],
+  topics: "",
+};
 
 /**
  * Source (Facebook page/group) manager for the desk Settings screen. Adding a
@@ -47,11 +54,16 @@ export default function DeskSourceManager() {
   const [form, setForm] = useState<Form>(EMPTY);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(
+    null,
+  );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Form | null>(null);
 
-  const catMap = useMemo(() => new Map(categories.map((c) => [c.slug, c])), [categories]);
+  const catMap = useMemo(
+    () => new Map(categories.map((c) => [c.slug, c])),
+    [categories],
+  );
 
   const flash = (type: "ok" | "err", text: string) => {
     setMsg({ type, text });
@@ -61,7 +73,10 @@ export default function DeskSourceManager() {
   const refresh = useCallback(async () => {
     try {
       const env = await getRunEnv();
-      const [srcs, cats] = await Promise.all([deskSources(env), deskCategories(env)]);
+      const [srcs, cats] = await Promise.all([
+        deskSources(env),
+        deskCategories(env),
+      ]);
       setSources(srcs);
       setCategories(cats);
     } catch (e) {
@@ -101,7 +116,11 @@ export default function DeskSourceManager() {
       pageUrl: s.page_url,
       pageName: s.page_name,
       kind: s.kind,
-      selected: s.categories?.length ? s.categories : s.category ? [s.category] : [],
+      selected: s.categories?.length
+        ? s.categories
+        : s.category
+          ? [s.category]
+          : [],
       topics: (s.topics ?? []).join(", "),
     });
   };
@@ -112,7 +131,7 @@ export default function DeskSourceManager() {
       flash("err", "পেজ URL ও নাম দুটোই দিতে হবে");
       return;
     }
-    if (!/facebook\.com/i.test(editForm.pageUrl)) {
+    if (!hostIs(editForm.pageUrl, "facebook.com")) {
       flash("err", "URL টি facebook.com পেজ/গ্রুপের হতে হবে");
       return;
     }
@@ -142,7 +161,7 @@ export default function DeskSourceManager() {
       flash("err", "পেজ URL ও নাম দুটোই দিতে হবে");
       return;
     }
-    if (!/facebook\.com/i.test(form.pageUrl)) {
+    if (!hostIs(form.pageUrl, "facebook.com")) {
       flash("err", "URL টি facebook.com পেজ/গ্রুপের হতে হবে");
       return;
     }
@@ -182,7 +201,12 @@ export default function DeskSourceManager() {
   };
 
   const handleRemove = async (s: DeskSource) => {
-    if (!window.confirm(`"${s.page_name}" সোর্সটি মুছতে চান? এর raw পোস্টও মুছে যাবে।`)) return;
+    if (
+      !window.confirm(
+        `"${s.page_name}" সোর্সটি মুছতে চান? এর raw পোস্টও মুছে যাবে।`,
+      )
+    )
+      return;
     setBusy(true);
     try {
       await deskRemoveSource(await getRunEnv(), s.id);
@@ -208,7 +232,8 @@ export default function DeskSourceManager() {
       </p>
       <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
         ফেসবুক পেজ/গ্রুপ যোগ করুন, বিভাগ বাছুন ও সক্রিয়/নিষ্ক্রিয় করুন। নতুন সোর্স পরের
-        পাইপলাইন রানে সবার আগে স্ক্র্যাপ হয় এবং ডেস্কটপ ও ওয়েব — দুই জায়গাতেই কনটেন্ট দেখায়।
+        পাইপলাইন রানে সবার আগে স্ক্র্যাপ হয় এবং ডেস্কটপ ও ওয়েব — দুই জায়গাতেই কনটেন্ট
+        দেখায়।
       </p>
 
       {msg && (
@@ -232,22 +257,30 @@ export default function DeskSourceManager() {
           <RefreshCw size={13} /> refresh
         </button>
         <span className="ml-auto font-mono-x text-[10px] tracking-wide text-ink-soft uppercase">
-          {toBn(sources.filter((s) => s.is_active).length)}/{toBn(sources.length)} সক্রিয়
+          {toBn(sources.filter((s) => s.is_active).length)}/
+          {toBn(sources.length)} সক্রিয়
         </span>
       </div>
 
       {open && (
         <div className="mt-4 space-y-3 rounded-xl border border-lime/30 bg-white/[0.03] p-4">
           <div className="flex items-center justify-between">
-            <p className="font-serif-bn text-[15px] font-bold text-white">নতুন সোর্স</p>
-            <button className="rounded p-1 text-white/50 hover:text-white" onClick={() => setOpen(false)}>
+            <p className="font-serif-bn text-[15px] font-bold text-white">
+              নতুন সোর্স
+            </p>
+            <button
+              className="rounded p-1 text-white/50 hover:text-white"
+              onClick={() => setOpen(false)}
+            >
               <X size={14} />
             </button>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
             <label className="block">
-              <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">পেজ / গ্রুপ URL</span>
+              <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                পেজ / গ্রুপ URL
+              </span>
               <input
                 className="field mt-1 w-full"
                 value={form.pageUrl}
@@ -256,7 +289,9 @@ export default function DeskSourceManager() {
               />
             </label>
             <label className="block">
-              <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">নাম</span>
+              <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                নাম
+              </span>
               <input
                 className="field mt-1 w-full"
                 value={form.pageName}
@@ -265,11 +300,18 @@ export default function DeskSourceManager() {
               />
             </label>
             <label className="block">
-              <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">ধরন</span>
+              <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                ধরন
+              </span>
               <select
                 className="field mt-1 w-full"
                 value={form.kind}
-                onChange={(e) => setForm({ ...form, kind: e.target.value === "group" ? "group" : "page" })}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    kind: e.target.value === "group" ? "group" : "page",
+                  })
+                }
               >
                 <option value="page">পেজ (page)</option>
                 <option value="group">গ্রুপ (group)</option>
@@ -289,10 +331,14 @@ export default function DeskSourceManager() {
           </div>
 
           <div>
-            <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">বিভাগ (একাধিক বাছাই করা যাবে)</span>
+            <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+              বিভাগ (একাধিক বাছাই করা যাবে)
+            </span>
             <div className="mt-2 flex flex-wrap gap-2">
               {categories.length === 0 && (
-                <span className="text-[11px] text-ink-soft">কোনো বিভাগ নেই — আগে "বিভাগ" ট্যাবে তৈরি করুন।</span>
+                <span className="text-[11px] text-ink-soft">
+                  কোনো বিভাগ নেই — আগে "বিভাগ" ট্যাবে তৈরি করুন।
+                </span>
               )}
               {categories.map((c) => {
                 const on = form.selected.includes(c.slug);
@@ -302,10 +348,15 @@ export default function DeskSourceManager() {
                     type="button"
                     onClick={() => toggleCat(c.slug)}
                     className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors ${
-                      on ? "border-lime/60 bg-lime/15 text-lime" : "border-white/12 text-white/60 hover:border-white/35 hover:text-white"
+                      on
+                        ? "border-lime/60 bg-lime/15 text-lime"
+                        : "border-white/12 text-white/60 hover:border-white/35 hover:text-white"
                     }`}
                   >
-                    <span className="h-2 w-2 rounded-full" style={{ background: c.dot }} />
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ background: c.dot }}
+                    />
                     {c.displayNameBn}
                   </button>
                 );
@@ -317,7 +368,11 @@ export default function DeskSourceManager() {
             <button className="btn-ghost" onClick={() => setOpen(false)}>
               বাতিল
             </button>
-            <button className="btn" disabled={busy} onClick={() => void handleCreate()}>
+            <button
+              className="btn"
+              disabled={busy}
+              onClick={() => void handleCreate()}
+            >
               <Check size={14} /> যোগ করুন
             </button>
           </div>
@@ -327,50 +382,80 @@ export default function DeskSourceManager() {
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         {sources.map((s) => {
           const editing = editingId === s.id && editForm;
-          const cats = [...new Set((s.categories?.length ? s.categories : [s.category]).filter(Boolean))];
+          const cats = [
+            ...new Set(
+              (s.categories?.length ? s.categories : [s.category]).filter(
+                Boolean,
+              ),
+            ),
+          ];
           return (
-            <div key={s.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <div
+              key={s.id}
+              className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
+            >
               {editing ? (
                 <div className="space-y-3">
                   <div className="grid gap-3 md:grid-cols-2">
                     <label className="block">
-                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">পেজ / গ্রুপ URL</span>
+                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                        পেজ / গ্রুপ URL
+                      </span>
                       <input
                         className="field mt-1 w-full"
                         value={editForm.pageUrl}
-                        onChange={(e) => setEditForm({ ...editForm, pageUrl: e.target.value })}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, pageUrl: e.target.value })
+                        }
                       />
                     </label>
                     <label className="block">
-                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">নাম</span>
+                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                        নাম
+                      </span>
                       <input
                         className="field mt-1 w-full"
                         value={editForm.pageName}
-                        onChange={(e) => setEditForm({ ...editForm, pageName: e.target.value })}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, pageName: e.target.value })
+                        }
                       />
                     </label>
                     <label className="block">
-                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">ধরন</span>
+                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                        ধরন
+                      </span>
                       <select
                         className="field mt-1 w-full"
                         value={editForm.kind}
-                        onChange={(e) => setEditForm({ ...editForm, kind: e.target.value === "group" ? "group" : "page" })}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            kind: e.target.value === "group" ? "group" : "page",
+                          })
+                        }
                       >
                         <option value="page">পেজ (page)</option>
                         <option value="group">গ্রুপ (group)</option>
                       </select>
                     </label>
                     <label className="block">
-                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">টপিক (কমা দিয়ে)</span>
+                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                        টপিক (কমা দিয়ে)
+                      </span>
                       <input
                         className="field mt-1 w-full"
                         value={editForm.topics}
-                        onChange={(e) => setEditForm({ ...editForm, topics: e.target.value })}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, topics: e.target.value })
+                        }
                       />
                     </label>
                   </div>
                   <div>
-                    <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">বিভাগ</span>
+                    <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                      বিভাগ
+                    </span>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {categories.map((c) => {
                         const on = editForm.selected.includes(c.slug);
@@ -380,10 +465,15 @@ export default function DeskSourceManager() {
                             type="button"
                             onClick={() => toggleEditCat(c.slug)}
                             className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors ${
-                              on ? "border-lime/60 bg-lime/15 text-lime" : "border-white/12 text-white/60 hover:border-white/35 hover:text-white"
+                              on
+                                ? "border-lime/60 bg-lime/15 text-lime"
+                                : "border-white/12 text-white/60 hover:border-white/35 hover:text-white"
                             }`}
                           >
-                            <span className="h-2 w-2 rounded-full" style={{ background: c.dot }} />
+                            <span
+                              className="h-2 w-2 rounded-full"
+                              style={{ background: c.dot }}
+                            />
                             {c.displayNameBn}
                           </button>
                         );
@@ -400,79 +490,97 @@ export default function DeskSourceManager() {
                     >
                       বাতিল
                     </button>
-                    <button className="btn" disabled={busy} onClick={() => void handleSaveEdit()}>
+                    <button
+                      className="btn"
+                      disabled={busy}
+                      onClick={() => void handleSaveEdit()}
+                    >
                       <Check size={14} /> সংরক্ষণ
                     </button>
                   </div>
                 </div>
               ) : (
-              <div className="flex items-start gap-3">
-                <span
-                  className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-[9px] font-bold uppercase ${
-                    s.is_active ? "border-lime/30 bg-lime/12 text-lime" : "border-white/10 bg-white/[0.05] text-white/40"
-                  }`}
-                >
-                  {s.kind === "group" ? "GR" : "PG"}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13.5px] font-bold text-white">{s.page_name}</p>
-                  <button
-                    onClick={() => openUrl(s.page_url)}
-                    className="mt-0.5 flex max-w-full items-center gap-1 font-mono-x text-[10px] text-white/40 hover:text-lime"
-                    title="মূল সোর্স খুলুন"
-                  >
-                    <ExternalLink size={10} className="shrink-0" />
-                    <span className="truncate">{s.page_url}</span>
-                  </button>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {cats.map((slug) => {
-                      const c = catMap.get(slug);
-                      return (
-                        <span
-                          key={slug}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-2 py-0.5 text-[9.5px] text-white/60"
-                        >
-                          <span className="h-1.5 w-1.5 rounded-full" style={{ background: c?.dot ?? "#fbbf24" }} />
-                          {c?.displayNameBn ?? slug}
-                        </span>
-                      );
-                    })}
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono-x text-[10px] text-white/40">
-                    <span>আজ: {toBn(s.posts_today)}</span>
-                    <span>হেলথ: {toBn(s.health)}%</span>
-                    <span>স্ক্র্যাপ: {s.last_scraped_at ? bnTime(s.last_scraped_at) : "কখনো নয়"}</span>
-                  </div>
-                </div>
-                <div className="flex shrink-0 flex-col items-center gap-1.5">
-                  <button
-                    onClick={() => startEdit(s)}
-                    disabled={busy}
-                    className="rounded-lg p-2 text-white/55 transition-colors hover:bg-white/10 hover:text-white"
-                    title="সম্পাদনা"
-                  >
-                    <Pencil size={13} />
-                  </button>
-                  <button
-                    onClick={() => void handleToggle(s)}
-                    disabled={busy}
-                    className={`rounded-lg p-2 transition-colors ${
-                      s.is_active ? "text-lime hover:bg-lime/12" : "text-white/45 hover:bg-white/10 hover:text-white"
+                <div className="flex items-start gap-3">
+                  <span
+                    className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-[9px] font-bold uppercase ${
+                      s.is_active
+                        ? "border-lime/30 bg-lime/12 text-lime"
+                        : "border-white/10 bg-white/[0.05] text-white/40"
                     }`}
-                    title={s.is_active ? "নিষ্ক্রিয় করুন" : "সক্রিয় করুন"}
                   >
-                    <Power size={13} />
-                  </button>
-                  <button
-                    onClick={() => void handleRemove(s)}
-                    disabled={busy}
-                    className="rounded-lg p-2 text-alizarin transition-colors hover:bg-alizarin/12"
-                    title="মুছুন"
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                    {s.kind === "group" ? "GR" : "PG"}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13.5px] font-bold text-white">
+                      {s.page_name}
+                    </p>
+                    <button
+                      onClick={() => openUrl(s.page_url)}
+                      className="mt-0.5 flex max-w-full items-center gap-1 font-mono-x text-[10px] text-white/40 hover:text-lime"
+                      title="মূল সোর্স খুলুন"
+                    >
+                      <ExternalLink size={10} className="shrink-0" />
+                      <span className="truncate">{s.page_url}</span>
+                    </button>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {cats.map((slug) => {
+                        const c = catMap.get(slug);
+                        return (
+                          <span
+                            key={slug}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-2 py-0.5 text-[9.5px] text-white/60"
+                          >
+                            <span
+                              className="h-1.5 w-1.5 rounded-full"
+                              style={{ background: c?.dot ?? "#fbbf24" }}
+                            />
+                            {c?.displayNameBn ?? slug}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono-x text-[10px] text-white/40">
+                      <span>আজ: {toBn(s.posts_today)}</span>
+                      <span>হেলথ: {toBn(s.health)}%</span>
+                      <span>
+                        স্ক্র্যাপ:{" "}
+                        {s.last_scraped_at
+                          ? bnTime(s.last_scraped_at)
+                          : "কখনো নয়"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-center gap-1.5">
+                    <button
+                      onClick={() => startEdit(s)}
+                      disabled={busy}
+                      className="rounded-lg p-2 text-white/55 transition-colors hover:bg-white/10 hover:text-white"
+                      title="সম্পাদনা"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      onClick={() => void handleToggle(s)}
+                      disabled={busy}
+                      className={`rounded-lg p-2 transition-colors ${
+                        s.is_active
+                          ? "text-lime hover:bg-lime/12"
+                          : "text-white/45 hover:bg-white/10 hover:text-white"
+                      }`}
+                      title={s.is_active ? "নিষ্ক্রিয় করুন" : "সক্রিয় করুন"}
+                    >
+                      <Power size={13} />
+                    </button>
+                    <button
+                      onClick={() => void handleRemove(s)}
+                      disabled={busy}
+                      className="rounded-lg p-2 text-alizarin transition-colors hover:bg-alizarin/12"
+                      title="মুছুন"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
-              </div>
               )}
             </div>
           );

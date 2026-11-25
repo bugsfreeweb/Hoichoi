@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { requiresRole, forbidden, requireApiRole } from "@/lib/auth";
-import { DEFAULT_VARIANT, PRESETS, getSectionMeta } from "@hoichoi/shared-types";
-import { encodePreviewDraft, PREVIEW_COOKIE, type PreviewDraft } from "@/lib/mv/live";
+import {
+  DEFAULT_VARIANT,
+  PRESETS,
+  getSectionMeta,
+} from "@hoichoi/shared-types";
+import {
+  encodePreviewDraft,
+  PREVIEW_COOKIE,
+  type PreviewDraft,
+} from "@/lib/mv/live";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +40,10 @@ export async function POST(request: Request) {
   try {
     body = (await request.json()) as Record<string, unknown>;
   } catch {
-    return NextResponse.json({ ok: false, error: "অবৈধ অনুরোধ।" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "অবৈধ অনুরোধ।" },
+      { status: 400 },
+    );
   }
 
   const draft: PreviewDraft = {};
@@ -40,38 +51,53 @@ export async function POST(request: Request) {
   if (typeof body.siteVariant === "string") {
     const site = body.siteVariant;
     if (site !== DEFAULT_VARIANT && !PRESETS.some((p) => p.id === site)) {
-      return NextResponse.json({ ok: false, error: "অজানা ভ্যারিয়েন্ট।" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "অজানা ভ্যারিয়েন্ট।" },
+        { status: 400 },
+      );
     }
     draft.site = site;
   }
 
   if (Array.isArray(body.sections)) {
-    const overrides: Record<string, { variant?: string; enabled?: boolean }> = {};
+    const overrides = new Map<
+      string,
+      { variant?: string; enabled?: boolean }
+    >();
     for (const raw of body.sections as IncomingSection[]) {
       if (!raw || typeof raw.key !== "string") continue;
       const meta = getSectionMeta(raw.key);
       if (!meta) continue;
       const variant =
-        typeof raw.variant === "string" && meta.variants.some((v) => v.id === raw.variant)
+        typeof raw.variant === "string" &&
+        meta.variants.some((v) => v.id === raw.variant)
           ? raw.variant
           : undefined;
-      const enabled = typeof raw.enabled === "boolean" ? raw.enabled : undefined;
-      if (variant !== undefined || enabled !== undefined) overrides[raw.key] = { variant, enabled };
+      const enabled =
+        typeof raw.enabled === "boolean" ? raw.enabled : undefined;
+      if (variant !== undefined || enabled !== undefined)
+        overrides.set(raw.key, { variant, enabled });
     }
-    if (Object.keys(overrides).length > 0) draft.overrides = overrides;
+    if (overrides.size > 0) draft.overrides = Object.fromEntries(overrides);
   }
 
   // Legacy shape: a bare preset id.
   if (!draft.site && !draft.overrides && typeof body.variant === "string") {
     const variant = body.variant;
     if (variant !== DEFAULT_VARIANT && !PRESETS.some((p) => p.id === variant)) {
-      return NextResponse.json({ ok: false, error: "অজানা ভ্যারিয়েন্ট।" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "অজানা ভ্যারিয়েন্ট।" },
+        { status: 400 },
+      );
     }
     draft.site = variant;
   }
 
   if (!draft.site && !draft.overrides) {
-    return NextResponse.json({ ok: false, error: "কোনো প্রিভিউ ডেটা পাওয়া যায়নি।" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "কোনো প্রিভিউ ডেটা পাওয়া যায়নি।" },
+      { status: 400 },
+    );
   }
 
   const jar = await cookies();

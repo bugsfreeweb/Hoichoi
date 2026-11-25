@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Globe } from "lucide-react";
+import { safeHttpUrl } from "../lib/safe-url";
 
 const DEFAULT_URL = "http://localhost:3070/admin";
 
@@ -20,7 +21,11 @@ export default function Desk() {
           Reset
         </button>
       </div>
-      <iframe src={url} className="flex-1 bg-white" title="Hoichoi web admin" />
+      <iframe
+        src={safeHttpUrl(url) ?? "about:blank"}
+        className="flex-1 bg-white"
+        title="Hoichoi web admin"
+      />
     </div>
   );
 }

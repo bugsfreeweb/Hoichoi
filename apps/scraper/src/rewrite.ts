@@ -1,6 +1,11 @@
 import { getClient, mapPost } from "@hoichoi/db";
 import { isBengaliScript } from "@hoichoi/llm";
-import type { CategoryConfig, CategorySlug, Post, RewriteOutput } from "@hoichoi/shared-types";
+import type {
+  CategoryConfig,
+  CategorySlug,
+  Post,
+  RewriteOutput,
+} from "@hoichoi/shared-types";
 import type { ParsedRewrite } from "@hoichoi/llm";
 
 export interface RedactionBlocklistEntry {
@@ -25,8 +30,7 @@ export function redactText(
   let count = 0;
 
   // Phone numbers (Bangla + latin digits, BD-style) → helpline or placeholder.
-  const phoneRe =
-    /(?:\+?88)?(?:\b0\d{9}\b|\b০\d{১০}\b|\b\d{11}\b)[ ,؛;-]*/g;
+  const phoneRe = /(?:\+?88)?(?:\b0\d{9}\b|\b০\d{১০}\b|\b\d{11}\b)[ ,؛;-]*/g;
   const phone = opts.childHelpline ?? "১০৯";
   out = out.replace(phoneRe, (m) => {
     count++;
@@ -126,7 +130,10 @@ export async function rewritePost(input: {
           out.body_bn,
           input.categoryConfig.redaction_strict,
           await loadRedactionBlocklist(),
-          { policeHelpline: input.policeHelpline, childHelpline: input.childHelpline },
+          {
+            policeHelpline: input.policeHelpline,
+            childHelpline: input.childHelpline,
+          },
         );
   let redacted = false;
   if (redaction !== out.body_bn) {
@@ -171,8 +178,8 @@ export function makeSlug(title: string): string {
   const base = title
     .toLowerCase()
     .replace(/[০-৯]/g, (d) => "0123456789"["০১২৩৪৫৬৭৮৯".indexOf(d)] ?? d)
-    .replace(/[^\w]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/[^\w]{1,24}/g, "-")
+    .replace(/^-{1,32}|-{1,32}$/g, "")
     .slice(0, 60);
   const rand = crypto.randomUUID().slice(0, 6);
   return `${base || "post"}-${rand}`;

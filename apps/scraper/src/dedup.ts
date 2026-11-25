@@ -24,16 +24,26 @@ export function canonicalPostUrl(url: string): string {
     u.search = "";
     u.username = "";
     u.password = "";
-    u.hostname = u.hostname.toLowerCase().replace(/^(?:www|m|mbasic|web)\./, "");
+    u.hostname = u.hostname
+      .toLowerCase()
+      .replace(/^(?:www|m|mbasic|web)\./, "");
     u.protocol = "https:";
     // `/posts/pfbid01ABC/` and `/posts/pfbid01ABC` are the same post, and
     // Facebook serves `/HOICHOI/...` and `/hoichoi/...` interchangeably.
-    const path = u.pathname.replace(/\/+$/, "").toLowerCase();
+    const path = trimTrailingSlashes(u.pathname).toLowerCase();
     return `https://${u.hostname}${path}`;
   } catch {
     // Not a parseable URL — fall back to a conservative manual cleanup.
-    return trimmed.split("#")[0]!.split("?")[0]!.replace(/\/+$/, "").toLowerCase();
+    return trimTrailingSlashes(
+      trimmed.split("#")[0]!.split("?")[0]!,
+    ).toLowerCase();
   }
+}
+
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) end -= 1;
+  return value.slice(0, end);
 }
 
 export interface DedupResult {
@@ -102,7 +112,10 @@ export async function findSemanticDuplicates(
   let best: { id: string; score: number } | null = null;
   for (const row of res.rows) {
     const rec = row as Record<string, unknown>;
-    const emb = typeof rec.embedding === "string" ? JSON.parse(rec.embedding) as number[] : null;
+    const emb =
+      typeof rec.embedding === "string"
+        ? (JSON.parse(rec.embedding) as number[])
+        : null;
     if (!emb) continue;
     const score = cosineSimilarity(vector, emb);
     if (score >= SEM_THRESHOLD && (!best || score > best.score)) {
@@ -134,13 +147,17 @@ export async function findImageDuplicates(
   const res = await client.execute(
     "SELECT id, phash FROM raw_posts WHERE phash IS NOT NULL AND phash != '' ORDER BY scraped_at DESC LIMIT 1000",
   );
-  let best: { rawId: string; postId: string | null; dist: number } | null = null;
+  let best: { rawId: string; postId: string | null; dist: number } | null =
+    null;
   for (const row of res.rows) {
     const rec = row as Record<string, unknown>;
     if (excludeRawId && String(rec.id) === excludeRawId) continue;
     const other = String(rec.phash);
-const dist = hammingDistance(phash, other);
-      if (isNearDuplicate(phash, other, IMAGE_DUP_MAX_DISTANCE) && (!best || dist < best.dist)) {
+    const dist = hammingDistance(phash, other);
+    if (
+      isNearDuplicate(phash, other, IMAGE_DUP_MAX_DISTANCE) &&
+      (!best || dist < best.dist)
+    ) {
       const postId = await findPostForRaw(String(rec.id));
       best = { rawId: String(rec.id), postId, dist };
     }
@@ -183,7 +200,10 @@ async function findPostForRaw(rawId: string): Promise<string | null> {
  * from it, with a normalised-URL fallback for posts whose raw row has since
  * been deleted.
  */
-export async function isExactDuplicate(fbPostUrl: string, fbPostId?: string | null): Promise<boolean> {
+export async function isExactDuplicate(
+  fbPostUrl: string,
+  fbPostId?: string | null,
+): Promise<boolean> {
   const client = getClient();
   if (fbPostId) {
     const viaKey = await client.execute({
@@ -224,28 +244,28 @@ export async function checkDedup(input: {
   phash: string | null;
   vector: number[] | null;
   skipExact?: boolean;
-/** The caller's own raw_posts row, so it cannot dedup against itself. */
-    excludeRawId?: string;
-  }): Promise<DedupResult> {
-    if (!input.skipExact && (await isExactDuplicate(input.fbPostUrl))) {
-      return { duplicate: true, reason: "exact-url" };
+  /** The caller's own raw_posts row, so it cannot dedup against itself. */
+  excludeRawId?: string;
+}): Promise<DedupResult> {
+  if (!input.skipExact && (await isExactDuplicate(input.fbPostUrl))) {
+    return { duplicate: true, reason: "exact-url" };
+  }
+  // A captioned post is judged on its words. Only fall through to IMG-1 when
+  // the caption is too thin to stand on its own, so that a shared photo can
+  // never delete a story that says something new.
+  const caption = (input.rawText ?? "").trim();
+  if (caption.length <= CAPTION_WORTH_DEDUPING) {
+    const img = await findImageDuplicates(input.phash, input.excludeRawId);
+    if (img) {
+      return {
+        duplicate: true,
+        reason: "img-1",
+        matchedRawId: img.rawId,
+        matchedPostId: img.postId ?? undefined,
+        score: 1 - img.dist / 64,
+      };
     }
-    // A captioned post is judged on its words. Only fall through to IMG-1 when
-    // the caption is too thin to stand on its own, so that a shared photo can
-    // never delete a story that says something new.
-    const caption = (input.rawText ?? "").trim();
-    if (caption.length <= CAPTION_WORTH_DEDUPING) {
-      const img = await findImageDuplicates(input.phash, input.excludeRawId);
-      if (img) {
-        return {
-          duplicate: true,
-          reason: "img-1",
-          matchedRawId: img.rawId,
-          matchedPostId: img.postId ?? undefined,
-          score: 1 - img.dist / 64,
-        };
-      }
-    }
+  }
   const sem = await findSemanticDuplicates(input.vector);
   if (sem) {
     return {

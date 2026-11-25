@@ -23,10 +23,11 @@ export interface RedactionResult {
   flagged: boolean;
 }
 
-const EMAIL = /[\w.+-]+@[\w-]+\.[\w.-]{2,}/g;
+const EMAIL = /[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63}){1,4}/g;
 // Bangladeshi mobile numbers with or without a leading +88, and international
 // numbers written with separators. Word boundaries keep "50,000" out.
-const PHONE = /(?:\+?88)?(?:\+?\d{1,3}[\s-]?)?(?:\(?\d{2,5}\)?[\s-]?){2,4}\d{2,4}/g;
+const PHONE =
+  /(?:\+?88)?(?:\+?\d{1,3}[\s-]?)?(?:\(?\d{2,5}\)?[\s-]?){2,4}\d{2,4}/g;
 const LONG_DIGITS = /\b\d{9,}\b/g;
 const CARD_LIKE = /\b(?:\d[ -]?){13,19}\b/g;
 // Dates are dates, not phone numbers: `2024-05-11`, `11/05/2024`, `2024.05.11`.
@@ -39,7 +40,11 @@ function digitCount(value: string): number {
 
 export function redactPii(input: string): RedactionResult {
   if (!input) {
-    return { text: input ?? "", counts: { email: 0, phone: 0, longDigits: 0, cardLike: 0 }, flagged: false };
+    return {
+      text: input ?? "",
+      counts: { email: 0, phone: 0, longDigits: 0, cardLike: 0 },
+      flagged: false,
+    };
   }
 
   let text = input;
@@ -61,9 +66,15 @@ export function redactPii(input: string): RedactionResult {
     // A bare 9+ digit run with no separators is an ID/account number, not a phone
     // — hand it to the long-digit pass so it is labelled honestly.
     // A bare 11-digit run starting 01 is a Bangladeshi mobile, not an ID.
-    if (/^\+?\d+$/.test(match.trim()) && digits >= 9 && !/^(?:\+?88)?01\d{9}$/.test(match.trim())) return match;
+    if (
+      /^\+?\d+$/.test(match.trim()) &&
+      digits >= 9 &&
+      !/^(?:\+?88)?01\d{9}$/.test(match.trim())
+    )
+      return match;
     // A date would otherwise read as a short phone number.
-    if (DATE_LIKE.test(match.trim()) && /(?:19|20)\d\d/.test(match)) return match;
+    if (DATE_LIKE.test(match.trim()) && /(?:19|20)\d\d/.test(match))
+      return match;
     counts.phone += 1;
     return "[ফোন নম্বর সরানো হয়েছে]";
   });
@@ -86,7 +97,8 @@ export function redactPii(input: string): RedactionResult {
   return {
     text,
     counts,
-    flagged: counts.email + counts.phone + counts.longDigits + counts.cardLike > 0,
+    flagged:
+      counts.email + counts.phone + counts.longDigits + counts.cardLike > 0,
   };
 }
 
@@ -109,6 +121,7 @@ export function redactFields(fields: Record<string, string>): {
     counts.longDigits += result.counts.longDigits;
     counts.cardLike += result.counts.cardLike;
   }
-  const flagged = counts.email + counts.phone + counts.longDigits + counts.cardLike > 0;
+  const flagged =
+    counts.email + counts.phone + counts.longDigits + counts.cardLike > 0;
   return { fields: out, counts, flagged };
 }

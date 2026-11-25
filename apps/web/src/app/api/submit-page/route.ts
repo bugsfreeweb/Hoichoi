@@ -5,8 +5,13 @@ import { limitRequest, LIMITS } from "@/lib/rate-limit";
 import { clientIp, ensureGuestId } from "@/lib/guest";
 import { identityFor } from "@hoichoi/db";
 
-const PROFILE_RE =
-  /\/profile\.php|\/photo\.php|personal\.[a-z]+\.com|ref=bookmarks$/i;
+/** Facebook personal profiles have these shapes; pages/groups do not. */
+function isPersonalProfile(u: URL): boolean {
+  const path = u.pathname.toLowerCase();
+  if (path.endsWith("/profile.php") || path.endsWith("/photo.php")) return true;
+  if (u.hostname.toLowerCase().startsWith("personal.")) return true;
+  return u.searchParams.get("ref") === "bookmarks";
+}
 
 export async function POST(req: NextRequest) {
   const limited = await limitRequest(req, LIMITS.submission);
@@ -34,7 +39,7 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  if (PROFILE_RE.test(url.pathname)) {
+  if (isPersonalProfile(url)) {
     return NextResponse.json(
       { error: "personal profiles are not accepted — pages/groups only" },
       { status: 400 },

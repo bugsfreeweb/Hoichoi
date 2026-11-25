@@ -11,6 +11,9 @@ env:
   ARCHIVE_VISIBLE_DAYS: ${{ vars.ARCHIVE_VISIBLE_DAYS }}
   ARCHIVE_RETENTION_DAYS: ${{ vars.ARCHIVE_RETENTION_DAYS }}
 
+permissions:
+  contents: read
+
 jobs:
   archive:
     name: Archive visible → purge expired

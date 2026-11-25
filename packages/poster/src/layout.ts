@@ -61,7 +61,11 @@ export const POSTER_FRAME = { width: 1600, height: 900 } as const;
 export const CAPTION_MAX_LINES = 3;
 const CAPTION_SIZES = [62, 56, 50, 44, 40] as const;
 /** Left margin, usable width, and how far the last caption line sits above the edge. */
-const CAPTION_BOX = { x: 88, width: POSTER_FRAME.width - 176, bottom: 138 } as const;
+const CAPTION_BOX = {
+  x: 88,
+  width: POSTER_FRAME.width - 176,
+  bottom: 138,
+} as const;
 /**
  * The logo mark in the brand lockup, and how far it pushes the wordmark along.
  *
@@ -92,7 +96,11 @@ export function escapeXml(text: string): string {
  * glyph): Bangla clusters are wider than Latin ones, and a caption that overruns
  * the plate is worse than one that breaks a word early.
  */
-export function wrapCaption(text: string, fontSize: number, maxWidth: number): string[] {
+export function wrapCaption(
+  text: string,
+  fontSize: number,
+  maxWidth: number,
+): string[] {
   const maxChars = Math.max(8, Math.floor(maxWidth / (fontSize * 0.56)));
   const words = text.trim().split(/\s+/).filter(Boolean);
   const lines: string[] = [];
@@ -148,7 +156,9 @@ export function kickerLine(spec: PosterSpec): string {
 
 /** The credit: the site, then the date. Never the headline again. */
 export function creditLine(spec: PosterSpec): string {
-  return [spec.site ?? "hoichoifeed.vercel.app", spec.dateText?.trim()].filter(Boolean).join(" · ");
+  return [spec.site ?? "hoichoifeed.vercel.app", spec.dateText?.trim()]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 /**
@@ -232,12 +242,17 @@ export function captionSvg(spec: PosterSpec): string {
  * slightly generous one.
  */
 function topicChips(topics: string[]): string {
-  const chips = topics.map((t) => t.trim()).filter(Boolean).slice(0, 3);
+  const chips = topics
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .slice(0, 3);
   if (chips.length === 0) return "";
   const glyph = 11.5;
   const pad = 22;
   const gap = 14;
-  const widths = chips.map((c) => Math.max(78, Math.round(c.length * glyph) + pad * 2));
+  const widths = chips.map((c) =>
+    Math.max(78, Math.round(c.length * glyph) + pad * 2),
+  );
   const total = widths.reduce((a, b) => a + b, 0) + gap * (chips.length - 1);
   let x = POSTER_FRAME.width - CAPTION_BOX.x - total;
   const y = POSTER_FRAME.height - 78;
@@ -264,16 +279,62 @@ function topicChips(topics: string[]): string {
  * words of the headline, which is where the subject of a Bangla headline lives.
  */
 const TOPIC_STOPWORDS = new Set([
-  "এই", "একটি", "একটা", "এবং", "কিন্তু", "থেকে", "জন্য", "সাথে", "আরো", "আরও", "যে", "যা",
-  "তার", "তিনি", "তারা", "করে", "করেছে", "হবে", "হয়", "হয়েছে", "নেই", "আছে", "বলে", "কথা",
-  "নিয়ে", "মধ্যে", "পর", "আগে", "পরে", "দিকে", "এখন", "সব", "কোনো", "একজন", "নতুন", "আজ",
-  "দিন", "বছর", "শেষ", "শুরু", "মতো", "আবার", "তবে", "কেন", "কীভাবে", "কোথায়",
+  "এই",
+  "একটি",
+  "একটা",
+  "এবং",
+  "কিন্তু",
+  "থেকে",
+  "জন্য",
+  "সাথে",
+  "আরো",
+  "আরও",
+  "যে",
+  "যা",
+  "তার",
+  "তিনি",
+  "তারা",
+  "করে",
+  "করেছে",
+  "হবে",
+  "হয়",
+  "হয়েছে",
+  "নেই",
+  "আছে",
+  "বলে",
+  "কথা",
+  "নিয়ে",
+  "মধ্যে",
+  "পর",
+  "আগে",
+  "পরে",
+  "দিকে",
+  "এখন",
+  "সব",
+  "কোনো",
+  "একজন",
+  "নতুন",
+  "আজ",
+  "দিন",
+  "বছর",
+  "শেষ",
+  "শুরু",
+  "মতো",
+  "আবার",
+  "তবে",
+  "কেন",
+  "কীভাবে",
+  "কোথায়",
 ]);
 
-export function topicCues(input: { category?: string | null; title: string; extra?: string[] }): string[] {
+export function topicCues(input: {
+  category?: string | null;
+  title: string;
+  extra?: string[];
+}): string[] {
   const out: string[] = [];
   const push = (value: string) => {
-    const clean = value.replace(/[.,।!?"'“”‘’()…:;]+$/g, "").trim();
+    const clean = value.replace(/[.,।!?"'“”‘’()…:;]{1,8}$/g, "").trim();
     if (clean.length < 3) return;
     if (out.some((t) => t.toLowerCase() === clean.toLowerCase())) return;
     out.push(clean);

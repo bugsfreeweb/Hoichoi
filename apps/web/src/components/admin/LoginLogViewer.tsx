@@ -11,7 +11,9 @@ import { RefreshCw, Trash2, X } from "lucide-react";
 export default function LoginLogViewer() {
   const [data, setData] = useState<LoginLogPage | null>(null);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(
+    null,
+  );
 
   const flash = (type: "ok" | "err", text: string) => {
     setMsg({ type, text });
@@ -39,7 +41,10 @@ export default function LoginLogViewer() {
     if (!window.confirm("এই এন্ট্রিটি মুছবেন?")) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/admin/login-log?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      const res = await fetch(
+        `/api/admin/login-log?id=${encodeURIComponent(id)}`,
+        { method: "DELETE" },
+      );
       if (!res.ok) throw new Error("মুছতে ব্যর্থ");
       await refresh();
       flash("ok", "মুছে ফেলা হয়েছে");
@@ -51,10 +56,13 @@ export default function LoginLogViewer() {
   };
 
   const clearAll = async () => {
-    if (!window.confirm("পুরো লগইন লগ মুছে ফেলবেন? এটি ফিরে পাওয়া যাবে না।")) return;
+    if (!window.confirm("পুরো লগইন লগ মুছে ফেলবেন? এটি ফিরে পাওয়া যাবে না।"))
+      return;
     setBusy(true);
     try {
-      const res = await fetch("/api/admin/login-log", { method: "DELETE" });
+      const res = await fetch("/api/admin/login-log/clear", {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error("মুছতে ব্যর্থ");
       await refresh();
       flash("ok", "লগ খালি করা হয়েছে");
@@ -72,7 +80,9 @@ export default function LoginLogViewer() {
           <p className="font-mono-x text-[10px] tracking-[0.24em] text-alizarin uppercase">
             AUTH · AUDIT
           </p>
-          <h1 className="mt-1 font-serif-bn text-[34px] font-black text-[#e9e6da]">লগইন লগ</h1>
+          <h1 className="mt-1 font-serif-bn text-[34px] font-black text-[#e9e6da]">
+            লগইন লগ
+          </h1>
           <p className="mt-1 text-[12.5px] text-white/60">
             ওয়েব অ্যাডমিনের প্রতিটি সাইন-ইন attempt (সফল + ব্যর্থ)।
           </p>
@@ -100,7 +110,9 @@ export default function LoginLogViewer() {
       {msg && (
         <div
           className={`mb-4 rounded-lg px-4 py-3 text-[12.5px] font-bold ${
-            msg.type === "ok" ? "bg-lime/15 text-lime" : "bg-alizarin/15 text-alizarin"
+            msg.type === "ok"
+              ? "bg-lime/15 text-lime"
+              : "bg-alizarin/15 text-alizarin"
           }`}
         >
           {msg.text}
@@ -128,17 +140,30 @@ export default function LoginLogViewer() {
           </thead>
           <tbody className="text-[12.5px]">
             {(data?.rows ?? []).map((row) => (
-              <tr key={row.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.03]">
+              <tr
+                key={row.id}
+                className="border-b border-white/5 last:border-0 hover:bg-white/[0.03]"
+              >
                 <td className="px-4 py-3">
                   {row.ok ? (
-                    <span className="rounded-full bg-lime/15 px-2.5 py-0.5 text-[10px] font-bold text-lime">সফল</span>
+                    <span className="rounded-full bg-lime/15 px-2.5 py-0.5 text-[10px] font-bold text-lime">
+                      সফল
+                    </span>
                   ) : (
-                    <span className="rounded-full bg-alizarin/15 px-2.5 py-0.5 text-[10px] font-bold text-alizarin">ব্যর্থ</span>
+                    <span className="rounded-full bg-alizarin/15 px-2.5 py-0.5 text-[10px] font-bold text-alizarin">
+                      ব্যর্থ
+                    </span>
                   )}
                 </td>
-                <td className="px-4 py-3 font-medium text-white/85">{row.email}</td>
-                <td className="px-4 py-3 font-mono-x text-[11px] text-white/55">{row.ip ?? "—"}</td>
-                <td className="px-4 py-3 text-white/55">{row.message ?? "—"}</td>
+                <td className="px-4 py-3 font-medium text-white/85">
+                  {row.email}
+                </td>
+                <td className="px-4 py-3 font-mono-x text-[11px] text-white/55">
+                  {row.ip ?? "—"}
+                </td>
+                <td className="px-4 py-3 text-white/55">
+                  {row.message ?? "—"}
+                </td>
                 <td className="px-4 py-3 font-mono-x text-[11px] text-white/60">
                   {new Date(row.created_at).toLocaleString("bn-BD")}
                 </td>
@@ -157,13 +182,17 @@ export default function LoginLogViewer() {
           </tbody>
         </table>
         {data && data.rows.length === 0 && (
-          <p className="p-8 text-center text-[13px] text-white/70">কোনো লগইন এন্ট্রি নেই।</p>
+          <p className="p-8 text-center text-[13px] text-white/70">
+            কোনো লগইন এন্ট্রি নেই।
+          </p>
         )}
       </div>
 
       {data && (
         <div className="mt-4 flex items-center justify-between font-mono-x text-[10.5px] tracking-wide text-white/70 uppercase">
-          <span>মোট {data.total} · পৃষ্ঠা {data.page}/{data.pages}</span>
+          <span>
+            মোট {data.total} · পৃষ্ঠা {data.page}/{data.pages}
+          </span>
           <span>নতুন—পুরনো</span>
         </div>
       )}

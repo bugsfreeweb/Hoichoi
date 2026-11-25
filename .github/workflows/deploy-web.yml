@@ -19,6 +19,9 @@ env:
 # own Git integration. When they are absent the job must report a clear "not
 # configured" notice rather than being skipped — GitHub marks a run whose only
 # job is skipped as `failure`, which looked like a real deploy break.
+permissions:
+  contents: read
+
 jobs:
   deploy:
     name: Vercel production deploy

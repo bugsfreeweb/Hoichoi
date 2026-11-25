@@ -13,7 +13,8 @@ export interface ParsedRewrite {
   title_bn: string;
   summary_bn: string;
   body_bn: string;
-  safety_flag: "none" | "minor_involved" | "unverified_claim" | "graphic_content";
+  safety_flag:
+    "none" | "minor_involved" | "unverified_claim" | "graphic_content";
   case_status?: "active" | "found" | "unresolved" | "false-alarm" | "unknown";
 }
 
@@ -55,7 +56,10 @@ export interface LLMProvider {
    * Text-to-image generation. Optional: only image-purpose providers implement
    * it, and callers must check `supportsImage` before relying on it.
    */
-  generateImage?(req: ImageGenRequest, signal?: AbortSignal): Promise<ImageGenResult>;
+  generateImage?(
+    req: ImageGenRequest,
+    signal?: AbortSignal,
+  ): Promise<ImageGenResult>;
   /**
    * Structured text generation. Optional: only providers that implement it can
    * act as the poster art director, and the caller falls back to the
@@ -112,11 +116,14 @@ export interface JsonGenRequest {
 export function parseJsonLoose(text: string): unknown {
   const trimmed = text.trim();
   const candidates = [trimmed];
-  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(trimmed)?.[1];
+  const fenced = /```(?:json)?\s{0,64}([\s\S]{0,200000}?)```/i.exec(
+    trimmed,
+  )?.[1];
   if (fenced) candidates.push(fenced.trim());
   const first = trimmed.indexOf("{");
   const last = trimmed.lastIndexOf("}");
-  if (first >= 0 && last > first) candidates.push(trimmed.slice(first, last + 1));
+  if (first >= 0 && last > first)
+    candidates.push(trimmed.slice(first, last + 1));
   for (const candidate of candidates) {
     try {
       return JSON.parse(candidate);
@@ -146,9 +153,12 @@ export interface ImageGenResult {
  */
 export function composeImagePrompt(req: ImageGenRequest): string {
   const parts = [req.prompt.trim()];
-  if (req.aspectRatio && !req.size) parts.push(`Compose for a ${req.aspectRatio} aspect ratio.`);
-  if (req.quality && !/^(standard|hd|low|medium|high)$/i.test(req.quality)) parts.push(`Quality: ${req.quality}.`);
-  if (req.negativePrompt?.trim()) parts.push(`Do not include: ${req.negativePrompt.trim()}.`);
+  if (req.aspectRatio && !req.size)
+    parts.push(`Compose for a ${req.aspectRatio} aspect ratio.`);
+  if (req.quality && !/^(standard|hd|low|medium|high)$/i.test(req.quality))
+    parts.push(`Quality: ${req.quality}.`);
+  if (req.negativePrompt?.trim())
+    parts.push(`Do not include: ${req.negativePrompt.trim()}.`);
   return parts.filter((p) => p && p.length > 0).join("\n");
 }
 
@@ -175,7 +185,9 @@ export class ProviderError extends Error {
  * see, so every rewrite from that model lost its headline. Recognising the
  * aliases keeps a bad echo from silently dropping a section.
  */
-const BANGLA_LABEL_ALIASES: ReadonlyArray<readonly [string, readonly string[]]> = [
+const BANGLA_LABEL_ALIASES: ReadonlyArray<
+  readonly [string, readonly string[]]
+> = [
   ["TITLE", ["শিরোনাম"]],
   ["SUMMARY", ["সংক্ষিপ্ত বিবরণ", "সারসংক্ষেপ", "সারমর্ম", "সারাংশ"]],
   ["BODY", ["মূল বিবরণ", "মূল অংশ", "মূল লেখা", "মূল বার্তা", "বিস্তারিত"]],
@@ -252,13 +264,15 @@ export function parseRewriteOutput(raw: string): ParsedRewrite {
     }
     const m = ENGLISH_LABEL_PREFIX.exec(stripped);
     if (m) {
-      const canon = CANONICAL_BY_NORM[m[1]!.toLowerCase().replace(/[^a-z]/g, "")];
+      const canon =
+        CANONICAL_BY_NORM[m[1]!.toLowerCase().replace(/[^a-z]/g, "")];
       if (canon) return { label: canon, value: stripped.slice(m[0].length) };
     }
     // Preserve the strict all-caps boundary: `NOTE:` or `UPDATE:` after BODY
     // must close the body section even though they are not canonical fields.
     const strict = /^([A-Z][A-Z0-9_]*):[ \t]?/.exec(stripped);
-    if (strict) return { label: strict[1]!, value: stripped.slice(strict[0].length) };
+    if (strict)
+      return { label: strict[1]!, value: stripped.slice(strict[0].length) };
     return null;
   };
 

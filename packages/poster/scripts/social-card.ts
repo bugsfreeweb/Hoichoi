@@ -31,7 +31,10 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 
-import { renderBroadcastCard, type BroadcastCardInput } from "../src/html/broadcast";
+import {
+  renderBroadcastCard,
+  type BroadcastCardInput,
+} from "../src/html/broadcast";
 
 interface CardJson extends BroadcastCardInput {
   background_image_url?: string | null;
@@ -41,7 +44,8 @@ interface CardJson extends BroadcastCardInput {
 
 const SAMPLE: CardJson = {
   category: "জাতীয়",
-  title: "সুপ্রিম কোর্টের রায়ের পর রাজধানীতে নতুন ট্রাফিক ব্যবস্থা, আট সড়কে বদলে যাচ্ছে যান চলাচল",
+  title:
+    "সুপ্রিম কোর্টের রায়ের পর রাজধানীতে নতুন ট্রাফিক ব্যবস্থা, আট সড়কে বদলে যাচ্ছে যান চলাচল",
   summary:
     "সকাল সাতটা থেকে সন্ধ্যা সাতটা পর্যন্ত নতুন নিয়ম কার্যকর হবে বলে জানিয়েছে ঢাকা মহানগর পুলিশ; মন্ত্রিপরিষদ সচিব বলেছেন পরবর্তী সপ্তাহে আরও চারটি সড়কে এই ব্যবস্থা শুরু হবে।",
   source: "প্রথম আলো",
@@ -60,11 +64,17 @@ function argValue(argv: string[], flag: string): string | null {
 
 /** A remote URL is fetched once; a local path is read; anything unreadable is
  *  reported and skipped rather than silently producing a card with no picture. */
-async function loadBackground(spec: string | null | undefined): Promise<Buffer | null> {
+async function loadBackground(
+  spec: string | null | undefined,
+): Promise<Buffer | null> {
   if (!spec) return null;
   try {
     if (/^https?:\/\//i.test(spec)) {
-      const res = await fetch(spec, {
+      const remote = new URL(spec);
+      if (remote.protocol !== "http:" && remote.protocol !== "https:") {
+        throw new Error("background URL must be http(s)");
+      }
+      const res = await fetch(remote, {
         headers: { "user-agent": "Hoichoi/1.1 card-generator" },
         signal: AbortSignal.timeout(20_000),
       });
@@ -92,7 +102,9 @@ async function main(): Promise<void> {
     json = SAMPLE;
     out = "card-sample.png";
   } else if (file) {
-    json = JSON.parse(await readFile(resolve(process.cwd(), file), "utf8")) as CardJson;
+    json = JSON.parse(
+      await readFile(resolve(process.cwd(), file), "utf8"),
+    ) as CardJson;
     out = json.out ?? "card.png";
   } else if (inline) {
     json = JSON.parse(inline) as CardJson;
@@ -143,6 +155,8 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error(`card failed: ${err instanceof Error ? err.message : String(err)}`);
+  console.error(
+    `card failed: ${err instanceof Error ? err.message : String(err)}`,
+  );
   process.exitCode = 1;
 });

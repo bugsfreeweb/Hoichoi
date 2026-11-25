@@ -1,5 +1,6 @@
 import { ImageOff } from "lucide-react";
 import { useDeskMedia } from "../lib/media";
+import { safeImageSrc } from "../lib/safe-url";
 
 /**
  * The desk's picture element.
@@ -23,7 +24,7 @@ export function DeskThumb({
   /** Rendered when the path resolves to nothing (e.g. a larger editor preview). */
   fallback?: React.ReactNode;
 }) {
-  const src = useDeskMedia(path);
+  const src = safeImageSrc(useDeskMedia(path) ?? "");
   const has = Boolean((path ?? "").trim());
 
   if (!has) {

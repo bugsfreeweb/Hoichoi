@@ -38,7 +38,10 @@ export const PROVIDER_META: ProviderMeta[] = [
     kinds: ["text", "image"],
     models: {
       text: ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-pro"],
-      image: ["gemini-2.5-flash-image", "gemini-2.0-flash-preview-image-generation"],
+      image: [
+        "gemini-2.5-flash-image",
+        "gemini-2.0-flash-preview-image-generation",
+      ],
     },
     baseUrl: "",
     freeTier: true,
@@ -62,7 +65,13 @@ export const PROVIDER_META: ProviderMeta[] = [
     label: "OpenRouter",
     envVar: "OPENROUTER_API_KEY",
     kinds: ["text"],
-    models: { text: ["google/gemini-2.0-flash-exp:free", "meta-llama/llama-3.3-70b-instruct:free"], image: [] },
+    models: {
+      text: [
+        "google/gemini-2.0-flash-exp:free",
+        "meta-llama/llama-3.3-70b-instruct:free",
+      ],
+      image: [],
+    },
     baseUrl: "https://openrouter.ai/api/v1",
     freeTier: true,
     noteBn: "শুধু লেখার কাজে। :free মডেলগুলোই আগে চেষ্টা হয়।",
@@ -72,7 +81,10 @@ export const PROVIDER_META: ProviderMeta[] = [
     label: "Groq",
     envVar: "GROQ_API_KEY",
     kinds: ["text"],
-    models: { text: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"], image: [] },
+    models: {
+      text: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
+      image: [],
+    },
     baseUrl: "https://api.groq.com/openai/v1",
     freeTier: true,
     noteBn: "দ্রুত ও ফ্রি টিয়ার—লেখার কাজে।",
@@ -82,7 +94,10 @@ export const PROVIDER_META: ProviderMeta[] = [
     label: "Anthropic Claude",
     envVar: "ANTHROPIC_API_KEY",
     kinds: ["text"],
-    models: { text: ["claude-3-5-haiku-latest", "claude-sonnet-4-20250514"], image: [] },
+    models: {
+      text: ["claude-3-5-haiku-latest", "claude-sonnet-4-20250514"],
+      image: [],
+    },
     baseUrl: "",
     freeTier: false,
     noteBn: "শুধু লেখার কাজে (পেইড)।",
@@ -164,11 +179,16 @@ export const PROVIDER_META: ProviderMeta[] = [
     kinds: ["text", "image"],
     models: {
       text: ["manifest/auto"],
-      image: ["flux", "@cf/black-forest-labs/flux-1-schnell", "black-forest-labs/FLUX.1-schnell"],
+      image: [
+        "flux",
+        "@cf/black-forest-labs/flux-1-schnell",
+        "black-forest-labs/FLUX.1-schnell",
+      ],
     },
     baseUrl: "",
     freeTier: false,
-    noteBn: "Cloudflare Workers AI, Together AI, OpenAI — OpenAI-সদৃশ যেকোনো এন্ডপয়েন্ট।",
+    noteBn:
+      "Cloudflare Workers AI, Together AI, OpenAI — OpenAI-সদৃশ যেকোনো এন্ডপয়েন্ট।",
   },
 ];
 
@@ -251,14 +271,16 @@ export function providerFields(providerKey: string): ProviderFieldSpec[] {
         labelBn: "API টোকেন",
         placeholder: "হলি রাখলে CLOUDFLARE_API_TOKEN env ব্যবহার হবে",
         secret: true,
-        hintBn: "টোকেনে Workers AI লেখার অনুমতি (Account → Workers AI → Edit) থাকতে হবে।",
+        hintBn:
+          "টোকেনে Workers AI লেখার অনুমতি (Account → Workers AI → Edit) থাকতে হবে।",
       },
       {
         key: "baseUrl",
         labelBn: "API base URL (অটো-তৈরি)",
         placeholder: "—",
         composed: true,
-        hintBn: "আপনার account ID দিয়ে নিজে থেকেই তৈরি হবে — এখানে হাতলেখার দরকার নেই।",
+        hintBn:
+          "আপনার account ID দিয়ে নিজে থেকেই তৈরি হবে — এখানে হাতলেখার দরকার নেই।",
       },
     ];
   }
@@ -304,25 +326,33 @@ const CLOUDFLARE_MODEL_ALIASES: Readonly<Record<string, string>> = {
   "flux-1-schnell": "@cf/black-forest-labs/flux-1-schnell",
   "flux-schnell": "@cf/black-forest-labs/flux-1-schnell",
   "black-forest-labs/flux-1-schnell": "@cf/black-forest-labs/flux-1-schnell",
-  "stable-diffusion-xl-base-1.0": "@cf/stabilityai/stable-diffusion-xl-base-1.0",
-  "sdxl": "@cf/stabilityai/stable-diffusion-xl-base-1.0",
+  "stable-diffusion-xl-base-1.0":
+    "@cf/stabilityai/stable-diffusion-xl-base-1.0",
+  sdxl: "@cf/stabilityai/stable-diffusion-xl-base-1.0",
   "dreamshaper-8-lcm": "@cf/lykon/dreamshaper-8-lcm",
 };
 
 /** `flux-1-schnell` → `@cf/black-forest-labs/flux-1-schnell`; null when unknown. */
-export function normalizeCloudflareModel(model: string | null | undefined): string | null {
+export function normalizeCloudflareModel(
+  model: string | null | undefined,
+): string | null {
   // A whole endpoint is sometimes pasted into the model box. Everything after
   // `/ai/run/` is the model id; a bare host is dropped. Both are the operator
   // pasting what Cloudflare's dashboard showed them, not a different request.
   const input = (model ?? "").trim();
-  const afterRun = input.includes("/ai/run/") ? input.slice(input.indexOf("/ai/run/") + "/ai/run/".length) : input;
-  const raw = afterRun.replace(/^https?:\/\/[^/]+/i, "").replace(/\/+$/, "");
+  const afterRun = input.includes("/ai/run/")
+    ? input.slice(input.indexOf("/ai/run/") + "/ai/run/".length)
+    : input;
+  const raw = afterRun
+    .replace(/^https?:\/\/[^/]{1,253}/i, "")
+    .replace(/\/+$/, "");
   if (!raw) return null;
   if (raw.startsWith(CLOUDFLARE_MODEL_PREFIX)) return raw;
   const alias = CLOUDFLARE_MODEL_ALIASES[raw.toLowerCase()];
   if (alias) return alias;
   // `black-forest-labs/flux-1-schnell` — a vendor path without the `@cf/` prefix.
-  if (/^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/i.test(raw)) return `${CLOUDFLARE_MODEL_PREFIX}${raw}`;
+  if (/^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/i.test(raw))
+    return `${CLOUDFLARE_MODEL_PREFIX}${raw}`;
   return null;
 }
 
@@ -354,13 +384,16 @@ export function validateProviderSetup(draft: {
     if (!CLOUDFLARE_ACCOUNT_ID_RE.test(id)) {
       return {
         ok: false,
-        errorBn: "Cloudflare account ID ৩২ অক্ষরের hex হতে হবে — Cloudflare → Workers & Pages → Account ID থেকে নিন।",
+        errorBn:
+          "Cloudflare account ID ৩২ অক্ষরের hex হতে হবে — Cloudflare → Workers & Pages → Account ID থেকে নিন।",
       };
     }
     // A model Cloudflare does not have is the failure that reads like an outage:
     // `400 No route for that URI`. Refuse it here, where the operator can fix it.
     if (draft.model !== undefined && !isCloudflareModel(draft.model)) {
-      const first = metaFor("cloudflare").models.image[0] ?? "@cf/black-forest-labs/flux-1-schnell";
+      const first =
+        metaFor("cloudflare").models.image[0] ??
+        "@cf/black-forest-labs/flux-1-schnell";
       return {
         ok: false,
         errorBn:
@@ -383,13 +416,22 @@ export function validateProviderSetup(draft: {
  * answer is always the same three checks.
  */
 export const PROVIDERS_GUIDE: ReadonlyArray<{ n: string; bn: string }> = [
-  { n: "১", bn: "রো-টি সক্রিয় (Active) এবং কাজ “🎨 ছবি” — লেখার রো কখনো ছবি আঁকে না।" },
+  {
+    n: "১",
+    bn: "রো-টি সক্রিয় (Active) এবং কাজ “🎨 ছবি” — লেখার রো কখনো ছবি আঁকে না।",
+  },
   { n: "২", bn: "কী আছে — DB-তে সংরক্ষিত, অথবা env/vault-এ থাকা ভেরিয়েবল।" },
-  { n: "৩", bn: "মডেলটি সত্যিই image মডেল (যেমন gpt-image-1, flux-1-schnell, gemini-2.5-flash-image); “টেস্ট” বোতাম দিয়ে প্রমাণ করুন।" },
+  {
+    n: "৩",
+    bn: "মডেলটি সত্যিই image মডেল (যেমন gpt-image-1, flux-1-schnell, gemini-2.5-flash-image); “টেস্ট” বোতাম দিয়ে প্রমাণ করুন।",
+  },
 ];
 
 export function metaFor(providerKey: string): ProviderMeta {
-  return PROVIDER_META.find((p) => p.key === providerKey) ?? PROVIDER_META[PROVIDER_META.length - 1]!;
+  return (
+    PROVIDER_META.find((p) => p.key === providerKey) ??
+    PROVIDER_META[PROVIDER_META.length - 1]!
+  );
 }
 
 /** Short Bangla label for a row's purpose. */

@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import { getClient } from "./client";
 import { ensureAdminLoginCodesTable, ensureLoginLogTable } from "./client";
 import type { AdminLoginLog, LoginLogPage } from "@hoichoi/shared-types";
@@ -14,11 +14,11 @@ export function codeHash(code: string): string {
 }
 
 export function randomLoginCode(): string {
-  const bytes = randomBytes(CODE_LENGTH);
   let out = "";
   for (let i = 0; i < CODE_LENGTH; i++) {
-    const byte = bytes[i] ?? 0;
-    out += CODE_ALPHABET.charAt(byte % CODE_ALPHABET.length);
+    // randomInt rejection-samples, so every symbol is equally likely. Modulo on
+    // a raw byte would make the first few letters slightly more common.
+    out += CODE_ALPHABET.charAt(randomInt(CODE_ALPHABET.length));
   }
   return out;
 }
@@ -48,12 +48,21 @@ export async function createAdminLoginCode(opts: {
   const expires = new Date(now.getTime() + (opts.ttlMs ?? DEFAULT_TTL_MS));
   await client.execute({
     sql: "INSERT INTO admin_login_codes (id, email, label, code_hash, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
-    args: [id, email, opts.label ?? null, codeHash(code), now.toISOString(), expires.toISOString()],
+    args: [
+      id,
+      email,
+      opts.label ?? null,
+      codeHash(code),
+      now.toISOString(),
+      expires.toISOString(),
+    ],
   });
   return { id, code, email, expires_at: expires.toISOString() };
 }
 
-export async function listAdminLoginCodes(limit = 100): Promise<AdminLoginCodeRow[]> {
+export async function listAdminLoginCodes(
+  limit = 100,
+): Promise<AdminLoginCodeRow[]> {
   const client = getClient();
   await ensureAdminLoginCodesTable(client);
   const res = await client.execute({
@@ -84,7 +93,9 @@ export async function revokeAdminLoginCode(id: string): Promise<void> {
 
 /** Revoke every outstanding (unused) login code for an email — desktop
  *  "lock the web admin out" action. Returns the number revoked. */
-export async function revokeAdminLoginCodesByEmail(email: string): Promise<number> {
+export async function revokeAdminLoginCodesByEmail(
+  email: string,
+): Promise<number> {
   const client = getClient();
   const res = await client.execute({
     sql: "UPDATE admin_login_codes SET revoked_at = ? WHERE email = ? AND used_at IS NULL AND revoked_at IS NULL",
@@ -95,7 +106,9 @@ export async function revokeAdminLoginCodesByEmail(email: string): Promise<numbe
 
 /** Hard-delete all web admin sessions for an email — forces the browser(s)
  *  out immediately; a fresh desktop-minted code is required to sign back in. */
-export async function revokeAdminSessionsByEmail(email: string): Promise<number> {
+export async function revokeAdminSessionsByEmail(
+  email: string,
+): Promise<number> {
   const client = getClient();
   const res = await client.execute({
     sql: `DELETE FROM admin_sessions WHERE user_id IN (
@@ -111,7 +124,10 @@ export async function revokeAdminSessionsByEmail(email: string): Promise<number>
  * unexpired. Only one request can win (guarded UPDATE), so a code is truly
  * one-time.
  */
-export async function consumeAdminLoginCode(email: string, code: string): Promise<boolean> {
+export async function consumeAdminLoginCode(
+  email: string,
+  code: string,
+): Promise<boolean> {
   const client = getClient();
   const e = email.trim().toLowerCase();
   const now = new Date().toISOString();
@@ -167,12 +183,17 @@ function mapLoginLogRow(row: Record<string, unknown>): AdminLoginLog {
 }
 
 /** Paginated login log, newest first. `perPage` clamped to 1..100. */
-export async function listLoginLog(page = 1, perPage = 10): Promise<LoginLogPage> {
+export async function listLoginLog(
+  page = 1,
+  perPage = 10,
+): Promise<LoginLogPage> {
   const client = getClient();
   await ensureLoginLogTable(client);
   const pageNum = Math.max(1, Math.floor(page));
   const pageSize = Math.min(100, Math.max(1, Math.floor(perPage)));
-  const totalRes = await client.execute("SELECT COUNT(*) AS n FROM admin_login_log");
+  const totalRes = await client.execute(
+    "SELECT COUNT(*) AS n FROM admin_login_log",
+  );
   const total = Number((totalRes.rows[0] as Record<string, unknown>).n ?? 0);
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const res = await client.execute({
@@ -230,7 +251,9 @@ export interface AdminSessionRow {
  * account; an admin looking at their own devices must not see other admins'.
  * Order: active first (most recent), then revoked.
  */
-export async function listAdminSessions(opts: { email?: string; limit?: number } = {}): Promise<AdminSessionRow[]> {
+export async function listAdminSessions(
+  opts: { email?: string; limit?: number } = {},
+): Promise<AdminSessionRow[]> {
   const client = getClient();
   const limit = Math.min(opts.limit ?? 100, 500);
   if (opts.email) {
@@ -284,7 +307,11 @@ export function mapSessionRow(r: Record<string, unknown>): AdminSessionRow {
  * Revoke one session by its public id (token-hash prefix).
  * Returns rows affected, so callers can tell a real revoke from a stale id.
  */
-export async function revokeAdminSessionById(id: string, revokedBy: string, reason: string): Promise<number> {
+export async function revokeAdminSessionById(
+  id: string,
+  revokedBy: string,
+  reason: string,
+): Promise<number> {
   const client = getClient();
   const res = await client.execute({
     sql: "UPDATE admin_sessions SET revoked_at = ?, revoked_by = ?, revoked_reason = ? WHERE substr(token_hash, 1, 16) = ? AND revoked_at IS NULL",

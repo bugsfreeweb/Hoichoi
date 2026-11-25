@@ -25,7 +25,9 @@ export function fontsDir(): string {
   if (fs.existsSync(beside)) return beside;
   const bundled = path.join(HERE, "fonts");
   if (fs.existsSync(bundled)) return bundled;
-  throw new Error(`poster fonts not found (looked in ${beside} and ${bundled})`);
+  throw new Error(
+    `poster fonts not found (looked in ${beside} and ${bundled})`,
+  );
 }
 
 let registered = false;
@@ -41,7 +43,9 @@ let registered = false;
 export function ensurePosterFonts(): void {
   if (registered) return;
   const dir = fontsDir();
-  const cache = path.join(os.tmpdir(), "hoichoi-fontconfig-cache");
+  // A predictable name in the shared temp dir can be pre-created by another
+  // local user (symlink / permission games). mkdtemp creates a fresh 0700 dir.
+  const cache = fs.mkdtempSync(path.join(os.tmpdir(), "hoichoi-fontconfig-"));
   try {
     fs.mkdirSync(cache, { recursive: true });
   } catch {

@@ -4,13 +4,33 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import os from "node:os";
 import { createInterface } from "node:readline";
-import { parsePipelineLimit, runPipeline, type PipelineOptions } from "./pipeline";
+import {
+  parsePipelineLimit,
+  runPipeline,
+  type PipelineOptions,
+} from "./pipeline";
 import { runArchivePass } from "./archive";
 import { cleanupMedia, storageRegistryCount } from "./storage";
-import { backfillMissingMedia, recoverOrphanedMedia, syncExistingMediaToWeb, aiFillMissingHeroes, generateManualImage, repairMissingMedia } from "./media-backfill";
-import { POSTER_LAYOUTS, POSTER_THEMES, isPosterLayout, isPosterTheme } from "@hoichoi/poster";
+import {
+  backfillMissingMedia,
+  recoverOrphanedMedia,
+  syncExistingMediaToWeb,
+  aiFillMissingHeroes,
+  generateManualImage,
+  repairMissingMedia,
+} from "./media-backfill";
+import {
+  POSTER_LAYOUTS,
+  POSTER_THEMES,
+  isPosterLayout,
+  isPosterTheme,
+} from "@hoichoi/poster";
 import { isVideoUrl } from "./media";
-import { buildImageBrief, gatewayProviderFromEnv, newResolver } from "@hoichoi/llm";
+import {
+  buildImageBrief,
+  gatewayProviderFromEnv,
+  newResolver,
+} from "@hoichoi/llm";
 import {
   getClient,
   ensureSchema,
@@ -70,7 +90,15 @@ import {
   setPrimaryPostImage,
   type PostUpdateFields,
 } from "@hoichoi/db";
-import { PROCESSOR_ENV_DEFAULTS, normalizePlatform, type CategorySlug, type MediaStorageConfig, type NoticeTone, type ProviderKey, type SiteSettings } from "@hoichoi/shared-types";
+import {
+  PROCESSOR_ENV_DEFAULTS,
+  normalizePlatform,
+  type CategorySlug,
+  type MediaStorageConfig,
+  type NoticeTone,
+  type ProviderKey,
+  type SiteSettings,
+} from "@hoichoi/shared-types";
 
 /** Structural match for @libsql/client's InValue (avoids pulling the dep into scraper). */
 type SqlValue = null | string | number | bigint | Uint8Array | ArrayBuffer;
@@ -107,26 +135,48 @@ program
 program
   .command("scrape")
   .description("run the full scrape → rewrite → dedup pipeline")
-  .option("--mock", "generate sample posts instead of live FB scraping (offline dev/demo)")
-  .option("--max-sources <n>", "limit number of sources (default: all eligible sources)")
-  .option("--max-posts <n>", "limit posts per source (default: 50 Facebook, 200 feeds)")
+  .option(
+    "--mock",
+    "generate sample posts instead of live FB scraping (offline dev/demo)",
+  )
+  .option(
+    "--max-sources <n>",
+    "limit number of sources (default: all eligible sources)",
+  )
+  .option(
+    "--max-posts <n>",
+    "limit posts per source (default: 50 Facebook, 200 feeds)",
+  )
   .option("--evidence", "capture full-page screenshots as moderation evidence")
-  .action(async (opts: { mock?: boolean; maxSources?: string; maxPosts?: string; evidence?: boolean }) => {
-    try {
-      const options: PipelineOptions = {
-        mock: opts.mock ?? (process.env.HOICHOI_MOCK === "1"),
-        maxSources: parsePipelineLimit(opts.maxSources ?? process.env.MAX_SOURCES_PER_RUN, "MAX_SOURCES_PER_RUN"),
-        maxPosts: parsePipelineLimit(opts.maxPosts ?? process.env.MAX_POSTS_PER_RUN, "MAX_POSTS_PER_RUN"),
-        evidence: opts.evidence ?? false,
-      };
-      await ensureSchema(getClient());
-      const stats = await runPipeline(options);
-      if (stats.status === "failed") process.exitCode = 1;
-    } catch (err) {
-      console.error("[fatal]", (err as Error).message);
-      process.exitCode = 1;
-    }
-  });
+  .action(
+    async (opts: {
+      mock?: boolean;
+      maxSources?: string;
+      maxPosts?: string;
+      evidence?: boolean;
+    }) => {
+      try {
+        const options: PipelineOptions = {
+          mock: opts.mock ?? process.env.HOICHOI_MOCK === "1",
+          maxSources: parsePipelineLimit(
+            opts.maxSources ?? process.env.MAX_SOURCES_PER_RUN,
+            "MAX_SOURCES_PER_RUN",
+          ),
+          maxPosts: parsePipelineLimit(
+            opts.maxPosts ?? process.env.MAX_POSTS_PER_RUN,
+            "MAX_POSTS_PER_RUN",
+          ),
+          evidence: opts.evidence ?? false,
+        };
+        await ensureSchema(getClient());
+        const stats = await runPipeline(options);
+        if (stats.status === "failed") process.exitCode = 1;
+      } catch (err) {
+        console.error("[fatal]", (err as Error).message);
+        process.exitCode = 1;
+      }
+    },
+  );
 
 /**
  * The archive block as the console wants it.
@@ -135,11 +185,17 @@ program
  * print this same object, so the one-shot CLI and the desk cannot answer with
  * different shapes. Everything here is a read; the deletes are separate verbs.
  */
-async function archiveSnapshot(page = 1, olderThan?: number): Promise<Record<string, unknown>> {
+async function archiveSnapshot(
+  page = 1,
+  olderThan?: number,
+): Promise<Record<string, unknown>> {
   await ensureSchema(getClient());
-  const { listArchivedPostsPage, listExpiredPosts, countExpiredPosts, getSettings } = await import(
-    "@hoichoi/db"
-  );
+  const {
+    listArchivedPostsPage,
+    listExpiredPosts,
+    countExpiredPosts,
+    getSettings,
+  } = await import("@hoichoi/db");
   const settings = await getSettings();
   const p = Number(page) || 1;
   const pageSize = 50;
@@ -172,7 +228,10 @@ async function archiveSnapshot(page = 1, olderThan?: number): Promise<Record<str
 }
 
 /** Permanently delete one archived post, or refuse with a readable reason. */
-async function archiveDelete(id: string, actor: string): Promise<Record<string, unknown>> {
+async function archiveDelete(
+  id: string,
+  actor: string,
+): Promise<Record<string, unknown>> {
   await ensureSchema(getClient());
   const { deleteArchivedPost } = await import("@hoichoi/db");
   const result = await deleteArchivedPost(id, actor);
@@ -180,12 +239,17 @@ async function archiveDelete(id: string, actor: string): Promise<Record<string, 
 }
 
 /** Delete everything older than `days`; the guards stay, and are reported. */
-async function archivePurge(days: number | undefined, actor: string): Promise<Record<string, unknown>> {
+async function archivePurge(
+  days: number | undefined,
+  actor: string,
+): Promise<Record<string, unknown>> {
   await ensureSchema(getClient());
   const { deletePostsOlderThan, getSettings } = await import("@hoichoi/db");
   const settings = await getSettings();
   const window = Number(days ?? settings.archive_retention_days ?? 30) || 30;
-  const report = await deletePostsOlderThan(window, actor, (m) => console.error(m));
+  const report = await deletePostsOlderThan(window, actor, (m) =>
+    console.error(m),
+  );
   return { ok: true, days: window, ...report };
 }
 
@@ -200,7 +264,9 @@ async function archivePurge(days: number | undefined, actor: string): Promise<Re
  */
 program
   .command("archive")
-  .description("auto-rollover the 7-day window + purge past retention (or: list/delete/purge)")
+  .description(
+    "auto-rollover the 7-day window + purge past retention (or: list/delete/purge)",
+  )
   .action(async () => {
     try {
       await ensureSchema(getClient());
@@ -221,11 +287,16 @@ program
     try {
       console.log(
         JSON.stringify(
-          await archiveSnapshot(Number(opts.page ?? 1) || 1, opts.olderThan ? Number(opts.olderThan) : undefined),
+          await archiveSnapshot(
+            Number(opts.page ?? 1) || 1,
+            opts.olderThan ? Number(opts.olderThan) : undefined,
+          ),
         ),
       );
     } catch (err) {
-      console.error(JSON.stringify({ ok: false, error: (err as Error).message }));
+      console.error(
+        JSON.stringify({ ok: false, error: (err as Error).message }),
+      );
       process.exitCode = 1;
     }
   });
@@ -237,34 +308,47 @@ program
   .option("--actor <name>", "who asked", "desk")
   .action(async (opts: { id: string; actor?: string }) => {
     try {
-      console.log(JSON.stringify(await archiveDelete(opts.id, opts.actor ?? "desk")));
+      console.log(
+        JSON.stringify(await archiveDelete(opts.id, opts.actor ?? "desk")),
+      );
     } catch (err) {
-      console.error(JSON.stringify({ ok: false, error: (err as Error).message }));
+      console.error(
+        JSON.stringify({ ok: false, error: (err as Error).message }),
+      );
       process.exitCode = 1;
     }
   });
 
 program
   .command("archive:purge")
-  .description("delete every post older than N days (default: the retention setting)")
+  .description(
+    "delete every post older than N days (default: the retention setting)",
+  )
   .option("--older-than <days>", "age in days")
   .option("--actor <name>", "who asked", "desk")
   .action(async (opts: { olderThan?: string; actor?: string }) => {
     try {
       console.log(
         JSON.stringify(
-          await archivePurge(opts.olderThan ? Number(opts.olderThan) : undefined, opts.actor ?? "desk"),
+          await archivePurge(
+            opts.olderThan ? Number(opts.olderThan) : undefined,
+            opts.actor ?? "desk",
+          ),
         ),
       );
     } catch (err) {
-      console.error(JSON.stringify({ ok: false, error: (err as Error).message }));
+      console.error(
+        JSON.stringify({ ok: false, error: (err as Error).message }),
+      );
       process.exitCode = 1;
     }
   });
 
 program
   .command("sessions:list")
-  .description("admin sessions / devices (JSON) — the desks the web console signs in from")
+  .description(
+    "admin sessions / devices (JSON) — the desks the web console signs in from",
+  )
   .option("--email <email>", "only this admin's sessions")
   .option("--limit <n>", "how many rows", "100")
   .action(async (opts: { email?: string; limit?: string }) => {
@@ -277,7 +361,9 @@ program
       });
       console.log(JSON.stringify({ ok: true, sessions: rows }, null, 2));
     } catch (err) {
-      console.error(JSON.stringify({ ok: false, error: (err as Error).message }));
+      console.error(
+        JSON.stringify({ ok: false, error: (err as Error).message }),
+      );
       process.exitCode = 1;
     }
   });
@@ -292,11 +378,18 @@ program
     try {
       await ensureSchema(getClient());
       const { revokeAdminSessionById } = await import("@hoichoi/db");
-      const affected = await revokeAdminSessionById(opts.id, opts.by ?? "desk", opts.reason ?? "desk revoke");
-      if (affected === 0) throw new Error("session not found or already revoked");
+      const affected = await revokeAdminSessionById(
+        opts.id,
+        opts.by ?? "desk",
+        opts.reason ?? "desk revoke",
+      );
+      if (affected === 0)
+        throw new Error("session not found or already revoked");
       console.log(JSON.stringify({ ok: true, revoked: affected }));
     } catch (err) {
-      console.error(JSON.stringify({ ok: false, error: (err as Error).message }));
+      console.error(
+        JSON.stringify({ ok: false, error: (err as Error).message }),
+      );
       process.exitCode = 1;
     }
   });
@@ -353,7 +446,9 @@ const SETTING_KEYS: Array<keyof SiteSettings> = [
 
 program
   .command("settings:set <assign...>")
-  .description('update site settings — e.g. settings:set "site_name=হৈচৈ" "slogan_bn=..." "accent_color=#d64541"')
+  .description(
+    'update site settings — e.g. settings:set "site_name=হৈচৈ" "slogan_bn=..." "accent_color=#d64541"',
+  )
   .action(async (assigns: string[]) => {
     try {
       await ensureSchema(getClient());
@@ -363,15 +458,23 @@ program
         if (eq <= 0) throw new Error(`expected field=value, got: ${a}`);
         const k = a.slice(0, eq) as keyof SiteSettings;
         const v = a.slice(eq + 1);
-        if (!SETTING_KEYS.includes(k)) throw new Error(`unknown settings field: ${k}`);
-        if (k === "pipeline_hours" || k === "archive_visible_days" || k === "archive_retention_days" || k === "collection_paused") {
+        if (!SETTING_KEYS.includes(k))
+          throw new Error(`unknown settings field: ${k}`);
+        if (
+          k === "pipeline_hours" ||
+          k === "archive_visible_days" ||
+          k === "archive_retention_days" ||
+          k === "collection_paused"
+        ) {
           (fields as Record<string, number>)[k] = Number(v);
         } else {
           (fields as Record<string, string>)[k] = v;
         }
       }
       await updateSettings(fields);
-      console.log(JSON.stringify({ ok: true, fields: Object.keys(fields) }, null, 2));
+      console.log(
+        JSON.stringify({ ok: true, fields: Object.keys(fields) }, null, 2),
+      );
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -380,35 +483,59 @@ program
 
 program
   .command("admin-code <action> [email]")
-  .description("manage one-time admin login codes (desktop issues, web consumes)")
+  .description(
+    "manage one-time admin login codes (desktop issues, web consumes)",
+  )
   .option("--label <label>", "short description for a created code")
   .option("--id <id>", "code id (revoke)")
-  .action(async (action: string, email: string | undefined, opts: { label?: string; id?: string }) => {
-    try {
-      await ensureSchema(getClient());
-      if (action === "create") {
-        if (!email) throw new Error("email required");
-        const created = await createAdminLoginCode({ email, label: opts.label });
-        console.log(JSON.stringify({ ok: true, ...created }));
-      } else if (action === "list") {
-        console.log(JSON.stringify({ ok: true, codes: await listAdminLoginCodes() }, null, 2));
-      } else if (action === "revoke") {
-        if (!opts.id) throw new Error("--id required");
-        await revokeAdminLoginCode(opts.id);
-        console.log(JSON.stringify({ ok: true }));
-      } else if (action === "logout-sessions") {
-        if (!email) throw new Error("email required");
-        const sessions = await revokeAdminSessionsByEmail(email);
-        const codes = await revokeAdminLoginCodesByEmail(email);
-        console.log(JSON.stringify({ ok: true, email, sessionsRevoked: sessions, codesRevoked: codes }));
-      } else {
-        throw new Error(`unknown action: ${action}`);
+  .action(
+    async (
+      action: string,
+      email: string | undefined,
+      opts: { label?: string; id?: string },
+    ) => {
+      try {
+        await ensureSchema(getClient());
+        if (action === "create") {
+          if (!email) throw new Error("email required");
+          const created = await createAdminLoginCode({
+            email,
+            label: opts.label,
+          });
+          console.log(JSON.stringify({ ok: true, ...created }));
+        } else if (action === "list") {
+          console.log(
+            JSON.stringify(
+              { ok: true, codes: await listAdminLoginCodes() },
+              null,
+              2,
+            ),
+          );
+        } else if (action === "revoke") {
+          if (!opts.id) throw new Error("--id required");
+          await revokeAdminLoginCode(opts.id);
+          console.log(JSON.stringify({ ok: true }));
+        } else if (action === "logout-sessions") {
+          if (!email) throw new Error("email required");
+          const sessions = await revokeAdminSessionsByEmail(email);
+          const codes = await revokeAdminLoginCodesByEmail(email);
+          console.log(
+            JSON.stringify({
+              ok: true,
+              email,
+              sessionsRevoked: sessions,
+              codesRevoked: codes,
+            }),
+          );
+        } else {
+          throw new Error(`unknown action: ${action}`);
+        }
+      } catch (err) {
+        console.error("[fatal]", (err as Error).message);
+        process.exitCode = 1;
       }
-    } catch (err) {
-      console.error("[fatal]", (err as Error).message);
-      process.exitCode = 1;
-    }
-  });
+    },
+  );
 
 function backupPass(): string {
   const pass = process.env.HOICHOI_BACKUP_PASS;
@@ -416,10 +543,14 @@ function backupPass(): string {
   return pass;
 }
 
-const backup = program.command("backup").description("AES-256 encrypted backup / restore");
+const backup = program
+  .command("backup")
+  .description("AES-256 encrypted backup / restore");
 backup
   .command("export")
-  .description("full backup (settings + content + credentials) as encrypted JSON to stdout")
+  .description(
+    "full backup (settings + content + credentials) as encrypted JSON to stdout",
+  )
   .action(async () => {
     try {
       await ensureSchema(getClient());
@@ -434,7 +565,9 @@ backup
 
 backup
   .command("import <file>")
-  .description('restore from an encrypted backup file — e.g. "backup import hb.json"')
+  .description(
+    'restore from an encrypted backup file — e.g. "backup import hb.json"',
+  )
   .action(async (file: string) => {
     try {
       await ensureSchema(getClient());
@@ -452,7 +585,9 @@ backup
 
 backup
   .command("verify <file>")
-  .description('decrypt + validate a backup without writing to the database — e.g. "backup verify hb.bak"')
+  .description(
+    'decrypt + validate a backup without writing to the database — e.g. "backup verify hb.bak"',
+  )
   .action(async (file: string) => {
     try {
       await ensureSchema(getClient());
@@ -466,8 +601,11 @@ backup
         tables: bundle.tables?.length ?? 0,
         credentials: Object.keys(bundle.credentials ?? {}).length,
       };
-      for (const t of bundle.tables ?? []) checks[`rows:${t.name}`] = t.rows.length;
-      console.log(JSON.stringify({ ok: true, valid: true, file, checks }, null, 2));
+      for (const t of bundle.tables ?? [])
+        checks[`rows:${t.name}`] = t.rows.length;
+      console.log(
+        JSON.stringify({ ok: true, valid: true, file, checks }, null, 2),
+      );
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -476,14 +614,25 @@ backup
 
 backup
   .command("auto <dir>")
-  .description('write an auto-backup into a folder and keep only the newest N files (rotating)')
+  .description(
+    "write an auto-backup into a folder and keep only the newest N files (rotating)",
+  )
   .option("--keep <n>", "keep this many recent backups", "7")
   .action(async (dir: string, opts: { keep: string }) => {
     try {
       await ensureSchema(getClient());
-      await import("node:fs/promises").then(({ mkdir }) => mkdir(dir, { recursive: true }));
-      const payload = encryptJson(await gatherExportBundle(getClient()), backupPass());
-      const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19).replace("T", "_");
+      await import("node:fs/promises").then(({ mkdir }) =>
+        mkdir(dir, { recursive: true }),
+      );
+      const payload = encryptJson(
+        await gatherExportBundle(getClient()),
+        backupPass(),
+      );
+      const stamp = new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-")
+        .slice(0, 19)
+        .replace("T", "_");
       const file = path.join(dir, `hoichoi-backup-${stamp}.bak`);
       await writeFile(file, JSON.stringify({ payload }, null, 2), "utf-8");
       const keep = Math.max(1, Number(opts.keep) || 7);
@@ -494,7 +643,13 @@ backup
       for (const old of list) {
         await rm(path.join(dir, old), { force: true });
       }
-      console.log(JSON.stringify({ ok: true, file, kept: keep, pruned: list.length }, null, 2));
+      console.log(
+        JSON.stringify(
+          { ok: true, file, kept: keep, pruned: list.length },
+          null,
+          2,
+        ),
+      );
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -503,7 +658,9 @@ backup
 
 program
   .command("reset")
-  .description("wipe content + reset settings/config to defaults (admin account kept)")
+  .description(
+    "wipe content + reset settings/config to defaults (admin account kept)",
+  )
   .action(async () => {
     try {
       await ensureSchema(getClient());
@@ -517,7 +674,9 @@ program
 
 program
   .command("sync <direction>")
-  .description("copy content between DBs: push = local file DB → Turso, pull = Turso → local file DB")
+  .description(
+    "copy content between DBs: push = local file DB → Turso, pull = Turso → local file DB",
+  )
   .requiredOption("--from <url>", "source URL (file: or libsql://)")
   .requiredOption("--to <url>", "target URL (file: or libsql://)")
   .action(async (direction: string, opts: { from: string; to: string }) => {
@@ -541,7 +700,17 @@ program
   .action(async () => {
     try {
       await ensureSchema(getClient());
-      console.log(JSON.stringify({ ok: true, stats: await statsSnapshot(), runs: await recentPipelineRuns(8) }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            ok: true,
+            stats: await statsSnapshot(),
+            runs: await recentPipelineRuns(8),
+          },
+          null,
+          2,
+        ),
+      );
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -550,11 +719,15 @@ program
 
 program
   .command("radar")
-  .description("desk collector — per-category pipeline-stage radar snapshot as JSON")
+  .description(
+    "desk collector — per-category pipeline-stage radar snapshot as JSON",
+  )
   .action(async () => {
     try {
       await ensureSchema(getClient());
-      console.log(JSON.stringify({ ok: true, ...(await radarSnapshot()) }, null, 2));
+      console.log(
+        JSON.stringify({ ok: true, ...(await radarSnapshot()) }, null, 2),
+      );
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -563,14 +736,19 @@ program
 
 program
   .command("traffic")
-  .description("desk monitor — first-party traffic analytics snapshot (24h|7d|30d) as JSON")
+  .description(
+    "desk monitor — first-party traffic analytics snapshot (24h|7d|30d) as JSON",
+  )
   .option("-r, --range <range>", "24h | 7d | 30d", "24h")
   .action(async (opts: { range?: string }) => {
     try {
       const range = (opts.range ?? "24h") as "24h" | "7d" | "30d";
-      if (range !== "24h" && range !== "7d" && range !== "30d") throw new Error(`unknown range: ${range}`);
+      if (range !== "24h" && range !== "7d" && range !== "30d")
+        throw new Error(`unknown range: ${range}`);
       await ensureSchema(getClient());
-      console.log(JSON.stringify({ ...(await trafficSnapshot(range)) }, null, 2));
+      console.log(
+        JSON.stringify({ ...(await trafficSnapshot(range)) }, null, 2),
+      );
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -579,7 +757,9 @@ program
 
 program
   .command("storage")
-  .description("desk monitor — database size, media usage and per-location storage report as JSON")
+  .description(
+    "desk monitor — database size, media usage and per-location storage report as JSON",
+  )
   .action(async () => {
     try {
       await ensureSchema(getClient());
@@ -590,7 +770,9 @@ program
     }
   });
 
-const media = program.command("media").description("remote media storage (adapter chain + retention policy)");
+const media = program
+  .command("media")
+  .description("remote media storage (adapter chain + retention policy)");
 /**
  * The JSON policy can arrive three ways: as the positional arg, in
  * `HOICHOI_MEDIA_STORAGE_JSON`, or (legacy) on stdin. The env route exists
@@ -598,7 +780,10 @@ const media = program.command("media").description("remote media storage (adapte
  * Windows shell hop (cmd.exe + C runtime) can mangle embedded quotes — the
  * runner then died with `Expected property name or '}' in JSON at position 1`.
  */
-async function readMediaStorageArg(json: string | undefined, opts: { stdin?: boolean } = {}): Promise<MediaStorageConfig | null> {
+async function readMediaStorageArg(
+  json: string | undefined,
+  opts: { stdin?: boolean } = {},
+): Promise<MediaStorageConfig | null> {
   let raw = json?.trim();
   if (!raw) raw = process.env.HOICHOI_MEDIA_STORAGE_JSON?.trim();
   if (!raw) {
@@ -617,23 +802,34 @@ async function readMediaStorageArg(json: string | undefined, opts: { stdin?: boo
     if (fromStdin) raw = fromStdin;
   }
   if (!raw) return null;
-  const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/```$/, "").trim();
+  const cleaned = raw
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/```$/, "")
+    .trim();
   return JSON.parse(cleaned) as MediaStorageConfig;
 }
 media
   .command("storage [json]")
-  .description('print the media-storage policy (or save a new JSON policy when passed)')
+  .description(
+    "print the media-storage policy (or save a new JSON policy when passed)",
+  )
   .action(async (json: string | undefined) => {
     try {
       await ensureSchema(getClient());
       const cfg = await readMediaStorageArg(json, { stdin: true });
       if (cfg) await saveMediaStorageConfig(cfg);
-      console.log(JSON.stringify({
-        ok: true,
-        config: await getMediaStorageConfig(),
-        registry: await storageRegistryCount(),
-        stats: await mediaObjectStats(),
-      }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            ok: true,
+            config: await getMediaStorageConfig(),
+            registry: await storageRegistryCount(),
+            stats: await mediaObjectStats(),
+          },
+          null,
+          2,
+        ),
+      );
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -641,13 +837,19 @@ media
   });
 media
   .command("storage:set <json>")
-  .description('save a new JSON policy (daemon-compatible)')
+  .description("save a new JSON policy (daemon-compatible)")
   .action(async (json: string) => {
     try {
       await ensureSchema(getClient());
       const cfg = await readMediaStorageArg(json, { stdin: true });
       if (cfg) await saveMediaStorageConfig(cfg);
-      console.log(JSON.stringify({ ok: true, config: await getMediaStorageConfig(), registry: await storageRegistryCount() }));
+      console.log(
+        JSON.stringify({
+          ok: true,
+          config: await getMediaStorageConfig(),
+          registry: await storageRegistryCount(),
+        }),
+      );
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -661,10 +863,20 @@ media
   .action(async (opts: { dryRun?: boolean; months?: string }) => {
     try {
       await ensureSchema(getClient());
-      console.log(JSON.stringify({
-        ok: true,
-        ...(await cleanupMedia({ dryRun: opts.dryRun ?? false, months: opts.months !== undefined ? Number(opts.months) : undefined })),
-      }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            ok: true,
+            ...(await cleanupMedia({
+              dryRun: opts.dryRun ?? false,
+              months:
+                opts.months !== undefined ? Number(opts.months) : undefined,
+            })),
+          },
+          null,
+          2,
+        ),
+      );
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -672,31 +884,42 @@ media
   });
 media
   .command("backfill")
-  .description("re-download missing post media and mirror files into the web app's public folder")
+  .description(
+    "re-download missing post media and mirror files into the web app's public folder",
+  )
   .option("--limit <n>", "maximum posts/permalinks to repair")
   .option("--dry-run", "only count candidates, download nothing")
-  .option("--recover", "also re-visit permalinks whose raw_posts row was archived away (needs a browser)")
-  .action(async (opts: { limit?: string; dryRun?: boolean; recover?: boolean }) => {
-    try {
-      await ensureSchema(getClient());
-      const limit = opts.limit !== undefined ? Number(opts.limit) : undefined;
-      const dryRun = opts.dryRun ?? false;
-      const log = (m: string) => console.error(m);
-      const result = await backfillMissingMedia({ limit, dryRun, log });
-      // Stage 2: posts whose raw row is gone need the permalink re-visited.
-      const recovered = opts.recover
-        ? await recoverOrphanedMedia({ limit, dryRun, log })
-        : { skipped: true, hint: "pass --recover to re-visit permalinks" };
-      const sync = await syncExistingMediaToWeb();
-      console.log(JSON.stringify({ ok: true, ...result, recovered, sync }, null, 2));
-    } catch (err) {
-      console.error("[fatal]", (err as Error).message);
-      process.exitCode = 1;
-    }
-  });
+  .option(
+    "--recover",
+    "also re-visit permalinks whose raw_posts row was archived away (needs a browser)",
+  )
+  .action(
+    async (opts: { limit?: string; dryRun?: boolean; recover?: boolean }) => {
+      try {
+        await ensureSchema(getClient());
+        const limit = opts.limit !== undefined ? Number(opts.limit) : undefined;
+        const dryRun = opts.dryRun ?? false;
+        const log = (m: string) => console.error(m);
+        const result = await backfillMissingMedia({ limit, dryRun, log });
+        // Stage 2: posts whose raw row is gone need the permalink re-visited.
+        const recovered = opts.recover
+          ? await recoverOrphanedMedia({ limit, dryRun, log })
+          : { skipped: true, hint: "pass --recover to re-visit permalinks" };
+        const sync = await syncExistingMediaToWeb();
+        console.log(
+          JSON.stringify({ ok: true, ...result, recovered, sync }, null, 2),
+        );
+      } catch (err) {
+        console.error("[fatal]", (err as Error).message);
+        process.exitCode = 1;
+      }
+    },
+  );
 media
   .command("repair")
-  .description("rebuild posts whose media_path points at a file that no longer exists, then mirror it")
+  .description(
+    "rebuild posts whose media_path points at a file that no longer exists, then mirror it",
+  )
   .option("--limit <n>", "maximum posts to repair")
   .option("--dry-run", "only count candidates, generate nothing")
   .action(async (opts: { limit?: string; dryRun?: boolean }) => {
@@ -718,17 +941,25 @@ media
 
 media
   .command("ai-fill")
-  .description("generate AI hero images (Gemini) for posts that have no media and no media URLs")
+  .description(
+    "generate AI hero images (Gemini) for posts that have no media and no media URLs",
+  )
   .option("--limit <n>", "maximum posts to fill")
   .option("--dry-run", "only count candidates, generate nothing")
   .action(async (opts: { limit?: string; dryRun?: boolean }) => {
     try {
       await ensureSchema(getClient());
-      console.log(JSON.stringify(await aiFillMissingHeroes({
-        limit: opts.limit !== undefined ? Number(opts.limit) : undefined,
-        dryRun: opts.dryRun ?? false,
-        log: (m) => console.error(m),
-      }), null, 2));
+      console.log(
+        JSON.stringify(
+          await aiFillMissingHeroes({
+            limit: opts.limit !== undefined ? Number(opts.limit) : undefined,
+            dryRun: opts.dryRun ?? false,
+            log: (m) => console.error(m),
+          }),
+          null,
+          2,
+        ),
+      );
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -736,7 +967,9 @@ media
   });
 media
   .command("prompt")
-  .description("print the content-derived image prompt for one post (default used by `media generate`)")
+  .description(
+    "print the content-derived image prompt for one post (default used by `media generate`)",
+  )
   .requiredOption("--id <postId>", "post id")
   .option("--raw", "print the prompt as plain text instead of JSON")
   .action(async (opts: { id: string; raw?: boolean }) => {
@@ -748,7 +981,12 @@ media
           args: [opts.id],
         })
       ).rows[0] as
-        | { title_bn?: string; summary_bn?: string; body_bn?: string; category?: string }
+        | {
+            title_bn?: string;
+            summary_bn?: string;
+            body_bn?: string;
+            category?: string;
+          }
         | undefined;
       if (!row) throw new Error(`post not found: ${opts.id}`);
       const brief = buildImageBrief({
@@ -757,93 +995,126 @@ media
         body: (row.body_bn ?? "").slice(0, 1200),
         category: row.category ?? "",
       });
-      console.log(opts.raw ? brief.prompt : JSON.stringify({ ok: true, ...brief }, null, 2));
+      console.log(
+        opts.raw
+          ? brief.prompt
+          : JSON.stringify({ ok: true, ...brief }, null, 2),
+      );
     } catch (err) {
-      console.error(JSON.stringify({ ok: false, error: (err as Error).message }));
+      console.error(
+        JSON.stringify({ ok: false, error: (err as Error).message }),
+      );
       process.exitCode = 1;
     }
   });
 
 media
   .command("generate")
-  .description("manually generate an image for one post (any image-purpose provider) and attach it")
+  .description(
+    "manually generate an image for one post (any image-purpose provider) and attach it",
+  )
   .requiredOption("--id <postId>", "post id to attach the generated image to")
-  .option("--prompt <text>", "what to draw (defaults to the post title + summary)")
-  .option("--provider <id>", "force one image-provider row id (default: free-first chain)")
+  .option(
+    "--prompt <text>",
+    "what to draw (defaults to the post title + summary)",
+  )
+  .option(
+    "--provider <id>",
+    "force one image-provider row id (default: free-first chain)",
+  )
   .option("--ratio <w:h>", "aspect ratio, e.g. 16:9")
   .option("--size <WxH>", "size, e.g. 1024x1024")
   .option("--style <name>", "style hint (natural | vivid)")
   .option("--quality <name>", "quality (standard | hd | low | medium | high)")
   .option("--negative <text>", "what to avoid")
-  .option("--layout <name>", "force a poster layout: split-left | split-right | editorial-card | breaking-banner")
+  .option(
+    "--layout <name>",
+    "force a poster layout: split-left | split-right | editorial-card | breaking-banner",
+  )
   .option("--theme <name>", "force a poster theme: dark | light-paper")
-  .option("--no-attach", "generate and store but leave the post's media_path unchanged")
-  .action(async (opts: {
-    id: string;
-    prompt?: string;
-    provider?: string;
-    ratio?: string;
-    size?: string;
-    style?: string;
-    quality?: string;
-    negative?: string;
-    layout?: string;
-    theme?: string;
-    attach?: boolean;
-  }) => {
-    try {
-      await ensureSchema(getClient());
-      const client = getClient();
-      const row = (
-        await client.execute({
-          sql: "SELECT title_bn, summary_bn, body_bn, category FROM posts WHERE id = ?",
-          args: [opts.id],
-        })
-      ).rows[0] as
-        | { title_bn?: string; summary_bn?: string; body_bn?: string; category?: string }
-        | undefined;
-      if (!row) throw new Error(`post not found: ${opts.id}`);
-      // Content-first brief (category scene + extracted cues), the same builder
-      // the pipeline uses. The old generic "বিষয়: …" fallback made models
-      // ignore the subject and render the same stock illustration every time.
-      const brief = buildImageBrief({
-        title: row.title_bn ?? "",
-        summary: row.summary_bn ?? "",
-        body: (row.body_bn ?? "").slice(0, 1200),
-        category: row.category ?? "",
-      });
-      const prompt = opts.prompt?.trim() || brief.prompt;
-      // A hand-typed frame is validated, not passed through: a typo would
-      // otherwise render the default silently and the operator would believe the
-      // override applied.
-      const layout = opts.layout ?? null;
-      const theme = opts.theme ?? null;
-      if (layout !== null && !isPosterLayout(layout)) {
-        throw new Error(`unknown --layout "${layout}" (expected ${POSTER_LAYOUTS.join(" | ")})`);
+  .option(
+    "--no-attach",
+    "generate and store but leave the post's media_path unchanged",
+  )
+  .action(
+    async (opts: {
+      id: string;
+      prompt?: string;
+      provider?: string;
+      ratio?: string;
+      size?: string;
+      style?: string;
+      quality?: string;
+      negative?: string;
+      layout?: string;
+      theme?: string;
+      attach?: boolean;
+    }) => {
+      try {
+        await ensureSchema(getClient());
+        const client = getClient();
+        const row = (
+          await client.execute({
+            sql: "SELECT title_bn, summary_bn, body_bn, category FROM posts WHERE id = ?",
+            args: [opts.id],
+          })
+        ).rows[0] as
+          | {
+              title_bn?: string;
+              summary_bn?: string;
+              body_bn?: string;
+              category?: string;
+            }
+          | undefined;
+        if (!row) throw new Error(`post not found: ${opts.id}`);
+        // Content-first brief (category scene + extracted cues), the same builder
+        // the pipeline uses. The old generic "বিষয়: …" fallback made models
+        // ignore the subject and render the same stock illustration every time.
+        const brief = buildImageBrief({
+          title: row.title_bn ?? "",
+          summary: row.summary_bn ?? "",
+          body: (row.body_bn ?? "").slice(0, 1200),
+          category: row.category ?? "",
+        });
+        const prompt = opts.prompt?.trim() || brief.prompt;
+        // A hand-typed frame is validated, not passed through: a typo would
+        // otherwise render the default silently and the operator would believe the
+        // override applied.
+        const layout = opts.layout ?? null;
+        const theme = opts.theme ?? null;
+        if (layout !== null && !isPosterLayout(layout)) {
+          throw new Error(
+            `unknown --layout "${layout}" (expected ${POSTER_LAYOUTS.join(" | ")})`,
+          );
+        }
+        if (theme !== null && !isPosterTheme(theme)) {
+          throw new Error(
+            `unknown --theme "${theme}" (expected ${POSTER_THEMES.join(" | ")})`,
+          );
+        }
+        const result = await generateManualImage({
+          postId: opts.id,
+          prompt,
+          providerId: opts.provider,
+          size: opts.size,
+          aspectRatio: opts.ratio,
+          style: opts.style,
+          quality: opts.quality,
+          negativePrompt: opts.negative ?? brief.negative,
+          layout,
+          theme,
+          attach: opts.attach !== false,
+          log: (m) => console.error(m),
+        });
+        console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+      } catch (err) {
+        console.log(
+          JSON.stringify({ ok: false, error: (err as Error).message }),
+        );
+        process.exitCode = 1;
       }
-      if (theme !== null && !isPosterTheme(theme)) {
-        throw new Error(`unknown --theme "${theme}" (expected ${POSTER_THEMES.join(" | ")})`);
-      }
-      const result = await generateManualImage({
-        postId: opts.id,
-        prompt,
-        providerId: opts.provider,
-        size: opts.size,
-        aspectRatio: opts.ratio,
-        style: opts.style,
-        quality: opts.quality,
-        negativePrompt: opts.negative ?? brief.negative,
-        layout,
-        theme,
-        attach: opts.attach !== false,
-        log: (m) => console.error(m),
-      });
-      console.log(JSON.stringify({ ok: true, ...result }, null, 2));
-    } catch (err) {
-      console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
-      process.exitCode = 1;
-    }
-  });
+    },
+  );
 
 /* ------------------------------------------------------------------ *
  * Semantic vectors - SEM-1 can only match against posts that have one *
@@ -872,11 +1143,19 @@ embeddings
       const rows = await client.execute(sql);
 
       if (dryRun) {
-        console.log(JSON.stringify({ ok: true, dryRun: true, candidates: rows.rows.length }, null, 2));
+        console.log(
+          JSON.stringify(
+            { ok: true, dryRun: true, candidates: rows.rows.length },
+            null,
+            2,
+          ),
+        );
         return;
       }
 
-      const resolver = newResolver({ gateway: gatewayProviderFromEnv() ?? undefined });
+      const resolver = newResolver({
+        gateway: gatewayProviderFromEnv() ?? undefined,
+      });
       const log = (m: string) => console.error(m);
       let embedded = 0;
       let failed = 0;
@@ -884,23 +1163,34 @@ embeddings
         const r = row as Record<string, unknown>;
         // Same text rewrite.ts embeds, so backfilled vectors are comparable
         // with freshly computed ones.
-        const text = `${r.title_bn ?? ""} ${r.summary_bn ?? ""} ${r.body_bn ?? ""}`.trim();
+        const text =
+          `${r.title_bn ?? ""} ${r.summary_bn ?? ""} ${r.body_bn ?? ""}`.trim();
         if (!text) continue;
         try {
           const { vector } = await resolver.embedText(text);
           await client.execute({
             sql: "UPDATE posts SET embedding = ?, updated_at = ? WHERE id = ?",
-            args: [JSON.stringify(vector), new Date().toISOString(), String(r.id)],
+            args: [
+              JSON.stringify(vector),
+              new Date().toISOString(),
+              String(r.id),
+            ],
           });
           embedded++;
-          log(`[embed] ${embedded}/${rows.rows.length} (${vector.length} dims)`);
+          log(
+            `[embed] ${embedded}/${rows.rows.length} (${vector.length} dims)`,
+          );
         } catch (err) {
           failed++;
           log(`[embed] failed ${String(r.id)}: ${(err as Error).message}`);
         }
       }
       console.log(
-        JSON.stringify({ ok: failed === 0, candidates: rows.rows.length, embedded, failed }, null, 2),
+        JSON.stringify(
+          { ok: failed === 0, candidates: rows.rows.length, embedded, failed },
+          null,
+          2,
+        ),
       );
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
@@ -931,8 +1221,17 @@ function deskSourceRow(row: Record<string, unknown>) {
     topics,
     category: row.category as CategorySlug,
     categories: row.category_csv
-      ? [...new Set(String(row.category_csv).split(",").map((s) => s.trim()).filter(Boolean))]
-      : row.category ? [...new Set([String(row.category)])] : [],
+      ? [
+          ...new Set(
+            String(row.category_csv)
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean),
+          ),
+        ]
+      : row.category
+        ? [...new Set([String(row.category)])]
+        : [],
     is_active: Boolean(row.is_active),
     last_scraped_at: (row.last_scraped_at as string | null) ?? null,
     posts_today: Number(row.posts_today ?? 0),
@@ -950,10 +1249,14 @@ function deskSourceRow(row: Record<string, unknown>) {
  * rows) is the visible symptom users report, and this guarantees one card per
  * page no matter what state the database is in.
  */
-function dedupeSourceRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+function dedupeSourceRows(
+  rows: Record<string, unknown>[],
+): Record<string, unknown>[] {
   const byUrl = new Map<string, Record<string, unknown>>();
   for (const row of rows) {
-    const key = String(row.page_url ?? "").trim().toLowerCase();
+    const key = String(row.page_url ?? "")
+      .trim()
+      .toLowerCase();
     const seen = byUrl.get(key);
     if (!seen) {
       byUrl.set(key, row);
@@ -962,7 +1265,10 @@ function dedupeSourceRows(rows: Record<string, unknown>[]): Record<string, unkno
     // Union the categories, keep the most complete record, and prefer an
     // active/verified row so a stale duplicate cannot disable a live source.
     const cats = new Set(
-      [...String(seen.category_csv ?? "").split(","), ...String(row.category_csv ?? "").split(",")]
+      [
+        ...String(seen.category_csv ?? "").split(","),
+        ...String(row.category_csv ?? "").split(","),
+      ]
         .map((s) => s.trim())
         .filter(Boolean),
     );
@@ -981,7 +1287,10 @@ function dedupeSourceRows(rows: Record<string, unknown>[]): Record<string, unkno
       health: Math.max(Number(seen.health ?? 100), Number(row.health ?? 100)),
       posts_today: Number(seen.posts_today ?? 0) + Number(row.posts_today ?? 0),
       last_scraped_at:
-        [seen.last_scraped_at, row.last_scraped_at].filter(Boolean).sort().pop() ?? null,
+        [seen.last_scraped_at, row.last_scraped_at]
+          .filter(Boolean)
+          .sort()
+          .pop() ?? null,
       category_csv: [...cats].join(","),
     });
   }
@@ -998,7 +1307,9 @@ async function listDeskSources() {
           FROM sources s ORDER BY s.is_active DESC, s.created_at DESC`,
     args: [`${today}%`],
   });
-  return dedupeSourceRows(res.rows as unknown as Record<string, unknown>[]).map((r) => deskSourceRow(r));
+  return dedupeSourceRows(res.rows as unknown as Record<string, unknown>[]).map(
+    (r) => deskSourceRow(r),
+  );
 }
 
 async function addDeskSource(opts: {
@@ -1017,7 +1328,7 @@ async function addDeskSource(opts: {
     .split(",")
     .map((t) => t.trim())
     .filter(Boolean);
-  
+
   // Parse categories (comma-separated)
   const categories = (opts.categories ?? opts.category ?? "missing-children")
     .split(",")
@@ -1053,10 +1364,16 @@ async function addDeskSource(opts: {
       });
     }
     if ((opts.topics ?? "").trim() !== "") {
-      await client.execute({ sql: "UPDATE sources SET topics = ? WHERE id = ?", args: [JSON.stringify(topics), existingId] });
+      await client.execute({
+        sql: "UPDATE sources SET topics = ? WHERE id = ?",
+        args: [JSON.stringify(topics), existingId],
+      });
     }
     const existingRow = await listDeskSources();
-    return existingRow.find((s: { id: string }) => s.id === existingId) ?? existingRow[0];
+    return (
+      existingRow.find((s: { id: string }) => s.id === existingId) ??
+      existingRow[0]
+    );
   }
 
   const id = crypto.randomUUID();
@@ -1076,14 +1393,17 @@ async function addDeskSource(opts: {
       created,
     ],
   });
-  
+
   // Insert into source_categories junction table
   if (categories.length > 0) {
     const values = categories.map(() => "(?, ?)").join(", ");
-    const args = categories.flatMap(c => [id, c]);
-    await client.execute({ sql: `INSERT OR IGNORE INTO source_categories (source_id, category_slug) VALUES ${values}`, args });
+    const args = categories.flatMap((c) => [id, c]);
+    await client.execute({
+      sql: `INSERT OR IGNORE INTO source_categories (source_id, category_slug) VALUES ${values}`,
+      args,
+    });
   }
-  
+
   const rows = await listDeskSources();
   return rows.find((s: { id: string }) => s.id === id) ?? rows[0];
 }
@@ -1190,11 +1510,16 @@ async function updateDeskSource(
     if (categories.length > 0) {
       const primary = categories[0];
       if (primary !== undefined) {
-        await client.execute({ sql: "UPDATE sources SET category = ? WHERE id = ?", args: [primary, id] });
+        await client.execute({
+          sql: "UPDATE sources SET category = ? WHERE id = ?",
+          args: [primary, id],
+        });
       }
     }
   }
-  return (await listDeskSources()).find((s: { id: string }) => s.id === id) ?? null;
+  return (
+    (await listDeskSources()).find((s: { id: string }) => s.id === id) ?? null
+  );
 }
 
 function deskQueueRow(row: Record<string, unknown>) {
@@ -1224,12 +1549,14 @@ function deskQueueRow(row: Record<string, unknown>) {
  * today could sit below 80 newer rows in the desk but be first in the web list.
  * Same query, same ordering, same page size now.
  */
-async function listDeskQueue(opts: {
-  status?: string;
-  q?: string;
-  page?: number | string;
-  pageSize?: number | string;
-} = {}) {
+async function listDeskQueue(
+  opts: {
+    status?: string;
+    q?: string;
+    page?: number | string;
+    pageSize?: number | string;
+  } = {},
+) {
   const client = getClient();
   const cols =
     "id, slug, title_bn, summary_bn, body_bn, source_name, source_url, category, status, media_kind, media_path, created_at, updated_at";
@@ -1251,12 +1578,19 @@ async function listDeskQueue(opts: {
     sql: `SELECT count(*) AS n FROM posts ${whereSql}`,
     args,
   });
-  const total = Number((totalRes.rows[0] as { n?: number | string } | undefined)?.n ?? 0);
+  const total = Number(
+    (totalRes.rows[0] as { n?: number | string } | undefined)?.n ?? 0,
+  );
   const res = await client.execute({
     sql: `SELECT ${cols} FROM posts ${whereSql} ORDER BY updated_at DESC LIMIT ? OFFSET ?`,
     args: [...args, pageSize, (page - 1) * pageSize],
   });
-  return { rows: res.rows.map((r) => deskQueueRow(r as Record<string, unknown>)), total, page, pageSize };
+  return {
+    rows: res.rows.map((r) => deskQueueRow(r as Record<string, unknown>)),
+    total,
+    page,
+    pageSize,
+  };
 }
 
 /**
@@ -1267,9 +1601,20 @@ async function listDeskQueue(opts: {
  * spawn costs a `node.exe` cold start, so a refresh took seconds and the UI
  * looked frozen between them. This bundles the same reads into a single call.
  */
-async function deskBootstrap(opts: { page?: number | string; pageSize?: number | string } = {}) {
+async function deskBootstrap(
+  opts: { page?: number | string; pageSize?: number | string } = {},
+) {
   await ensureSchema(getClient());
-  const [settingsRow, sources, queue, stats, runs, radar, categories, providers] = await Promise.all([
+  const [
+    settingsRow,
+    sources,
+    queue,
+    stats,
+    runs,
+    radar,
+    categories,
+    providers,
+  ] = await Promise.all([
     getSettings(),
     listDeskSources(),
     listDeskQueue({ page: opts.page, pageSize: opts.pageSize }),
@@ -1292,19 +1637,26 @@ async function deskBootstrap(opts: { page?: number | string; pageSize?: number |
 
 program
   .command("desk")
-  .description("desk app: one-shot bootstrap bundle (settings, sources, queue, stats, radar, categories, providers)")
+  .description(
+    "desk app: one-shot bootstrap bundle (settings, sources, queue, stats, radar, categories, providers)",
+  )
   .argument("<action>", "bootstrap")
   .option("--page <n>", "queue page (1-based)")
   .option("--page-size <n>", "queue rows per page")
-  .action(async (action: string, opts: { page?: string; pageSize?: string }) => {
-    try {
-      if (action !== "bootstrap") throw new Error(`unknown desk action: ${action}`);
-      console.log(JSON.stringify({ ok: true, ...(await deskBootstrap(opts)) }, null, 2));
-    } catch (err) {
-      console.error("[fatal]", (err as Error).message);
-      process.exitCode = 1;
-    }
-  });
+  .action(
+    async (action: string, opts: { page?: string; pageSize?: string }) => {
+      try {
+        if (action !== "bootstrap")
+          throw new Error(`unknown desk action: ${action}`);
+        console.log(
+          JSON.stringify({ ok: true, ...(await deskBootstrap(opts)) }, null, 2),
+        );
+      } catch (err) {
+        console.error("[fatal]", (err as Error).message);
+        process.exitCode = 1;
+      }
+    },
+  );
 
 program
   .command("sources <action> [sub] [target]")
@@ -1312,80 +1664,112 @@ program
   .option("--page-url <url>", "page URL (add/update)")
   .option("--page-name <name>", "page name (add/update)")
   .option("--kind <kind>", "page | group (add/update)")
-  .option("--platform <platform>", "facebook | x | news | magazine | social | other (add/update)")
+  .option(
+    "--platform <platform>",
+    "facebook | x | news | magazine | social | other (add/update)",
+  )
   .option("--category <slug>", "category slug (add/update)")
   .option("--topics <csv>", "comma-separated topics (add/update)")
   .option("--fb-id <id>", "facebook id (add/update)")
   .option("--categories <csv>", "comma-separated category slugs (add/update)")
   .option("--id <id>", "source id (update/toggle/remove)")
   .option("--is-active <bool>", "true | false (update)")
-  .action(async (action: string, sub: string | undefined, target: string | undefined, opts: Record<string, string | undefined>) => {
-    try {
-      await ensureSchema(getClient());
-      if (action === "list") {
-        console.log(JSON.stringify({ ok: true, sources: await listDeskSources() }, null, 2));
-      } else if (action === "add") {
-        if (!opts.pageUrl || !opts.pageName) throw new Error("--page-url and --page-name required");
-        const source = await addDeskSource({
-          pageUrl: opts.pageUrl,
-          pageName: opts.pageName,
-          kind: opts.kind,
-          platform: opts.platform,
-          category: opts.category,
-          categories: opts.categories,
-          topics: opts.topics,
-          fbId: opts.fbId,
-        });
-        console.log(JSON.stringify({ ok: true, source }, null, 2));
-      } else if (action === "update") {
-        if (!opts.id) throw new Error("--id required");
-        const source = await updateDeskSource(opts.id, {
-          pageUrl: opts.pageUrl,
-          pageName: opts.pageName,
-          kind: opts.kind,
-          platform: opts.platform,
-          category: opts.category,
-          categories: opts.categories,
-          topics: opts.topics,
-          fbId: opts.fbId,
-          isActive: opts.isActive,
-        });
-        console.log(JSON.stringify({ ok: true, source }, null, 2));
-      } else if (action === "toggle") {
-        if (!opts.id) throw new Error("--id required");
-        await toggleDeskSource(opts.id);
-        console.log(JSON.stringify({ ok: true }));
-      } else if (action === "remove") {
-        if (!opts.id) throw new Error("--id required");
-        await removeDeskSource(opts.id);
-        console.log(JSON.stringify({ ok: true }));
-      } else if (action === "errors") {
-        /**
-         * Watchlist → error list.
-         *
-         * The daemon's `dispatchCmd` has always understood
-         * `sources errors list|dismiss|reopen`, but this one-shot commander
-         * path did not, so the desktop app's Watchlist showed
-         * "unknown action: errors" whenever it asked for source health before
-         * the daemon was up. Both paths are now kept in step.
-         */
-        if (!sub || sub === "list") {
-          console.log(JSON.stringify({ ok: true, errors: await listSourceErrors() }, null, 2));
-        } else if (sub === "dismiss" || sub === "reopen") {
-          if (!target) throw new Error(`error id required (sources errors ${sub} <id>)`);
-          await setSourceErrorStatus(target, sub === "dismiss" ? "dismissed" : "open");
-          console.log(JSON.stringify({ ok: true, [sub === "dismiss" ? "dismissed" : "reopened"]: target }));
+  .action(
+    async (
+      action: string,
+      sub: string | undefined,
+      target: string | undefined,
+      opts: Record<string, string | undefined>,
+    ) => {
+      try {
+        await ensureSchema(getClient());
+        if (action === "list") {
+          console.log(
+            JSON.stringify(
+              { ok: true, sources: await listDeskSources() },
+              null,
+              2,
+            ),
+          );
+        } else if (action === "add") {
+          if (!opts.pageUrl || !opts.pageName)
+            throw new Error("--page-url and --page-name required");
+          const source = await addDeskSource({
+            pageUrl: opts.pageUrl,
+            pageName: opts.pageName,
+            kind: opts.kind,
+            platform: opts.platform,
+            category: opts.category,
+            categories: opts.categories,
+            topics: opts.topics,
+            fbId: opts.fbId,
+          });
+          console.log(JSON.stringify({ ok: true, source }, null, 2));
+        } else if (action === "update") {
+          if (!opts.id) throw new Error("--id required");
+          const source = await updateDeskSource(opts.id, {
+            pageUrl: opts.pageUrl,
+            pageName: opts.pageName,
+            kind: opts.kind,
+            platform: opts.platform,
+            category: opts.category,
+            categories: opts.categories,
+            topics: opts.topics,
+            fbId: opts.fbId,
+            isActive: opts.isActive,
+          });
+          console.log(JSON.stringify({ ok: true, source }, null, 2));
+        } else if (action === "toggle") {
+          if (!opts.id) throw new Error("--id required");
+          await toggleDeskSource(opts.id);
+          console.log(JSON.stringify({ ok: true }));
+        } else if (action === "remove") {
+          if (!opts.id) throw new Error("--id required");
+          await removeDeskSource(opts.id);
+          console.log(JSON.stringify({ ok: true }));
+        } else if (action === "errors") {
+          /**
+           * Watchlist → error list.
+           *
+           * The daemon's `dispatchCmd` has always understood
+           * `sources errors list|dismiss|reopen`, but this one-shot commander
+           * path did not, so the desktop app's Watchlist showed
+           * "unknown action: errors" whenever it asked for source health before
+           * the daemon was up. Both paths are now kept in step.
+           */
+          if (!sub || sub === "list") {
+            console.log(
+              JSON.stringify(
+                { ok: true, errors: await listSourceErrors() },
+                null,
+                2,
+              ),
+            );
+          } else if (sub === "dismiss" || sub === "reopen") {
+            if (!target)
+              throw new Error(`error id required (sources errors ${sub} <id>)`);
+            await setSourceErrorStatus(
+              target,
+              sub === "dismiss" ? "dismissed" : "open",
+            );
+            console.log(
+              JSON.stringify({
+                ok: true,
+                [sub === "dismiss" ? "dismissed" : "reopened"]: target,
+              }),
+            );
+          } else {
+            throw new Error(`unknown sources errors action: ${sub}`);
+          }
         } else {
-          throw new Error(`unknown sources errors action: ${sub}`);
+          throw new Error(`unknown action: ${action}`);
         }
-      } else {
-        throw new Error(`unknown action: ${action}`);
+      } catch (err) {
+        console.error("[fatal]", (err as Error).message);
+        process.exitCode = 1;
       }
-    } catch (err) {
-      console.error("[fatal]", (err as Error).message);
-      process.exitCode = 1;
-    }
-  });
+    },
+  );
 
 const BULK_TARGETS = ["approved", "rejected", "published"] as const;
 type BulkTarget = (typeof BULK_TARGETS)[number];
@@ -1395,7 +1779,9 @@ type BulkAction = (typeof BULK_ACTIONS)[number];
 /** Narrow a raw CLI token to a bulk action, or throw a helpful error. */
 function parseBulkAction(target: string | undefined): BulkAction {
   if (!target) {
-    throw new Error(`target required (queue bulk <${BULK_ACTIONS.join("|")}> --ids a,b,c)`);
+    throw new Error(
+      `target required (queue bulk <${BULK_ACTIONS.join("|")}> --ids a,b,c)`,
+    );
   }
   if (!(BULK_ACTIONS as readonly string[]).includes(target)) {
     throw new Error(`target must be one of: ${BULK_ACTIONS.join(", ")}`);
@@ -1407,7 +1793,9 @@ function parseBulkAction(target: string | undefined): BulkAction {
 function parseBulkTarget(target: string | undefined): BulkTarget {
   const action = parseBulkAction(target);
   if (action === "remove") {
-    throw new Error('target "remove" deletes posts; it is not a moderation target');
+    throw new Error(
+      'target "remove" deletes posts; it is not a moderation target',
+    );
   }
   return action;
 }
@@ -1418,7 +1806,8 @@ function parseBulkIds(raw: string | undefined): string[] {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  if (ids.length === 0) throw new Error("--ids required and must list at least one post id");
+  if (ids.length === 0)
+    throw new Error("--ids required and must list at least one post id");
   return [...new Set(ids)];
 }
 
@@ -1440,157 +1829,268 @@ program
   .option("--body <b>", "new body (update)")
   .option("--summary <s>", 'new summary; "__CLEAR__" removes it (update)')
   .option("--category <c>", "new category slug (update)")
-  .option("--media <m>", 'image URL or /uploads/… path; "__CLEAR__" removes it (update)')
+  .option(
+    "--media <m>",
+    'image URL or /uploads/… path; "__CLEAR__" removes it (update)',
+  )
   .option("--op <op>", "images op: list|add|remove|primary")
   .option("--post <id>", "post id (images)")
   .option("--url <u>", "image URL (images add)")
   .option("--image <id>", "gallery image id (images remove/primary)")
-  .action(async (action: string, id: string | undefined, status: string | undefined, opts: { status?: string; page?: string; pageSize?: string; ids?: string; title?: string; body?: string; summary?: string; category?: string; media?: string; op?: string; post?: string; url?: string; image?: string }) => {
-    try {
-      await ensureSchema(getClient());
-      if (action === "list") {
-        console.log(
-          JSON.stringify(
-            { ok: true, ...(await listDeskQueue({ status: opts.status, page: opts.page, pageSize: opts.pageSize })) },
-            null,
-            2,
-          ),
-        );
-      } else if (action === "update") {
-        if (!id) throw new Error("id required (queue update <id> --title ... --body ... --summary ... --category ... --media ...)");
-        const existing = await getPostById(id);
-        if (!existing) throw new Error(`post not found: ${id}`);
-        const fields: PostUpdateFields = {};
-        if (opts.title !== undefined) fields.title_bn = opts.title;
-        if (opts.body !== undefined) fields.body_bn = opts.body;
-        if (opts.summary !== undefined) fields.summary_bn = opts.summary === "__CLEAR__" ? null : opts.summary;
-        if (opts.category !== undefined) fields.category = opts.category as CategorySlug;
-        // "__CLEAR__" removes the image. Anything else goes through
-        // normalizeMediaPath inside updatePost, so a bad URL is rejected
-        // before it can reach the page.
-        if (opts.media !== undefined) {
-          fields.media_path = opts.media === "__CLEAR__" ? null : opts.media;
-        }
-        if (Object.keys(fields).length === 0) {
-          throw new Error("at least one field required (--title, --body, --summary, --category, --media)");
-        }
-        await updatePost(id, fields);
-        console.log(JSON.stringify({ ok: true, post: await getPostById(id) }, null, 2));
-      } else if (action === "media") {
-        // Collector-seen image URLs for one post, probed with HEAD so the desk
-        // editor greys out fbcdn links whose signature has expired. Mirrors the
-        // web route /api/posts/[id]/media.
-        if (!id) throw new Error("id required (queue media <id>)");
-        const info = await listPostMediaCandidates(id);
-        const candidates = info.media_urls
-          .filter((u) => /^https?:\/\//i.test(u) && !isVideoUrl(u))
-          .slice(0, 12);
-        const probed = await Promise.all(
-          candidates.map(async (url) => {
-            try {
-              const res = await fetch(url, {
-                method: "HEAD",
-                signal: AbortSignal.timeout(6000),
-                headers: { "user-agent": "Mozilla/5.0 Hoichoi/1.0" },
-              });
-              const type = res.headers.get("content-type") ?? "";
-              return { url, ok: res.ok && type.startsWith("image/"), status: res.status, contentType: type || null };
-            } catch {
-              return { url, ok: false, status: 0, contentType: null };
-            }
-          }),
-        );
-        console.log(JSON.stringify({ ok: true, current: info.current, candidates: probed }, null, 2));
-      } else if (action === "images") {
-        // Gallery (multi-image) management, mirroring the daemon `queue images`
-        // path and the web route /api/posts/[id]/images.
-        const postId = opts.post;
-        if (!postId) throw new Error("--post <id> required (queue images --op list --post <id>)");
-        if (!(await getPostById(postId))) throw new Error(`post not found: ${postId}`);
-        if (opts.op === "list") {
-          console.log(JSON.stringify({ ok: true, images: await listPostImages(postId) }, null, 2));
-        } else if (opts.op === "add") {
-          if (!opts.url) throw new Error("--url required (queue images --op add --post <id> --url <u>)");
-          const image = await addPostImage(postId, opts.url, { kind: "image", source: "admin" });
-          console.log(JSON.stringify({ ok: true, image }, null, 2));
-        } else if (opts.op === "remove") {
-          if (!opts.image) throw new Error("--image required (queue images --op remove --post <id> --image <id>)");
-          await removePostImage(opts.image);
-          console.log(JSON.stringify({ ok: true, removed: opts.image }, null, 2));
-        } else if (opts.op === "primary") {
-          if (!opts.image) throw new Error("--image required (queue images --op primary --post <id> --image <id>)");
-          const path = await setPrimaryPostImage(postId, opts.image);
-          if (!path) throw new Error(`image not found: ${opts.image}`);
-          console.log(JSON.stringify({ ok: true, media_path: path }, null, 2));
-        } else {
-          throw new Error(`unknown images op: ${String(opts.op)}`);
-        }
-      } else if (action === "bulk") {
-        const target = parseBulkAction(id);
-        const ids = parseBulkIds(opts.ids);
-        if (target === "remove") {
-          const res = await bulkDeletePosts(ids);
+  .action(
+    async (
+      action: string,
+      id: string | undefined,
+      status: string | undefined,
+      opts: {
+        status?: string;
+        page?: string;
+        pageSize?: string;
+        ids?: string;
+        title?: string;
+        body?: string;
+        summary?: string;
+        category?: string;
+        media?: string;
+        op?: string;
+        post?: string;
+        url?: string;
+        image?: string;
+      },
+    ) => {
+      try {
+        await ensureSchema(getClient());
+        if (action === "list") {
           console.log(
-            JSON.stringify({ ok: res.missing.length === 0, action: target, ...res, ids }, null, 2),
+            JSON.stringify(
+              {
+                ok: true,
+                ...(await listDeskQueue({
+                  status: opts.status,
+                  page: opts.page,
+                  pageSize: opts.pageSize,
+                })),
+              },
+              null,
+              2,
+            ),
           );
-        } else {
-          const res = await bulkModeratePosts(ids, target);
+        } else if (action === "update") {
+          if (!id)
+            throw new Error(
+              "id required (queue update <id> --title ... --body ... --summary ... --category ... --media ...)",
+            );
+          const existing = await getPostById(id);
+          if (!existing) throw new Error(`post not found: ${id}`);
+          const fields: PostUpdateFields = {};
+          if (opts.title !== undefined) fields.title_bn = opts.title;
+          if (opts.body !== undefined) fields.body_bn = opts.body;
+          if (opts.summary !== undefined)
+            fields.summary_bn =
+              opts.summary === "__CLEAR__" ? null : opts.summary;
+          if (opts.category !== undefined)
+            fields.category = opts.category as CategorySlug;
+          // "__CLEAR__" removes the image. Anything else goes through
+          // normalizeMediaPath inside updatePost, so a bad URL is rejected
+          // before it can reach the page.
+          if (opts.media !== undefined) {
+            fields.media_path = opts.media === "__CLEAR__" ? null : opts.media;
+          }
+          if (Object.keys(fields).length === 0) {
+            throw new Error(
+              "at least one field required (--title, --body, --summary, --category, --media)",
+            );
+          }
+          await updatePost(id, fields);
           console.log(
-            JSON.stringify({ ok: res.missing.length === 0, action: target, ...res, ids }, null, 2),
+            JSON.stringify({ ok: true, post: await getPostById(id) }, null, 2),
           );
-        }
-      } else if (action === "set") {
-        if (!id || !status) throw new Error("id and status required");
-        const allowed = ["approved", "rejected", "published"];
-        if (!allowed.includes(status)) throw new Error(`status must be one of: ${allowed.join(", ")}`);
-        const post = await getPostById(id);
-        if (!post) throw new Error(`post not found: ${id}`);
-        if (status === "approved") {
-          const cat = await getCategory(post.category);
-          const needsDouble = Boolean(cat?.config.requires_double_approval) && post.status !== "approved";
-          await updatePostStatus(id, needsDouble ? "approved" : "published", { publishedAt: !needsDouble });
-          // eslint-disable-next-line no-console
-          console.log(JSON.stringify({ ok: true, status: needsDouble ? "approved" : "published" }));
-        } else if (status === "rejected") {
-          await updatePostStatus(id, "rejected");
-          console.log(JSON.stringify({ ok: true, status: "rejected" }));
+        } else if (action === "media") {
+          // Collector-seen image URLs for one post, probed with HEAD so the desk
+          // editor greys out fbcdn links whose signature has expired. Mirrors the
+          // web route /api/posts/[id]/media.
+          if (!id) throw new Error("id required (queue media <id>)");
+          const info = await listPostMediaCandidates(id);
+          const candidates = info.media_urls
+            .filter((u) => /^https?:\/\//i.test(u) && !isVideoUrl(u))
+            .slice(0, 12);
+          const probed = await Promise.all(
+            candidates.map(async (url) => {
+              try {
+                const res = await fetch(url, {
+                  method: "HEAD",
+                  signal: AbortSignal.timeout(6000),
+                  headers: { "user-agent": "Mozilla/5.0 Hoichoi/1.0" },
+                });
+                const type = res.headers.get("content-type") ?? "";
+                return {
+                  url,
+                  ok: res.ok && type.startsWith("image/"),
+                  status: res.status,
+                  contentType: type || null,
+                };
+              } catch {
+                return { url, ok: false, status: 0, contentType: null };
+              }
+            }),
+          );
+          console.log(
+            JSON.stringify(
+              { ok: true, current: info.current, candidates: probed },
+              null,
+              2,
+            ),
+          );
+        } else if (action === "images") {
+          // Gallery (multi-image) management, mirroring the daemon `queue images`
+          // path and the web route /api/posts/[id]/images.
+          const postId = opts.post;
+          if (!postId)
+            throw new Error(
+              "--post <id> required (queue images --op list --post <id>)",
+            );
+          if (!(await getPostById(postId)))
+            throw new Error(`post not found: ${postId}`);
+          if (opts.op === "list") {
+            console.log(
+              JSON.stringify(
+                { ok: true, images: await listPostImages(postId) },
+                null,
+                2,
+              ),
+            );
+          } else if (opts.op === "add") {
+            if (!opts.url)
+              throw new Error(
+                "--url required (queue images --op add --post <id> --url <u>)",
+              );
+            const image = await addPostImage(postId, opts.url, {
+              kind: "image",
+              source: "admin",
+            });
+            console.log(JSON.stringify({ ok: true, image }, null, 2));
+          } else if (opts.op === "remove") {
+            if (!opts.image)
+              throw new Error(
+                "--image required (queue images --op remove --post <id> --image <id>)",
+              );
+            await removePostImage(opts.image);
+            console.log(
+              JSON.stringify({ ok: true, removed: opts.image }, null, 2),
+            );
+          } else if (opts.op === "primary") {
+            if (!opts.image)
+              throw new Error(
+                "--image required (queue images --op primary --post <id> --image <id>)",
+              );
+            const path = await setPrimaryPostImage(postId, opts.image);
+            if (!path) throw new Error(`image not found: ${opts.image}`);
+            console.log(
+              JSON.stringify({ ok: true, media_path: path }, null, 2),
+            );
+          } else {
+            throw new Error(`unknown images op: ${String(opts.op)}`);
+          }
+        } else if (action === "bulk") {
+          const target = parseBulkAction(id);
+          const ids = parseBulkIds(opts.ids);
+          if (target === "remove") {
+            const res = await bulkDeletePosts(ids);
+            console.log(
+              JSON.stringify(
+                { ok: res.missing.length === 0, action: target, ...res, ids },
+                null,
+                2,
+              ),
+            );
+          } else {
+            const res = await bulkModeratePosts(ids, target);
+            console.log(
+              JSON.stringify(
+                { ok: res.missing.length === 0, action: target, ...res, ids },
+                null,
+                2,
+              ),
+            );
+          }
+        } else if (action === "set") {
+          if (!id || !status) throw new Error("id and status required");
+          const allowed = ["approved", "rejected", "published"];
+          if (!allowed.includes(status))
+            throw new Error(`status must be one of: ${allowed.join(", ")}`);
+          const post = await getPostById(id);
+          if (!post) throw new Error(`post not found: ${id}`);
+          if (status === "approved") {
+            const cat = await getCategory(post.category);
+            const needsDouble =
+              Boolean(cat?.config.requires_double_approval) &&
+              post.status !== "approved";
+            await updatePostStatus(id, needsDouble ? "approved" : "published", {
+              publishedAt: !needsDouble,
+            });
+            // eslint-disable-next-line no-console
+            console.log(
+              JSON.stringify({
+                ok: true,
+                status: needsDouble ? "approved" : "published",
+              }),
+            );
+          } else if (status === "rejected") {
+            await updatePostStatus(id, "rejected");
+            console.log(JSON.stringify({ ok: true, status: "rejected" }));
+          } else {
+            await updatePostStatus(id, "published", { publishedAt: true });
+            console.log(JSON.stringify({ ok: true, status: "published" }));
+          }
         } else {
-          await updatePostStatus(id, "published", { publishedAt: true });
-          console.log(JSON.stringify({ ok: true, status: "published" }));
+          throw new Error(`unknown action: ${action}`);
         }
-      } else {
-        throw new Error(`unknown action: ${action}`);
+      } catch (err) {
+        console.error("[fatal]", (err as Error).message);
+        process.exitCode = 1;
       }
-    } catch (err) {
-      console.error("[fatal]", (err as Error).message);
-      process.exitCode = 1;
-    }
-  });
+    },
+  );
 
 program
   .command("moderation <action> [id] [status]")
-  .description("desk moderation: list [--status s] / set <id> <approved|blocked>")
+  .description(
+    "desk moderation: list [--status s] / set <id> <approved|blocked>",
+  )
   .option("--status <s>", "filter list by status")
-  .action(async (action: string, id: string | undefined, status: string | undefined, opts: { status?: string }) => {
-    try {
-      await ensureSchema(getClient());
-      if (action === "list") {
-        const all = await getAllComments(300);
-        const filtered = opts.status ? all.filter((c) => c.status === opts.status) : all;
-        console.log(JSON.stringify({ ok: true, comments: filtered }, null, 2));
-      } else if (action === "set") {
-        if (!id || !status) throw new Error("id and status required (approved|blocked)");
-        if (status !== "approved" && status !== "blocked") throw new Error("status must be approved|blocked");
-        await setCommentStatus(id, status);
-        console.log(JSON.stringify({ ok: true }));
-      } else {
-        throw new Error(`unknown action: ${action}`);
+  .action(
+    async (
+      action: string,
+      id: string | undefined,
+      status: string | undefined,
+      opts: { status?: string },
+    ) => {
+      try {
+        await ensureSchema(getClient());
+        if (action === "list") {
+          const all = await getAllComments(300);
+          const filtered = opts.status
+            ? all.filter((c) => c.status === opts.status)
+            : all;
+          console.log(
+            JSON.stringify({ ok: true, comments: filtered }, null, 2),
+          );
+        } else if (action === "set") {
+          if (!id || !status)
+            throw new Error("id and status required (approved|blocked)");
+          if (status !== "approved" && status !== "blocked")
+            throw new Error("status must be approved|blocked");
+          await setCommentStatus(id, status);
+          console.log(JSON.stringify({ ok: true }));
+        } else {
+          throw new Error(`unknown action: ${action}`);
+        }
+      } catch (err) {
+        console.error("[fatal]", (err as Error).message);
+        process.exitCode = 1;
       }
-    } catch (err) {
-      console.error("[fatal]", (err as Error).message);
-      process.exitCode = 1;
-    }
-  });
+    },
+  );
 
 program
   .command("categories <action>")
@@ -1600,15 +2100,30 @@ program
   .option("--name-en <name>", "English display name (add)")
   .option("--desc-bn <text>", "Bangla description (add/update)")
   .option("--desc-en <text>", "English description (add/update)")
-  .option("--dot <hex>", "dot color hex, omit to keep seed default (add/update)")
+  .option(
+    "--dot <hex>",
+    "dot color hex, omit to keep seed default (add/update)",
+  )
   .option("--sort <n>", "sort order (add/update)")
-  .option("--footer <bool>", "true | false — show in the public site footer (add/update)")
-  .option("--keywords <csv>", "comma-separated Bangla keyword signals the classifier uses for this category (add/update — desktop + web admin must agree)")
+  .option(
+    "--footer <bool>",
+    "true | false — show in the public site footer (add/update)",
+  )
+  .option(
+    "--keywords <csv>",
+    "comma-separated Bangla keyword signals the classifier uses for this category (add/update — desktop + web admin must agree)",
+  )
   .action(async (action: string, opts: Record<string, string | undefined>) => {
     try {
       await ensureSchema(getClient());
       if (action === "list") {
-        console.log(JSON.stringify({ ok: true, categories: await listCategories() }, null, 2));
+        console.log(
+          JSON.stringify(
+            { ok: true, categories: await listCategories() },
+            null,
+            2,
+          ),
+        );
       } else if (action === "add") {
         if (!opts.slug || !opts.nameBn || !opts.nameEn) {
           throw new Error("--slug, --name-bn and --name-en are required");
@@ -1618,7 +2133,10 @@ program
           .toLowerCase()
           .replace(/[^a-z0-9-]+/g, "-")
           .replace(/^-+|-+$/g, "");
-        if (!slug) throw new Error("invalid slug — use lowercase letters, numbers and dashes");
+        if (!slug)
+          throw new Error(
+            "invalid slug — use lowercase letters, numbers and dashes",
+          );
         await createCategory({
           slug,
           displayNameBn: opts.nameBn.trim(),
@@ -1627,30 +2145,63 @@ program
           descriptionEn: opts.descEn?.trim() || undefined,
           dot: opts.dot?.trim() || undefined,
           sortOrder: opts.sort !== undefined ? Number(opts.sort) : undefined,
-          showInFooter: opts.footer === undefined ? undefined : opts.footer === "true" || opts.footer === "1",
-          config: opts.keywords !== undefined
-            ? { keywords: opts.keywords.split(",").map((k) => k.trim()).filter(Boolean) }
-            : undefined,
+          showInFooter:
+            opts.footer === undefined
+              ? undefined
+              : opts.footer === "true" || opts.footer === "1",
+          config:
+            opts.keywords !== undefined
+              ? {
+                  keywords: opts.keywords
+                    .split(",")
+                    .map((k) => k.trim())
+                    .filter(Boolean),
+                }
+              : undefined,
         });
-        console.log(JSON.stringify({ ok: true, category: await getCategory(slug) }, null, 2));
+        console.log(
+          JSON.stringify(
+            { ok: true, category: await getCategory(slug) },
+            null,
+            2,
+          ),
+        );
       } else if (action === "update") {
         if (!opts.slug) throw new Error("--slug is required");
         const fields: Parameters<typeof updateCategory>[1] = {};
-        if (opts.nameBn !== undefined) fields.displayNameBn = opts.nameBn.trim();
-        if (opts.nameEn !== undefined) fields.displayNameEn = opts.nameEn.trim();
-        if (opts.descBn !== undefined) fields.descriptionBn = opts.descBn.trim();
-        if (opts.descEn !== undefined) fields.descriptionEn = opts.descEn.trim();
+        if (opts.nameBn !== undefined)
+          fields.displayNameBn = opts.nameBn.trim();
+        if (opts.nameEn !== undefined)
+          fields.displayNameEn = opts.nameEn.trim();
+        if (opts.descBn !== undefined)
+          fields.descriptionBn = opts.descBn.trim();
+        if (opts.descEn !== undefined)
+          fields.descriptionEn = opts.descEn.trim();
         if (opts.dot !== undefined) fields.dot = opts.dot.trim();
         if (opts.sort !== undefined) fields.sortOrder = Number(opts.sort);
-        if (opts.footer !== undefined) fields.showInFooter = opts.footer === "true" || opts.footer === "1";
+        if (opts.footer !== undefined)
+          fields.showInFooter = opts.footer === "true" || opts.footer === "1";
         if (opts.keywords !== undefined) {
-          fields.config = { keywords: opts.keywords.split(",").map((k) => k.trim()).filter(Boolean) };
+          fields.config = {
+            keywords: opts.keywords
+              .split(",")
+              .map((k) => k.trim())
+              .filter(Boolean),
+          };
         }
         if (Object.keys(fields).length === 0) {
-          throw new Error("at least one field required (--name-bn, --name-en, --desc-bn, --desc-en, --dot, --sort, --footer, --keywords)");
+          throw new Error(
+            "at least one field required (--name-bn, --name-en, --desc-bn, --desc-en, --dot, --sort, --footer, --keywords)",
+          );
         }
         await updateCategory(opts.slug, fields);
-        console.log(JSON.stringify({ ok: true, category: await getCategory(opts.slug) }, null, 2));
+        console.log(
+          JSON.stringify(
+            { ok: true, category: await getCategory(opts.slug) },
+            null,
+            2,
+          ),
+        );
       } else if (action === "delete") {
         if (!opts.slug) throw new Error("--slug is required");
         await deleteCategory(opts.slug);
@@ -1669,8 +2220,16 @@ program
  * ------------------------------------------------------------------ */
 
 const PROVIDER_KEYS: ProviderKey[] = [
-  "google", "groq", "openrouter", "ollama", "anthropic", "openai",
-  "mistral", "github", "github-models", "custom",
+  "google",
+  "groq",
+  "openrouter",
+  "ollama",
+  "anthropic",
+  "openai",
+  "mistral",
+  "github",
+  "github-models",
+  "custom",
 ];
 
 const PROVIDER_BASE_DEFAULTS: Record<string, string> = {
@@ -1691,7 +2250,9 @@ const PROVIDER_BASE_DEFAULTS: Record<string, string> = {
 
 async function listProviderRows() {
   const client = getClient();
-  const res = await client.execute("SELECT * FROM llm_providers ORDER BY priority ASC");
+  const res = await client.execute(
+    "SELECT * FROM llm_providers ORDER BY priority ASC",
+  );
   return res.rows.map((r) => mapProvider(r as Record<string, unknown>));
 }
 
@@ -1728,21 +2289,32 @@ async function upsertProvider(o: ProviderUpsert) {
     if (o.apiKey !== undefined) put("api_key", o.apiKey.trim() || null);
     if (o.priority !== undefined) put("priority", Number(o.priority));
     if (o.free !== undefined) put("is_free_tier", o.free === "true" ? 1 : 0);
-    if (o.rewrite !== undefined) put("supports_rewrite", o.rewrite === "true" ? 1 : 0);
-    if (o.embed !== undefined) put("supports_embeddings", o.embed === "true" ? 1 : 0);
-    if (o.purpose !== undefined) put("purpose", o.purpose.trim() === "image" ? "image" : "text");
-    if (o.isActive !== undefined) put("is_active", o.isActive === "true" ? 1 : 0);
+    if (o.rewrite !== undefined)
+      put("supports_rewrite", o.rewrite === "true" ? 1 : 0);
+    if (o.embed !== undefined)
+      put("supports_embeddings", o.embed === "true" ? 1 : 0);
+    if (o.purpose !== undefined)
+      put("purpose", o.purpose.trim() === "image" ? "image" : "text");
+    if (o.isActive !== undefined)
+      put("is_active", o.isActive === "true" ? 1 : 0);
     if (sets.length > 0) {
       sets.push("updated_at = ?");
       args.push(nowIso());
       args.push(o.id);
-      await client.execute({ sql: `UPDATE llm_providers SET ${sets.join(", ")} WHERE id = ?`, args });
+      await client.execute({
+        sql: `UPDATE llm_providers SET ${sets.join(", ")} WHERE id = ?`,
+        args,
+      });
     }
-    const row = await client.execute({ sql: "SELECT * FROM llm_providers WHERE id = ?", args: [o.id] });
+    const row = await client.execute({
+      sql: "SELECT * FROM llm_providers WHERE id = ?",
+      args: [o.id],
+    });
     return mapProvider(row.rows[0] as Record<string, unknown>);
   }
   if (!key) throw new Error("--key required (or --id to edit)");
-  if (!PROVIDER_KEYS.includes(key as ProviderKey)) throw new Error(`unknown provider_key: ${key}`);
+  if (!PROVIDER_KEYS.includes(key as ProviderKey))
+    throw new Error(`unknown provider_key: ${key}`);
   const now = nowIso();
   const rowId = crypto.randomUUID();
   const purposeVal = o.purpose?.trim() === "image" ? "image" : "text";
@@ -1752,46 +2324,93 @@ async function upsertProvider(o: ProviderUpsert) {
       priority, is_active, is_free_tier, supports_rewrite, supports_embeddings, purpose, created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`,
     args: [
-      rowId, key, o.name?.trim() || key, o.base?.trim() || null,
-      o.model?.trim() || "", o.env?.trim() || (PROCESSOR_ENV_DEFAULTS as Record<string, string>)[key] || `${key.toUpperCase().replace(/-/g, "_")}_API_KEY`,
-      o.apiKey?.trim() || null, Number(o.priority ?? 100),
-      o.free === "false" ? 0 : 1, o.rewrite === "false" ? 0 : 1, o.embed === "true" ? 1 : 0, purposeVal, now, now,
+      rowId,
+      key,
+      o.name?.trim() || key,
+      o.base?.trim() || null,
+      o.model?.trim() || "",
+      o.env?.trim() ||
+        (PROCESSOR_ENV_DEFAULTS as Record<string, string>)[key] ||
+        `${key.toUpperCase().replace(/-/g, "_")}_API_KEY`,
+      o.apiKey?.trim() || null,
+      Number(o.priority ?? 100),
+      o.free === "false" ? 0 : 1,
+      o.rewrite === "false" ? 0 : 1,
+      o.embed === "true" ? 1 : 0,
+      purposeVal,
+      now,
+      now,
     ],
   });
-  const row = await client.execute({ sql: "SELECT * FROM llm_providers WHERE id = ?", args: [rowId] });
+  const row = await client.execute({
+    sql: "SELECT * FROM llm_providers WHERE id = ?",
+    args: [rowId],
+  });
   return mapProvider(row.rows[0] as Record<string, unknown>);
 }
 
 /** Probe a provider's model list (mirrors the web /api/providers/models route). */
-async function probeProviderModels(key: string, base?: string, apiKey?: string) {
-  if (!PROVIDER_KEYS.includes(key as ProviderKey)) throw new Error(`unknown provider_key: ${key}`);
-  const baseUrl = (base ?? "").trim().replace(/\/+$/, "") || PROVIDER_BASE_DEFAULTS[key] || "";
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) end -= 1;
+  return value.slice(0, end);
+}
+
+async function probeProviderModels(
+  key: string,
+  base?: string,
+  apiKey?: string,
+) {
+  if (!PROVIDER_KEYS.includes(key as ProviderKey))
+    throw new Error(`unknown provider_key: ${key}`);
+  const baseUrl =
+    trimTrailingSlashes((base ?? "").trim()) ||
+    PROVIDER_BASE_DEFAULTS[key] ||
+    "";
   const token = (apiKey ?? "").trim();
-  interface M { id: string; label: string }
+  interface M {
+    id: string;
+    label: string;
+  }
   if (key === "google") {
     if (!token) throw new Error("অটো-ফেচের জন্য API key দিন");
-    const res = await fetch(`${baseUrl}/v1beta/models?key=${encodeURIComponent(token)}`, {
-      cache: "no-store", signal: AbortSignal.timeout(15_000),
-    });
+    const res = await fetch(
+      `${baseUrl}/v1beta/models?key=${encodeURIComponent(token)}`,
+      {
+        cache: "no-store",
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
     if (!res.ok) throw new Error(`provider status ${res.status}`);
-    const data = (await res.json()) as { models?: Array<{ name: string; displayName?: string }> };
+    const data = (await res.json()) as {
+      models?: Array<{ name: string; displayName?: string }>;
+    };
     const models: M[] = (data.models ?? [])
-      .map((m) => ({ id: m.name.split("/").slice(-1)[0] ?? m.name, label: m.displayName ?? m.name }))
+      .map((m) => ({
+        id: m.name.split("/").slice(-1)[0] ?? m.name,
+        label: m.displayName ?? m.name,
+      }))
       .sort((a, b) => a.id.localeCompare(b.id));
     return models;
   }
   const headers: Record<string, string> = { Accept: "application/json" };
   if (key !== "ollama" && token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`${baseUrl}/v1/models`, {
-    headers, cache: "no-store", signal: AbortSignal.timeout(15_000),
+    headers,
+    cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) throw new Error(`provider status ${res.status}`);
-  const data = (await res.json()) as { data?: Array<{ id: string; name?: string }> };
+  const data = (await res.json()) as {
+    data?: Array<{ id: string; name?: string }>;
+  };
   let models: M[] = (data.data ?? [])
     .map((m) => ({ id: m.id, label: m.name ?? m.id }))
     .sort((a, b) => a.id.localeCompare(b.id));
   if (key === "openrouter") {
-    models = models.filter((m) => m.id.endsWith(":free") || m.id.includes("/free"));
+    models = models.filter(
+      (m) => m.id.endsWith(":free") || m.id.includes("/free"),
+    );
   }
   return models;
 }
@@ -1818,24 +2437,50 @@ program
       await ensureSchema(getClient());
       if (action === "list") {
         const providers = await listProviderRows();
-        const out = opts.activeOnly ? providers.filter((p) => p.is_active) : providers;
+        const out = opts.activeOnly
+          ? providers.filter((p) => p.is_active)
+          : providers;
         console.log(JSON.stringify({ ok: true, providers: out }, null, 2));
       } else if (action === "upsert") {
-        const provider = await upsertProvider({ ...opts, key: opts.key, name: opts.name, model: opts.model, base: opts.base, env: opts.env, apiKey: opts.apiKey, priority: opts.priority, free: opts.free, rewrite: opts.rewrite, embed: opts.embed, purpose: opts.purpose, isActive: opts.isActive });
+        const provider = await upsertProvider({
+          ...opts,
+          key: opts.key,
+          name: opts.name,
+          model: opts.model,
+          base: opts.base,
+          env: opts.env,
+          apiKey: opts.apiKey,
+          priority: opts.priority,
+          free: opts.free,
+          rewrite: opts.rewrite,
+          embed: opts.embed,
+          purpose: opts.purpose,
+          isActive: opts.isActive,
+        });
         console.log(JSON.stringify({ ok: true, provider }, null, 2));
       } else if (action === "toggle") {
         if (!opts.id) throw new Error("--id required");
         const client = getClient();
-        await client.execute({ sql: "UPDATE llm_providers SET is_active = CASE is_active WHEN 1 THEN 0 ELSE 1 END, updated_at = ? WHERE id = ?", args: [nowIso(), opts.id] });
+        await client.execute({
+          sql: "UPDATE llm_providers SET is_active = CASE is_active WHEN 1 THEN 0 ELSE 1 END, updated_at = ? WHERE id = ?",
+          args: [nowIso(), opts.id],
+        });
         console.log(JSON.stringify({ ok: true }));
       } else if (action === "remove") {
         if (!opts.id) throw new Error("--id required");
         const client = getClient();
-        await client.execute({ sql: "DELETE FROM llm_providers WHERE id = ?", args: [opts.id] });
+        await client.execute({
+          sql: "DELETE FROM llm_providers WHERE id = ?",
+          args: [opts.id],
+        });
         console.log(JSON.stringify({ ok: true }));
       } else if (action === "models") {
         if (!opts.key) throw new Error("--key required");
-        const models = await probeProviderModels(opts.key, opts.base, opts.apiKey);
+        const models = await probeProviderModels(
+          opts.key,
+          opts.base,
+          opts.apiKey,
+        );
         console.log(JSON.stringify({ ok: true, models }));
       } else {
         throw new Error(`unknown action: ${action}`);
@@ -1852,21 +2497,32 @@ program
 
 program
   .command("notice <action>")
-  .description("announcements + special notice: list / add / update / toggle / remove")
+  .description(
+    "announcements + special notice: list / add / update / toggle / remove",
+  )
   .option("--id <id>", "notice id (update/toggle/remove)")
   .option("--title <text>", "notice title (add/update)")
   .option("--body <text>", "notice body — blank to clear (add/update)")
   .option("--tone <tone>", "info | success | warn | alert (add/update)")
   .option("--url <url>", "optional link taget — blank to clear (add/update)")
-  .option("--pinned <bool>", "true pins to the header 'special notice' banner (add/update)")
+  .option(
+    "--pinned <bool>",
+    "true pins to the header 'special notice' banner (add/update)",
+  )
   .option("--active <bool>", "true | false (add/update)")
-  .option("--expires-at <iso>", "auto-hide after this time — blank to clear (add/update)")
+  .option(
+    "--expires-at <iso>",
+    "auto-hide after this time — blank to clear (add/update)",
+  )
   .option("--active-only", "list only active + not expired (list)")
   .action(async (action: string, opts: Record<string, string | undefined>) => {
     try {
       await ensureSchema(getClient());
       if (action === "list") {
-        const notices = await listNotices({ activeOnly: Boolean(opts.activeOnly), limit: 200 });
+        const notices = await listNotices({
+          activeOnly: Boolean(opts.activeOnly),
+          limit: 200,
+        });
         console.log(JSON.stringify({ ok: true, notices }, null, 2));
       } else if (action === "add") {
         if (!opts.title) throw new Error("--title required");
@@ -1889,16 +2545,23 @@ program
         if (opts.tone !== undefined) fields.tone = opts.tone as NoticeTone;
         if (opts.url !== undefined) fields.url = opts.url.trim() || null;
         if (opts.pinned !== undefined) fields.pinned = opts.pinned === "true";
-        if (opts.active !== undefined) fields.is_active = opts.active === "true";
-        if (opts.expiresAt !== undefined) fields.expires_at = opts.expiresAt.trim() || null;
-        if (Object.keys(fields).length === 0) throw new Error("at least one field --title/--body/--tone/--url/--pinned/--active/--expires-at required");
+        if (opts.active !== undefined)
+          fields.is_active = opts.active === "true";
+        if (opts.expiresAt !== undefined)
+          fields.expires_at = opts.expiresAt.trim() || null;
+        if (Object.keys(fields).length === 0)
+          throw new Error(
+            "at least one field --title/--body/--tone/--url/--pinned/--active/--expires-at required",
+          );
         const notice = await updateNotice(opts.id, fields);
         console.log(JSON.stringify({ ok: true, notice }, null, 2));
       } else if (action === "toggle") {
         if (!opts.id) throw new Error("--id required");
         const cur = await getNotice(opts.id);
         if (!cur) throw new Error("not found");
-        const notice = await updateNotice(opts.id, { is_active: !cur.is_active });
+        const notice = await updateNotice(opts.id, {
+          is_active: !cur.is_active,
+        });
         console.log(JSON.stringify({ ok: true, notice }, null, 2));
       } else if (action === "remove") {
         if (!opts.id) throw new Error("--id required");
@@ -1919,30 +2582,35 @@ program
   .option("--page <n>", "page number (list)", "1")
   .option("--per-page <n>", "rows per page (list, max 100)", "10")
   .option("--id <id>", "log entry id (delete)")
-  .action(async (action: string, opts: { page?: string; perPage?: string; id?: string }) => {
-    try {
-      await ensureSchema(getClient());
-      if (action === "list") {
-        const page = await listLoginLog(
-          opts.page !== undefined ? Number(opts.page) : 1,
-          opts.perPage !== undefined ? Number(opts.perPage) : 10,
-        );
-        console.log(JSON.stringify({ ok: true, ...page }, null, 2));
-      } else if (action === "delete") {
-        if (!opts.id) throw new Error("--id required");
-        await deleteLoginLog(opts.id);
-        console.log(JSON.stringify({ ok: true, deleted: opts.id }));
-      } else if (action === "clear") {
-        const rows = await clearLoginLog();
-        console.log(JSON.stringify({ ok: true, cleared: rows }));
-      } else {
-        throw new Error(`unknown action: ${action}`);
+  .action(
+    async (
+      action: string,
+      opts: { page?: string; perPage?: string; id?: string },
+    ) => {
+      try {
+        await ensureSchema(getClient());
+        if (action === "list") {
+          const page = await listLoginLog(
+            opts.page !== undefined ? Number(opts.page) : 1,
+            opts.perPage !== undefined ? Number(opts.perPage) : 10,
+          );
+          console.log(JSON.stringify({ ok: true, ...page }, null, 2));
+        } else if (action === "delete") {
+          if (!opts.id) throw new Error("--id required");
+          await deleteLoginLog(opts.id);
+          console.log(JSON.stringify({ ok: true, deleted: opts.id }));
+        } else if (action === "clear") {
+          const rows = await clearLoginLog();
+          console.log(JSON.stringify({ ok: true, cleared: rows }));
+        } else {
+          throw new Error(`unknown action: ${action}`);
+        }
+      } catch (err) {
+        console.error("[fatal]", (err as Error).message);
+        process.exitCode = 1;
       }
-    } catch (err) {
-      console.error("[fatal]", (err as Error).message);
-      process.exitCode = 1;
-    }
-  });
+    },
+  );
 
 program
   .command("cleanup <action>")
@@ -1971,7 +2639,13 @@ program
       bytes += await dirSize(osTmp);
       await rm(osTmp, { recursive: true, force: true });
       removed.push(osTmp);
-      console.log(JSON.stringify({ ok: true, bytes_freed: bytes, dirs: removed }, null, 2));
+      console.log(
+        JSON.stringify(
+          { ok: true, bytes_freed: bytes, dirs: removed },
+          null,
+          2,
+        ),
+      );
     } catch (err) {
       console.error("[fatal]", (err as Error).message);
       process.exitCode = 1;
@@ -2103,15 +2777,22 @@ async function dispatchCmd(args: string[]): Promise<void> {
         if (eq <= 0) throw new Error(`expected field=value, got: ${a}`);
         const k = a.slice(0, eq) as keyof SiteSettings;
         const v = a.slice(eq + 1);
-        if (!SETTING_KEYS.includes(k)) throw new Error(`unknown settings field: ${k}`);
-        if (k === "pipeline_hours" || k === "archive_visible_days" || k === "archive_retention_days") {
+        if (!SETTING_KEYS.includes(k))
+          throw new Error(`unknown settings field: ${k}`);
+        if (
+          k === "pipeline_hours" ||
+          k === "archive_visible_days" ||
+          k === "archive_retention_days"
+        ) {
           (fields as Record<string, number>)[k] = Number(v);
         } else {
           (fields as Record<string, string>)[k] = v;
         }
       }
       await updateSettings(fields);
-      console.log(JSON.stringify({ ok: true, fields: Object.keys(fields) }, null, 2));
+      console.log(
+        JSON.stringify({ ok: true, fields: Object.keys(fields) }, null, 2),
+      );
       return;
     }
     case "admin-code": {
@@ -2120,20 +2801,39 @@ async function dispatchCmd(args: string[]): Promise<void> {
       if (action === "create") {
         const email = positional[0];
         if (!email) throw new Error("email required");
-        const created = await createAdminLoginCode({ email, label: flags.label });
+        const created = await createAdminLoginCode({
+          email,
+          label: flags.label,
+        });
         console.log(JSON.stringify({ ok: true, ...created }));
       } else if (action === "list") {
-        console.log(JSON.stringify({ ok: true, codes: await listAdminLoginCodes() }, null, 2));
+        console.log(
+          JSON.stringify(
+            { ok: true, codes: await listAdminLoginCodes() },
+            null,
+            2,
+          ),
+        );
       } else if (action === "revoke") {
         if (!flags.id) throw new Error("--id required");
         await revokeAdminLoginCode(flags.id);
         console.log(JSON.stringify({ ok: true }));
       } else if (action === "logout-sessions") {
         const email = positional[0];
-        if (!email) throw new Error("email required (admin-code logout-sessions <email>)");
+        if (!email)
+          throw new Error(
+            "email required (admin-code logout-sessions <email>)",
+          );
         const sessions = await revokeAdminSessionsByEmail(email);
         const codes = await revokeAdminLoginCodesByEmail(email);
-        console.log(JSON.stringify({ ok: true, email, sessionsRevoked: sessions, codesRevoked: codes }));
+        console.log(
+          JSON.stringify({
+            ok: true,
+            email,
+            sessionsRevoked: sessions,
+            codesRevoked: codes,
+          }),
+        );
       } else {
         throw new Error(`unknown action: ${action}`);
       }
@@ -2151,7 +2851,10 @@ async function dispatchCmd(args: string[]): Promise<void> {
         const pass = backupPass();
         const text = await readFile(file, "utf-8");
         const parsed = JSON.parse(text) as { payload?: string };
-        const bundle = decryptJson(parsed.payload ?? text, pass) as ExportBundle;
+        const bundle = decryptJson(
+          parsed.payload ?? text,
+          pass,
+        ) as ExportBundle;
         const written = await applyImportBundle(getClient(), bundle);
         console.log(JSON.stringify({ ok: true, written }, null, 2));
       } else if (sub === "verify") {
@@ -2160,23 +2863,36 @@ async function dispatchCmd(args: string[]): Promise<void> {
         const pass = backupPass();
         const text = await readFile(file, "utf-8");
         const parsed = JSON.parse(text) as { payload?: string };
-        const bundle = decryptJson(parsed.payload ?? text, pass) as ExportBundle;
+        const bundle = decryptJson(
+          parsed.payload ?? text,
+          pass,
+        ) as ExportBundle;
         const checks: Record<string, string | number> = {
           version: bundle.version,
           exported_at: bundle.exported_at,
           tables: bundle.tables?.length ?? 0,
           credentials: Object.keys(bundle.credentials ?? {}).length,
         };
-        for (const t of bundle.tables ?? []) checks[`rows:${t.name}`] = t.rows.length;
-        console.log(JSON.stringify({ ok: true, valid: true, file, checks }, null, 2));
+        for (const t of bundle.tables ?? [])
+          checks[`rows:${t.name}`] = t.rows.length;
+        console.log(
+          JSON.stringify({ ok: true, valid: true, file, checks }, null, 2),
+        );
       } else if (sub === "auto") {
         const dir = args[2];
         if (!dir) throw new Error("dir required");
         const { flags } = parseArgs(args.slice(3));
         const { mkdir } = await import("node:fs/promises");
         await mkdir(dir, { recursive: true });
-        const payload = encryptJson(await gatherExportBundle(getClient()), backupPass());
-        const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19).replace("T", "_");
+        const payload = encryptJson(
+          await gatherExportBundle(getClient()),
+          backupPass(),
+        );
+        const stamp = new Date()
+          .toISOString()
+          .replace(/[:.]/g, "-")
+          .slice(0, 19)
+          .replace("T", "_");
         const file = path.join(dir, `hoichoi-backup-${stamp}.bak`);
         await writeFile(file, JSON.stringify({ payload }, null, 2), "utf-8");
         const keep = Math.max(1, Number(flags.keep) || 7);
@@ -2187,7 +2903,9 @@ async function dispatchCmd(args: string[]): Promise<void> {
         for (const old of list) {
           await rm(path.join(dir, old), { force: true });
         }
-        console.log(JSON.stringify({ ok: true, file, kept: keep, pruned: list.length }));
+        console.log(
+          JSON.stringify({ ok: true, file, kept: keep, pruned: list.length }),
+        );
       } else {
         throw new Error(`unknown backup subcommand: ${String(sub)}`);
       }
@@ -2200,21 +2918,34 @@ async function dispatchCmd(args: string[]): Promise<void> {
     }
     case "sync": {
       const direction = args[1];
-      if (direction !== "push" && direction !== "pull") throw new Error("direction must be push or pull");
+      if (direction !== "push" && direction !== "pull")
+        throw new Error("direction must be push or pull");
       const { flags } = parseArgs(args.slice(2));
       if (!flags.from || !flags.to) throw new Error("--from and --to required");
-const { from, to } = makeSyncClients(flags.from, flags.to);
+      const { from, to } = makeSyncClients(flags.from, flags.to);
       await ensureSchema(to, flags.to);
       const written = await copyTables(from, to, CONTENT_TABLES);
       console.log(JSON.stringify({ ok: true, direction, written }, null, 2));
       return;
     }
     case "stats": {
-      console.log(JSON.stringify({ ok: true, stats: await statsSnapshot(), runs: await recentPipelineRuns(8) }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            ok: true,
+            stats: await statsSnapshot(),
+            runs: await recentPipelineRuns(8),
+          },
+          null,
+          2,
+        ),
+      );
       return;
     }
     case "radar": {
-      console.log(JSON.stringify({ ok: true, ...(await radarSnapshot()) }, null, 2));
+      console.log(
+        JSON.stringify({ ok: true, ...(await radarSnapshot()) }, null, 2),
+      );
       return;
     }
     case "traffic": {
@@ -2222,7 +2953,9 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
       if (range !== "24h" && range !== "7d" && range !== "30d") {
         throw new Error(`unknown range: ${range} (use 24h|7d|30d)`);
       }
-      console.log(JSON.stringify({ ...(await trafficSnapshot(range)) }, null, 2));
+      console.log(
+        JSON.stringify({ ...(await trafficSnapshot(range)) }, null, 2),
+      );
       return;
     }
     case "storage": {
@@ -2235,7 +2968,8 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
         const next = args[2];
         if (next === "set") {
           const cfg = await readMediaStorageArg(args[3]);
-          if (!cfg) throw new Error("json payload required (media storage set <json>)");
+          if (!cfg)
+            throw new Error("json payload required (media storage set <json>)");
           await saveMediaStorageConfig(cfg);
         } else {
           const cfg = await readMediaStorageArg(next);
@@ -2244,7 +2978,9 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
         const config = await getMediaStorageConfig();
         const registry = await storageRegistryCount();
         const stats = await mediaObjectStats();
-        console.log(JSON.stringify({ ok: true, config, registry, stats }, null, 2));
+        console.log(
+          JSON.stringify({ ok: true, config, registry, stats }, null, 2),
+        );
       } else if (sub === "cleanup") {
         const { flags, bools } = parseArgs(args.slice(2));
         const result = await cleanupMedia({
@@ -2261,9 +2997,16 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
       const action = args[1];
       const { flags } = parseArgs(args.slice(2));
       if (action === "list") {
-        console.log(JSON.stringify({ ok: true, sources: await listDeskSources() }, null, 2));
+        console.log(
+          JSON.stringify(
+            { ok: true, sources: await listDeskSources() },
+            null,
+            2,
+          ),
+        );
       } else if (action === "add") {
-        if (!flags["page-url"] || !flags["page-name"]) throw new Error("--page-url and --page-name required");
+        if (!flags["page-url"] || !flags["page-name"])
+          throw new Error("--page-url and --page-name required");
         const source = await addDeskSource({
           pageUrl: flags["page-url"],
           pageName: flags["page-name"],
@@ -2301,13 +3044,21 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
         const { positional } = parseArgs(args.slice(2));
         const [sub, target] = positional;
         if (sub === "list") {
-          console.log(JSON.stringify({ ok: true, errors: await listSourceErrors() }, null, 2));
+          console.log(
+            JSON.stringify(
+              { ok: true, errors: await listSourceErrors() },
+              null,
+              2,
+            ),
+          );
         } else if (sub === "dismiss") {
-          if (!target) throw new Error("error id required (sources errors dismiss <id>)");
+          if (!target)
+            throw new Error("error id required (sources errors dismiss <id>)");
           await setSourceErrorStatus(target, "dismissed");
           console.log(JSON.stringify({ ok: true, dismissed: target }));
         } else if (sub === "reopen") {
-          if (!target) throw new Error("error id required (sources errors reopen <id>)");
+          if (!target)
+            throw new Error("error id required (sources errors reopen <id>)");
           await setSourceErrorStatus(target, "open");
           console.log(JSON.stringify({ ok: true, reopened: target }));
         } else {
@@ -2324,7 +3075,14 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
         const { flags } = parseArgs(args.slice(2));
         console.log(
           JSON.stringify(
-            { ok: true, ...(await listDeskQueue({ status: flags.status, page: flags.page, pageSize: flags["page-size"] })) },
+            {
+              ok: true,
+              ...(await listDeskQueue({
+                status: flags.status,
+                page: flags.page,
+                pageSize: flags["page-size"],
+              })),
+            },
             null,
             2,
           ),
@@ -2334,14 +3092,19 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
         const status = args[3];
         if (!id || !status) throw new Error("id and status required");
         const allowed = ["approved", "rejected", "published"];
-        if (!allowed.includes(status)) throw new Error(`status must be one of: ${allowed.join(", ")}`);
+        if (!allowed.includes(status))
+          throw new Error(`status must be one of: ${allowed.join(", ")}`);
         const post = await getPostById(id);
         if (!post) throw new Error(`post not found: ${id}`);
         let finalStatus = status;
         if (status === "approved") {
           const cat = await getCategory(post.category);
-          const needsDouble = Boolean(cat?.config.requires_double_approval) && post.status !== "approved";
-          await updatePostStatus(id, needsDouble ? "approved" : "published", { publishedAt: !needsDouble });
+          const needsDouble =
+            Boolean(cat?.config.requires_double_approval) &&
+            post.status !== "approved";
+          await updatePostStatus(id, needsDouble ? "approved" : "published", {
+            publishedAt: !needsDouble,
+          });
           finalStatus = needsDouble ? "approved" : "published";
         } else if (status === "rejected") {
           await updatePostStatus(id, "rejected");
@@ -2366,30 +3129,54 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
             ? await bulkDeletePosts(ids)
             : await bulkModeratePosts(ids, target);
         console.log(
-          JSON.stringify({ ok: res.missing.length === 0, action: target, ...res, ids }, null, 2),
+          JSON.stringify(
+            { ok: res.missing.length === 0, action: target, ...res, ids },
+            null,
+            2,
+          ),
         );
       } else if (action === "images") {
         // Gallery (multi-image) management for one post. Mirrors the web route
         // /api/posts/[id]/images so the desk can curate extra images too.
         const op = args[2];
         const postId = args[3];
-        if (!postId) throw new Error("post id required (queue images <list|add|remove|primary> <postId> …)");
-        if (!(await getPostById(postId))) throw new Error(`post not found: ${postId}`);
+        if (!postId)
+          throw new Error(
+            "post id required (queue images <list|add|remove|primary> <postId> …)",
+          );
+        if (!(await getPostById(postId)))
+          throw new Error(`post not found: ${postId}`);
         if (op === "list") {
-          console.log(JSON.stringify({ ok: true, images: await listPostImages(postId) }, null, 2));
+          console.log(
+            JSON.stringify(
+              { ok: true, images: await listPostImages(postId) },
+              null,
+              2,
+            ),
+          );
         } else if (op === "add") {
           const url = args[4];
-          if (!url) throw new Error("url required (queue images add <postId> <url>)");
-          const image = await addPostImage(postId, url, { kind: "image", source: "admin" });
+          if (!url)
+            throw new Error("url required (queue images add <postId> <url>)");
+          const image = await addPostImage(postId, url, {
+            kind: "image",
+            source: "admin",
+          });
           console.log(JSON.stringify({ ok: true, image }, null, 2));
         } else if (op === "remove") {
           const imageId = args[4];
-          if (!imageId) throw new Error("image id required (queue images remove <postId> <imageId>)");
+          if (!imageId)
+            throw new Error(
+              "image id required (queue images remove <postId> <imageId>)",
+            );
           await removePostImage(imageId);
           console.log(JSON.stringify({ ok: true, removed: imageId }, null, 2));
         } else if (op === "primary") {
           const imageId = args[4];
-          if (!imageId) throw new Error("image id required (queue images primary <postId> <imageId>)");
+          if (!imageId)
+            throw new Error(
+              "image id required (queue images primary <postId> <imageId>)",
+            );
           const path = await setPrimaryPostImage(postId, imageId);
           if (!path) throw new Error(`image not found: ${imageId}`);
           console.log(JSON.stringify({ ok: true, media_path: path }, null, 2));
@@ -2413,14 +3200,19 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
     case "archive:delete": {
       const { flags } = parseArgs(args.slice(1));
       if (!flags.id) throw new Error("--id is required");
-      console.log(JSON.stringify(await archiveDelete(flags.id, flags.actor ?? "desk")));
+      console.log(
+        JSON.stringify(await archiveDelete(flags.id, flags.actor ?? "desk")),
+      );
       return;
     }
     case "archive:purge": {
       const { flags } = parseArgs(args.slice(1));
       console.log(
         JSON.stringify(
-          await archivePurge(flags["older-than"] ? Number(flags["older-than"]) : undefined, flags.actor ?? "desk"),
+          await archivePurge(
+            flags["older-than"] ? Number(flags["older-than"]) : undefined,
+            flags.actor ?? "desk",
+          ),
         ),
       );
       return;
@@ -2439,8 +3231,13 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
       const { flags } = parseArgs(args.slice(1));
       if (!flags.id) throw new Error("--id is required");
       const { revokeAdminSessionById } = await import("@hoichoi/db");
-      const affected = await revokeAdminSessionById(flags.id, flags.by ?? "desk", flags.reason ?? "desk revoke");
-      if (affected === 0) throw new Error("session not found or already revoked");
+      const affected = await revokeAdminSessionById(
+        flags.id,
+        flags.by ?? "desk",
+        flags.reason ?? "desk revoke",
+      );
+      if (affected === 0)
+        throw new Error("session not found or already revoked");
       console.log(JSON.stringify({ ok: true, revoked: affected }));
       return;
     }
@@ -2449,13 +3246,17 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
       if (action === "list") {
         const { flags } = parseArgs(args.slice(2));
         const all = await getAllComments(300);
-        const filtered = flags.status ? all.filter((c) => c.status === flags.status) : all;
+        const filtered = flags.status
+          ? all.filter((c) => c.status === flags.status)
+          : all;
         console.log(JSON.stringify({ ok: true, comments: filtered }, null, 2));
       } else if (action === "set") {
         const id = args[2];
         const status = args[3];
-        if (!id || !status) throw new Error("id and status required (approved|blocked)");
-        if (status !== "approved" && status !== "blocked") throw new Error("status must be approved|blocked");
+        if (!id || !status)
+          throw new Error("id and status required (approved|blocked)");
+        if (status !== "approved" && status !== "blocked")
+          throw new Error("status must be approved|blocked");
         await setCommentStatus(id, status);
         console.log(JSON.stringify({ ok: true }));
       } else {
@@ -2467,13 +3268,26 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
       const action = args[1];
       const { flags } = parseArgs(args.slice(2));
       if (action === "list") {
-        console.log(JSON.stringify({ ok: true, categories: await listCategories() }, null, 2));
+        console.log(
+          JSON.stringify(
+            { ok: true, categories: await listCategories() },
+            null,
+            2,
+          ),
+        );
       } else if (action === "add") {
         if (!flags.slug || !flags["name-bn"] || !flags["name-en"]) {
           throw new Error("--slug, --name-bn and --name-en are required");
         }
-        const slug = flags.slug.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
-        if (!slug) throw new Error("invalid slug — use lowercase letters, numbers and dashes");
+        const slug = flags.slug
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9-]{1,16}/g, "-")
+          .replace(/^-{1,32}|-{1,32}$/g, "");
+        if (!slug)
+          throw new Error(
+            "invalid slug — use lowercase letters, numbers and dashes",
+          );
         await createCategory({
           slug,
           displayNameBn: flags["name-bn"].trim(),
@@ -2482,24 +3296,46 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
           descriptionEn: flags["desc-en"]?.trim() || undefined,
           dot: flags.dot?.trim() || undefined,
           sortOrder: flags.sort !== undefined ? Number(flags.sort) : undefined,
-          showInFooter: flags.footer === undefined ? undefined : flags.footer === "true" || flags.footer === "1",
+          showInFooter:
+            flags.footer === undefined
+              ? undefined
+              : flags.footer === "true" || flags.footer === "1",
         });
-        console.log(JSON.stringify({ ok: true, category: await getCategory(slug) }, null, 2));
+        console.log(
+          JSON.stringify(
+            { ok: true, category: await getCategory(slug) },
+            null,
+            2,
+          ),
+        );
       } else if (action === "update") {
         if (!flags.slug) throw new Error("--slug is required");
         const fields: Parameters<typeof updateCategory>[1] = {};
-        if (flags["name-bn"] !== undefined) fields.displayNameBn = flags["name-bn"].trim();
-        if (flags["name-en"] !== undefined) fields.displayNameEn = flags["name-en"].trim();
-        if (flags["desc-bn"] !== undefined) fields.descriptionBn = flags["desc-bn"].trim();
-        if (flags["desc-en"] !== undefined) fields.descriptionEn = flags["desc-en"].trim();
+        if (flags["name-bn"] !== undefined)
+          fields.displayNameBn = flags["name-bn"].trim();
+        if (flags["name-en"] !== undefined)
+          fields.displayNameEn = flags["name-en"].trim();
+        if (flags["desc-bn"] !== undefined)
+          fields.descriptionBn = flags["desc-bn"].trim();
+        if (flags["desc-en"] !== undefined)
+          fields.descriptionEn = flags["desc-en"].trim();
         if (flags.dot !== undefined) fields.dot = flags.dot.trim();
         if (flags.sort !== undefined) fields.sortOrder = Number(flags.sort);
-        if (flags.footer !== undefined) fields.showInFooter = flags.footer === "true" || flags.footer === "1";
+        if (flags.footer !== undefined)
+          fields.showInFooter = flags.footer === "true" || flags.footer === "1";
         if (Object.keys(fields).length === 0) {
-          throw new Error("at least one field required (--name-bn, --name-en, --desc-bn, --desc-en, --dot, --sort, --footer)");
+          throw new Error(
+            "at least one field required (--name-bn, --name-en, --desc-bn, --desc-en, --dot, --sort, --footer)",
+          );
         }
         await updateCategory(flags.slug, fields);
-        console.log(JSON.stringify({ ok: true, category: await getCategory(flags.slug) }, null, 2));
+        console.log(
+          JSON.stringify(
+            { ok: true, category: await getCategory(flags.slug) },
+            null,
+            2,
+          ),
+        );
       } else if (action === "delete") {
         if (!flags.slug) throw new Error("--slug is required");
         await deleteCategory(flags.slug);
@@ -2511,9 +3347,22 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
     }
     case "desk": {
       const action = args[1];
-      if (action !== "bootstrap") throw new Error(`unknown desk action: ${String(action)}`);
+      if (action !== "bootstrap")
+        throw new Error(`unknown desk action: ${String(action)}`);
       const { flags } = parseArgs(args.slice(2));
-      console.log(JSON.stringify({ ok: true, ...(await deskBootstrap({ page: flags.page, pageSize: flags["page-size"] })) }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            ok: true,
+            ...(await deskBootstrap({
+              page: flags.page,
+              pageSize: flags["page-size"],
+            })),
+          },
+          null,
+          2,
+        ),
+      );
       return;
     }
     case "providers": {
@@ -2521,7 +3370,9 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
       const { bools, flags } = parseArgs(args.slice(2));
       if (action === "list") {
         const providers = await listProviderRows();
-        const out = bools.has("active-only") ? providers.filter((p) => p.is_active) : providers;
+        const out = bools.has("active-only")
+          ? providers.filter((p) => p.is_active)
+          : providers;
         console.log(JSON.stringify({ ok: true, providers: out }, null, 2));
       } else if (action === "upsert") {
         const provider = await upsertProvider({
@@ -2549,11 +3400,18 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
         console.log(JSON.stringify({ ok: true }));
       } else if (action === "remove") {
         if (!flags.id) throw new Error("--id required");
-        await getClient().execute({ sql: "DELETE FROM llm_providers WHERE id = ?", args: [flags.id] });
+        await getClient().execute({
+          sql: "DELETE FROM llm_providers WHERE id = ?",
+          args: [flags.id],
+        });
         console.log(JSON.stringify({ ok: true }));
       } else if (action === "models") {
         if (!flags.key) throw new Error("--key required");
-        const models = await probeProviderModels(flags.key, flags.base, flags["api-key"]);
+        const models = await probeProviderModels(
+          flags.key,
+          flags.base,
+          flags["api-key"],
+        );
         console.log(JSON.stringify({ ok: true, models }));
       } else {
         throw new Error(`unknown action: ${action}`);
@@ -2564,7 +3422,10 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
       const action = args[1];
       const { bools, flags } = parseArgs(args.slice(2));
       if (action === "list") {
-        const notices = await listNotices({ activeOnly: bools.has("active-only"), limit: 200 });
+        const notices = await listNotices({
+          activeOnly: bools.has("active-only"),
+          limit: 200,
+        });
         console.log(JSON.stringify({ ok: true, notices }, null, 2));
       } else if (action === "add") {
         if (!flags.title) throw new Error("--title required");
@@ -2587,16 +3448,23 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
         if (flags.tone !== undefined) fields.tone = flags.tone as NoticeTone;
         if (flags.url !== undefined) fields.url = flags.url.trim() || null;
         if (flags.pinned !== undefined) fields.pinned = flags.pinned === "true";
-        if (flags.active !== undefined) fields.is_active = flags.active === "true";
-        if (flags["expires-at"] !== undefined) fields.expires_at = flags["expires-at"].trim() || null;
-        if (Object.keys(fields).length === 0) throw new Error("at least one field --title/--body/--tone/--url/--pinned/--active/--expires-at required");
+        if (flags.active !== undefined)
+          fields.is_active = flags.active === "true";
+        if (flags["expires-at"] !== undefined)
+          fields.expires_at = flags["expires-at"].trim() || null;
+        if (Object.keys(fields).length === 0)
+          throw new Error(
+            "at least one field --title/--body/--tone/--url/--pinned/--active/--expires-at required",
+          );
         const notice = await updateNotice(flags.id, fields);
         console.log(JSON.stringify({ ok: true, notice }, null, 2));
       } else if (action === "toggle") {
         if (!flags.id) throw new Error("--id required");
         const cur = await getNotice(flags.id);
         if (!cur) throw new Error("not found");
-        const notice = await updateNotice(flags.id, { is_active: !cur.is_active });
+        const notice = await updateNotice(flags.id, {
+          is_active: !cur.is_active,
+        });
         console.log(JSON.stringify({ ok: true, notice }, null, 2));
       } else if (action === "remove") {
         if (!flags.id) throw new Error("--id required");
@@ -2633,7 +3501,9 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
       if (action !== "temp") throw new Error(`unknown action: ${action}`);
       const mediaRoot = process.env.HOICHOI_MEDIA_ROOT;
       const appData = mediaRoot ? path.dirname(mediaRoot) : null;
-      const targets = appData ? [path.join(appData, "tmp"), path.join(appData, ".cache")] : [];
+      const targets = appData
+        ? [path.join(appData, "tmp"), path.join(appData, ".cache")]
+        : [];
       let bytes = 0;
       const removed: string[] = [];
       for (const dir of targets) {
@@ -2649,7 +3519,13 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
       bytes += await dirSize(osTmp);
       await rm(osTmp, { recursive: true, force: true });
       removed.push(osTmp);
-      console.log(JSON.stringify({ ok: true, bytes_freed: bytes, dirs: removed }, null, 2));
+      console.log(
+        JSON.stringify(
+          { ok: true, bytes_freed: bytes, dirs: removed },
+          null,
+          2,
+        ),
+      );
       return;
     }
     default:
@@ -2659,7 +3535,9 @@ const { from, to } = makeSyncClients(flags.from, flags.to);
 
 program
   .command("daemon")
-  .description("persistent JSON-RPC runner — read {id,cmd,env} lines on stdin, write results on stdout")
+  .description(
+    "persistent JSON-RPC runner — read {id,cmd,env} lines on stdin, write results on stdout",
+  )
   .action(() => {
     const rl = createInterface({ input: process.stdin, crlfDelay: Infinity });
     rl.on("line", (raw: string) => {
@@ -2680,9 +3558,17 @@ program
             process.exitCode = 0;
             throw new Error(captured.err.trim() || "runner command failed");
           }
-          process.stdout.write(JSON.stringify({ id, ok: true, data: captured.out }) + "\n");
+          process.stdout.write(
+            JSON.stringify({ id, ok: true, data: captured.out }) + "\n",
+          );
         } catch (err) {
-          process.stdout.write(JSON.stringify({ id: req?.id ?? 0, ok: false, error: (err as Error).message }) + "\n");
+          process.stdout.write(
+            JSON.stringify({
+              id: req?.id ?? 0,
+              ok: false,
+              error: (err as Error).message,
+            }) + "\n",
+          );
         }
       })();
     });

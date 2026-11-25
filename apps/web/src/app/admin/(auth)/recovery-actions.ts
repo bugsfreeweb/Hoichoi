@@ -4,8 +4,11 @@ import { createAdminLoginCode } from "@hoichoi/db";
 import { getUserByEmail } from "@/lib/auth";
 import { mailConfig, messageShell, sendMail, siteBaseUrl } from "@/lib/mail";
 
-
-export type RecoveryState = { error?: string; notice?: string; devLink?: string } | null;
+export type RecoveryState = {
+  error?: string;
+  notice?: string;
+  devLink?: string;
+} | null;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -24,27 +27,35 @@ export async function emailAdminLoginCode(
   _previous: RecoveryState,
   formData: FormData,
 ): Promise<RecoveryState> {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase().slice(0, 254);
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase()
+    .slice(0, 254);
   if (!EMAIL_RE.test(email)) return { error: "সঠিক ইমেইল ঠিকানা দিন।" };
 
   const user = await getUserByEmail(email);
   const generic = {
-    notice: "যদি এই ইমেইলে অ্যাকাউন্ট থাকে, একটি ওয়ান-টাইম কোড পাঠানো হয়েছে। ১০ মিনিটের মধ্যে ব্যবহার করুন।",
+    notice:
+      "যদি এই ইমেইলে অ্যাকাউন্ট থাকে, একটি ওয়ান-টাইম কোড পাঠানো হয়েছে। ১০ মিনিটের মধ্যে ব্যবহার করুন।",
   };
   if (!user) return generic;
 
-  const { code } = await createAdminLoginCode({ email, label: "self-service email" });
+  const { code } = await createAdminLoginCode({
+    email,
+    label: "self-service email",
+  });
   const { text, html } = messageShell(
     "অ্যাডমিন লগইন কোড",
-    `আপনার অ্যাডমিন কোড: <b style="font-size:22px;letter-spacing:.24em">${code}</b><br>কোডটি ১০ মিনিটের মধ্যে একবারই ব্যবহার করা যাবে।`,
+    `আপনার অ্যাডমিন কোড: ${code}
+
+কোডটি ১০ মিনিটের মধ্যে একবারই ব্যবহার করা যাবে।`,
     `${siteBaseUrl()}/admin/login`,
     "লগইন পেজে যান",
   );
   const sent = await sendMail({
     to: user.email,
     subject: "হৈচৈ অ্যাডমিন লগইন কোড",
-    // The plain-text part must not carry HTML entities from the styled body.
-    text: text.replace(/<[^>]+>/g, ""),
+    text,
     html,
   });
   if (!sent.ok) {
@@ -55,4 +66,3 @@ export async function emailAdminLoginCode(
   }
   return generic;
 }
-

@@ -333,7 +333,7 @@ export function extractVisualCues(text: string): string[] {
   // Quantities + units ("৩০০ কোটি", "১২ জন", "1.5 million").
   // Bengali digits (০-৯) are not matched by \d, so both ranges are listed.
   for (const m of text.matchAll(
-    /([\d০-৯][\d০-৯,.]*\s*(?:কোটি|লাখ|লক্ষ|হাজার|মিলিয়ন|billion|million|%|km|kg))/gi,
+    /([\d০-৯][\d০-৯,.]{0,40}\s{0,8}(?:কোটি|লাখ|লক্ষ|হাজার|মিলিয়ন|billion|million|%|km|kg))/gi,
   )) {
     cues.add(`figure ${m[0].trim()}`);
   }

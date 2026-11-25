@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { safeImageSrc } from "@/lib/safe-url";
 // The frame vocabulary, not the renderer: this is a client component and
 // `@hoichoi/poster` carries sharp and playwright.
-import { POSTER_LAYOUTS, POSTER_THEMES, type PosterAspect } from "@hoichoi/shared-types";
+import {
+  POSTER_LAYOUTS,
+  POSTER_THEMES,
+  type PosterAspect,
+} from "@hoichoi/shared-types";
 
 interface ImageProvider {
   id: string;
@@ -168,7 +173,9 @@ export function PostImageGenerator({
    * also how a cleared override is stored — there is no separate clear button.
    */
   const [socialTitle, setSocialTitle] = useState(initialSocialTitle);
-  const [socialDescription, setSocialDescription] = useState(initialSocialDescription);
+  const [socialDescription, setSocialDescription] = useState(
+    initialSocialDescription,
+  );
   const [savedSocial, setSavedSocial] = useState({
     title: initialSocialTitle.trim(),
     description: initialSocialDescription.trim(),
@@ -180,7 +187,9 @@ export function PostImageGenerator({
    * portrait; X only ever takes the landscape `twitter:image`, and it truncates
    * at different widths. One card pretending to be both would be a lie.
    */
-  const [previewPlatform, setPreviewPlatform] = useState<"facebook" | "x">("facebook");
+  const [previewPlatform, setPreviewPlatform] = useState<"facebook" | "x">(
+    "facebook",
+  );
   const [copyMsg, setCopyMsg] = useState<string | null>(null);
 
   /** `media_path` as of the last successful check — the poll watches for a change. */
@@ -191,7 +200,9 @@ export function PostImageGenerator({
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`/api/posts/${postId}/generate-image`, { cache: "no-store" });
+        const res = await fetch(`/api/posts/${postId}/generate-image`, {
+          cache: "no-store",
+        });
         const j = (await res.json()) as Partial<Options> & {
           error?: string;
           via?: string;
@@ -209,7 +220,9 @@ export function PostImageGenerator({
           qualities: j.qualities ?? [],
         });
         setPrompt(j.suggestedPrompt ?? "");
-        const first = (j.providers ?? []).find((p) => p.hasKey && p.supportsImage);
+        const first = (j.providers ?? []).find(
+          (p) => p.hasKey && p.supportsImage,
+        );
         setProviderId(first?.id ?? "");
       } catch (e) {
         setErr(e instanceof Error ? e.message : "ছবি-জেনারেটর লোড ব্যর্থ");
@@ -243,17 +256,15 @@ export function PostImageGenerator({
           attach: true,
         }),
       });
-      const j = (await res.json().catch(() => null)) as
-        | {
-            media_path?: string;
-            provider?: string;
-            model?: string;
-            error?: string;
-            warning?: string;
-            queued?: boolean;
-            message?: string;
-          }
-        | null;
+      const j = (await res.json().catch(() => null)) as {
+        media_path?: string;
+        provider?: string;
+        model?: string;
+        error?: string;
+        warning?: string;
+        queued?: boolean;
+        message?: string;
+      } | null;
       if (!res.ok) throw new Error(j?.error ?? `HTTP ${res.status}`);
 
       // Handed to the GitHub Actions runner: the image does not exist yet, so
@@ -355,7 +366,9 @@ export function PostImageGenerator({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ social_share_aspect: next }),
       });
-      const j = (await res.json().catch(() => null)) as { error?: string } | null;
+      const j = (await res.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       if (!res.ok) throw new Error(j?.error ?? `HTTP ${res.status}`);
       setShareMsg(
         next === "4:5"
@@ -364,7 +377,9 @@ export function PostImageGenerator({
       );
     } catch (e) {
       setShareAspect(previous);
-      setShareMsg(`✕ ${e instanceof Error ? e.message : "শেয়ার সেটিং সংরক্ষণ ব্যর্থ"}`);
+      setShareMsg(
+        `✕ ${e instanceof Error ? e.message : "শেয়ার সেটিং সংরক্ষণ ব্যর্থ"}`,
+      );
     } finally {
       setShareBusy(false);
     }
@@ -373,7 +388,10 @@ export function PostImageGenerator({
   const saveSocialCopy = async () => {
     const title = socialTitle.trim();
     const description = socialDescription.trim();
-    if (socialBusy || (title === savedSocial.title && description === savedSocial.description)) {
+    if (
+      socialBusy ||
+      (title === savedSocial.title && description === savedSocial.description)
+    ) {
       return;
     }
     setSocialBusy(true);
@@ -387,7 +405,9 @@ export function PostImageGenerator({
           social_description: description || null,
         }),
       });
-      const j = (await res.json().catch(() => null)) as { error?: string } | null;
+      const j = (await res.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       if (!res.ok) throw new Error(j?.error ?? `HTTP ${res.status}`);
       setSavedSocial({ title, description });
       setSocialMsg(
@@ -396,7 +416,9 @@ export function PostImageGenerator({
           : "✓ ওভাররাইড মুছে গেছে — নিবন্ধের শিরোনাম/সারসংক্ষেপ ব্যবহার হবে",
       );
     } catch (e) {
-      setSocialMsg(`✕ ${e instanceof Error ? e.message : "শেয়ার লেখা সংরক্ষণ ব্যর্থ"}`);
+      setSocialMsg(
+        `✕ ${e instanceof Error ? e.message : "শেয়ার লেখা সংরক্ষণ ব্যর্থ"}`,
+      );
     } finally {
       setSocialBusy(false);
     }
@@ -455,7 +477,9 @@ export function PostImageGenerator({
 
     const tick = async () => {
       try {
-        const res = await fetch(`/api/posts/${postId}/generate-image`, { cache: "no-store" });
+        const res = await fetch(`/api/posts/${postId}/generate-image`, {
+          cache: "no-store",
+        });
         if (!res.ok) return;
         const j = (await res.json()) as { media_path?: string | null };
         const cur = j.media_path ?? null;
@@ -495,8 +519,10 @@ export function PostImageGenerator({
   // The card mirrors the metadata rule: prefer a portrait when the switch says
   // 4:5, fall back to the post's own image when there is no portrait. A fresh
   // render wins over the server prop, so the preview updates in this session.
-  const generatedPortrait = posters.find((p) => p.aspect === "4:5")?.dataUrl ?? null;
-  const portraitSrc = generatedPortrait ?? (portraitPath ? previewSrc(portraitPath) : null);
+  const generatedPortrait =
+    posters.find((p) => p.aspect === "4:5")?.dataUrl ?? null;
+  const portraitSrc =
+    generatedPortrait ?? (portraitPath ? previewSrc(portraitPath) : null);
   const webSrc = webImagePath ? previewSrc(webImagePath) : null;
   const sharePortrait = shareAspect === "4:5" && Boolean(portraitSrc);
   const shareSrc = sharePortrait ? portraitSrc : webSrc;
@@ -531,7 +557,9 @@ export function PostImageGenerator({
   return (
     <div className="mt-4 border border-ink/15 bg-paper p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h4 className="font-sans-bn text-[14px] font-bold text-ink">✨ এআই দিয়ে ছবি তৈরি করুন</h4>
+        <h4 className="font-sans-bn text-[14px] font-bold text-ink">
+          ✨ এআই দিয়ে ছবি তৈরি করুন
+        </h4>
         {opts && (
           <span className="font-mono-x text-[10px] text-ink-soft">
             {via === "runner"
@@ -551,13 +579,17 @@ export function PostImageGenerator({
         </p>
       )}
       {msg && (
-        <p className="mt-3 border border-cat-teal bg-cat-teal/10 px-3 py-2 text-[12.5px] font-bold text-ink">{msg}</p>
+        <p className="mt-3 border border-cat-teal bg-cat-teal/10 px-3 py-2 text-[12.5px] font-bold text-ink">
+          {msg}
+        </p>
       )}
       {status && <p className="mt-3 text-[12.5px] text-ink-soft">{status}</p>}
 
       <div className="mt-3">
         <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">প্রম্পট</span>
+          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+            প্রম্পট
+          </span>
           <textarea
             className={field}
             rows={4}
@@ -570,8 +602,14 @@ export function PostImageGenerator({
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">প্রোভাইডার</span>
-          <select className={field} value={providerId} onChange={(e) => setProviderId(e.target.value)}>
+          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+            প্রোভাইডার
+          </span>
+          <select
+            className={field}
+            value={providerId}
+            onChange={(e) => setProviderId(e.target.value)}
+          >
             <option value="">স্বয়ংক্রিয় (ফ্রি আগে)</option>
             {available.map((p) => (
               <option key={p.id} value={p.id} disabled={!p.hasKey}>
@@ -583,8 +621,14 @@ export function PostImageGenerator({
         </label>
 
         <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">অনুপাত (aspect ratio)</span>
-          <select className={field} value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)}>
+          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+            অনুপাত (aspect ratio)
+          </span>
+          <select
+            className={field}
+            value={aspectRatio}
+            onChange={(e) => setAspectRatio(e.target.value)}
+          >
             <option value="">— ডিফল্ট —</option>
             {(opts?.aspectRatios ?? []).map((r) => (
               <option key={r} value={r}>
@@ -595,8 +639,14 @@ export function PostImageGenerator({
         </label>
 
         <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">সাইজ</span>
-          <select className={field} value={size} onChange={(e) => setSize(e.target.value)}>
+          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+            সাইজ
+          </span>
+          <select
+            className={field}
+            value={size}
+            onChange={(e) => setSize(e.target.value)}
+          >
             <option value="">— ডিফল্ট —</option>
             {(opts?.sizes ?? []).map((s) => (
               <option key={s} value={s}>
@@ -607,8 +657,14 @@ export function PostImageGenerator({
         </label>
 
         <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">স্টাইল</span>
-          <select className={field} value={style} onChange={(e) => setStyle(e.target.value)}>
+          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+            স্টাইল
+          </span>
+          <select
+            className={field}
+            value={style}
+            onChange={(e) => setStyle(e.target.value)}
+          >
             <option value="">— ডিফল্ট —</option>
             {(opts?.styles ?? []).map((s) => (
               <option key={s} value={s}>
@@ -619,8 +675,14 @@ export function PostImageGenerator({
         </label>
 
         <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">কোয়ালিটি</span>
-          <select className={field} value={quality} onChange={(e) => setQuality(e.target.value)}>
+          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+            কোয়ালিটি
+          </span>
+          <select
+            className={field}
+            value={quality}
+            onChange={(e) => setQuality(e.target.value)}
+          >
             <option value="">— ডিফল্ট —</option>
             {(opts?.qualities ?? []).map((q) => (
               <option key={q} value={q}>
@@ -631,8 +693,14 @@ export function PostImageGenerator({
         </label>
 
         <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">পোস্টার লেআউট</span>
-          <select className={field} value={layout} onChange={(e) => setLayout(e.target.value)}>
+          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+            পোস্টার লেআউট
+          </span>
+          <select
+            className={field}
+            value={layout}
+            onChange={(e) => setLayout(e.target.value)}
+          >
             <option value="">— ডেস্ক অনুযায়ী —</option>
             {POSTER_LAYOUTS.map((l) => (
               <option key={l} value={l}>
@@ -643,8 +711,14 @@ export function PostImageGenerator({
         </label>
 
         <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">পোস্টার থিম</span>
-          <select className={field} value={theme} onChange={(e) => setTheme(e.target.value)}>
+          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+            পোস্টার থিম
+          </span>
+          <select
+            className={field}
+            value={theme}
+            onChange={(e) => setTheme(e.target.value)}
+          >
             <option value="">— ডেস্ক অনুযায়ী —</option>
             {POSTER_THEMES.map((t) => (
               <option key={t} value={t}>
@@ -655,7 +729,9 @@ export function PostImageGenerator({
         </label>
 
         <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">যা থাকবে না (negative)</span>
+          <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+            যা থাকবে না (negative)
+          </span>
           <input
             className={field}
             value={negativePrompt}
@@ -689,19 +765,26 @@ export function PostImageGenerator({
       {preview && (
         <div className="mt-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={preview} alt="" className="h-40 w-auto max-w-full border border-ink/20 object-contain" />
+          <img
+            src={preview}
+            alt=""
+            className="h-40 w-auto max-w-full border border-ink/20 object-contain"
+          />
         </div>
       )}
 
       <div className="mt-5 border-t border-ink/15 pt-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h5 className="font-sans-bn text-[13px] font-bold text-ink">🎨 ডাইনামিক পোস্টার (১৬:৯ + ৪:৫)</h5>
+          <h5 className="font-sans-bn text-[13px] font-bold text-ink">
+            🎨 ডাইনামিক পোস্টার (১৬:৯ + ৪:৫)
+          </h5>
           <span className="font-mono-x text-[10px] text-ink-soft">
             ৫ লেআউট × ৫ প্যালেট · একই গল্প, দুটি ফ্রেম
           </span>
         </div>
         <p className="mt-1 text-[11px] text-ink-soft">
-          এআই আর্ট ডিরেক্টর গল্প বুঝে লেআউট ও রং বাছেন; টাইপোগ্রাফি ব্রাউজারে রেন্ডার হয় — যুক্তাক্ষর নিখুঁত থাকে।
+          এআই আর্ট ডিরেক্টর গল্প বুঝে লেআউট ও রং বাছেন; টাইপোগ্রাফি ব্রাউজারে রেন্ডার
+          হয় — যুক্তাক্ষর নিখুঁত থাকে।
         </p>
 
         <label className="mt-3 flex w-fit items-center gap-2 text-[11px] font-bold text-ink-soft">
@@ -733,7 +816,9 @@ export function PostImageGenerator({
           {posters[0] && (
             <span className="text-[11px] text-ink-soft">
               {posters[0].layout} · {posters[0].palette} ·{" "}
-              {posters[0].directedBy === "llm" ? "আর্ট ডিরেক্টর" : "ফলব্যাক প্ল্যানার"}
+              {posters[0].directedBy === "llm"
+                ? "আর্ট ডিরেক্টর"
+                : "ফলব্যাক প্ল্যানার"}
               {posters[0].provider ? ` · ${posters[0].provider}` : ""}
               {posters[0].model ? ` · ${posters[0].model}` : ""}
             </span>
@@ -741,7 +826,9 @@ export function PostImageGenerator({
         </div>
 
         {posterMsg && (
-          <p className={`mt-2 text-[11px] ${posterMsg.startsWith("✕") ? "text-red-700" : "text-ink-soft"}`}>
+          <p
+            className={`mt-2 text-[11px] ${posterMsg.startsWith("✕") ? "text-red-700" : "text-ink-soft"}`}
+          >
             {posterMsg}
           </p>
         )}
@@ -752,7 +839,9 @@ export function PostImageGenerator({
               type="checkbox"
               checked={shareAspect === "4:5"}
               disabled={shareBusy}
-              onChange={(e) => void saveShareAspect(e.target.checked ? "4:5" : "16:9")}
+              onChange={(e) =>
+                void saveShareAspect(e.target.checked ? "4:5" : "16:9")
+              }
             />
             ফেসবুক / ইনস্টাগ্রামে ৪:৫ শেয়ার কার্ড
           </label>
@@ -762,7 +851,9 @@ export function PostImageGenerator({
               : "লিংক প্রিভিউতে পোস্টের মূল ১৬:৯ ছবি যাবে; ৪:৫ পোস্টার সংরক্ষিত থাকবে।"}
           </p>
           {shareMsg && (
-            <p className={`mt-1 text-[10.5px] ${shareMsg.startsWith("✕") ? "text-red-700" : "text-ink-soft"}`}>
+            <p
+              className={`mt-1 text-[10.5px] ${shareMsg.startsWith("✕") ? "text-red-700" : "text-ink-soft"}`}
+            >
               {shareMsg}
             </p>
           )}
@@ -807,7 +898,11 @@ export function PostImageGenerator({
               <p className="font-mono-x text-[9.5px] uppercase tracking-wide text-ink-soft">
                 লিংক প্রিভিউ
               </p>
-              <div role="tablist" aria-label="কোন প্ল্যাটফর্মের প্রিভিউ" className="flex gap-1">
+              <div
+                role="tablist"
+                aria-label="কোন প্ল্যাটফর্মের প্রিভিউ"
+                className="flex gap-1"
+              >
                 {(
                   [
                     ["facebook", "ফেসবুক"],
@@ -835,7 +930,7 @@ export function PostImageGenerator({
               {cardSrc ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={cardSrc}
+                  src={safeImageSrc(cardSrc)}
                   alt="শেয়ার কার্ডের ছবি"
                   className="w-full bg-ink/5 object-cover"
                   style={{ aspectRatio: cardPortrait ? "4 / 5" : "1.91 / 1" }}
@@ -898,10 +993,18 @@ export function PostImageGenerator({
               </div>
             )}
             <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 font-mono-x text-[10px]">
-              <span className={titleWarn ? "font-bold text-red-700" : "text-ink-soft"}>
+              <span
+                className={
+                  titleWarn ? "font-bold text-red-700" : "text-ink-soft"
+                }
+              >
                 শিরোনাম {bnCount(titleLength)}/{bnCount(titleMax)}
               </span>
-              <span className={descWarn ? "font-bold text-red-700" : "text-ink-soft"}>
+              <span
+                className={
+                  descWarn ? "font-bold text-red-700" : "text-ink-soft"
+                }
+              >
                 বিবরণ {bnCount(descLength)}/{bnCount(descMax)}
               </span>
             </div>
@@ -933,7 +1036,9 @@ export function PostImageGenerator({
                   type="button"
                   onClick={() => setActiveAspect(p.aspect)}
                   className={`border-2 p-1 text-left transition ${
-                    active ? "border-ink bg-lime/20" : "border-ink/20 hover:border-ink/50"
+                    active
+                      ? "border-ink bg-lime/20"
+                      : "border-ink/20 hover:border-ink/50"
                   }`}
                   aria-pressed={active}
                 >
@@ -955,7 +1060,8 @@ export function PostImageGenerator({
         )}
 
         {(() => {
-          const chosen = posters.find((p) => p.aspect === activeAspect) ?? posters[0];
+          const chosen =
+            posters.find((p) => p.aspect === activeAspect) ?? posters[0];
           if (!chosen?.prompt) return null;
           return (
             <details className="mt-3 border border-ink/15 bg-paper px-3 py-2 text-[11px] text-ink-soft">
@@ -990,7 +1096,8 @@ function bnCount(n: number): string {
 }
 
 function previewSrc(p: string): string {
-  if (/^https?:\/\//i.test(p) || p.startsWith("/")) return p;
+  if (/^https?:\/\//i.test(p) || (p.startsWith("/") && !p.startsWith("//")))
+    return p;
   // A poster kept in `poster_images` is served from the API, not `/uploads`.
   if (p.startsWith("api/posters/")) return `/${p}`;
   return `/uploads/${p.replace(/\\/g, "/")}`;
