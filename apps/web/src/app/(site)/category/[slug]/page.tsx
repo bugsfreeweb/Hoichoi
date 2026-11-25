@@ -94,6 +94,7 @@ export default async function CategoryPage({
         page={page}
         pageCount={pageCount}
         base={`/category/${slug}`}
+        locale={locale}
       />
     </section>
   );

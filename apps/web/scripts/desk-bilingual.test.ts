@@ -151,4 +151,17 @@ check("the public site's server pages read the same language", () => {
   }
 });
 
+check("pagination speaks the reader's language and digits", () => {
+  const code = read("apps/web/src/components/Pagination.tsx");
+  if (!/locale\?:\s*"bn"\s*\|\s*"en"/.test(code))
+    throw new Error("Pagination cannot be told which language to use");
+  if (!/label\("আগের", "Previous"\)/.test(code))
+    throw new Error("the previous-page label has no English pair");
+  if (!/en \? String\(n\) : bnNum\(n\)/.test(code))
+    throw new Error("page numbers stay Bengali in English mode");
+  const home = read("apps/web/src/app/(site)/page.tsx");
+  if (!/<Pagination[^>]*locale=\{locale\}/s.test(home))
+    throw new Error("the home page never passes its locale to pagination");
+});
+
 console.log(`[web] desk bilingual: ${passed} checks passed`);

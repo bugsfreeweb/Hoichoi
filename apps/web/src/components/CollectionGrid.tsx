@@ -7,6 +7,7 @@ import { bnNum } from "@/lib/bn";
 import { PostCard } from "./PostCard";
 import { AdSlot } from "./AdSlot";
 import { PlatformAdSlot } from "@/components/ads/PlatformAdSlot";
+import { useBi } from "@/components/i18n/LocaleProvider";
 
 export function CollectionGrid({
   posts,
@@ -28,6 +29,7 @@ export function CollectionGrid({
   /** Real per-category totals for the chips (from countWindowPostsByCategory). */
   categoryCounts?: Record<string, number>;
 }) {
+  const b = useBi();
   const all: CategorySlug | "all" = "all";
   const [active, setActive] = useState<CategorySlug | "all">("all");
   const navigate = Boolean(activeCategory);
@@ -38,10 +40,13 @@ export function CollectionGrid({
       ? posts
       : posts.filter((p) => p.category === effective);
   const count = (c: CategorySlug | "all") => {
-    if (categoryCounts) return c === all
-      ? Object.values(categoryCounts).reduce((a, b) => a + b, 0)
-      : (categoryCounts[c] ?? 0);
-    return c === all ? posts.length : posts.filter((p) => p.category === c).length;
+    if (categoryCounts)
+      return c === all
+        ? Object.values(categoryCounts).reduce((a, b) => a + b, 0)
+        : (categoryCounts[c] ?? 0);
+    return c === all
+      ? posts.length
+      : posts.filter((p) => p.category === c).length;
   };
 
   return (
@@ -52,16 +57,24 @@ export function CollectionGrid({
             href="/"
             className="rounded-full border border-ink/25 px-4 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:border-ink hover:text-ink"
           >
-            সব <span className="font-mono-x text-[10px] opacity-70">{bnNum(count("all"))}</span>
+            {b("সব", "All")}{" "}
+            <span className="font-mono-x text-[10px] opacity-70">
+              {bnNum(count("all"))}
+            </span>
           </Link>
         ) : (
           <button
             onClick={() => setActive("all")}
             className={`rounded-full border px-4 py-1.5 text-[12.5px] font-medium transition-colors ${
-              effective === "all" ? "border-ink bg-ink text-paper" : "border-ink/25 text-ink-soft hover:border-ink hover:text-ink"
+              effective === "all"
+                ? "border-ink bg-ink text-paper"
+                : "border-ink/25 text-ink-soft hover:border-ink hover:text-ink"
             }`}
           >
-            সব <span className="font-mono-x text-[10px] opacity-70">{bnNum(count("all"))}</span>
+            {b("সব", "All")}{" "}
+            <span className="font-mono-x text-[10px] opacity-70">
+              {bnNum(count("all"))}
+            </span>
           </button>
         )}
         {cats.map((c) =>
@@ -76,17 +89,25 @@ export function CollectionGrid({
                   : "border-ink/25 text-ink-soft hover:border-ink hover:text-ink"
               }`}
             >
-              {c.displayNameBn} <span className="font-mono-x text-[10px] opacity-70">{bnNum(count(c.slug))}</span>
+              {c.displayNameBn}{" "}
+              <span className="font-mono-x text-[10px] opacity-70">
+                {bnNum(count(c.slug))}
+              </span>
             </Link>
           ) : (
             <button
               key={c.slug}
               onClick={() => setActive(c.slug)}
               className={`font-meta-bn rounded-full border px-4 py-1.5 text-[12.5px] font-medium transition-colors ${
-                effective === c.slug ? "border-ink bg-ink text-paper" : "border-ink/25 text-ink-soft hover:border-ink hover:text-ink"
+                effective === c.slug
+                  ? "border-ink bg-ink text-paper"
+                  : "border-ink/25 text-ink-soft hover:border-ink hover:text-ink"
               }`}
             >
-              {c.displayNameBn} <span className="font-mono-x text-[10px] opacity-70">{bnNum(count(c.slug))}</span>
+              {c.displayNameBn}{" "}
+              <span className="font-mono-x text-[10px] opacity-70">
+                {bnNum(count(c.slug))}
+              </span>
             </button>
           ),
         )}
@@ -99,8 +120,19 @@ export function CollectionGrid({
         {filtered.map((post, i) => (
           <Fragment key={post.id}>
             <PostCard post={post} cats={cats} />
-            {(i + 1) % 4 === 0 && <AdSlot key={`ad-${post.id}`} variant="infeed" html={adInfeedHtml} />}
-            {(i + 1) % 6 === 0 && <PlatformAdSlot key={`ad-platform-${post.id}`} slotKey="category_infeed" />}
+            {(i + 1) % 4 === 0 && (
+              <AdSlot
+                key={`ad-${post.id}`}
+                variant="infeed"
+                html={adInfeedHtml}
+              />
+            )}
+            {(i + 1) % 6 === 0 && (
+              <PlatformAdSlot
+                key={`ad-platform-${post.id}`}
+                slotKey="category_infeed"
+              />
+            )}
           </Fragment>
         ))}
       </div>

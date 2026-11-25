@@ -595,7 +595,12 @@ export default async function HomePage({
           adDeliveryMode={infeedSlot?.deliveryMode ?? "both"}
           categories={catRows}
         />
-        <Pagination page={page} pageCount={pageCount} base="/" />
+        <Pagination
+          page={page}
+          pageCount={pageCount}
+          base="/"
+          locale={locale}
+        />
       </section>
 
       {cfg.show_ads && (
