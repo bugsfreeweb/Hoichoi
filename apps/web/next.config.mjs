@@ -23,6 +23,7 @@ const nextConfig = {
     "/api/**": [
       "../../packages/db/migrations/**/*.sql",
       "../../packages/poster/fonts/**/*",
+      "../../packages/poster/assets/**/*",
       "../../node_modules/.pnpm/@sparticuz+chromium@*/node_modules/@sparticuz/chromium/**/*",
     ],
     "/admin/**": ["../../packages/db/migrations/**/*.sql"],

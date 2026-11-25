@@ -101,6 +101,12 @@ export async function loadDesignAssets(): Promise<{
     const roots = [
       resolve(here, "..", "..", "fonts"),
       resolve(process.cwd(), "packages", "poster", "fonts"),
+      // Vercel runs the function with cwd at the repository root or at
+      // /var/task/apps/web depending on how the monorepo was traced.
+      resolve(process.cwd(), "..", "..", "packages", "poster", "fonts"),
+      resolve(process.cwd(), "..", "packages", "poster", "fonts"),
+      "/var/task/packages/poster/fonts",
+      "/var/task/apps/web/packages/poster/fonts",
     ];
     const fonts: DesignFontFace[] = [];
     for (const face of FACE_FILES) {
