@@ -100,7 +100,7 @@ check("the desk rail and window chrome read from the shared table", () => {
   // One row shape: icon, dictionary key, Bangla fallback for logs.
   const rows = [
     ...app.matchAll(
-      /icon: "([a-z]+)", key: "(desk\.rail\.[a-z]+)", label: "([^"]*)"/g,
+      /icon:\s*"([a-z]+)",\s*key:\s*"(desk\.rail\.[a-z]+)",\s*label:\s*"([^"]*)"/g,
     ),
   ];
   if (rows.length !== 10)

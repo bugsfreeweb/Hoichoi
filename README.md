@@ -1933,6 +1933,19 @@ invisible to a moderator); `/api/cron/alerts` emails a digest of never-emailed
 endpoint and raises a native OS notification per new alert (`Notifier.tsx`, once
 per id). 6 checks in `packages/db/src/__tests__/notifications.test.ts`.
 
+**Repository findings are part of that bell.** The code-scanning list lives
+outside the database, so `/api/admin/security-alerts` reads GitHub's
+`code-scanning/alerts?state=open` with `GH_SECURITY_TOKEN` (falling back to
+`GH_TRIGGER_TOKEN`) and `GH_REPO`, caches a successful response for five
+minutes, and never caches a failure. The bell adds one urgent row for an admin
+when the count is non-zero, and `/admin/security#code-alerts` renders each
+alert with a rule-specific fix hint (bounded regex, parsed hostname, workflow
+permissions, crypto RNG, and so on) plus a direct link to the alert. The desktop
+shows the same list as a banner above the workspace, reading GitHub directly
+with the PAT already in the vault — no deployment secret is needed for the desk.
+An unconfigured install says which variable is missing instead of pretending
+there are zero findings.
+
 ### Media dashboard
 
 `mediaDashboard()` (`media-dashboard.ts`) puts C12's health rows and C13's

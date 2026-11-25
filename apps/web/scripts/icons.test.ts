@@ -82,7 +82,9 @@ check("the desk draws from the same catalogue, not its own paths", () => {
   assert.match(desk, /<NavIcon name=\{icon\}/);
   // Each row is `icon`, then the dictionary `key` it prints, then the Bangla
   // label kept for document titles and logs.
-  const tabIcons = [...desk.matchAll(/icon: "([a-z]+)", key: "[a-z.]+", label:/g)].map((m) => m[1]!);
+  const tabIcons = [...desk.matchAll(/icon:\s*"([a-z]+)",\s*key:\s*"[a-z.]+",\s*label:/g)].map(
+    (m) => m[1]!,
+  );
   assert.ok(tabIcons.length >= 9, "the tab strip still has its nine screens");
   for (const name of tabIcons) {
     assert.equal(isNavIconName(name), true, `desk tab "${name}" resolves`);

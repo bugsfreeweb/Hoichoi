@@ -15,11 +15,7 @@ import {
   type DeskStats,
   type DeskRadarSnapshot,
 } from "./lib/tauri";
-import {
-  getRunEnv,
-  listConfigured,
-  type CredentialName,
-} from "./lib/vault";
+import { getRunEnv, listConfigured, type CredentialName } from "./lib/vault";
 import { SITE_URL } from "./lib/site";
 import { applyTypography } from "./lib/typography";
 import { NavIcon, type NavIconName } from "@hoichoi/icons";
@@ -32,6 +28,7 @@ import { useDeskLocale } from "./lib/locale";
 import SetupWizard from "./components/SetupWizard";
 import DeskLanguageToggle from "./components/DeskLanguageToggle";
 import Dashboard from "./screens/Dashboard";
+import SecurityBanner from "./components/SecurityBanner";
 import Traffic from "./screens/Traffic";
 import Watchlist from "./screens/Watchlist";
 import Queue from "./screens/Queue";
@@ -117,15 +114,30 @@ export function keyForView(view: View): string {
  * Bangla name for the places that print it without a hook (document titles,
  * crash logs).
  */
-const TAB_LABELS: Record<View, { icon: NavIconName; key: MessageKey; label: string }> = {
+const TAB_LABELS: Record<
+  View,
+  { icon: NavIconName; key: MessageKey; label: string }
+> = {
   dashboard: { icon: "dashboard", key: "desk.rail.dashboard", label: "মনিটর" },
   traffic: { icon: "traffic", key: "desk.rail.traffic", label: "ট্রাফিক" },
-  watchlist: { icon: "watchlist", key: "desk.rail.watchlist", label: "ওয়াচলিস্ট" },
+  watchlist: {
+    icon: "watchlist",
+    key: "desk.rail.watchlist",
+    label: "ওয়াচলিস্ট",
+  },
   queue: { icon: "queue", key: "desk.rail.queue", label: "কনটেন্ট সারি" },
-  collector: { icon: "collector", key: "desk.rail.collector", label: "কালেক্টর" },
+  collector: {
+    icon: "collector",
+    key: "desk.rail.collector",
+    label: "কালেক্টর",
+  },
   vault: { icon: "setup", key: "desk.rail.vault", label: "API ভল্ট" },
   settings: { icon: "settings", key: "desk.rail.settings", label: "সেটিংস" },
-  moderation: { icon: "moderation", key: "desk.rail.moderation", label: "মন্তব্য মডারেশন" },
+  moderation: {
+    icon: "moderation",
+    key: "desk.rail.moderation",
+    label: "মন্তব্য মডারেশন",
+  },
   ads: { icon: "ads", key: "desk.rail.ads", label: "বিজ্ঞাপন" },
   archive: { icon: "archive", key: "desk.rail.archive", label: "আর্কাইভ" },
 };
@@ -159,7 +171,14 @@ function deskWin(): Promise<typeof _win> {
   return Promise.resolve(_win);
 }
 
-function TabButton({ id, icon, label, active, onClick, shortcut }: {
+function TabButton({
+  id,
+  icon,
+  label,
+  active,
+  onClick,
+  shortcut,
+}: {
   id: View;
   icon: NavIconName;
   label: string;
@@ -190,7 +209,12 @@ function TabButton({ id, icon, label, active, onClick, shortcut }: {
   );
 }
 
-function MTabsButton({ id, label, active, onClick }: {
+function MTabsButton({
+  id,
+  label,
+  active,
+  onClick,
+}: {
   id: View;
   label: string;
   active: boolean;
@@ -211,16 +235,22 @@ function MTabsButton({ id, label, active, onClick }: {
 
 export default function App() {
   const { t } = useDeskLocale();
-  const [onboarded, setOnboarded] = useState(() => localStorage.getItem(ONBOARD_KEY) === "1");
+  const [onboarded, setOnboarded] = useState(
+    () => localStorage.getItem(ONBOARD_KEY) === "1",
+  );
   const [view, setView] = useState<View>("dashboard");
   /**
    * The desk's sidebar template. Read synchronously from the local mirror so the
    * first paint already has the chosen panel, then kept in sync with the picker
    * in Settings (which also writes the shared site config).
    */
-  const [sidebarStyle, setSidebarStyle] = useState<SidebarStyleId>(() => getDeskSidebarStyle());
+  const [sidebarStyle, setSidebarStyle] = useState<SidebarStyleId>(() =>
+    getDeskSidebarStyle(),
+  );
   useEffect(() => onDeskSidebarStyle(setSidebarStyle), []);
-  const [configured, setConfigured] = useState<Partial<Record<CredentialName, boolean>>>({});
+  const [configured, setConfigured] = useState<
+    Partial<Record<CredentialName, boolean>>
+  >({});
   /** Set when the server refused a session grant (revoked device, wrong URL). */
   const [grantError, setGrantError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
@@ -246,7 +276,9 @@ export default function App() {
   const [radarData, setRadarData] = useState<DeskRadarSnapshot | null>(null);
   const [cats, setCats] = useState<DeskCategory[] | null>(null);
   const [hours, setHours] = useState(2);
-  const [autoRun, _setAutoRun] = useState(() => localStorage.getItem(AUTORUN_KEY) !== "0");
+  const [autoRun, _setAutoRun] = useState(
+    () => localStorage.getItem(AUTORUN_KEY) !== "0",
+  );
   const [nextRunAt, setNextRunAt] = useState<number | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [winMaximized, setWinMaximized] = useState(false);
@@ -292,7 +324,8 @@ export default function App() {
         }
         return;
       }
-      const { isPermissionGranted, requestPermission, sendNotification } = await import("@tauri-apps/plugin-notification");
+      const { isPermissionGranted, requestPermission, sendNotification } =
+        await import("@tauri-apps/plugin-notification");
       let granted = await isPermissionGranted();
       if (!granted) granted = (await requestPermission()) === "granted";
       if (granted) sendNotification({ title, body });
@@ -305,10 +338,23 @@ export default function App() {
     try {
       const raw = localStorage.getItem(AUTO_BACKUP_KEY);
       if (!raw) return;
-      const cfg = JSON.parse(raw) as { enabled: boolean; folder: string; keep: number; pass: string } | null;
+      const cfg = JSON.parse(raw) as {
+        enabled: boolean;
+        folder: string;
+        keep: number;
+        pass: string;
+      } | null;
       if (!cfg?.enabled || !cfg.folder || !cfg.pass) return;
-      const res = await deskBackupAuto(cfg.pass, cfg.folder, Math.max(1, cfg.keep || 7), await getRunEnv());
-      setLogs((prev) => [...prev, `[backup]auto → ${res.file} · kept ${res.kept} pruned ${res.pruned}`]);
+      const res = await deskBackupAuto(
+        cfg.pass,
+        cfg.folder,
+        Math.max(1, cfg.keep || 7),
+        await getRunEnv(),
+      );
+      setLogs((prev) => [
+        ...prev,
+        `[backup]auto → ${res.file} · kept ${res.kept} pruned ${res.pruned}`,
+      ]);
       toast.ok("অটো-ব্যাকআপ সম্পন্ন", `${res.file} · kept ${res.kept}`);
     } catch (e) {
       setLogs((prev) => [...prev, `[backup]auto failed: ${String(e)}`]);
@@ -332,7 +378,10 @@ export default function App() {
       const res = await fetch(u.toString());
       if (res.ok) {
         setLogs((prev) => [...prev, "[web]revalidate OK"]);
-        toast.ok("ওয়েব ক্যাশ রিফ্রেশ হয়েছে", "হোমপেজ ও ক্যাটাগরি পেজ নতুন কনটেন্ট দেখাবে।");
+        toast.ok(
+          "ওয়েব ক্যাশ রিফ্রেশ হয়েছে",
+          "হোমপেজ ও ক্যাটাগরি পেজ নতুন কনটেন্ট দেখাবে।",
+        );
       } else {
         toast.err("ওয়েব রিফ্রেশ ব্যর্থ", `HTTP ${res.status}`);
       }
@@ -349,15 +398,19 @@ export default function App() {
         dryRun: false,
         months: m.config.retention_months || 1,
       });
-      setLogs(
-        (prev) => [...prev, `[media]cleanup → removed ${res.removed} · skipped ${res.skipped} (cutoff ${res.cutoff.slice(0, 10)})`],
-      );
+      setLogs((prev) => [
+        ...prev,
+        `[media]cleanup → removed ${res.removed} · skipped ${res.skipped} (cutoff ${res.cutoff.slice(0, 10)})`,
+      ]);
     } catch {
       /* cleanup failure is non-fatal */
     }
   };
 
-  const refresh = useCallback(async (): Promise<{ ok: boolean; error?: string }> => {
+  const refresh = useCallback(async (): Promise<{
+    ok: boolean;
+    error?: string;
+  }> => {
     try {
       const env = await getRunEnv();
       /*
@@ -398,8 +451,14 @@ export default function App() {
       const pending = boot.stats?.stats?.pendingReview ?? 0;
       setPendingCount(pending);
       void deskWin().then((w) => w?.setBadgeCount?.(pending));
-      if (pending > prevPendingRef.current && (document.hidden || winMinimizedRef.current)) {
-        void notify("হৈচৈ ডেস্ক — অপেক্ষমাণ মন্তব্য", `${toBn(pending)}টি মন্তব্য মডারেশনের অপেক্ষায় আছে।`);
+      if (
+        pending > prevPendingRef.current &&
+        (document.hidden || winMinimizedRef.current)
+      ) {
+        void notify(
+          "হৈচৈ ডেস্ক — অপেক্ষমাণ মন্তব্য",
+          `${toBn(pending)}টি মন্তব্য মডারেশনের অপেক্ষায় আছে।`,
+        );
       }
       prevPendingRef.current = pending;
       setLastRefreshAt(Date.now());
@@ -446,11 +505,18 @@ export default function App() {
       setRunning(false);
       setLogs((prev) => [...prev, `── exit code ${code} ──`]);
       await refresh();
-      if (hoursRef.current > 0) setNextRunAt(Date.now() + hoursRef.current * 3_600_000);
+      if (hoursRef.current > 0)
+        setNextRunAt(Date.now() + hoursRef.current * 3_600_000);
       if (code === 0) {
-        toast.ok("পাইপলাইন সম্পন্ন", "নতুন রান সফলভাবে শেষ হয়েছে — মনিটর হালনাগাদ।");
+        toast.ok(
+          "পাইপলাইন সম্পন্ন",
+          "নতুন রান সফলভাবে শেষ হয়েছে — মনিটর হালনাগাদ।",
+        );
       } else {
-        toast.err("পাইপলাইন ব্যর্থ", `রান exit code ${code} নিয়ে শেষ হয়েছে — কালেক্টর লগ দেখুন।`);
+        toast.err(
+          "পাইপলাইন ব্যর্থ",
+          `রান exit code ${code} নিয়ে শেষ হয়েছে — কালেক্টর লগ দেখুন।`,
+        );
       }
       void maybeAutoBackup();
       void maybeRevalidate();
@@ -524,8 +590,14 @@ export default function App() {
       const idleFor = now - idleSince;
       const totalFor = now - started;
       if (idleFor < RUN_IDLE_MS && totalFor < RUN_MAX_MS) return;
-      const why = totalFor >= RUN_MAX_MS ? "সময়সীমা (২ ঘণ্টা) ছাড়িয়ে গেছে" : "১০ মিনিট ধরে কোনো লগ আসেনি";
-      setLogs((prev) => [...prev, `[desk] watchdog: ${why} — কালেক্টর বন্ধ করা হচ্ছে`]);
+      const why =
+        totalFor >= RUN_MAX_MS
+          ? "সময়সীমা (২ ঘণ্টা) ছাড়িয়ে গেছে"
+          : "১০ মিনিট ধরে কোনো লগ আসেনি";
+      setLogs((prev) => [
+        ...prev,
+        `[desk] watchdog: ${why} — কালেক্টর বন্ধ করা হচ্ছে`,
+      ]);
       runStartedAtRef.current = null;
       runIdleSinceRef.current = null;
       try {
@@ -534,7 +606,8 @@ export default function App() {
         /* ignore */
       }
       setRunning(false);
-      if (hoursRef.current > 0) setNextRunAt(Date.now() + hoursRef.current * 3_600_000);
+      if (hoursRef.current > 0)
+        setNextRunAt(Date.now() + hoursRef.current * 3_600_000);
       void stopPipeline().catch(() => undefined);
       void refresh();
       toast.err("কালেক্টর সাড়া দেয়নি", `${why} — রান থামানো হয়েছে, লগ দেখুন।`);
@@ -567,7 +640,10 @@ export default function App() {
       }
       setLogs((prev) => [...prev, `[desk] failed to start: ${String(err)}`]);
       setRunning(false);
-      toast.err("কালেক্টর শুরু ব্যর্থ", err instanceof Error ? err.message : String(err));
+      toast.err(
+        "কালেক্টর শুরু ব্যর্থ",
+        err instanceof Error ? err.message : String(err),
+      );
     }
   };
 
@@ -589,7 +665,10 @@ export default function App() {
       if (r.ok) {
         toast.ok("স্ন্যাপশট রিফ্রেশ হয়েছে", "মনিটর ও কনটেন্ট সারি হালনাগাদ হয়েছে।");
       } else {
-        toast.err("রিফ্রেশ ব্যর্থ", r.error ?? "রানার উত্তর দেয়নি — সংযোগ ও কি যাচাই করুন।");
+        toast.err(
+          "রিফ্রেশ ব্যর্থ",
+          r.error ?? "রানার উত্তর দেয়নি — সংযোগ ও কি যাচাই করুন।",
+        );
       }
     } finally {
       setRefreshing(false);
@@ -610,7 +689,11 @@ export default function App() {
 
   // Device-token mode is the supported connection: the credential lives on the
   // server and this app only carries a revocable token.
-  const dbDriver = configured.desk_token ? "SERVER" : configured.turso_url ? "TURSO" : "LOCAL";
+  const dbDriver = configured.desk_token
+    ? "SERVER"
+    : configured.turso_url
+      ? "TURSO"
+      : "LOCAL";
   const watchingCount = sources.filter((s) => s.is_active).length;
 
   const jump = (v: View) => setView(v);
@@ -680,7 +763,7 @@ export default function App() {
               void deskWin().then((w) => w?.toggleMaximize());
             }}
           >
-<img src="/logo.png" alt="" />
+            <img src="/logo.png" alt="" />
             <span>{t("desk.chrome.name")}</span>
             <em>TAURI 2.1</em>
           </div>
@@ -696,7 +779,16 @@ export default function App() {
                 );
               }}
             >
-              <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M5 12h14"/></svg>
+              <svg
+                className="ic"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+              >
+                <path d="M5 12h14" />
+              </svg>
             </button>
             <button
               id="btnMax2"
@@ -707,7 +799,15 @@ export default function App() {
                 );
               }}
             >
-              <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
+              <svg
+                className="ic"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+              >
+                <rect x="6" y="6" width="12" height="12" rx="1.5" />
+              </svg>
             </button>
             <button
               id="btnClose2"
@@ -718,24 +818,48 @@ export default function App() {
                 );
               }}
             >
-              <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+              <svg
+                className="ic"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+              >
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
             </button>
           </div>
         </div>
 
         <div className="menubar">
-          <a href="/" onClick={(e) => { e.preventDefault(); void openAdmin(SITE_URL); }}>ফাইল</a>
+          <a
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              void openAdmin(SITE_URL);
+            }}
+          >
+            ফাইল
+          </a>
           <button onClick={() => jump("watchlist")}>সোর্স</button>
           <button onClick={() => jump("collector")}>রান</button>
           <button onClick={() => jump("vault")}>ভল্ট</button>
-          <a href="/system" onClick={(e) => { e.preventDefault(); void openAdmin(`${SITE_URL}/system`); }}>সাহায্য</a>
+          <a
+            href="/system"
+            onClick={(e) => {
+              e.preventDefault();
+              void openAdmin(`${SITE_URL}/system`);
+            }}
+          >
+            সাহায্য
+          </a>
           <span className="kbd-hint ml-auto">1–9 · 0 TABS</span>
         </div>
 
-        <DeskSyncBar
-          queueRows={queueRows}
-          onSynced={() => refresh()}
-        />
+        <DeskSyncBar queueRows={queueRows} onSynced={() => refresh()} />
+
+        <SecurityBanner />
 
         <div className="winbody">
           <aside className="side" data-sidebar-style={sidebarStyle}>
@@ -753,8 +877,12 @@ export default function App() {
               ))}
             </nav>
             <div className="side-foot">
-              <p className="online"><span className="pulse-dot"></span>CONTROLLER ONLINE</p>
-              <p className="watching" id="sideWatch">{toBn(watchingCount)} সোর্স সক্রিয়</p>
+              <p className="online">
+                <span className="pulse-dot"></span>CONTROLLER ONLINE
+              </p>
+              <p className="watching" id="sideWatch">
+                {toBn(watchingCount)} সোর্স সক্রিয়
+              </p>
               {pendingCount > 0 && (
                 <p className="watching pending-badge" id="sidePending">
                   {toBn(pendingCount)} মন্তব্য মডারেশনে
@@ -777,33 +905,45 @@ export default function App() {
             </div>
 
             <main className="stage">
-              <section className="pane" id="pane-dashboard" hidden={view !== "dashboard"}>
+              <section
+                className="pane"
+                id="pane-dashboard"
+                hidden={view !== "dashboard"}
+              >
                 <PaneBoundary name="dashboard">
-                <Dashboard
-                  sources={sources}
-                  queueRows={queueRows}
-                  statsData={statsData}
-                  radarData={radarData}
-                  cats={cats}
-                  running={running}
-                  dbDriver={dbDriver}
-                  onOpen={jump}
-                  onRun={() => void runNow()}
-                  onRefresh={() => void manualRefresh()}
-                  refreshing={refreshing}
-                  logs={logs}
-                  lastRefreshAt={lastRefreshAt}
-                />
+                  <Dashboard
+                    sources={sources}
+                    queueRows={queueRows}
+                    statsData={statsData}
+                    radarData={radarData}
+                    cats={cats}
+                    running={running}
+                    dbDriver={dbDriver}
+                    onOpen={jump}
+                    onRun={() => void runNow()}
+                    onRefresh={() => void manualRefresh()}
+                    refreshing={refreshing}
+                    logs={logs}
+                    lastRefreshAt={lastRefreshAt}
+                  />
                 </PaneBoundary>
               </section>
 
-              <section className="pane col" id="pane-traffic" hidden={view !== "traffic"}>
+              <section
+                className="pane col"
+                id="pane-traffic"
+                hidden={view !== "traffic"}
+              >
                 <PaneBoundary name="traffic">
                   <Traffic />
                 </PaneBoundary>
               </section>
 
-              <section className="pane col" id="pane-watchlist" hidden={view !== "watchlist"}>
+              <section
+                className="pane col"
+                id="pane-watchlist"
+                hidden={view !== "watchlist"}
+              >
                 <PaneBoundary name="watchlist">
                   <Watchlist
                     sources={sources}
@@ -814,7 +954,11 @@ export default function App() {
                 </PaneBoundary>
               </section>
 
-              <section className="pane col" id="pane-queue" hidden={view !== "queue"}>
+              <section
+                className="pane col"
+                id="pane-queue"
+                hidden={view !== "queue"}
+              >
                 <PaneBoundary name="queue">
                   <Queue
                     rows={queueRows}
@@ -827,36 +971,55 @@ export default function App() {
                 </PaneBoundary>
               </section>
 
-              <section className="pane col" id="pane-collector" hidden={view !== "collector"}>
+              <section
+                className="pane col"
+                id="pane-collector"
+                hidden={view !== "collector"}
+              >
                 <PaneBoundary name="collector">
-                <Collector
-                  logs={logs}
-                  running={running}
-                  onStart={() => void runNow()}
-                  onStop={() => void stopNow()}
-                  statsData={statsData}
-                  nextRunAt={nextRunAt}
-                  autoRun={autoRun}
-                  onAutoRun={setAutoRun}
-                  radarData={radarData}
-                  queueRows={queueRows}
-                />
+                  <Collector
+                    logs={logs}
+                    running={running}
+                    onStart={() => void runNow()}
+                    onStop={() => void stopNow()}
+                    statsData={statsData}
+                    nextRunAt={nextRunAt}
+                    autoRun={autoRun}
+                    onAutoRun={setAutoRun}
+                    radarData={radarData}
+                    queueRows={queueRows}
+                  />
                 </PaneBoundary>
               </section>
 
-              <section className="pane col" id="pane-vault" hidden={view !== "vault"}>
+              <section
+                className="pane col"
+                id="pane-vault"
+                hidden={view !== "vault"}
+              >
                 <PaneBoundary name="vault">
-                  <Vault configured={configured} onEdit={() => jump("settings")} />
+                  <Vault
+                    configured={configured}
+                    onEdit={() => jump("settings")}
+                  />
                 </PaneBoundary>
               </section>
 
-              <section className="pane" id="pane-settings" hidden={view !== "settings"}>
+              <section
+                className="pane"
+                id="pane-settings"
+                hidden={view !== "settings"}
+              >
                 <PaneBoundary name="settings">
                   <Settings refresh={refresh} refreshBrand={refresh} />
                 </PaneBoundary>
               </section>
 
-              <section className="pane" id="pane-moderation" hidden={view !== "moderation"}>
+              <section
+                className="pane"
+                id="pane-moderation"
+                hidden={view !== "moderation"}
+              >
                 <PaneBoundary name="moderation">
                   <Moderation />
                 </PaneBoundary>
@@ -867,7 +1030,11 @@ export default function App() {
                   <Ads refreshBrand={refresh} />
                 </PaneBoundary>
               </section>
-              <section className="pane" id="pane-archive" hidden={view !== "archive"}>
+              <section
+                className="pane"
+                id="pane-archive"
+                hidden={view !== "archive"}
+              >
                 <PaneBoundary name="archive">
                   <Archive />
                 </PaneBoundary>
@@ -877,9 +1044,55 @@ export default function App() {
         </div>
 
         <footer className="statusbar">
-          <span className="sb lime"><svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2.5 9a15 15 0 0 1 19 0M5.5 12.5a10 10 0 0 1 13 0M8.6 16a5 5 0 0 1 6.8 0"/><circle cx="12" cy="19" r="1.2" fill="currentColor" stroke="none"/></svg>TAURI 2.1</span>
-          <span className="sb lime"><svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>{dbDriver} · {grantError ? "ACCESS DENIED" : "CONNECTED"}</span>
-          <span className="sb"><svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M6 8.5v7M18 12H8.5"/></svg>HOICHOI-CONTENT</span>
+          <span className="sb lime">
+            <svg
+              className="ic"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <path d="M2.5 9a15 15 0 0 1 19 0M5.5 12.5a10 10 0 0 1 13 0M8.6 16a5 5 0 0 1 6.8 0" />
+              <circle
+                cx="12"
+                cy="19"
+                r="1.2"
+                fill="currentColor"
+                stroke="none"
+              />
+            </svg>
+            TAURI 2.1
+          </span>
+          <span className="sb lime">
+            <svg
+              className="ic"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <ellipse cx="12" cy="5" rx="8" ry="3" />
+              <path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
+              <path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" />
+            </svg>
+            {dbDriver} · {grantError ? "ACCESS DENIED" : "CONNECTED"}
+          </span>
+          <span className="sb">
+            <svg
+              className="ic"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <circle cx="6" cy="6" r="2.5" />
+              <circle cx="6" cy="18" r="2.5" />
+              <circle cx="18" cy="12" r="2.5" />
+              <path d="M6 8.5v7M18 12H8.5" />
+            </svg>
+            HOICHOI-CONTENT
+          </span>
           <StatusClock />
         </footer>
       </div>

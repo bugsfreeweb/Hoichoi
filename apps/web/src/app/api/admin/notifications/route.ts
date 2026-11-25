@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { forbidden, requireApiRole } from "@/lib/auth";
+import { securityAlerts } from "@/lib/github-alerts";
 import {
   clearNotifications,
   countReviewQueues,
@@ -31,13 +32,19 @@ export async function GET() {
   if (user.role !== "admin" && user.role !== "editor") return forbidden();
 
   try {
-    const [counts, alerts, unread] = await Promise.all([
+    const [counts, alerts, unread, security] = await Promise.all([
       countReviewQueues(),
       // Real events (a provider cooling down, a credential expiring, a cron that
       // failed closed). Queue depths cannot express these, and they were the
       // things an operator only found out about by reading a log.
       listNotifications({ limit: 8, roleMin: user.role }).catch(() => []),
       countUnreadNotifications(user.role).catch(() => 0),
+      // Cached for five minutes in github-alerts; the bell must not wait on
+      // GitHub every 30 seconds, and a failure must not hide the queues. Only
+      // an admin sees repository findings; an editor's bell stays newsroom-only.
+      user.role === "admin"
+        ? securityAlerts().catch(() => null)
+        : Promise.resolve(null),
     ]);
     return NextResponse.json({
       ok: true,
@@ -83,7 +90,26 @@ export async function GET() {
           count: counts.pending_comments,
           label: "অপেক্ষমান মন্তব্য",
         },
+        // A scan finding is work too, and the only row here that is not a
+        // database count. It links to the panel that explains the fix.
+        ...(user.role === "admin" && security && security.open > 0
+          ? [
+              {
+                key: "security_alerts" as const,
+                href: "/admin/security#code-alerts",
+                count: security.open,
+                label: "কোড-স্ক্যানিং অ্যালার্ট",
+              },
+            ]
+          : []),
       ],
+      security: security
+        ? {
+            open: security.open,
+            configured: security.configured,
+            error: security.error ?? null,
+          }
+        : null,
       at: new Date().toISOString(),
     });
   } catch (e) {
@@ -106,11 +132,19 @@ export async function POST(req: Request) {
   if ("response" in guard) return guard.response;
   const user = guard.user;
 
-  let body: { id?: unknown; all?: unknown; clear?: unknown; includeUnread?: unknown };
+  let body: {
+    id?: unknown;
+    all?: unknown;
+    clear?: unknown;
+    includeUnread?: unknown;
+  };
   try {
     body = (await req.json()) as typeof body;
   } catch {
-    return NextResponse.json({ ok: false, error: "invalid JSON" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "invalid JSON" },
+      { status: 400 },
+    );
   }
 
   if (body.all === true) {
@@ -127,12 +161,17 @@ export async function POST(req: Request) {
    * side effect of tidying up.
    */
   if (body.clear === true) {
-    const cleared = await clearNotifications({ includeUnread: body.includeUnread === true });
+    const cleared = await clearNotifications({
+      includeUnread: body.includeUnread === true,
+    });
     return NextResponse.json({ ok: true, cleared });
   }
   const id = typeof body.id === "string" ? body.id.trim() : "";
   if (!/^[0-9a-f]{18,32}$/.test(id)) {
-    return NextResponse.json({ ok: false, error: "invalid id" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "invalid id" },
+      { status: 400 },
+    );
   }
   const marked = await markNotificationRead(id, user.role);
   return NextResponse.json({ ok: true, marked });
@@ -153,7 +192,10 @@ export async function DELETE(req: Request) {
 
   const id = new URL(req.url).searchParams.get("id")?.trim() ?? "";
   if (!/^[0-9a-f]{18,32}$/.test(id)) {
-    return NextResponse.json({ ok: false, error: "invalid id" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "invalid id" },
+      { status: 400 },
+    );
   }
   const removed = await dismissNotification(id);
   return NextResponse.json({ ok: true, removed });

@@ -5,6 +5,7 @@ import { DeskDevicesPanel } from "@/components/admin/DeskDevicesPanel";
 import { PrivacyTool } from "@/components/admin/PrivacyTool";
 import CredentialList from "@/components/admin/CredentialList";
 import LoginLogViewer from "@/components/admin/LoginLogViewer";
+import SecurityAlertsPanel from "@/components/admin/SecurityAlertsPanel";
 import { currentSession, requiresRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,22 @@ export default async function AdminSecurityPage() {
       />
 
       <div className="mt-6 grid gap-10">
+        {canSeeAll ? (
+          <section id="code-alerts">
+            <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">
+              কোড-স্ক্যানিং অ্যালার্ট
+            </h2>
+            <p className="mt-1 max-w-2xl font-mono-x text-[10.5px] leading-relaxed text-ink-soft">
+              GitHub CodeQL যে সমস্যাগুলো এখনো খোলা দেখছে — প্রতিটি সারির পাশে ঠিক
+              করার নির্দেশনা আছে, আর অ্যালার্টটি খুললে কোডের ঠিকানা ও পূর্ণ বিবরণ দেখা
+              যাবে।
+            </p>
+            <div className="mt-3">
+              <SecurityAlertsPanel canSee={canSeeAll} />
+            </div>
+          </section>
+        ) : null}
+
         <section>
           <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">
             দুই-ধাপ যাচাই (2FA)
@@ -44,13 +61,13 @@ export default async function AdminSecurityPage() {
           <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">
             ডেস্কটপ ডিভাইস
           </h2>
-          <div className="mt-3">
-            {canSeeAll ? <DeskDevicesPanel /> : null}
-          </div>
+          <div className="mt-3">{canSeeAll ? <DeskDevicesPanel /> : null}</div>
         </section>
 
         <section>
-          <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">সেশন ও ডিভাইস</h2>
+          <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">
+            সেশন ও ডিভাইস
+          </h2>
           <div className="mt-3">
             <SessionList canSeeAll={canSeeAll} />
             {canSeeAll ? <PrivacyTool /> : null}
@@ -58,10 +75,13 @@ export default async function AdminSecurityPage() {
         </section>
 
         <section>
-          <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">ক্রেডেনশিয়ালের মেয়াদ</h2>
+          <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">
+            ক্রেডেনশিয়ালের মেয়াদ
+          </h2>
           <p className="mt-1 font-mono-x text-[10.5px] text-ink-soft">
-            প্রোভাইডার কী, টোকেন বা স্টোরেজ সিক্রেটের মেয়াদ এখানে লিখে রাখুন — মেয়াদ শেষের ৭ দিন আগে
-            ডেইলি চেক ইমেইল পাঠাবে। এখানে কোনো সিক্রেট সংরক্ষিত হয় না।
+            প্রোভাইডার কী, টোকেন বা স্টোরেজ সিক্রেটের মেয়াদ এখানে লিখে রাখুন — মেয়াদ
+            শেষের ৭ দিন আগে ডেইলি চেক ইমেইল পাঠাবে। এখানে কোনো সিক্রেট সংরক্ষিত হয়
+            না।
           </p>
           <div className="mt-3">
             <CredentialList canEdit={canSeeAll} />
@@ -69,9 +89,12 @@ export default async function AdminSecurityPage() {
         </section>
 
         <section>
-          <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">লগইন লগ</h2>
+          <h2 className="font-mono-x text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">
+            লগইন লগ
+          </h2>
           <p className="mt-1 font-mono-x text-[10.5px] text-ink-soft">
-            সফল ও ব্যর্থ দুটোই রেকর্ড হয়। অচেনা ডিভাইস থেকে সফল লগইন দেখলে সাথে সাথে সেশন বাতিল করুন।
+            সফল ও ব্যর্থ দুটোই রেকর্ড হয়। অচেনা ডিভাইস থেকে সফল লগইন দেখলে সাথে সাথে
+            সেশন বাতিল করুন।
           </p>
           <div className="mt-3">
             <LoginLogViewer />
