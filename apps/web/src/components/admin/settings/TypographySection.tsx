@@ -27,7 +27,10 @@ export function TypographySection() {
   const setFont = (key: "headline" | "body" | "meta", id: string) => {
     setCfg((c) => ({
       ...c,
-      typography: { ...(c.typography ?? { headline: "", body: "", meta: "" }), [key]: id },
+      typography: {
+        ...(c.typography ?? { headline: "", body: "", meta: "" }),
+        [key]: id,
+      },
     }));
     setMsg(null);
   };
@@ -46,7 +49,9 @@ export function TypographySection() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ app_config_json: JSON.stringify(cfg) }),
       });
-      const j = (await res.json().catch(() => null)) as { error?: string } | null;
+      const j = (await res.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       if (!res.ok) throw new Error(j?.error ?? `HTTP ${res.status}`);
       setMsg("✓ ফন্ট সংরক্ষিত — সাইট এখনই নতুন ফন্ট ব্যবহার করবে");
       router.refresh();
@@ -61,16 +66,20 @@ export function TypographySection() {
     <div className="mt-5 border border-ink/15 bg-paper p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h4 className="font-sans-bn text-[16px] font-bold text-ink">বাংলা ফন্ট লাইব্রেরি</h4>
+          <h4 className="font-sans-bn text-[16px] font-bold text-ink">
+            বাংলা ফন্ট লাইব্রেরি
+          </h4>
           <p className="mt-1 max-w-3xl text-[12px] leading-relaxed text-ink-soft">
-            রিপোজিটরির <code className="font-mono-x">Bangla Fonts</code> ফোল্ডারের{" "}
-            {BANGLA_FONTS.length}টি ইউনিকোড পরিবার এখানে বান্ডল করা আছে — কোনো Google Fonts
-            রিকোয়েস্ট নেই। টাইটেল, বর্ণনা এবং ট্যাগ/বিভাগের জন্য আলাদা ফন্ট বেছে নিন;
-            বাকিগুলো <code className="font-mono-x">.bnfont-*</code> ক্লাসে ব্যবহারযোগ্য।
+            রিপোজিটরির <code className="font-mono-x">Bangla Fonts</code>{" "}
+            ফোল্ডারের {BANGLA_FONTS.length}টি ইউনিকোড পরিবার এখানে বান্ডল করা আছে
+            — কোনো Google Fonts রিকোয়েস্ট নেই। টাইটেল, বর্ণনা এবং ট্যাগ/বিভাগের জন্য
+            আলাদা ফন্ট বেছে নিন; বাকিগুলো{" "}
+            <code className="font-mono-x">.bnfont-*</code> ক্লাসে ব্যবহারযোগ্য।
           </p>
         </div>
         <span className="font-mono-x text-[10px] text-ink-soft">
-          {BANGLA_FONTS.length} পরিবার · {BANGLA_FONTS.reduce((n, f) => n + f.faces.length, 0)} ফেস
+          {BANGLA_FONTS.length} পরিবার ·{" "}
+          {BANGLA_FONTS.reduce((n, f) => n + f.faces.length, 0)} ফেস
         </span>
       </div>
 
@@ -122,24 +131,33 @@ export function TypographySection() {
         </label>
       </div>
 
-      <div className="mt-3 border border-ink/15 bg-white p-3">
-        <p className="font-mono-x text-[9px] uppercase tracking-[0.18em] text-ink-soft">লাইভ প্রিভিউ</p>
+      <div className="mt-3 border border-ink/15 bg-card p-3">
+        <p className="font-mono-x text-[9px] uppercase tracking-[0.18em] text-ink-soft">
+          লাইভ প্রিভিউ
+        </p>
         <p
           className="mt-1 text-[26px] leading-tight text-ink"
-          style={{ fontFamily: headline ? `'${headline.family}', serif` : undefined }}
+          style={{
+            fontFamily: headline ? `'${headline.family}', serif` : undefined,
+          }}
         >
-          {headline ? headline.label : "Noto Serif Bengali"} — শিরোনাম এমন দেখাবে
+          {headline ? headline.label : "Noto Serif Bengali"} — শিরোনাম এমন
+          দেখাবে
         </p>
         <p
           className="mt-1 text-[13px] leading-relaxed text-ink-soft"
-          style={{ fontFamily: body ? `'${body.family}', sans-serif` : undefined }}
+          style={{
+            fontFamily: body ? `'${body.family}', sans-serif` : undefined,
+          }}
         >
-          {body ? body.label : "Hind Siliguri"} — সংবাদের বডি এই ফন্টে পড়া হবে। সংখ্যা ১২৩৪৫৬৭৮৯০,
-          যুক্তাক্ষর: ক্ষ্ম, ন্ত, স্ত্র, ঞ্জ।
+          {body ? body.label : "Hind Siliguri"} — সংবাদের বডি এই ফন্টে পড়া হবে।
+          সংখ্যা ১২৩৪৫৬৭৮৯০, যুক্তাক্ষর: ক্ষ্ম, ন্ত, স্ত্র, ঞ্জ।
         </p>
         <p
           className="mt-1 text-[11px] font-bold tracking-wide text-ink-soft"
-          style={{ fontFamily: meta ? `'${meta.family}', sans-serif` : undefined }}
+          style={{
+            fontFamily: meta ? `'${meta.family}', sans-serif` : undefined,
+          }}
         >
           {meta ? meta.label : "বডির ফন্ট"} — ট্যাগ · বিভাগ · বিষয়
         </p>
@@ -147,7 +165,7 @@ export function TypographySection() {
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {BANGLA_FONTS.map((f) => (
-          <div key={f.id} className="border border-ink/12 bg-white p-2">
+          <div key={f.id} className="border border-ink/12 bg-card p-2">
             <p
               className="truncate text-[17px] leading-snug text-ink"
               style={{ fontFamily: `'${f.family}', sans-serif` }}
@@ -156,7 +174,10 @@ export function TypographySection() {
               {SAMPLE}
             </p>
             <div className="mt-1 flex items-center justify-between gap-2">
-              <span className="truncate font-mono-x text-[9px] text-ink-soft" title={f.label}>
+              <span
+                className="truncate font-mono-x text-[9px] text-ink-soft"
+                title={f.label}
+              >
                 {f.label}
               </span>
               <span className="flex shrink-0 gap-1">
@@ -184,6 +205,18 @@ export function TypographySection() {
                 >
                   বডি
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setFont("meta", f.id)}
+                  aria-pressed={chosen.meta === f.id}
+                  className={`px-1.5 py-0.5 text-[9px] font-bold ${
+                    chosen.meta === f.id
+                      ? "bg-ink text-paper"
+                      : "border border-ink/20 text-ink-soft hover:text-ink"
+                  }`}
+                >
+                  ট্যাগ
+                </button>
               </span>
             </div>
           </div>
@@ -208,9 +241,11 @@ export function TypographySection() {
         )}
       </div>
       <p className="mt-2 text-[10.5px] leading-relaxed text-ink-soft">
-        {BANGLA_FONTS.length}টি পরিবারই বান্ডল করা — টাইটেল, বর্ণনা, ট্যাগ, বিভাগ ও বাকি
-        ইন্টারফেসে একই তালিকা থেকে বেছে নিন। প্রতিটি পরিবারের সোর্স লাইসেন্স/রিডমি{" "}
-        <code className="font-mono-x">packages/bangla-fonts/licenses/</code>-এ সংরক্ষিত।
+        {BANGLA_FONTS.length}টি পরিবারই বান্ডল করা — টাইটেল, বর্ণনা, ট্যাগ, বিভাগ ও
+        বাকি ইন্টারফেসে একই তালিকা থেকে বেছে নিন। প্রতিটি পরিবারের সোর্স
+        লাইসেন্স/রিডমি{" "}
+        <code className="font-mono-x">packages/bangla-fonts/licenses/</code>-এ
+        সংরক্ষিত।
       </p>
     </div>
   );

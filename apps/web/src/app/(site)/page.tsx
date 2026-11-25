@@ -50,6 +50,7 @@ export default async function HomePage({
 }) {
   const sp = await searchParams;
   const locale = await getLocale(sp);
+  const b = (bn: string, en: string) => (locale === "en" ? en : bn);
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
   const live = await getLive().catch(() => null);
   if (live && isMvMode(live)) {
@@ -155,7 +156,7 @@ export default async function HomePage({
           <div className="mx-auto max-w-[1400px] px-4 py-7 md:px-8">
             <div className="flex flex-wrap items-center gap-2.5">
               <span className="mr-1 font-mono-x text-[10px] tracking-[0.28em] text-ink-soft uppercase">
-                ▚ বিভাগসমূহ
+                ▚ {b("বিভাগসমূহ", "SECTIONS")}
               </span>
               {catStats.map(({ category, count }) => (
                 <Link
@@ -177,7 +178,7 @@ export default async function HomePage({
               ))}
               {catStats.length === 0 && (
                 <span className="text-[12px] text-ink-soft">
-                  কোনো প্রকাশিত বিভাগ নেই।
+                  {b("কোনো প্রকাশিত বিভাগ নেই।", "No published sections yet.")}
                 </span>
               )}
             </div>
@@ -199,10 +200,11 @@ export default async function HomePage({
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p className="font-mono-x text-[10.5px] tracking-[0.28em] text-alizarin uppercase">
-                  ▚ LEAD STORY · এই সিঙ্কের প্রধান কনটেন্ট
+                  ▚ LEAD STORY ·{" "}
+                  {b("এই সিঙ্কের প্রধান কনটেন্ট", "THE LEAD OF THIS SYNC")}
                 </p>
                 <h2 className="mt-2 font-serif-bn text-[34px] font-black text-ink md:text-[44px]">
-                  আজকের প্রধান হৈচৈ
+                  {b("আজকের প্রধান হৈচৈ", "Today's lead story")}
                 </h2>
               </div>
               <span className="font-mono-x text-[10px] tracking-[0.2em] text-ink-soft uppercase">
@@ -262,8 +264,11 @@ export default async function HomePage({
                 </TiltCard>
                 <p className="mt-3 flex items-center justify-between text-[10.5px] text-ink-soft">
                   <span>
-                    ছবি: {featured.media_path ? "সংগৃহীত" : "কেবল টেক্সট"} ·
-                    প্রতীকী
+                    {b("ছবি:", "Photo:")}{" "}
+                    {featured.media_path
+                      ? b("সংগৃহীত", "collected")
+                      : b("কেবল টেক্সট", "text only")}{" "}
+                    ·{b("প্রতীকী", "illustrative")}
                   </span>
                   <span className="font-mono-x tracking-wide">
                     SHOT_{shortId(featured.id).toUpperCase()} · PLAYWRIGHT
@@ -334,7 +339,7 @@ export default async function HomePage({
                     href={`/post/${featured.slug}`}
                     className="group flex items-center gap-2 bg-ink px-5 py-3 text-[13px] font-bold text-on-accent transition-colors duration-300 hover:bg-alizarin"
                   >
-                    পুরোটা পড়ুন
+                    {b("পুরোটা পড়ুন", "Read the full story")}
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="14"
@@ -382,13 +387,13 @@ export default async function HomePage({
                       <circle cx="12" cy="12" r="10" />
                       <path d="M12 6v6l4 2" />
                     </svg>
-                    {bnNum(readMinutesBn(featured.body_bn))} মিনিট
+                    {bnNum(readMinutesBn(featured.body_bn))} {b("মিনিট", "min")}
                   </span>
                 </div>
 
                 <div className="mt-8 border-t-2 border-ink pt-4">
                   <p className="font-serif-bn text-[16px] font-extrabold">
-                    সর্বাধিক পঠিত
+                    {b("সর্বাধিক পঠিত", "Most read")}
                   </p>
                   <ol className="mt-1 divide-y divide-ink/12">
                     {topPicks.map((a, i) => (
@@ -418,7 +423,8 @@ export default async function HomePage({
                                         ),
                                       }}
                                     />
-                                    {categoryLabel(a.category, meta, locale)} ·{" "}
+                                    {categoryLabel(a.category, meta, locale)}{" "}
+                                    ·{" "}
                                   </>
                                 );
                               })()}
@@ -456,22 +462,28 @@ export default async function HomePage({
                     AUTOMATION PIPELINE · EVERY 2 HOURS
                   </p>
                   <h2 className="mt-2 font-serif-bn text-[30px] font-black md:text-[42px]">
-                    ফিড থেকে লাইভ — ছয় ধাপ,{" "}
-                    <span className="text-lime">শূন্য ছোঁয়া।</span>
+                    {b(
+                      "ফিড থেকে লাইভ — ছয় ধাপ,",
+                      "From feed to live — six steps,",
+                    )}{" "}
+                    <span className="text-lime">
+                      {b("শূন্য ছোঁয়া।", "zero manual touch.")}
+                    </span>
                   </h2>
                   {/* `text-bandline/55` measured 3.88:1 on paper — below AA for 13px.
                   `ink-soft` is the palette's own small-text token (4.61:1). */}
                   <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-ink-soft">
-                    আলোর বিন্দুটি রাস্তাটা দেখিয়ে দিচ্ছে — প্রতিটি রানে ডেটা ঠিক এই
-                    পথ ধরে এগোয়: সোর্স থেকে শট, শট থেকে হ্যাশ, হ্যাশ পেরোলে লেখা,
-                    লেখা শেষে সোজা প্রোডাকশনে।
+                    {b(
+                      "আলোর বিন্দুটি রাস্তাটা দেখিয়ে দিচ্ছে — প্রতিটি রানে ডেটা ঠিক এই পথ ধরে এগোয়: সোর্স থেকে শট, শট থেকে হ্যাশ, হ্যাশ পেরোলে লেখা, লেখা শেষে সোজা প্রোডাকশনে।",
+                      "The moving light is the route every run takes: source to shot, shot to hash, hash to rewrite, rewrite straight to production.",
+                    )}
                   </p>
                 </div>
                 <Link
                   href="/system"
                   className="group flex items-center gap-2 border-b border-lime pb-1 text-[13px] font-bold text-lime"
                 >
-                  পুরো ব্লুপ্রিন্ট
+                  {b("পুরো ব্লুপ্রিন্ট", "Full blueprint")}
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="14"
@@ -507,19 +519,23 @@ export default async function HomePage({
                     REWRITE ENGINE · BANGLA STYLE GUIDE v2.4
                   </p>
                   <h2 className="mt-2 font-serif-bn text-[32px] font-black md:text-[42px]">
-                    একই ঘটনা — <span className="text-alizarin">দুই জগত।</span>
+                    {b("একই ঘটনা —", "One event —")}{" "}
+                    <span className="text-alizarin">
+                      {b("দুই জগত।", "two worlds.")}
+                    </span>
                   </h2>
                   <p className="mt-3 max-w-xl text-[13.5px] leading-relaxed text-ink-soft">
-                    বামে: ফিডের কাঁচা অবস্থা — হুটোপাটো ক্যাপশন, বানান-ভুল, আধমাথা
-                    তথ্য। ডানে: হৈচৈর ফ্যাক্ট-গেট পার হওয়া পুনর্লিখন। হাতলটি ধরে টেনে
-                    নিজেই বিচার করুন।
+                    {b(
+                      "বামে: ফিডের কাঁচা অবস্থা — হুটোপাটো ক্যাপশন, বানান-ভুল, আধমাথা তথ্য। ডানে: হৈচৈর ফ্যাক্ট-গেট পার হওয়া পুনর্লিখন। হাতলটি ধরে টেনে নিজেই বিচার করুন।",
+                      "Left: the raw feed — careless captions, typos, half-facts. Right: the rewrite after Hoichoi's fact gate. Drag the handle and judge for yourself.",
+                    )}
                   </p>
                 </div>
                 <Link
                   href={`/post/${featured.slug}`}
                   className="link-sweep flex items-center gap-2 text-[13px] font-bold text-ink"
                 >
-                  সম্পূর্ণ প্রতিবেদন
+                  {b("সম্পূর্ণ প্রতিবেদন", "Read the report")}
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="14"
@@ -561,12 +577,14 @@ export default async function HomePage({
                 ▚ TODAY'S COLLECTION · AUTO-CURATED
               </p>
               <h2 className="mt-2 font-serif-bn text-[34px] font-black text-ink md:text-[44px]">
-                আজকের সংগ্রহ
+                {b("আজকের সংগ্রহ", "Today's collection")}
               </h2>
             </div>
             <p className="max-w-sm text-[12.5px] leading-relaxed text-ink-soft">
-              প্রতিটি কার্ডের হ্যাশ স্ট্যাম্প দেখুন — এটাই এর জন্মসনদ। একই খবর দুইবার
-              এখানে জায়গা পায় না; পায় শুধু যাচাই করা, পুনর্লিখিত সংস্করণ।
+              {b(
+                "প্রতিটি কার্ডের হ্যাশ স্ট্যাম্প দেখুন — এটাই এর জন্মসনদ। একই খবর দুইবার এখানে জায়গা পায় না; পায় শুধু যাচাই করা, পুনর্লিখিত সংস্করণ।",
+                "Every card carries a hash stamp — its birth certificate. The same story never appears twice; only the verified, rewritten version gets in.",
+              )}
             </p>
           </div>
         </Reveal>

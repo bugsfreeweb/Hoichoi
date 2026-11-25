@@ -29,6 +29,8 @@
  * follows, and the brief explicitly forbids any lettering.
  */
 
+import { extractVisualSubjects, visualBriefLine } from "./visual-brief";
+
 export interface ImageBriefInput {
   /**
    * Where the poster will set its type. The picture keeps that side quiet.
@@ -359,11 +361,37 @@ export function storyAnchors(input: {
     .join(" ");
   const cues = extractVisualCues(text);
   const named = cues.filter((cue) =>
-    /^(NVIDIA|Jensen Huang|Sam Altman|Elon Musk|OpenAI|Microsoft|Google|Apple|Meta|Tesla|AMD|Intel|GPU hardware|semiconductor chips|data centre|CEO|employees|company headquarters|artificial intelligence|stock market|investment)$/i.test(cue),
+    /^(NVIDIA|Jensen Huang|Sam Altman|Elon Musk|OpenAI|Microsoft|Google|Apple|Meta|Tesla|AMD|Intel|GPU hardware|semiconductor chips|data centre|CEO|employees|company headquarters|artificial intelligence|stock market|investment)$/i.test(
+      cue,
+    ),
   );
-  const cities = cues.filter((cue) => /^(Dhaka|Chattogram|Rajshahi|Khulna|Sylhet|Barishal|Rangpur|Mymensingh|Cumilla)$/i.test(cue));
-  const rest = cues.filter((cue) => !named.includes(cue) && !cities.includes(cue) && !cue.startsWith("figure "));
-  return [...new Set([...named, ...cities, ...rest])].slice(0, 8);
+  const cities = cues.filter((cue) =>
+    /^(Dhaka|Chattogram|Rajshahi|Khulna|Sylhet|Barishal|Rangpur|Mymensingh|Cumilla)$/i.test(
+      cue,
+    ),
+  );
+  // `extractVisualCues` also collects every Latin word (gain, among,
+  // popularity). Those are not drawable subjects; proper nouns keep their
+  // capital, so only capitalised cues and figures survive into the anchors.
+  const rest = cues.filter(
+    (cue) =>
+      !named.includes(cue) &&
+      !cities.includes(cue) &&
+      !cue.startsWith("figure ") &&
+      !/^(Facebook|Instagram|Twitter|YouTube|TikTok|BBC|CNN|Reuters|TechCrunch)$/i.test(
+        cue,
+      ) &&
+      (/^[A-Z]/.test(cue) || /\d/.test(cue)),
+  );
+  // The glossary above is headline-scale (companies, hardware, cities). This
+  // second pass reads the article for the ordinary things a photograph needs:
+  // who is in it, what they wear, what is parked outside, what the room is made
+  // of. It is additive, so an NVIDIA story still keeps its company and CEO.
+  const subjects = extractVisualSubjects(input);
+  return [...new Set([...named, ...cities, ...subjects.labels, ...rest])].slice(
+    0,
+    10,
+  );
 }
 
 /**
@@ -414,14 +442,19 @@ export function publicFigureFor(input: {
 
 /** The visual signature of a named company, without drawing its logo. */
 export const COMPANY_LOOK: Readonly<Record<string, string>> = {
-  NVIDIA: "green-lit GPU accelerator boards and a dark data-centre aisle, no visible logo",
-  OpenAI: "a minimal white research office with a soft screen glow, no visible logo",
+  NVIDIA:
+    "green-lit GPU accelerator boards and a dark data-centre aisle, no visible logo",
+  OpenAI:
+    "a minimal white research office with a soft screen glow, no visible logo",
   Microsoft: "a glass office atrium with cool blue light, no visible logo",
   Google: "a bright open-plan campus with coloured accents, no visible logo",
-  Apple: "a minimalist light-grey studio with brushed aluminium, no visible logo",
-  Tesla: "a clean factory floor with robotic arms and an electric car silhouette, no visible logo",
+  Apple:
+    "a minimalist light-grey studio with brushed aluminium, no visible logo",
+  Tesla:
+    "a clean factory floor with robotic arms and an electric car silhouette, no visible logo",
   AMD: "a lab bench with processor wafers under cool light, no visible logo",
-  Intel: "a semiconductor clean-room with blue light and silicon wafers, no visible logo",
+  Intel:
+    "a semiconductor clean-room with blue light and silicon wafers, no visible logo",
 };
 
 /** Append the identity cues the anchors imply, when the prompt has not used them. */

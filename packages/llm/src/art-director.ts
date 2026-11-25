@@ -33,6 +33,11 @@ import {
 } from "@hoichoi/shared-types";
 import { newResolver, type ResolverOptions } from "./resolver";
 import { anchorAppearance, storyAnchors } from "./image-prompt";
+import {
+  extractVisualSubjects,
+  visualBriefLine,
+  visualSubjectSentence,
+} from "./visual-brief";
 import { ProviderError } from "./types";
 
 export interface PosterArticle {
@@ -101,29 +106,35 @@ export const ART_DIRECTOR_SCHEMA = {
   properties: {
     headline: {
       type: "STRING",
-      description: "Punchy, complete Bengali headline, maximum 48 characters. No quotes. Never end mid-word.",
+      description:
+        "Punchy, complete Bengali headline, maximum 48 characters. No quotes. Never end mid-word.",
     },
     highlight_word: {
       type: "STRING",
-      description: "One or two words copied exactly from headline, for the accent colour.",
+      description:
+        "One or two words copied exactly from headline, for the accent colour.",
     },
     content_mode: {
       type: "STRING",
       enum: ["bullets", "quote"],
-      description: "bullets for explainer/roundup stories, quote for profile/opinion/emotional stories.",
+      description:
+        "bullets for explainer/roundup stories, quote for profile/opinion/emotional stories.",
     },
     bullets: {
       type: "ARRAY",
-      description: "Exactly 3 crisp Bengali bullet points when content_mode is bullets, else an empty array.",
+      description:
+        "Exactly 3 crisp Bengali bullet points when content_mode is bullets, else an empty array.",
       items: { type: "STRING" },
     },
     pull_quote: {
       type: "STRING",
-      description: "One impactful Bengali pull-quote of at most 120 characters when content_mode is quote, else an empty string.",
+      description:
+        "One impactful Bengali pull-quote of at most 120 characters when content_mode is quote, else an empty string.",
     },
     badge_text: {
       type: "STRING",
-      description: "Bengali category badge, e.g. প্রযুক্তি, ব্রেকিং নিউজ, অর্থনীতি, খেলাধুলা.",
+      description:
+        "Bengali category badge, e.g. প্রযুক্তি, ব্রেকিং নিউজ, অর্থনীতি, খেলাধুলা.",
     },
     footer_text: {
       type: "STRING",
@@ -132,18 +143,21 @@ export const ART_DIRECTOR_SCHEMA = {
     layout_variant: {
       type: "STRING",
       enum: [...POSTER_DESIGN_LAYOUTS],
-      description: "Choose the layout that fits this story and avoid recently_used_designs. The design is later recomposed to 4:5 as well.",
+      description:
+        "Choose the layout that fits this story and avoid recently_used_designs. The design is later recomposed to 4:5 as well.",
     },
     palette_id: {
       type: "STRING",
       enum: POSTER_PALETTES.map((p) => p.id),
-      description: "Mood-matched palette id, never the same as the most recent design.",
+      description:
+        "Mood-matched palette id, never the same as the most recent design.",
     },
     visual_style: { type: "STRING", enum: [...POSTER_VISUAL_STYLES] },
     texture: {
       type: "STRING",
       enum: [...POSTER_TEXTURES],
-      description: "Procedural background texture that suits the art direction.",
+      description:
+        "Procedural background texture that suits the art direction.",
     },
     image_prompt: {
       type: "STRING",
@@ -178,12 +192,14 @@ Hard rules:
 5. The badge is a short Bengali category tag, not a sentence.
 6. Pick one layout_variant and one palette_id that fit the story's mood. Never repeat a (layout, palette) pair from recently_used_designs, and never repeat the single most recent palette.
 7. image_prompt is English, describes only the focal visual, matches visual_style and the palette's mood, and ends with: "No text, no letters, no numbers, no logos, no watermark."
-8. Ground the image in the story's named subject. If TITLE/SUMMARY/VISUAL ANCHORS name a person, company, product or place, the focal visual must show that exact person/company/product/place in an editorial way. A named public figure may be shown as a recognisable editorial subject. Never replace the named subject with a generic meeting, generic office or anonymous silhouette.
+8. Ground the image in the story's named subject. If TITLE/SUMMARY/VISUAL ANCHORS/VISUAL SUBJECTS name a person, company, product, country, age group, clothing, interior, exterior or material, the focal visual must show those exact things in an editorial way. A named public figure may be shown as a recognisable editorial subject. Never replace the named subject with a generic meeting, generic office or anonymous silhouette.
 9. CATEGORY is a filing label and may be wrong. TITLE and SUMMARY are the facts; when they disagree, follow the title.
 10. Return JSON only. No markdown, no commentary.`;
 
 function clampText(value: unknown, max: number): string {
-  return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, max) : "";
+  return typeof value === "string"
+    ? value.replace(/\s+/g, " ").trim().slice(0, max)
+    : "";
 }
 
 /** Code points, not UTF-16 units: a Bengali cluster can be several units wide. */
@@ -205,7 +221,11 @@ function clipHeadline(value: string, max = HEADLINE_MAX): string {
 function headlineFor(raw: unknown, article: PosterArticle): string {
   const title = (article.title ?? "").replace(/\s+/g, " ").trim();
   const model = clipHeadline(clampText(raw, 220));
-  if (model && title.startsWith(model) && Array.from(title).length > Array.from(model).length) {
+  if (
+    model &&
+    title.startsWith(model) &&
+    Array.from(title).length > Array.from(model).length
+  ) {
     return clipHeadline(title);
   }
   return model;
@@ -239,13 +259,41 @@ export function banglaDateLine(input?: string | null): string {
 }
 
 const CATEGORY_DESK: Array<{ match: RegExp; desk: string; badge: string }> = [
-  { match: /tech|technology|science|gadget|প্রযুক্তি|বিজ্ঞান/i, desk: "tech", badge: "প্রযুক্তি" },
-  { match: /econom|business|finance|bank|market|অর্থনীতি|ব্যবসা|বাজার/i, desk: "finance", badge: "অর্থনীতি" },
-  { match: /sport|cricket|football|খেলা|ক্রিকেট|ফুটবল/i, desk: "sports", badge: "খেলাধুলা" },
-  { match: /health|environment|climate|স্বাস্থ্য|পরিবেশ|জলবায়ু/i, desk: "health", badge: "স্বাস্থ্য" },
-  { match: /politics|world|international|রাজনীতি|আন্তর্জাতিক|বিশ্ব/i, desk: "world", badge: "রাজনীতি" },
-  { match: /breaking|crime|accident|disaster|জরুরি|অপরাধ|দুর্ঘটনা|দুর্যোগ/i, desk: "breaking", badge: "ব্রেকিং নিউজ" },
-  { match: /culture|entertainment|lifestyle|opinion|সংস্কৃতি|বিনোদন|মতামত/i, desk: "culture", badge: "সংস্কৃতি" },
+  {
+    match: /tech|technology|science|gadget|প্রযুক্তি|বিজ্ঞান/i,
+    desk: "tech",
+    badge: "প্রযুক্তি",
+  },
+  {
+    match: /econom|business|finance|bank|market|অর্থনীতি|ব্যবসা|বাজার/i,
+    desk: "finance",
+    badge: "অর্থনীতি",
+  },
+  {
+    match: /sport|cricket|football|খেলা|ক্রিকেট|ফুটবল/i,
+    desk: "sports",
+    badge: "খেলাধুলা",
+  },
+  {
+    match: /health|environment|climate|স্বাস্থ্য|পরিবেশ|জলবায়ু/i,
+    desk: "health",
+    badge: "স্বাস্থ্য",
+  },
+  {
+    match: /politics|world|international|রাজনীতি|আন্তর্জাতিক|বিশ্ব/i,
+    desk: "world",
+    badge: "রাজনীতি",
+  },
+  {
+    match: /breaking|crime|accident|disaster|জরুরি|অপরাধ|দুর্ঘটনা|দুর্যোগ/i,
+    desk: "breaking",
+    badge: "ব্রেকিং নিউজ",
+  },
+  {
+    match: /culture|entertainment|lifestyle|opinion|সংস্কৃতি|বিনোদন|মতামত/i,
+    desk: "culture",
+    badge: "সংস্কৃতি",
+  },
 ];
 
 function deskForCategory(category?: string | null): string {
@@ -263,7 +311,9 @@ function deskForCategory(category?: string | null): string {
  * category, so a mislabelled technology story still gets a technology poster.
  */
 function deskForArticle(article: PosterArticle): string {
-  const lead = [article.title, article.summary, article.category].filter(Boolean).join(" ");
+  const lead = [article.title, article.summary, article.category]
+    .filter(Boolean)
+    .join(" ");
   const all = [lead, article.content, article.source].filter(Boolean).join(" ");
   if (TECH_STORY.test(lead)) return "tech";
   const onLead = CATEGORY_DESK.find((c) => c.match.test(lead));
@@ -273,7 +323,8 @@ function deskForArticle(article: PosterArticle): string {
   return deskForCategory(article.category);
 }
 
-const TECH_STORY = /নিভিডিয়া|এনভিডিয়া|জিপিইউ|কৃত্রিম বুদ্ধিমত্তা|এআই|চিপ|সেমিকন্ডাক্টর|প্রযুক্তি|সফটওয়্যার|nvidia|gpu|openai|microsoft|google|apple|meta|tesla|amd|intel|artificial intelligence/i;
+const TECH_STORY =
+  /নিভিডিয়া|এনভিডিয়া|জিপিইউ|কৃত্রিম বুদ্ধিমত্তা|এআই|চিপ|সেমিকন্ডাক্টর|প্রযুক্তি|সফটওয়্যার|nvidia|gpu|openai|microsoft|google|apple|meta|tesla|amd|intel|artificial intelligence/i;
 
 const PALETTE_OF_DESK: Record<string, PosterPaletteId> = {
   tech: "tech_navy_cyan",
@@ -314,10 +365,52 @@ const TEXTURE_OF_LAYOUT: Record<PosterDesignLayout, PosterTexture> = {
 };
 
 const STOPWORDS = new Set([
-  "এই", "একটি", "একটা", "এবং", "কিন্তু", "থেকে", "জন্য", "সাথে", "আরো", "আরও", "যে", "যা",
-  "তার", "তিনি", "তারা", "করে", "করেছে", "হবে", "হয়", "হয়েছে", "নেই", "আছে", "বলে", "কথা",
-  "নিয়ে", "মধ্যে", "পর", "আগে", "পরে", "দিকে", "এখন", "সব", "কোনো", "একজন", "নতুন", "আজ",
-  "দিন", "বছর", "শেষ", "শুরু", "মতো", "আবার", "তবে", "কেন", "কীভাবে", "কোথায়",
+  "এই",
+  "একটি",
+  "একটা",
+  "এবং",
+  "কিন্তু",
+  "থেকে",
+  "জন্য",
+  "সাথে",
+  "আরো",
+  "আরও",
+  "যে",
+  "যা",
+  "তার",
+  "তিনি",
+  "তারা",
+  "করে",
+  "করেছে",
+  "হবে",
+  "হয়",
+  "হয়েছে",
+  "নেই",
+  "আছে",
+  "বলে",
+  "কথা",
+  "নিয়ে",
+  "মধ্যে",
+  "পর",
+  "আগে",
+  "পরে",
+  "দিকে",
+  "এখন",
+  "সব",
+  "কোনো",
+  "একজন",
+  "নতুন",
+  "আজ",
+  "দিন",
+  "বছর",
+  "শেষ",
+  "শুরু",
+  "মতো",
+  "আবার",
+  "তবে",
+  "কেন",
+  "কীভাবে",
+  "কোথায়",
 ]);
 
 function wordsOf(text: string): string[] {
@@ -331,11 +424,18 @@ function wordsOf(text: string): string[] {
 export function avoidRepetition(
   wanted: { layout: PosterDesignLayout; paletteId: PosterPaletteId },
   recentlyUsed: readonly RecentlyUsedDesign[],
-): { layout: PosterDesignLayout; paletteId: PosterPaletteId; changed: boolean } {
+): {
+  layout: PosterDesignLayout;
+  paletteId: PosterPaletteId;
+  changed: boolean;
+} {
   const window = recentlyUsed.slice(0, 5);
   const pairs = new Set(window.map((r) => `${r.layout}|${r.palette}`));
   const mostRecentPalette = window[0]?.palette;
-  if (!pairs.has(`${wanted.layout}|${wanted.paletteId}`) && wanted.paletteId !== mostRecentPalette) {
+  if (
+    !pairs.has(`${wanted.layout}|${wanted.paletteId}`) &&
+    wanted.paletteId !== mostRecentPalette
+  ) {
     return { ...wanted, changed: false };
   }
   for (const palette of POSTER_PALETTES) {
@@ -347,7 +447,9 @@ export function avoidRepetition(
   }
   // Every pair is in the window (only possible with a seeded/test history):
   // a different palette is still better than an exact repeat.
-  const alternative = POSTER_PALETTES.find((p) => p.id !== mostRecentPalette) ?? POSTER_PALETTES[0]!;
+  const alternative =
+    POSTER_PALETTES.find((p) => p.id !== mostRecentPalette) ??
+    POSTER_PALETTES[0]!;
   return { layout: wanted.layout, paletteId: alternative.id, changed: true };
 }
 
@@ -359,7 +461,8 @@ function fallbackPlan(
   const rawTitle = (article.title || "সংবাদ").replace(/\s+/g, " ").trim();
   const headline = clipHeadline(rawTitle);
   const titleWords = wordsOf(headline).sort((a, b) => b.length - a.length);
-  const highlightWord = titleWords.find((w) => !STOPWORDS.has(w) && headline.includes(w)) ?? "";
+  const highlightWord =
+    titleWords.find((w) => !STOPWORDS.has(w) && headline.includes(w)) ?? "";
   // The summary is two sentences on most stories; the body is where the third
   // bullet lives. Both are read, the summary first, without repeating a line.
   const sourceText = `${article.summary ?? ""} ${article.content ?? ""}`.trim();
@@ -371,7 +474,9 @@ function fallbackPlan(
         .filter((s) => s.length >= 8),
     ),
   );
-  const isQuoteStory = /culture|opinion|lifestyle/i.test(article.category ?? "");
+  const isQuoteStory = /culture|opinion|lifestyle/i.test(
+    article.category ?? "",
+  );
   const bullets = isQuoteStory
     ? []
     : sentences.slice(0, 3).map((s) => clipPhrase(s, 72));
@@ -383,9 +488,12 @@ function fallbackPlan(
   );
   const palette = paletteById(wanted.paletteId) ?? POSTER_PALETTES[0]!;
   const anchors = storyAnchors(article);
-  const subject = anchors.length
-    ? anchors.slice(0, 5).join(", ")
-    : clampText(rawTitle, 180) || "the story's central subject";
+  const subject = visualSubjectSentence(
+    article,
+    anchors.length
+      ? anchors.slice(0, 5).join(", ")
+      : clampText(rawTitle, 180) || "the story's central subject",
+  );
   return {
     headline,
     highlightWord,
@@ -415,7 +523,11 @@ function fallbackPlan(
  * when the prompt has not already named one, so a good prompt is not rewritten.
  */
 /** A label that came from a mis-filed category must not overrule the story. */
-function correctedBadge(raw: unknown, article: PosterArticle, fallback: string): string {
+function correctedBadge(
+  raw: unknown,
+  article: PosterArticle,
+  fallback: string,
+): string {
   const badge = clampText(raw, 24) || fallback;
   const claimed = deskForCategory(article.category);
   const actual = deskForArticle(article);
@@ -432,17 +544,27 @@ function groundedPrompt(
   palette: { bg: string; accent: string; mood: string } | null,
 ): string {
   const anchors = storyAnchors(article);
+  const subjects = extractVisualSubjects(article);
   const noText = /no text|without text|text-free/i.test(prompt);
   let out = prompt
-    .replace(/\s*No text,? no letters,? no numbers,? no logos?,? (?:and )?no watermark\.?\s*$/i, "")
+    .replace(
+      /\s*No text,? no letters,? no numbers,? no logos?,? (?:and )?no watermark\.?\s*$/i,
+      "",
+    )
     .replace(/[\s.]+$/, "");
   const lower = out.toLowerCase();
   // Per-anchor, not "did any of them appear": a prompt that says "employees"
   // used to pass this check and drop the company and the CEO it was about.
-  const missing = anchors.filter((a) => !lower.includes(a.toLowerCase()));
+  const required = [...new Set([...anchors, ...subjects.labels])];
+  const missing = required.filter((a) => !lower.includes(a.toLowerCase()));
   if (missing.length) {
-    out += `. The image must be specific to this story: ${missing.slice(0, 6).join(", ")}. `;
-    out += "Show the named person, company, product or place from the article; do not substitute a generic office, meeting or anonymous figure.";
+    out += `. The image must be specific to this story: ${missing.slice(0, 8).join(", ")}. `;
+    out +=
+      "Show the named person, company, product or place from the article, plus the age group, clothing, setting and materials the story names; do not substitute a generic office, meeting, anonymous figure or unrelated stock scene.";
+  } else if (subjects.labels.length) {
+    // Even when the model echoed a subject, the brief is repeated once as a
+    // compact list: image models drop one clause out of a paragraph routinely.
+    out += `. Story-specific elements in the frame: ${visualBriefLine(subjects, 6)}.`;
   }
   const looks = anchorAppearance(anchors);
   if (looks.length) {
@@ -482,7 +604,8 @@ function groundedPrompt(
     (name) => NEUTRAL[name] ?? "the company",
   );
   if (!/blank signage/i.test(out)) {
-    out += " Every sign, screen, badge and rack panel stays blank and unlettered; hands are anatomically natural.";
+    out +=
+      " Every sign, screen, badge and rack panel stays blank and unlettered; hands are anatomically natural.";
   }
   return out.replace(/\s+/g, " ").trim();
 }
@@ -498,7 +621,9 @@ function clipPhrase(value: string, max: number): string {
   let cut = "";
   let used = 0;
   try {
-    for (const part of new Intl.Segmenter("bn", { granularity: "grapheme" }).segment(text)) {
+    for (const part of new Intl.Segmenter("bn", {
+      granularity: "grapheme",
+    }).segment(text)) {
       const width = Array.from(part.segment).length;
       if (used + width > max) break;
       cut += part.segment;
@@ -514,7 +639,10 @@ function clipPhrase(value: string, max: number): string {
 
 /** The first real sentence of the article, used when a model quote is invented. */
 function firstSentence(article: PosterArticle): string {
-  const text = [article.summary, article.content].filter(Boolean).join(" ").trim();
+  const text = [article.summary, article.content]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
   return text.split(/(?<=[।.!?])\s+/)[0]?.trim() ?? "";
 }
 
@@ -556,7 +684,8 @@ export function normalisePlan(
   recentlyUsed: readonly RecentlyUsedDesign[] = [],
 ): PosterDesignPlan {
   const fallback = fallbackPlan(article, recentlyUsed);
-  const obj = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const obj =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
 
   const headline = headlineFor(obj.headline, article) || fallback.headline;
   let highlight = clampText(obj.highlight_word, 24);
@@ -564,7 +693,12 @@ export function normalisePlan(
     highlight = wordsOf(headline).sort((a, b) => b.length - a.length)[0] ?? "";
   }
 
-  const mode = obj.content_mode === "quote" ? "quote" : obj.content_mode === "bullets" ? "bullets" : null;
+  const mode =
+    obj.content_mode === "quote"
+      ? "quote"
+      : obj.content_mode === "bullets"
+        ? "bullets"
+        : null;
   const rawBullets = Array.isArray(obj.bullets)
     ? obj.bullets.map((b) => clipPhrase(b, 78)).filter(Boolean)
     : [];
@@ -572,7 +706,8 @@ export function normalisePlan(
   let bullets: string[] = [];
   let pullQuote: string | null = null;
   if (mode === "quote" || (!mode && rawQuote && rawBullets.length === 0)) {
-    pullQuote = rawQuote || fallback.pullQuote || fallback.bullets[0] || headline;
+    pullQuote =
+      rawQuote || fallback.pullQuote || fallback.bullets[0] || headline;
   } else if (storySuggestsQuote(article) && rawBullets.length === 0) {
     pullQuote = rawQuote || fallback.pullQuote || headline;
   } else {
@@ -590,22 +725,32 @@ export function normalisePlan(
   const proposedLayout = isPosterDesignLayout(obj.layout_variant)
     ? obj.layout_variant
     : fallback.layout;
-  const proposedPalette = isPosterPaletteId(obj.palette_id) ? obj.palette_id : fallback.paletteId;
+  const proposedPalette = isPosterPaletteId(obj.palette_id)
+    ? obj.palette_id
+    : fallback.paletteId;
   const rotated = avoidRepetition(
     { layout: proposedLayout, paletteId: proposedPalette },
     recentlyUsed,
   );
 
-  const style = isPosterVisualStyle(obj.visual_style) ? obj.visual_style : fallback.visualStyle;
+  const style = isPosterVisualStyle(obj.visual_style)
+    ? obj.visual_style
+    : fallback.visualStyle;
   const palette = paletteById(rotated.paletteId) ?? POSTER_PALETTES[0]!;
-  const texture = isPosterTexture(obj.texture) ? obj.texture : TEXTURE_OF_LAYOUT[rotated.layout];
+  const texture = isPosterTexture(obj.texture)
+    ? obj.texture
+    : TEXTURE_OF_LAYOUT[rotated.layout];
   const anchors = storyAnchors(article);
-  const fallbackSubject = anchors.length
-    ? anchors.slice(0, 5).join(", ")
-    : clampText(article.title, 180) || "the story's central subject";
+  const fallbackSubject = visualSubjectSentence(
+    article,
+    anchors.length
+      ? anchors.slice(0, 5).join(", ")
+      : clampText(article.title, 180) || "the story's central subject",
+  );
   const rawImagePrompt = clampText(obj.image_prompt, 1200);
   const imagePrompt = groundedPrompt(
-    rawImagePrompt || `${style} of ${fallbackSubject}. Wide composition with one clear focal subject and generous negative space.`,
+    rawImagePrompt ||
+      `${style} of ${fallbackSubject}. Wide composition with one clear focal subject and generous negative space.`,
     article,
     palette,
   );
@@ -616,7 +761,8 @@ export function normalisePlan(
     bullets,
     pullQuote,
     badgeText: correctedBadge(obj.badge_text, article, fallback.badgeText),
-    footerText: clipPhrase(clampText(obj.footer_text, 140), 90) || fallback.footerText,
+    footerText:
+      clipPhrase(clampText(obj.footer_text, 140), 90) || fallback.footerText,
     layout: rotated.layout,
     paletteId: rotated.paletteId,
     visualStyle: style,
@@ -635,7 +781,10 @@ export function artDirectorPrompt(
   article: PosterArticle,
   recentlyUsed: readonly RecentlyUsedDesign[] = [],
 ): string {
-  const recent = recentlyUsed.slice(0, 5).map((r) => `${r.layout} / ${r.palette}`).join(", ");
+  const recent = recentlyUsed
+    .slice(0, 5)
+    .map((r) => `${r.layout} / ${r.palette}`)
+    .join(", ");
   return [
     `TITLE: ${article.title ?? ""}`,
     `CATEGORY: ${article.category ?? "unknown"}`,
@@ -645,7 +794,12 @@ export function artDirectorPrompt(
     `SUMMARY: ${clampText(article.summary, 700)}`,
     `CONTENT: ${clampText(article.content, 2200)}`,
     `VISUAL ANCHORS (the image must be about these, not generic stock art): ${
-      storyAnchors(article).join(", ") || "none named — use the story's own subject"
+      storyAnchors(article).join(", ") ||
+      "none named — use the story's own subject"
+    }`,
+    `VISUAL SUBJECTS (people, place, objects, clothing, materials — every present item belongs in the image): ${
+      visualBriefLine(extractVisualSubjects(article), 8) ||
+      "none detected — infer from TITLE"
     }`,
     `recently_used_designs: ${recent || "none"}`,
     "Design the poster and return the JSON object.",
@@ -715,7 +869,12 @@ export async function directPosterDesign(
         : "no text provider is active — deterministic art direction used",
     };
   } catch (err) {
-    const message = err instanceof ProviderError ? err.message : err instanceof Error ? err.message : String(err);
+    const message =
+      err instanceof ProviderError
+        ? err.message
+        : err instanceof Error
+          ? err.message
+          : String(err);
     return {
       plan: normalisePlan(null, article, recent),
       source: "fallback",
@@ -733,8 +892,12 @@ export async function directPosterDesign(
  * model for a subject that the vertical crop cuts in half. The aspect ratio is
  * passed to the image API separately; this only fixes the prose.
  */
-export function orientImagePrompt(prompt: string, aspect: "16:9" | "4:5"): string {
-  if (aspect === "16:9" || /vertical 4:5 composition/i.test(prompt)) return prompt;
+export function orientImagePrompt(
+  prompt: string,
+  aspect: "16:9" | "4:5",
+): string {
+  if (aspect === "16:9" || /vertical 4:5 composition/i.test(prompt))
+    return prompt;
   const vertical = prompt
     .replace(/\bwide\b/gi, "vertical")
     .replace(/\blandscape\b/gi, "portrait")

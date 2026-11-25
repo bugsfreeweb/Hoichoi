@@ -146,7 +146,7 @@ check("the share card can have copy of its own", () => {
   assert.match(socialCopyMigration, /ADD COLUMN social_title TEXT/);
   assert.match(socialCopyMigration, /ADD COLUMN social_description TEXT/);
   assert.match(postPage, /post\.social_title\?\.trim\(\) \|\| post\.title_bn/);
-  assert.match(postPage, /post\.social_description\?\.trim\(\) \|\| post\.summary_bn/);
+  assert.match(postPage, /post\.social_description\?\.trim\(\)\s*\|\|\s*post\.summary_bn/);
   assert.match(postApi, /\["social_title", 160\]/);
   assert.match(postApi, /\["social_description", 400\]/);
   assert.match(postApi, /Array\.from\(clean\)\.length > max/);

@@ -1,18 +1,27 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { windowPosts, countWindowPosts, countWindowPostsByCategory } from "@hoichoi/db";
+import {
+  windowPosts,
+  countWindowPosts,
+  countWindowPostsByCategory,
+} from "@hoichoi/db";
 import { findCategory, getCategories } from "@/lib/categories-server";
 import { CollectionGrid } from "@/components/CollectionGrid";
 import { Pagination } from "@/components/Pagination";
 import { UnifiedAdPlacement } from "@/components/ads/UnifiedAdPlacement";
 import type { CategorySlug } from "@hoichoi/shared-types";
+import { getLocale } from "@/lib/locale";
 
 export const dynamic = "force-dynamic";
 
 /** Per-page cap for category (department) pages. */
 const PAGE_SIZE = 30;
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
   const { slug } = await params;
   const cat = await findCategory(slug);
   if (!cat) return { title: "বিভাগ পাওয়া যায়নি" };
@@ -31,6 +40,8 @@ export default async function CategoryPage({
 }) {
   const { slug } = await params;
   const sp = await searchParams;
+  const locale = await getLocale(sp);
+  const b = (bn: string, en: string) => (locale === "en" ? en : bn);
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
   const offset = (page - 1) * PAGE_SIZE;
   const [cat, cats, posts, total, counts] = await Promise.all([
@@ -49,22 +60,41 @@ export default async function CategoryPage({
   return (
     <section className="mx-auto max-w-site px-4 py-14 md:px-8">
       <div className="border-b-2 border-ink pb-6">
-        <p className="font-mono-x text-[10.5px] tracking-[0.26em] uppercase" style={{ color }}>
+        <p
+          className="font-mono-x text-[10.5px] tracking-[0.26em] uppercase"
+          style={{ color }}
+        >
           ▚ CATEGORY · AUTO-CURATED
         </p>
-        <h1 className="mt-2 font-serif-bn text-[40px] font-black text-ink md:text-[56px]">{cat.displayNameBn}</h1>
-        <p className="mt-3 max-w-2xl text-[14.5px] leading-relaxed text-ink-soft">{cat.descriptionBn}</p>
+        <h1 className="mt-2 font-serif-bn text-[40px] font-black text-ink md:text-[56px]">
+          {locale === "en" ? cat.displayNameEn : cat.displayNameBn}
+        </h1>
+        <p className="mt-3 max-w-2xl text-[14.5px] leading-relaxed text-ink-soft">
+          {locale === "en" ? cat.descriptionEn : cat.descriptionBn}
+        </p>
         <p className="mt-4 font-mono-x text-[10.5px] tracking-[0.18em] text-ink-soft uppercase">
-          CURRENT WINDOW · {total} পোস্ট
+          CURRENT WINDOW · {total} {b("পোস্ট", "posts")}
         </p>
       </div>
       <div className="mt-6">
-        <UnifiedAdPlacement slotKey="category_top_leaderboard" variant="leaderboard" />
+        <UnifiedAdPlacement
+          slotKey="category_top_leaderboard"
+          variant="leaderboard"
+        />
       </div>
       <div className="mt-10">
-        <CollectionGrid posts={posts} cats={cats} activeCategory={slug as CategorySlug} categoryCounts={counts} />
+        <CollectionGrid
+          posts={posts}
+          cats={cats}
+          activeCategory={slug as CategorySlug}
+          categoryCounts={counts}
+        />
       </div>
-      <Pagination page={page} pageCount={pageCount} base={`/category/${slug}`} />
+      <Pagination
+        page={page}
+        pageCount={pageCount}
+        base={`/category/${slug}`}
+      />
     </section>
   );
 }

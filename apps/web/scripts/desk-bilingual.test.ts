@@ -37,7 +37,9 @@ function read(rel: string): string {
 
 /** Comments out first: a Bangla sentence in a note is fine, on screen is not. */
 function stripComments(code: string): string {
-  return code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|\s)\/\/[^\n]*/g, "$1");
+  return code
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|\s)\/\/[^\n]*/g, "$1");
 }
 
 /**
@@ -48,15 +50,21 @@ function stripPairs(code: string): { rest: string; pairs: number } {
   let pairs = 0;
   const rest = code
     // tuples used by label tables: `all: ["সব", "All"],`
-    .replace(/\[\s*(["'`][^"'`]*["'`])\s*,\s*(["'`][^"'`]*["'`])\s*\]/g, (m) => {
-      pairs++;
-      return '["", ""]';
-    })
+    .replace(
+      /\[\s*(["'`][^"'`]*["'`])\s*,\s*(["'`][^"'`]*["'`])\s*\]/g,
+      (m) => {
+        pairs++;
+        return '["", ""]';
+      },
+    )
     // calls, allowing a multi-line argument list
-    .replace(/\bb\(\s*(?:"[^"]*"|`[^`]*`|'[^']*')\s*,\s*(?:"[^"]*"|`[^`]*`|'[^']*')\s*,?\s*\)/gs, () => {
-      pairs++;
-      return "''";
-    });
+    .replace(
+      /\bb\(\s*(?:"[^"]*"|`[^`]*`|'[^']*')\s*,\s*(?:"[^"]*"|`[^`]*`|'[^']*')\s*,?\s*\)/gs,
+      () => {
+        pairs++;
+        return "''";
+      },
+    );
   return { rest, pairs };
 }
 
@@ -72,35 +80,75 @@ check("the three desk screens are migrated", () => {
     const left = rest
       .split("\n")
       .map((line, i) => ({ line: line.trim(), n: i + 1 }))
-      .filter(({ line }) => /[\u0980-\u09FF]/.test(line) && !line.startsWith("*"));
+      .filter(
+        ({ line }) => /[\u0980-\u09FF]/.test(line) && !line.startsWith("*"),
+      );
     if (left.length > 0) {
-      throw new Error(`${rel}: ${left.length} line(s) still Bangla, first (${left[0]?.n}): ${left[0]?.line.slice(0, 70)}`);
+      throw new Error(
+        `${rel}: ${left.length} line(s) still Bangla, first (${left[0]?.n}): ${left[0]?.line.slice(0, 70)}`,
+      );
     }
-    if (pairs < 4) throw new Error(`${rel}: only ${pairs} bilingual pair(s) — is the guard reading the right file?`);
+    if (pairs < 4)
+      throw new Error(
+        `${rel}: only ${pairs} bilingual pair(s) — is the guard reading the right file?`,
+      );
   }
 });
 
 check("the desk rail and window chrome read from the shared table", () => {
   const app = read("apps/desktop/src/App.tsx");
   // One row shape: icon, dictionary key, Bangla fallback for logs.
-  const rows = [...app.matchAll(/icon: "([a-z]+)", key: "(desk\.rail\.[a-z]+)", label: "([^"]*)"/g)];
-  if (rows.length !== 10) throw new Error(`expected ten rail rows, found ${rows.length}`);
+  const rows = [
+    ...app.matchAll(
+      /icon: "([a-z]+)", key: "(desk\.rail\.[a-z]+)", label: "([^"]*)"/g,
+    ),
+  ];
+  if (rows.length !== 10)
+    throw new Error(`expected ten rail rows, found ${rows.length}`);
   const keys = new Set(rows.map((r) => r[2]));
   if (keys.size !== 10) throw new Error("two rail rows share one key");
   for (const [, icon, key, label] of rows) {
-    if (!/[\u0980-\u09FF]/.test(label ?? "")) throw new Error(`${key}: the Bangla fallback is not Bangla`);
+    if (!/[\u0980-\u09FF]/.test(label ?? ""))
+      throw new Error(`${key}: the Bangla fallback is not Bangla`);
     if (!icon) throw new Error(`${key}: no icon`);
   }
 });
 
 check("the desk remembers one language, under the same key as the web", () => {
   const locale = read("apps/desktop/src/lib/locale.tsx");
-  if (!/LOCALE_STORAGE_KEY/.test(locale)) throw new Error("the desk invents its own storage key");
-  if (!/readStoredLocale/.test(locale)) throw new Error("a saved choice is never read back");
+  if (!/LOCALE_STORAGE_KEY/.test(locale))
+    throw new Error("the desk invents its own storage key");
+  if (!/readStoredLocale/.test(locale))
+    throw new Error("a saved choice is never read back");
   // Bangla is the fallback, not English: the desk is a Bangla newsroom tool.
   if (!/return "bn"/.test(locale)) throw new Error("missing Bangla fallback");
   const main = read("apps/desktop/src/main.tsx");
-  if (!/<DeskLocaleProvider>/.test(main)) throw new Error("the provider is not above the app");
+  if (!/<DeskLocaleProvider>/.test(main))
+    throw new Error("the provider is not above the app");
+});
+
+check("the public site's server pages read the same language", () => {
+  // The toggle refreshed the page but the articles' chrome stayed Bangla: only
+  // the client navbar and footer had pairs. These pages are server-rendered, so
+  // the pair has to happen before the HTML leaves the server.
+  const pages = [
+    "apps/web/src/app/(site)/page.tsx",
+    "apps/web/src/app/(site)/post/[slug]/page.tsx",
+    "apps/web/src/app/(site)/category/[slug]/page.tsx",
+    "apps/web/src/app/(site)/live/page.tsx",
+    "apps/web/src/app/(site)/poll/page.tsx",
+    "apps/web/src/app/(site)/contact/page.tsx",
+    "apps/web/src/app/(site)/report/page.tsx",
+    "apps/web/src/app/(site)/submit/page.tsx",
+  ];
+  for (const rel of pages) {
+    const code = read(rel);
+    const { pairs } = stripPairs(stripComments(code));
+    if (pairs < 1)
+      throw new Error(`${rel}: no bilingual pair in a server-rendered page`);
+    if (!/getLocale|serverBi/.test(code))
+      throw new Error(`${rel}: never reads the request language`);
+  }
 });
 
 console.log(`[web] desk bilingual: ${passed} checks passed`);

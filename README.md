@@ -729,6 +729,25 @@ unused combination and barring the immediately previous palette. The CMS panel o
 **🎲 রিজেনারেট স্টাইল** beside **⬇ পোস্টার ডাউনলোড**, so an editor can cycle the whole
 design in one click.
 
+## The picture is read out of the story, not its category
+
+`packages/llm/src/visual-brief.ts` is a small, deterministic lexicon for the ordinary things
+a news photograph needs: **people** (young adults, students, workers, families), **countries**
+(Europe, the US, India), **interiors and exteriors** (a showroom, an open-plan office, an
+urban street, a construction site), **objects** (compact cars, EV chargers, GPUs, solar
+panels), **wardrobe** (a suit, a saree, a panjabi, streetwear) and **materials** (glass,
+steel, aluminium, woven fabric). It reads English and Bangla, because the article may be
+filed in either language. "Small cars gain popularity among young people in Europe" therefore
+reaches the provider as young men and women, compact hatchbacks, and a European urban street
+— not as a generic showroom. A historical contrast ("once only for rural drivers") is dropped
+when the present-tense scene is urban, so the model is not asked to draw two settings.
+
+`storyAnchors()` merges this brief with the named-figure/company glossary, and
+`groundedPrompt()` lists every missing element again in plain language. The art director's
+own instruction says the same thing, so a model-written prompt and the offline fallback both
+carry the subject. Ordinary words (`gain`, `popularity`, platform names) are not promoted to
+anchors; only proper nouns, figures and the lexicon's concrete labels are.
+
 ## The Bangla type library is local
 
 `packages/bangla-fonts` turns the repository's `Bangla Fonts/` zips into one workspace
@@ -748,11 +767,23 @@ a local **ডেস্কের বাংলা ফন্ট** override (`localS
 the desk to the shared body face, while the shared choice is edited under সাইট. Any family
 can also be used in ad/notice HTML with `.bnfont-<id>`.
 
+The gallery can assign all three roles from a sample card (শিরোনাম / বডি / ট্যাগ), and the
+desk shows a live three-role preview beside the shared site selectors, so an editor chooses a
+face by reading it on both surfaces. The browser keeps the selected families; a family that
+is not chosen still costs nothing at runtime.
+
 Each source zip's readme/terms travels to `packages/bangla-fonts/licenses/`. All 47 families
 ship because the operator confirmed they are free to use; the manifest keeps the source
 licence label as metadata. Lipighor asks for a footer backlink, so the site renders
 **বাংলা ফন্ট: লিপিঘর** whenever one of its families is selected. The build never invents a
 licence for someone else's typeface.
+
+**The toggle reaches the server-rendered pages too.** The public home, post, category, live,
+poll, contact, report and submit pages read the request language (`?lang=` or the cookie) and
+wrap their headings, calls to action and labels in `b(bn, en)` — via `lib/bi-server.ts` on the
+server and `useBi` in client chrome. Article copy stays in the language it was written in;
+the chrome, metadata labels and share-preview copy follow the reader. A source guard keeps
+those eight pages from losing the pair, so the toggle cannot regress to navbar-only.
 
 **Step 5 — one direction, two frames.** `aspects: ["16:9", "4:5"]` renders the same
 art-directed page twice: the web/YouTube card and the uncropped Facebook/Instagram feed

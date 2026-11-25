@@ -57,7 +57,11 @@ import {
   type AdminCodeList,
   type CreatedAdminLoginCode,
 } from "../lib/tauri";
-import { actionsSecretName, listGithubSecrets, pushGithubSecret } from "../lib/github";
+import {
+  actionsSecretName,
+  listGithubSecrets,
+  pushGithubSecret,
+} from "../lib/github";
 import { autoPull, autoPush } from "../lib/autosync";
 import { bnTime, toBn } from "../lib/format";
 import DeskCategoryManager from "../components/DeskCategoryManager";
@@ -66,7 +70,13 @@ import DeskProviderManager from "../components/DeskProviderManager";
 import DeskNoticeManager from "../components/DeskNoticeManager";
 import MediaStoragePanel from "../components/MediaStoragePanel";
 import { SITE_URL } from "../lib/site";
-import { DEFAULT_APP_CONFIG, HERO_SCENE_STYLES, SIDEBAR_STYLES, type SiteAppConfig, type SidebarStyleId } from "@hoichoi/shared-types";
+import {
+  DEFAULT_APP_CONFIG,
+  HERO_SCENE_STYLES,
+  SIDEBAR_STYLES,
+  type SiteAppConfig,
+  type SidebarStyleId,
+} from "@hoichoi/shared-types";
 import { getDeskSidebarStyle, setDeskSidebarStyle } from "../lib/desk-ui-prefs";
 import { HeroScene } from "@hoichoi/dash";
 
@@ -86,19 +96,49 @@ const TABS = [
 
 type SettingsTab = (typeof TABS)[number]["id"];
 
-const FIELDS: Array<{ name: CredentialName; label: string; secret: boolean; push?: boolean }> = [
+const FIELDS: Array<{
+  name: CredentialName;
+  label: string;
+  secret: boolean;
+  push?: boolean;
+}> = [
   // Supported connection: a device token from the admin console
   // (নিরাপত্তা → ডেস্কটপ ডিভাইস). With these two set the desk holds no database
   // credential at all — it gets a short-lived grant from the server.
-  { name: "desk_base_url", label: "সাইটের ঠিকানা (https://hoichoifeed.vercel.app)", secret: false },
+  {
+    name: "desk_base_url",
+    label: "সাইটের ঠিকানা (https://hoichoifeed.vercel.app)",
+    secret: false,
+  },
   { name: "desk_token", label: "ডেস্ক টোকেন (hdc_…)", secret: true },
   // Legacy / local: only needed when running without a device token.
-  { name: "turso_url", label: "TURSO_DATABASE_URL (টোকেন ছাড়া মোড)", secret: false },
-  { name: "turso_token", label: "TURSO_AUTH_TOKEN (টোকেন ছাড়া মোড)", secret: true },
-  { name: "github_pat", label: "GitHub PAT (app repo + Actions)", secret: true },
+  {
+    name: "turso_url",
+    label: "TURSO_DATABASE_URL (টোকেন ছাড়া মোড)",
+    secret: false,
+  },
+  {
+    name: "turso_token",
+    label: "TURSO_AUTH_TOKEN (টোকেন ছাড়া মোড)",
+    secret: true,
+  },
+  {
+    name: "github_pat",
+    label: "GitHub PAT (app repo + Actions)",
+    secret: true,
+  },
   { name: "github_repo", label: "App repo (owner/name)", secret: false },
-  { name: "github_media_repos", label: "Media repo(s) — owner/name, comma separated", secret: false, push: true },
-  { name: "media_github_token", label: "Media repo PAT (optional, falls back to GitHub PAT)", secret: true },
+  {
+    name: "github_media_repos",
+    label: "Media repo(s) — owner/name, comma separated",
+    secret: false,
+    push: true,
+  },
+  {
+    name: "media_github_token",
+    label: "Media repo PAT (optional, falls back to GitHub PAT)",
+    secret: true,
+  },
   { name: "GOOGLE_API_KEY", label: "Google Gemini API key", secret: true },
   { name: "GROQ_API_KEY", label: "Groq API key", secret: true },
   { name: "OPENROUTER_API_KEY", label: "OpenRouter API key", secret: true },
@@ -108,7 +148,11 @@ const FIELDS: Array<{ name: CredentialName; label: string; secret: boolean; push
   { name: "MANIFEST_API_KEY", label: "Manifest API key", secret: true },
   { name: "GITHUB_COPILOT_TOKEN", label: "GitHub Copilot token", secret: true },
   { name: "github_branch", label: "GitHub branch (jsDelivr)", secret: false },
-  { name: "github_cdn_url", label: "GitHub CDN base URL (jsDelivr)", secret: false },
+  {
+    name: "github_cdn_url",
+    label: "GitHub CDN base URL (jsDelivr)",
+    secret: false,
+  },
   { name: "idrivee2_access_key", label: "IDrive e2 Access key", secret: true },
   { name: "idrivee2_secret_key", label: "IDrive e2 Secret key", secret: true },
   { name: "idrivee2_bucket", label: "IDrive e2 Bucket", secret: false },
@@ -118,34 +162,79 @@ const FIELDS: Array<{ name: CredentialName; label: string; secret: boolean; push
   { name: "b2_bucket", label: "Backblaze B2 bucket", secret: false },
   { name: "b2_endpoint", label: "Backblaze B2 endpoint URL", secret: false },
   { name: "revalidate_secret", label: "Revalidate secret (web)", secret: true },
-  { name: "vercel_deploy_hook_url", label: "Vercel deploy hook URL (redeploy web after scrape)", secret: true },
+  {
+    name: "vercel_deploy_hook_url",
+    label: "Vercel deploy hook URL (redeploy web after scrape)",
+    secret: true,
+  },
 ];
 
-const BRAND_FIELDS: Array<{ key: string; label: string; secret?: boolean; multiline?: boolean }> = [
+const BRAND_FIELDS: Array<{
+  key: string;
+  label: string;
+  secret?: boolean;
+  multiline?: boolean;
+}> = [
   { key: "site_name", label: "সাইট নাম / App name" },
   { key: "slogan_bn", label: "স্লোগান (slogan)" },
   { key: "tagline", label: "ট্যাগলাইন (tagline)" },
   { key: "logo_url", label: "Logo URL (empty = text)" },
   { key: "favicon_url", label: "Favicon URL (empty = default)" },
   { key: "accent_color", label: "Accent color (hex)" },
-  { key: "footer_about_bn", label: "ফুটার \"সম্পর্কে\" অনুচ্ছেদ", multiline: true },
+  { key: "footer_about_bn", label: 'ফুটার "সম্পর্কে" অনুচ্ছেদ', multiline: true },
 ];
 
 const AD_SLOTS: Array<{ key: string; label: string; placeholder: string }> = [
-  { key: "ad_leaderboard_html", label: "Leaderboard (হোমপেজ শীর্ষ)", placeholder: "<!-- AdSense / Adsterra leaderboard code -->" },
-  { key: "ad_rect_html", label: "Rectangle 300×250 (পোস্ট পেজ)", placeholder: "<!-- AdSense / Adsterra rectangle code -->" },
-  { key: "ad_infeed_html", label: "In-feed (গ্রিড প্রতি ৪য়)", placeholder: "<!-- In-feed ad code -->" },
-  { key: "ad_strip_html", label: "Strip (হোমপেজ নিচে)", placeholder: "<!-- Strip ad code -->" },
+  {
+    key: "ad_leaderboard_html",
+    label: "Leaderboard (হোমপেজ শীর্ষ)",
+    placeholder: "<!-- AdSense / Adsterra leaderboard code -->",
+  },
+  {
+    key: "ad_rect_html",
+    label: "Rectangle 300×250 (পোস্ট পেজ)",
+    placeholder: "<!-- AdSense / Adsterra rectangle code -->",
+  },
+  {
+    key: "ad_infeed_html",
+    label: "In-feed (গ্রিড প্রতি ৪য়)",
+    placeholder: "<!-- In-feed ad code -->",
+  },
+  {
+    key: "ad_strip_html",
+    label: "Strip (হোমপেজ নিচে)",
+    placeholder: "<!-- Strip ad code -->",
+  },
 ];
 
-const VIS_ITEMS: Array<{ key: keyof SiteAppConfig; label: string; hint: string }> = [
+const VIS_ITEMS: Array<{
+  key: keyof SiteAppConfig;
+  label: string;
+  hint: string;
+}> = [
   { key: "show_hero", label: "হিরো সেকশন", hint: "শীর্ষের বড় ক্যাটাগরি-কার্ড" },
-  { key: "show_live_graph", label: "Live Analytics গ্রাফ", hint: "প্রবন্ধ-card-এর উপরে ট্রেন্ডগ্রাফ" },
-  { key: "show_categories", label: "বিভাগ স্ট্রিপ", hint: "হোমপেজ গ্রিডের আগে ক্যাটাগরি-বোতাম" },
+  {
+    key: "show_live_graph",
+    label: "Live Analytics গ্রাফ",
+    hint: "প্রবন্ধ-card-এর উপরে ট্রেন্ডগ্রাফ",
+  },
+  {
+    key: "show_categories",
+    label: "বিভাগ স্ট্রিপ",
+    hint: "হোমপেজ গ্রিডের আগে ক্যাটাগরি-বোতাম",
+  },
   { key: "show_ads", label: "বিজ্ঞাপন স্লট", hint: "সব ad slot জায়গা" },
-  { key: "show_rewrite_engine", label: "রিরাইট ইঞ্জিন ব্যাজ", hint: "ডেস্কটপ অ্যাপ প্রচার-কার্ড" },
+  {
+    key: "show_rewrite_engine",
+    label: "রিরাইট ইঞ্জিন ব্যাজ",
+    hint: "ডেস্কটপ অ্যাপ প্রচার-কার্ড",
+  },
   { key: "show_footer", label: "ফুটার", hint: "নিচের ফুটার প্যানেল" },
-  { key: "ai_hero_images", label: "AI Fallback Image", hint: "মিডিয়া ছাড়া পোস্টে AI হিরো ছবি (Gemini)" },
+  {
+    key: "ai_hero_images",
+    label: "AI Fallback Image",
+    hint: "মিডিয়া ছাড়া পোস্টে AI হিরো ছবি (Gemini)",
+  },
 ];
 
 /**
@@ -157,10 +246,18 @@ const VIS_ITEMS: Array<{ key: keyof SiteAppConfig; label: string; hint: string }
  * `live_events`, `footer_socials`, `hero_headline_motion`, `hero_scene_style`
  * and the maintenance copy the web admin had set.
  */
-const VIS_DEFAULTS: SiteAppConfig = { ...DEFAULT_APP_CONFIG, theme_default: "dark" };
+const VIS_DEFAULTS: SiteAppConfig = {
+  ...DEFAULT_APP_CONFIG,
+  theme_default: "dark",
+};
 
 /** Sample numbers for the template previews only (never a real post). */
-const SCENE_PREVIEW_STATS = { collected: 148, published: 96, dups: 52, lastRunIso: null };
+const SCENE_PREVIEW_STATS = {
+  collected: 148,
+  published: 96,
+  dups: 52,
+  lastRunIso: null,
+};
 
 const BRAND_ANIMATIONS = [
   { value: "none", label: "নেই (স্থির)" },
@@ -190,7 +287,8 @@ const PREF_DB_KEY = "hoichoi.desk.prefs.v1";
 function loadPrefs(): Prefs {
   try {
     const raw = localStorage.getItem(PREF_DB_KEY);
-    if (raw) return { ...PREF_DEFAULTS, ...(JSON.parse(raw) as Partial<Prefs>) };
+    if (raw)
+      return { ...PREF_DEFAULTS, ...(JSON.parse(raw) as Partial<Prefs>) };
   } catch {
     /* ignore */
   }
@@ -236,8 +334,18 @@ export default function Settings({
     try {
       const raw = localStorage.getItem("hoichoi.desk.autobk");
       if (!raw) return { enabled: false, folder: "", keep: 7, pass: "" };
-      const p = JSON.parse(raw) as { enabled?: boolean; folder?: string; keep?: number; pass?: string } | null;
-      return { enabled: Boolean(p?.enabled), folder: p?.folder ?? "", keep: p?.keep ?? 7, pass: p?.pass ?? "" };
+      const p = JSON.parse(raw) as {
+        enabled?: boolean;
+        folder?: string;
+        keep?: number;
+        pass?: string;
+      } | null;
+      return {
+        enabled: Boolean(p?.enabled),
+        folder: p?.folder ?? "",
+        keep: p?.keep ?? 7,
+        pass: p?.pass ?? "",
+      };
     } catch {
       return { enabled: false, folder: "", keep: 7, pass: "" };
     }
@@ -263,7 +371,9 @@ export default function Settings({
 
   const [vis, setVis] = useState<SiteAppConfig>(VIS_DEFAULTS);
   /** Local mirror of the shared sidebar choice, so the picker shows the live one. */
-  const [sidebarStyle, setSidebarStyle] = useState<SidebarStyleId>(() => getDeskSidebarStyle());
+  const [sidebarStyle, setSidebarStyle] = useState<SidebarStyleId>(() =>
+    getDeskSidebarStyle(),
+  );
   const [visLoaded, setVisLoaded] = useState(false);
   const [visMsg, setVisMsg] = useState<string | null>(null);
   const [visErr, setVisErr] = useState<string | null>(null);
@@ -272,7 +382,10 @@ export default function Settings({
   const [syncErr, setSyncErr] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<"push" | "pull" | null>(null);
 
-  const [ghSecrets, setGhSecrets] = useState<Array<{ name: string; updated_at: string }> | null>(null);
+  const [ghSecrets, setGhSecrets] = useState<Array<{
+    name: string;
+    updated_at: string;
+  }> | null>(null);
   const [ghLoading, setGhLoading] = useState(false);
   const [ghErr, setGhErr] = useState<string | null>(null);
   const loadGithubSecrets = async () => {
@@ -326,7 +439,12 @@ export default function Settings({
    * toast carrying the real runner message).
    */
   const [saving, setSaving] = useState<string | null>(null);
-  const saveWith = async (key: string, label: string, patch: Record<string, string | number>, done: string) => {
+  const saveWith = async (
+    key: string,
+    label: string,
+    patch: Record<string, string | number>,
+    done: string,
+  ) => {
     if (saving) return;
     setSaving(key);
     const id = toast.busy(`${label} সংরক্ষণ হচ্ছে…`, "রানারে লেখা হচ্ছে");
@@ -339,7 +457,10 @@ export default function Settings({
       await autoPush();
     } catch (e) {
       fail(e);
-      toast.err(`${label} সংরক্ষণ ব্যর্থ`, e instanceof Error ? e.message : String(e));
+      toast.err(
+        `${label} সংরক্ষণ ব্যর্থ`,
+        e instanceof Error ? e.message : String(e),
+      );
     } finally {
       toast.dismiss(id);
       setSaving(null);
@@ -362,10 +483,20 @@ export default function Settings({
   };
 
   const saveTemp = () =>
-    saveWith("temp", "তাপমাত্রা", { llm_temperature: prefs.temp }, `রিরাইট তাপমাত্রা সংরক্ষিত — ${prefs.temp.toFixed(2)}`);
+    saveWith(
+      "temp",
+      "তাপমাত্রা",
+      { llm_temperature: prefs.temp },
+      `রিরাইট তাপমাত্রা সংরক্ষিত — ${prefs.temp.toFixed(2)}`,
+    );
 
   const saveGate = () =>
-    saveWith("gate", "ফ্যাক্ট-গেট", { fact_gate: prefs.gate }, `ফ্যাক্ট-গেট থ্রেশহোল্ড সংরক্ষিত — ${prefs.gate}%`);
+    saveWith(
+      "gate",
+      "ফ্যাক্ট-গেট",
+      { fact_gate: prefs.gate },
+      `ফ্যাক্ট-গেট থ্রেশহোল্ড সংরক্ষিত — ${prefs.gate}%`,
+    );
 
   const show = (m: string) => {
     setMsg(m);
@@ -393,7 +524,9 @@ export default function Settings({
         // reading an empty secret, which looks exactly like "I saved it but
         // nothing happens".
         await pushGithubSecret(secretName, v.trim());
-        show(`${f.label} সংরক্ষিত — GitHub secret ${secretName} হিসেবেও পাঠানো হয়েছে`);
+        show(
+          `${f.label} সংরক্ষিত — GitHub secret ${secretName} হিসেবেও পাঠানো হয়েছে`,
+        );
       } else {
         await storeCredential(f.name, v.trim());
         show(`${f.label} saved`);
@@ -434,9 +567,11 @@ export default function Settings({
       // had nothing to do with the value the pipeline was really using — and a
       // change made on the web admin never showed up here.
       const temp = Number(s.llm_temperature);
-      if (Number.isFinite(temp) && temp >= 0 && temp <= 2) updatePref("temp", temp);
+      if (Number.isFinite(temp) && temp >= 0 && temp <= 2)
+        updatePref("temp", temp);
       const gate = Number(s.fact_gate);
-      if (Number.isFinite(gate) && gate >= 0 && gate <= 100) updatePref("gate", gate);
+      if (Number.isFinite(gate) && gate >= 0 && gate <= 100)
+        updatePref("gate", gate);
     } catch {
       /* ব্যান্ডিং লোড ব্যর্থ — ফিল্ড খালি থাকবে */
     }
@@ -445,7 +580,11 @@ export default function Settings({
   const toggleCloud = async (on: boolean) => {
     await storeCredential("use_cloud", on ? "1" : "0");
     setCloud(on);
-    show(on ? "Cloud sync ON — desktop writes to the shared Turso DB" : "Local mode — desktop uses its own file DB");
+    show(
+      on
+        ? "Cloud sync ON — desktop writes to the shared Turso DB"
+        : "Local mode — desktop uses its own file DB",
+    );
     await refresh();
     await loadBrand();
   };
@@ -468,9 +607,18 @@ export default function Settings({
           setVis({
             ...DEFAULT_APP_CONFIG,
             ...parsed,
-            hero_effects: { ...DEFAULT_APP_CONFIG.hero_effects, ...(parsed.hero_effects ?? {}) },
-            live_events: { ...DEFAULT_APP_CONFIG.live_events, ...(parsed.live_events ?? {}) },
-            typography: { ...DEFAULT_APP_CONFIG.typography, ...(parsed.typography ?? {}) },
+            hero_effects: {
+              ...DEFAULT_APP_CONFIG.hero_effects,
+              ...(parsed.hero_effects ?? {}),
+            },
+            live_events: {
+              ...DEFAULT_APP_CONFIG.live_events,
+              ...(parsed.live_events ?? {}),
+            },
+            typography: {
+              ...DEFAULT_APP_CONFIG.typography,
+              ...(parsed.typography ?? {}),
+            },
           });
         } catch {
           setVis(VIS_DEFAULTS);
@@ -486,7 +634,9 @@ export default function Settings({
 
   const saveVis = async () => {
     try {
-      await settingsSet(await getRunEnv(), { app_config_json: JSON.stringify(vis) });
+      await settingsSet(await getRunEnv(), {
+        app_config_json: JSON.stringify(vis),
+      });
       setVisMsg("সংরক্ষিত — web সাইট এখনই নতুন ভিজিবিলিটি/থিম ব্যবহার করবে");
       setVisErr(null);
       await autoPush();
@@ -496,10 +646,13 @@ export default function Settings({
   };
 
   const resetVis = async () => {
-    if (!window.confirm("ভিজিবিলিটি ও থিম কনফিগ সব ডিফল্টে ফিরে যাবে — নিশ্চিত?")) return;
+    if (!window.confirm("ভিজিবিলিটি ও থিম কনফিগ সব ডিফল্টে ফিরে যাবে — নিশ্চিত?"))
+      return;
     setVis(VIS_DEFAULTS);
     try {
-      await settingsSet(await getRunEnv(), { app_config_json: JSON.stringify(VIS_DEFAULTS) });
+      await settingsSet(await getRunEnv(), {
+        app_config_json: JSON.stringify(VIS_DEFAULTS),
+      });
       setVisMsg("ডিফল্টে রিসেট হয়েছে — web সাইট এখনই নতুন কনফিগ ব্যবহার করবে");
       setVisErr(null);
       await autoPush();
@@ -517,9 +670,14 @@ export default function Settings({
       const secret = env["REVALIDATE_SECRET"];
       if (secret) u.searchParams.set("secret", secret);
       const res = await fetch(u.toString());
-      const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      const body = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+      } | null;
       if (res.ok && body?.ok) {
-        setWebMsg("ওয়েব ক্যাশ রিফ্রেশ হয়েছে — হোমপেজ ও ক্যাটাগরি পেজ এখন নতুন কনটেন্ট দেখাবে।");
+        setWebMsg(
+          "ওয়েব ক্যাশ রিফ্রেশ হয়েছে — হোমপেজ ও ক্যাটাগরি পেজ এখন নতুন কনটেন্ট দেখাবে।",
+        );
       } else {
         setWebErr(body?.error ? body.error : `HTTP ${res.status}`);
       }
@@ -531,7 +689,9 @@ export default function Settings({
   const saveAdSlots = async () => {
     try {
       const fields: Record<string, string> = {};
-      for (const f of AD_SLOTS) if ((adSlots[f.key] ?? "").trim() !== "") fields[f.key] = adSlots[f.key].trim();
+      for (const f of AD_SLOTS)
+        if ((adSlots[f.key] ?? "").trim() !== "")
+          fields[f.key] = adSlots[f.key].trim();
       if (Object.keys(fields).length === 0) return;
       await settingsSet(await getRunEnv(), fields);
       setAdSlotsMsg("সংরক্ষিত — web ও desktop-এ তাৎক্ষণিক কার্যকর");
@@ -558,7 +718,8 @@ export default function Settings({
     try {
       if (cloud) {
         await refreshAfterSync();
-        const message = "শেয়ার্ড ডেটাবেস রিফ্রেশ হয়েছে — ডেস্ক ও ওয়েব একই ডেটা ব্যবহার করছে।";
+        const message =
+          "শেয়ার্ড ডেটাবেস রিফ্রেশ হয়েছে — ডেস্ক ও ওয়েব একই ডেটা ব্যবহার করছে।";
         setSyncMsg(message);
         toast.ok("ডেটা রিফ্রেশ সম্পন্ন", message);
         return true;
@@ -595,7 +756,8 @@ export default function Settings({
     try {
       if (cloud) {
         await refreshAfterSync();
-        const message = "শেয়ার্ড ডেটাবেস রিফ্রেশ হয়েছে — স্থানীয় পুরোনো ডেটা পাঠানো হয়নি।";
+        const message =
+          "শেয়ার্ড ডেটাবেস রিফ্রেশ হয়েছে — স্থানীয় পুরোনো ডেটা পাঠানো হয়নি।";
         setSyncMsg(message);
         toast.ok("পূর্ণ রিফ্রেশ সম্পন্ন", message);
         return;
@@ -616,9 +778,7 @@ export default function Settings({
       );
     } catch (e) {
       const message = `পূর্ণ সিঙ্ক বন্ধ হয়েছে: ${e instanceof Error ? e.message : String(e)} — ওয়েব থেকে ডেস্কে আনা হয়নি, যাতে ত্রুটিপূর্ণ অবস্থায় ডেটা উল্টে না যায়।`;
-      setSyncErr(
-        message,
-      );
+      setSyncErr(message);
       setSyncMsg(null);
       toast.err("পূর্ণ সিঙ্ক ব্যর্থ", message);
     } finally {
@@ -655,7 +815,10 @@ export default function Settings({
 
   const loadAdminCodes = async () => {
     try {
-      const res = (await adminCodes("list", await getRunEnv())) as AdminCodeList;
+      const res = (await adminCodes(
+        "list",
+        await getRunEnv(),
+      )) as AdminCodeList;
       setAdmCodes(res.codes ?? []);
       setAdmErr(null);
     } catch {
@@ -680,7 +843,12 @@ export default function Settings({
 
   const revokeSession = async (row: DeskSessionRow) => {
     const who = row.device_name ?? row.device_os ?? row.email;
-    if (!window.confirm(`${who} — এই সেশনটি বাতিল করবেন? ওই ডিভাইসে আবার কোড দিয়ে ঢুকতে হবে।`)) return;
+    if (
+      !window.confirm(
+        `${who} — এই সেশনটি বাতিল করবেন? ওই ডিভাইসে আবার কোড দিয়ে ঢুকতে হবে।`,
+      )
+    )
+      return;
     setSessBusy(row.id);
     setAdmErr(null);
     try {
@@ -706,7 +874,9 @@ export default function Settings({
         label: admLabel.trim() || null,
       })) as CreatedAdminLoginCode;
       setNewCode(res.code);
-      setAdmMsg(`কোড তৈরি হয়েছে — ${res.expires_at.slice(0, 16).replace("T", " ")} পর্যন্ত বৈধ, একবারই ব্যবহারযোগ্য।`);
+      setAdmMsg(
+        `কোড তৈরি হয়েছে — ${res.expires_at.slice(0, 16).replace("T", " ")} পর্যন্ত বৈধ, একবারই ব্যবহারযোগ্য।`,
+      );
       await loadAdminCodes();
     } catch (e) {
       setAdmErr(String(e));
@@ -729,14 +899,22 @@ export default function Settings({
       setAdmErr("ইমেইল দিতে হবে — কাকে লগ আউট করবেন (admin_users-এর মেলে)।");
       return;
     }
-    if (!window.confirm(`"${email}" ইমেইলের সব ওয়েব অ্যাডমিন সেশন + অপেক্ষমান কোড বাতিল করবেন? ব্রাউজার থেকে নতুন কোড ছাড়া ঢোকা যাবে না।`)) {
+    if (
+      !window.confirm(
+        `"${email}" ইমেইলের সব ওয়েব অ্যাডমিন সেশন + অপেক্ষমান কোড বাতিল করবেন? ব্রাউজার থেকে নতুন কোড ছাড়া ঢোকা যাবে না।`,
+      )
+    ) {
       return;
     }
     try {
       setAdmErr(null);
-      const res = (await adminCodes("logout-sessions", await getRunEnv(), { email })) as { ok: boolean };
+      const res = (await adminCodes("logout-sessions", await getRunEnv(), {
+        email,
+      })) as { ok: boolean };
       if (!res.ok) throw new Error("runner did not acknowledge");
-      setAdmMsg(`ওয়েব লগ আউট হয়েছে — সেশন ও কোড বাতিল (${email})। ফেরার জন্য নতুন কোড তৈরি করুন।`);
+      setAdmMsg(
+        `ওয়েব লগ আউট হয়েছে — সেশন ও কোড বাতিল (${email})। ফেরার জন্য নতুন কোড তৈরি করুন।`,
+      );
       await loadAdminCodes();
     } catch (e) {
       setAdmErr(String(e));
@@ -771,7 +949,8 @@ export default function Settings({
   };
 
   const clearLog = async () => {
-    if (!window.confirm("পুরো লগইন লগ মুছে ফেলবেন? এটি ফিরে পাওয়া যাবে না।")) return;
+    if (!window.confirm("পুরো লগইন লগ মুছে ফেলবেন? এটি ফিরে পাওয়া যাবে না।"))
+      return;
     setLogBusy(true);
     try {
       const n = await deskLoginLogClear(await getRunEnv());
@@ -787,7 +966,9 @@ export default function Settings({
   const saveBrand = async () => {
     try {
       const fields: Record<string, string> = {};
-      for (const f of BRAND_FIELDS) if ((brand[f.key] ?? "").trim() !== "") fields[f.key] = brand[f.key].trim();
+      for (const f of BRAND_FIELDS)
+        if ((brand[f.key] ?? "").trim() !== "")
+          fields[f.key] = brand[f.key].trim();
       if (Object.keys(fields).length === 0) return;
       await settingsSet(await getRunEnv(), fields);
       setBrandMsg("সংরক্ষিত — web ও desktop-এ সঙ্গে সঙ্গে কার্যকর");
@@ -802,7 +983,8 @@ export default function Settings({
   };
 
   const needBkPass = (): string | null => {
-    if (bkPass.trim().length < 4) return "ব্যাকআপ passphrase দিতে হবে (কমপক্ষে ৪ অক্ষর)";
+    if (bkPass.trim().length < 4)
+      return "ব্যাকআপ passphrase দিতে হবে (কমপক্ষে ৪ অক্ষর)";
     return null;
   };
 
@@ -870,8 +1052,15 @@ export default function Settings({
     try {
       setBkMsg(null);
       setBkErr(null);
-      const res = await deskBackupAuto(bkAuto.pass, bkAuto.folder, bkAuto.keep, await getRunEnv());
-      setBkMsg(`স্বয়ংক্রিয় ব্যাকআপ সফল:\n${res.file} (kept ${res.kept}, pruned ${res.pruned})`);
+      const res = await deskBackupAuto(
+        bkAuto.pass,
+        bkAuto.folder,
+        bkAuto.keep,
+        await getRunEnv(),
+      );
+      setBkMsg(
+        `স্বয়ংক্রিয় ব্যাকআপ সফল:\n${res.file} (kept ${res.kept}, pruned ${res.pruned})`,
+      );
     } catch (e) {
       setBkErr(String(e));
     }
@@ -885,9 +1074,16 @@ export default function Settings({
     try {
       setBkMsg(null);
       setBkErr(null);
-      const pathPrompt = window.prompt("যাচাই করতে চাওয়া ব্যাকআপ ফাইলের পুরো পাথ দিন:", `${bkAuto.folder}\\hoichoi-backup.bak`);
+      const pathPrompt = window.prompt(
+        "যাচাই করতে চাওয়া ব্যাকআপ ফাইলের পুরো পাথ দিন:",
+        `${bkAuto.folder}\\hoichoi-backup.bak`,
+      );
       if (!pathPrompt) return;
-      const res = await deskBackupVerify(bkAuto.pass, pathPrompt.trim(), await getRunEnv());
+      const res = await deskBackupVerify(
+        bkAuto.pass,
+        pathPrompt.trim(),
+        await getRunEnv(),
+      );
       setBkMsg(`যাচাইকরণ সফল: ${JSON.stringify(res)}`);
     } catch (e) {
       setBkErr(String(e));
@@ -896,11 +1092,16 @@ export default function Settings({
 
   const Show = ({ name }: { name: CredentialName }) => {
     const [has, setHas] = useState<boolean | null>(null);
-    void getCredential(name).then((v) => setHas(v !== null || Boolean(providerKeys[name])));
+    void getCredential(name).then((v) =>
+      setHas(v !== null || Boolean(providerKeys[name])),
+    );
     return has === null ? (
       <span className="font-mono text-[10px] text-ink-soft/60">…</span>
     ) : has ? (
-      <button onClick={() => void edit(name)} className="font-mono text-[10px] text-lime bg-ink px-2 py-0.5">
+      <button
+        onClick={() => void edit(name)}
+        className="font-mono text-[10px] text-lime bg-ink px-2 py-0.5"
+      >
         ✓ set — edit
       </button>
     ) : (
@@ -921,15 +1122,25 @@ export default function Settings({
             <p className="font-mono-x text-[9.5px] tracking-[0.26em] text-lime uppercase">
               DESKTOP CONTROLLER · LOCAL PREFERENCES
             </p>
-            <h2 className="mt-1 font-serif-bn text-[28px] font-black text-white">সেটিংস</h2>
+            <h2 className="mt-1 font-serif-bn text-[28px] font-black text-white">
+              সেটিংস
+            </h2>
             <p className="mt-1 max-w-3xl text-[12.5px] text-white/50">
-              মানগুলো Stronghold-এ এনক্রিপ্টেড; UI-তে কখনো প্লেইনটেক্সট দেখানো হয় না। প্রতিটি
-              ট্যাব একেকটি সেটিংস গ্রুপ।
+              মানগুলো Stronghold-এ এনক্রিপ্টেড; UI-তে কখনো প্লেইনটেক্সট দেখানো হয় না।
+              প্রতিটি ট্যাব একেকটি সেটিংস গ্রুপ।
             </p>
           </div>
           <div className="flex min-w-56 shrink-0 flex-col items-stretch gap-2">
-            {msg && <p className="rounded-lg bg-lime px-3 py-2 text-[11.5px] font-bold text-night">✓ {msg}</p>}
-            {err && <p className="rounded-lg bg-alizarin px-3 py-2 text-[11.5px] font-bold text-paper">✕ {err}</p>}
+            {msg && (
+              <p className="rounded-lg bg-lime px-3 py-2 text-[11.5px] font-bold text-night">
+                ✓ {msg}
+              </p>
+            )}
+            {err && (
+              <p className="rounded-lg bg-alizarin px-3 py-2 text-[11.5px] font-bold text-paper">
+                ✕ {err}
+              </p>
+            )}
           </div>
         </div>
 
@@ -952,568 +1163,816 @@ export default function Settings({
 
       <div className="scroll-slim flex-1 overflow-auto">
         <div className="w-full px-6 pb-8">
-        {tab === "pref" && (
-          <div className="panel mt-5">
-            <p className="panel-title">ডেস্ক প্রেফারেন্স · local</p>
-            <div className="mt-4 grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-              <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-                <p className="flex items-center gap-2 text-[13px] font-bold text-white">
-                  <Timer size={14} className="text-amberx" /> শিডিউল
-                </p>
-                <label className="mt-4 block text-[11px] text-white/45">Cron (Asia/Dhaka)</label>
-                <input
-                  value={prefs.cron}
-                  onChange={(e) => updatePref("cron", e.target.value)}
-                  className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 font-mono-x text-[16px] text-white outline-none focus:border-lime/60"
-                />
-                <button
-                  onClick={() => void saveCron()}
-                  disabled={saving !== null}
-                  className="mt-2 flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 text-[11px] font-bold text-night hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
-                >
-                  {saving === "cron" ? <Loader2 size={12} className="animate-spin" /> : null}
-                  {saving === "cron" ? "সংরক্ষণ হচ্ছে…" : "pipeline_hours আপডেট"}
-                </button>
-                <p className="mt-2 text-[11.5px] text-white/40">
-                  প্রতি দুই ঘণ্টায় স্বয়ংক্রিয় রান। খালি রাখলে শুধু ম্যানুয়াল।
-                </p>
-              </section>
+          {tab === "pref" && (
+            <div className="panel mt-5">
+              <p className="panel-title">ডেস্ক প্রেফারেন্স · local</p>
+              <div className="mt-4 grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+                <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+                  <p className="flex items-center gap-2 text-[13px] font-bold text-white">
+                    <Timer size={14} className="text-amberx" /> শিডিউল
+                  </p>
+                  <label className="mt-4 block text-[11px] text-white/45">
+                    Cron (Asia/Dhaka)
+                  </label>
+                  <input
+                    value={prefs.cron}
+                    onChange={(e) => updatePref("cron", e.target.value)}
+                    className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 font-mono-x text-[16px] text-white outline-none focus:border-lime/60"
+                  />
+                  <button
+                    onClick={() => void saveCron()}
+                    disabled={saving !== null}
+                    className="mt-2 flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 text-[11px] font-bold text-night hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {saving === "cron" ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : null}
+                    {saving === "cron"
+                      ? "সংরক্ষণ হচ্ছে…"
+                      : "pipeline_hours আপডেট"}
+                  </button>
+                  <p className="mt-2 text-[11.5px] text-white/40">
+                    প্রতি দুই ঘণ্টায় স্বয়ংক্রিয় রান। খালি রাখলে শুধু ম্যানুয়াল।
+                  </p>
+                </section>
 
-              <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-                <p className="flex items-center gap-2 text-[13px] font-bold text-white">
-                  <Sparkles size={14} className="text-rose-300" /> রিরাইট মডেল
-                </p>
-                <label className="mt-4 block text-[11px] text-white/45">LLM</label>
-                <select
-                  value={prefs.model}
-                  onChange={(e) => updatePref("model", e.target.value)}
-                  className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 text-[13px] text-white outline-none"
-                >
-                  <option value="gemini-2.0-flash">gemini-2.0-flash · সাশ্রয়ী</option>
-                  <option value="gemini-2.5-pro">gemini-2.5-pro · উচ্চ গুণমান</option>
-                  <option value="groq-llama-3.3-70b">groq llama · দ্রুত</option>
-                  <option value="openrouter-free">openrouter · বিকল্প</option>
-                  <option value="ollama-local">ollama · লোকাল</option>
-                </select>
-                <label className="mt-4 flex items-center justify-between text-[11px] text-white/45">
-                  Temperature <span className="font-mono-x text-white/70">{prefs.temp.toFixed(2)}</span>
-                </label>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={prefs.temp}
-                  onChange={(e) => updatePref("temp", Number(e.target.value))}
-                  className="mt-1 w-full accent-[#c8f65d]"
-                />
-                <button
-                  onClick={() => void saveTemp()}
-                  disabled={saving !== null}
-                  className="mt-2 flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 text-[11px] font-bold text-night hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
-                >
-                  {saving === "temp" ? <Loader2 size={12} className="animate-spin" /> : null}
-                  {saving === "temp" ? "সংরক্ষণ হচ্ছে…" : "তাপমাত্রা সংরক্ষিত করুন"}
-                </button>
-                <p className="mt-2 text-[11.5px] text-white/40">
-                  LLM-এর স্যাম্পলিং তাপমাত্রা। এটি সেভ করলে ওয়েব অ্যাডমিন ও নির্ধারিত
-                  GitHub Actions রান — সবাই একই মান পাবে।
-                </p>
-              </section>
-
-              <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-                <p className="flex items-center gap-2 text-[13px] font-bold text-white">
-                  <ShieldCheck size={14} className="text-lime" /> ফ্যাক্ট-গেট
-                </p>
-                <label className="mt-4 flex items-center justify-between text-[11px] text-white/45">
-                  থ্রেশহোল্ড{" "}
-                  <span className="font-mono-x text-lime">০.{String(prefs.gate).padStart(2, "০")}</span>
-                </label>
-                <input
-                  type="range"
-                  min={70}
-                  max={99}
-                  value={prefs.gate}
-                  onChange={(e) => updatePref("gate", Number(e.target.value))}
-                  className="mt-1 w-full accent-[#c8f65d]"
-                />
-                <p className="mt-3 text-[12px] leading-relaxed text-white/45">
-                  ক্লাসিফায়ারের নিশ্চয়তা এই থ্রেশহোল্ডের নিচে নামলে পোস্টটি{" "}
-                  <span className="text-amberx">pending</span> সারিতে যায় — লাইভে নয়। সংবেদনশীল
-                  অপরাধ/শিশু কনটেন্টে ৯০+ রাখুন।
-                </p>
-                <button
-                  onClick={() => void saveGate()}
-                  disabled={saving !== null}
-                  className="mt-3 flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 text-[11px] font-bold text-night hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
-                >
-                  {saving === "gate" ? <Loader2 size={12} className="animate-spin" /> : null}
-                  {saving === "gate" ? "সংরক্ষণ হচ্ছে…" : "থ্রেশহোল্ড সংরক্ষিত করুন"}
-                </button>
-              </section>
-
-              <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-                <p className="flex items-center gap-2 text-[13px] font-bold text-white">
-                  <Palette size={14} className="text-lime" /> ডেস্কের বাংলা ফন্ট
-                </p>
-                <label className="mt-4 block text-[11px] text-white/45">ফন্ট পরিবার</label>
-                <select
-                  value={prefs.desk_font}
-                  onChange={(e) => updatePref("desk_font", e.target.value)}
-                  className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 text-[12px] text-white outline-none"
-                >
-                  <option value="">ডিফল্ট — Hind Siliguri</option>
-                  {BANGLA_FONTS.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.label}
+                <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+                  <p className="flex items-center gap-2 text-[13px] font-bold text-white">
+                    <Sparkles size={14} className="text-rose-300" /> রিরাইট মডেল
+                  </p>
+                  <label className="mt-4 block text-[11px] text-white/45">
+                    LLM
+                  </label>
+                  <select
+                    value={prefs.model}
+                    onChange={(e) => updatePref("model", e.target.value)}
+                    className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 text-[13px] text-white outline-none"
+                  >
+                    <option value="gemini-2.0-flash">
+                      gemini-2.0-flash · সাশ্রয়ী
                     </option>
-                  ))}
-                </select>
-                <p
-                  className="mt-3 truncate text-[17px] leading-snug text-white/85"
-                  style={{ fontFamily: banglaFontStack(prefs.desk_font, "Hind Siliguri", "sans-serif") }}
-                >
-                  হৈচৈ ডেস্ক — সংবাদের ভাষা ১২৩
-                </p>
-                <p className="mt-2 text-[11px] leading-relaxed text-white/35">
-                  লাইসেন্স-ক্লিয়ার করা {BANGLA_FONTS.length}টি পরিবার ডেস্কেই বান্ডল করা;
-                  পছন্দ শুধু এই মেশিনে থাকে। বাংলা ফন্ট: লিপিঘর (lipighor.com)।
-                </p>
-              </section>
+                    <option value="gemini-2.5-pro">
+                      gemini-2.5-pro · উচ্চ গুণমান
+                    </option>
+                    <option value="groq-llama-3.3-70b">groq llama · দ্রুত</option>
+                    <option value="openrouter-free">openrouter · বিকল্প</option>
+                    <option value="ollama-local">ollama · লোকাল</option>
+                  </select>
+                  <label className="mt-4 flex items-center justify-between text-[11px] text-white/45">
+                    Temperature{" "}
+                    <span className="font-mono-x text-white/70">
+                      {prefs.temp.toFixed(2)}
+                    </span>
+                  </label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={prefs.temp}
+                    onChange={(e) => updatePref("temp", Number(e.target.value))}
+                    className="mt-1 w-full accent-[#c8f65d]"
+                  />
+                  <button
+                    onClick={() => void saveTemp()}
+                    disabled={saving !== null}
+                    className="mt-2 flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 text-[11px] font-bold text-night hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {saving === "temp" ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : null}
+                    {saving === "temp"
+                      ? "সংরক্ষণ হচ্ছে…"
+                      : "তাপমাত্রা সংরক্ষিত করুন"}
+                  </button>
+                  <p className="mt-2 text-[11.5px] text-white/40">
+                    LLM-এর স্যাম্পলিং তাপমাত্রা। এটি সেভ করলে ওয়েব অ্যাডমিন ও
+                    নির্ধারিত GitHub Actions রান — সবাই একই মান পাবে।
+                  </p>
+                </section>
 
-              <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-                <p className="flex items-center gap-2 text-[13px] font-bold text-white">
-                  <Camera size={14} className="text-sky-300" /> পাইপলাইন টগল
+                <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+                  <p className="flex items-center gap-2 text-[13px] font-bold text-white">
+                    <ShieldCheck size={14} className="text-lime" /> ফ্যাক্ট-গেট
+                  </p>
+                  <label className="mt-4 flex items-center justify-between text-[11px] text-white/45">
+                    থ্রেশহোল্ড{" "}
+                    <span className="font-mono-x text-lime">
+                      ০.{String(prefs.gate).padStart(2, "০")}
+                    </span>
+                  </label>
+                  <input
+                    type="range"
+                    min={70}
+                    max={99}
+                    value={prefs.gate}
+                    onChange={(e) => updatePref("gate", Number(e.target.value))}
+                    className="mt-1 w-full accent-[#c8f65d]"
+                  />
+                  <p className="mt-3 text-[12px] leading-relaxed text-white/45">
+                    ক্লাসিফায়ারের নিশ্চয়তা এই থ্রেশহোল্ডের নিচে নামলে পোস্টটি{" "}
+                    <span className="text-amberx">pending</span> সারিতে যায় —
+                    লাইভে নয়। সংবেদনশীল অপরাধ/শিশু কনটেন্টে ৯০+ রাখুন।
+                  </p>
+                  <button
+                    onClick={() => void saveGate()}
+                    disabled={saving !== null}
+                    className="mt-3 flex items-center gap-1.5 rounded-lg bg-lime px-3 py-1.5 text-[11px] font-bold text-night hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {saving === "gate" ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : null}
+                    {saving === "gate"
+                      ? "সংরক্ষণ হচ্ছে…"
+                      : "থ্রেশহোল্ড সংরক্ষিত করুন"}
+                  </button>
+                </section>
+
+                <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+                  <p className="flex items-center gap-2 text-[13px] font-bold text-white">
+                    <Palette size={14} className="text-lime" /> ডেস্কের বাংলা ফন্ট
+                  </p>
+                  <label className="mt-4 block text-[11px] text-white/45">
+                    ফন্ট পরিবার
+                  </label>
+                  <select
+                    value={prefs.desk_font}
+                    onChange={(e) => updatePref("desk_font", e.target.value)}
+                    className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#0a0d12] px-3 py-2 text-[12px] text-white outline-none"
+                  >
+                    <option value="">ডিফল্ট — Hind Siliguri</option>
+                    {BANGLA_FONTS.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p
+                    className="mt-3 truncate text-[17px] leading-snug text-white/85"
+                    style={{
+                      fontFamily: banglaFontStack(
+                        prefs.desk_font,
+                        "Hind Siliguri",
+                        "sans-serif",
+                      ),
+                    }}
+                  >
+                    হৈচৈ ডেস্ক — সংবাদের ভাষা ১২৩
+                  </p>
+                  <p className="mt-2 text-[11px] leading-relaxed text-white/35">
+                    লাইসেন্স-ক্লিয়ার করা {BANGLA_FONTS.length}টি পরিবার ডেস্কেই
+                    বান্ডল করা; পছন্দ শুধু এই মেশিনে থাকে। বাংলা ফন্ট: লিপিঘর
+                    (lipighor.com)।
+                  </p>
+                </section>
+
+                <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+                  <p className="flex items-center gap-2 text-[13px] font-bold text-white">
+                    <Camera size={14} className="text-sky-300" /> পাইপলাইন টগল
+                  </p>
+                  <ul className="mt-4 space-y-3">
+                    {(
+                      [
+                        ["shot", "স্ক্রিনশট আর্কাইভ"],
+                        ["headless", "Playwright headless"],
+                        ["fact", "ফ্যাক্ট-গেট বাধ্যতামূলক"],
+                        ["commit", "অটো-কমিট GitHub"],
+                        ["deploy", "Vercel অটো-ডিপ্লয়"],
+                      ] as const
+                    ).map(([k, label]) => (
+                      <li
+                        key={k}
+                        className="flex items-center justify-between text-[12.5px]"
+                      >
+                        <span className="text-white/70">{label}</span>
+                        <button
+                          onClick={() =>
+                            updatePref(
+                              k as keyof Prefs,
+                              !prefs[k as keyof Prefs],
+                            )
+                          }
+                          className={`relative h-5 w-9 rounded-full transition-colors ${
+                            prefs[k as keyof Prefs] ? "bg-lime" : "bg-white/15"
+                          }`}
+                        >
+                          <span
+                            className="absolute top-0.5 h-4 w-4 rounded-full bg-night transition-all"
+                            style={{ left: prefs[k as keyof Prefs] ? 18 : 2 }}
+                          />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-4 flex items-center gap-2 font-mono-x text-[10px] text-white/35">
+                    <GitBranch size={11} /> repo: hoichoi-content · branch: main
+                  </p>
+                </section>
+              </div>
+              <p className="mt-3 font-mono-x text-[10px] tracking-[0.14em] text-white/30 uppercase">
+                রিরাইট তাপমাত্রা ও ফ্যাক্ট-গেট সেভ করলে সেগুলো shared settings
+                টেবিলে যায় — ওয়েব অ্যাডমিন ও GitHub পাইপলাইন একই ভ্যালু ব্যবহার
+                করবে। বাকি প্রেফারেন্স শুধু এই মেশিনে (localStorage) থাকে।
+              </p>
+            </div>
+          )}
+
+          {/* Sources / Categories stay mounted: data loads once when Settings
+            opens, and switching tabs is instant (CSS visibility only) instead
+            of respawning a runner subprocess + re-fetch on every tab switch. */}
+          <div className={tab === "sources" ? "" : "hidden"}>
+            <DeskSourceManager />
+          </div>
+
+          <div className={tab === "categories" ? "" : "hidden"}>
+            <DeskCategoryManager />
+          </div>
+
+          <div className={tab === "providers" ? "" : "hidden"}>
+            <DeskProviderManager />
+          </div>
+
+          <div className={tab === "notices" ? "" : "hidden"}>
+            <DeskNoticeManager />
+          </div>
+
+          {tab === "sync" && (
+            <>
+              <div className="panel mt-5">
+                <p className="panel-title">
+                  GitHub Actions · অটো কালেকশনের জন্য
                 </p>
-                <ul className="mt-4 space-y-3">
-                  {(
-                    [
-                      ["shot", "স্ক্রিনশট আর্কাইভ"],
-                      ["headless", "Playwright headless"],
-                      ["fact", "ফ্যাক্ট-গেট বাধ্যতামূলক"],
-                      ["commit", "অটো-কমিট GitHub"],
-                      ["deploy", "Vercel অটো-ডিপ্লয়"],
-                    ] as const
-                  ).map(([k, label]) => (
-                    <li key={k} className="flex items-center justify-between text-[12.5px]">
-                      <span className="text-white/70">{label}</span>
+                <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+                  ডেস্ক বন্ধ থাকলেও GitHub Actions-এর cron একই কাজ করে — কিন্তু সেটি
+                  শুধু রিপোজিটরি সিক্রেট পড়তে পারে। নিচে যেগুলো নেই, সেগুলো না যোগ
+                  করা পর্যন্ত ক্রন ব্যর্থ হবে।
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    className="btn-ghost"
+                    disabled={ghLoading}
+                    onClick={() => void loadGithubSecrets()}
+                  >
+                    {ghLoading ? "⏳ যাচাই হচ্ছে…" : "↻ GitHub সিক্রেট চেক করুন"}
+                  </button>
+                </div>
+                {ghErr && (
+                  <p className="mt-2 text-[11.5px] font-bold text-alizarin">
+                    ✕ {ghErr}
+                  </p>
+                )}
+                {ghSecrets && (
+                  <div className="mt-3 space-y-1.5">
+                    {ghSecrets.length === 0 && (
+                      <p className="text-[11.5px] font-bold text-alizarin">
+                        রিপোজিটরিতে একটিও Actions secret নেই — উপরের ফিল্ডগুলো সেভ
+                        করলে সেগুলো নিজে থেকেই GitHub-এ চলে যাবে।
+                      </p>
+                    )}
+                    {SECRET_SPECS.map((spec) => {
+                      // An LLM key is satisfied by any of its variants.
+                      const variants =
+                        spec.name === "LLM_PROVIDER_KEY"
+                          ? LLM_SECRET_NAMES
+                          : [spec.name];
+                      const found = variants
+                        .map((v) => ghSecrets.find((s) => s.name === v))
+                        .find(Boolean);
+                      const blocking =
+                        spec.requirement === "required" && !found;
+                      return (
+                        <details
+                          key={spec.name}
+                          className={`rounded-lg border px-3 py-2 ${
+                            blocking
+                              ? "border-alizarin/40 bg-alizarin/5"
+                              : "border-ink/10"
+                          }`}
+                        >
+                          <summary className="flex cursor-pointer list-none items-center gap-2 text-[11.5px]">
+                            <span
+                              className={
+                                found
+                                  ? "text-lime"
+                                  : blocking
+                                    ? "text-alizarin"
+                                    : "text-ink-soft"
+                              }
+                            >
+                              {found ? "✓" : blocking ? "✕" : "–"}
+                            </span>
+                            <span className="font-mono-x text-[11px] text-ink">
+                              {spec.name}
+                            </span>
+                            <span className="text-ink-soft">
+                              {found
+                                ? `— GitHub-এ আছে (${new Date(found.updated_at).toLocaleString("bn-BD")})`
+                                : blocking
+                                  ? "— আবশ্যক, GitHub-এ নেই"
+                                  : spec.requirement === "recommended"
+                                    ? "— প্রস্তাবিত, GitHub-এ নেই"
+                                    : "— ঐচ্ছিক, GitHub-এ নেই"}
+                            </span>
+                          </summary>
+                          <div className="mt-2 space-y-2 border-t border-ink/10 pt-2">
+                            <p className="text-[11.5px] leading-relaxed text-ink-soft">
+                              {spec.purposeBn}
+                            </p>
+                            <ol className="list-inside list-decimal space-y-1 text-[11.5px] leading-relaxed text-ink-soft">
+                              {spec.howToBn.map((step, i) => (
+                                <li key={i} className="whitespace-pre-wrap">
+                                  {step}
+                                </li>
+                              ))}
+                            </ol>
+                            <code className="block overflow-x-auto rounded bg-ink/5 px-2 py-1 font-mono-x text-[10.5px] whitespace-pre-wrap text-ink">
+                              {spec.envExample}
+                            </code>
+                            <p className="text-[11px] text-alizarin">
+                              না দিলে: {spec.ifMissingBn}
+                            </p>
+                          </div>
+                        </details>
+                      );
+                    })}
+                  </div>
+                )}
+                {!ghSecrets && (
+                  <p className="mt-3 text-[11.5px] leading-relaxed text-ink-soft">
+                    উপরের চেক বাটনে চাপলে প্রতিটি সিক্রেটের বর্তমান অবস্থা দেখা যাবে
+                    এবং প্রতিটির নিচে ধাপে ধাপে কোথা থেকে পাবেন তা লেখা থাকবে।
+                  </p>
+                )}
+              </div>
+
+              <div className="panel mt-5">
+                <p className="panel-title">Database sync · cloud ↔ local</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    className={cloud !== false ? "btn bg-lime" : "btn-ghost"}
+                    onClick={() => void toggleCloud(true)}
+                  >
+                    ☁ Cloud sync (default)
+                  </button>
+                  <button
+                    className={cloud === false ? "btn bg-lime" : "btn-ghost"}
+                    onClick={() => void toggleCloud(false)}
+                  >
+                    ◌ Local only
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    onClick={() => void refreshMode()}
+                  >
+                    ↻ refresh
+                  </button>
+                </div>
+                <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+                  {cloud === null
+                    ? "Cloud সিঙ্ক: desktop পাইপলাইন সরাসরি shared Turso DB-তে লেখে → web অ্যাডমিন তাৎক্ষণিক দেখে। GitHub-এ কিছুই আপলোড লাগে না।"
+                    : cloud
+                      ? "বর্তমান: ☁ Cloud sync — runs + settings shared Turso DB (web)-এ যায়।"
+                      : "বর্তমান: ◌ Local only — desktop নিজের file DB-তে চলে; ম্যানুয়াল resync হবে।"}
+                </p>
+              </div>
+
+              <div className="panel mt-5">
+                <p className="panel-title">One-Click Sync · Web ↔ Desktop</p>
+                <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+                  Shared Turso DB-এ পরিবর্তন merge করুন। Conflict সমাধান:
+                  updated_at time-based (newer wins)। এখন source_categories,
+                  comments ও reader_reports-ও সিঙ্ক হয়।
+                </p>
+                <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+                  Local-only মোডে স্বয়ংক্রিয় সিঙ্ক চালু: সেটিংস খুললেই Pull, এবং
+                  সোর্স/বিভাগ/ ব্র্যান্ডিং পরিবর্তন করলে Push — web অ্যাডমিন ও ডেস্কটপ
+                  একই কনফিগার দেখাবে। Cloud sync মোডে একই DB ব্যবহার হয় বলে
+                  অতিরিক্ত সিঙ্ক লাগে না।
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    className="btn"
+                    disabled={syncing !== null}
+                    onClick={() => void doSync("push")}
+                  >
+                    {syncing === "push" ? "⏳ পাঠানো হচ্ছে…" : "☁ ডেস্ক → ওয়েব"}
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    disabled={syncing !== null}
+                    onClick={() => void doSync("pull")}
+                  >
+                    {syncing === "pull" ? "⏳ আনা হচ্ছে…" : "⬇ ওয়েব → ডেস্ক"}
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    disabled={syncing !== null}
+                    onClick={() => void doFullSync()}
+                  >
+                    ↻ পূর্ণ সিঙ্ক (আগে পাঠান, পরে আনুন)
+                  </button>
+                </div>
+                {cloud === true && (
+                  <p className="mt-2 text-[11.5px] font-bold text-amber-300">
+                    Cloud sync মোড সক্রিয় — এই বাটনগুলো shared DB-কে রিফ্রেশ করে;
+                    পুরোনো স্থানীয় file DB cloud-এ কপি করে না।
+                  </p>
+                )}
+                <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+                  ডেস্ক → ওয়েব = এই ডেস্কটপের file DB থেকে shared Turso DB-তে কপি।
+                  ওয়েব → ডেস্ক = উল্টো। সিঙ্কের জন্য API Vault-এ Turso URL ও টোকেন
+                  থাকতে হবে — Cloud sync মোড বন্ধ থাকলেও এই বাটনগুলো কাজ করে, কারণ
+                  এগুলোই cloud DB-তে লেখার পথ। তবে Cloud sync মোড চালু থাকলে
+                  ডেস্কটপ ইতিমধ্যেই cloud DB ব্যবহার করছে, তাই push/pull অপ্রয়োজনীয়
+                  ও ঝুঁকিপূর্ণ — সেক্ষেত্রে বাটন বন্ধ থাকে।
+                </p>
+                {syncMsg && (
+                  <p className="mt-2 whitespace-pre-line text-[11.5px] font-bold text-ink">
+                    ✓ {syncMsg}
+                  </p>
+                )}
+                {syncErr && (
+                  <p className="mt-2 text-[11.5px] font-bold text-alizarin">
+                    ✕ {syncErr}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
+          {tab === "site" && (
+            <>
+              <div className="panel mt-5">
+                <p className="panel-title">Site branding · web & desktop</p>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  {BRAND_FIELDS.map((f) => {
+                    const Render =
+                      "multiline" in f && f.multiline ? "textarea" : "input";
+                    return (
+                      <label key={f.key} className="block">
+                        <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                          {f.label}
+                        </span>
+                        <Render
+                          className="field mt-1 w-full"
+                          rows={3}
+                          value={brand[f.key] ?? ""}
+                          onChange={(e) =>
+                            setBrand((prev) => ({
+                              ...prev,
+                              [f.key]: e.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button className="btn" onClick={() => void saveBrand()}>
+                    💾 Save branding
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    onClick={() => void loadBrand()}
+                  >
+                    Load current
+                  </button>
+                </div>
+                {brandMsg && (
+                  <p className="mt-2 text-[11.5px] font-bold text-ink">
+                    ✓ {brandMsg}
+                  </p>
+                )}
+                {brandErr && (
+                  <p className="mt-2 text-[11.5px] font-bold text-alizarin">
+                    ✕ {brandErr}
+                  </p>
+                )}
+              </div>
+
+              <div className="panel mt-5">
+                <p className="panel-title">
+                  বিজ্ঞাপন স্লট (Ad Slots) · Web & Desktop
+                </p>
+                <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+                  প্রতিটি স্লটে আপনার অ্যাড নেটওয়ার্কের (AdSense, Adsterra ইত্যাদি)
+                  HTML/JS কোড পেস্ট করুন। খালি থাকলে ডিফল্ট স্পন্সর কার্ড দেখাবে।
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+                  {AD_SLOTS.map((s) => (
+                    <label key={s.key} className="flex flex-col gap-1.5">
+                      <span className="text-[11px] font-bold text-ink-soft uppercase tracking-wide">
+                        {s.label}
+                      </span>
+                      <textarea
+                        className="field h-24 resize-none font-mono text-[10px]"
+                        placeholder={s.placeholder}
+                        value={adSlots[s.key] ?? ""}
+                        onChange={(e) =>
+                          setAdSlots((prev) => ({
+                            ...prev,
+                            [s.key]: e.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                  ))}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button className="btn" onClick={() => void saveAdSlots()}>
+                    💾 Save ad slots
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    onClick={() => void loadAdSlots()}
+                  >
+                    Load current
+                  </button>
+                </div>
+                {adSlotsMsg && (
+                  <p className="mt-2 text-[11.5px] font-bold text-ink">
+                    ✓ {adSlotsMsg}
+                  </p>
+                )}
+                {adSlotsErr && (
+                  <p className="mt-2 text-[11.5px] font-bold text-alizarin">
+                    ✕ {adSlotsErr}
+                  </p>
+                )}
+              </div>
+
+              <div className="panel mt-5">
+                <p className="flex items-center gap-2 panel-title">
+                  <LayoutDashboard size={14} className="text-lime" /> ওয়েব
+                  ভিজিবিলিটি ও থিম · app_config_json
+                </p>
+                <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+                  কোন সেকশন ওয়েবসাইটে দেখাবে, না দেখাবে — তা ঠিক করুন। Web
+                  অ্যাডমিনের settings পেজ এই একই কনফিগ নিয়ন্ত্রণ করে; দুদিক থেকেই
+                  একই JSON আপডেট হয়। ডিফল্ট থিম প্রথম লোডে দর্শকের ব্রাউজারে বসে
+                  (localStorage পছন্দ থাকলে সেটি জিতে)।
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {VIS_ITEMS.map((v) => (
+                    <label
+                      key={v.key}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-[12.5px] font-bold text-white">
+                          {v.label}
+                        </span>
+                        <span className="block text-[10.5px] text-white/40">
+                          {v.hint}
+                        </span>
+                      </span>
                       <button
-                        onClick={() => updatePref(k as keyof Prefs, !prefs[k as keyof Prefs])}
-                        className={`relative h-5 w-9 rounded-full transition-colors ${
-                          prefs[k as keyof Prefs] ? "bg-lime" : "bg-white/15"
-                        }`}
+                        type="button"
+                        onClick={() => setVis({ ...vis, [v.key]: !vis[v.key] })}
+                        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${vis[v.key] ? "bg-lime" : "bg-white/15"}`}
                       >
                         <span
                           className="absolute top-0.5 h-4 w-4 rounded-full bg-night transition-all"
-                          style={{ left: prefs[k as keyof Prefs] ? 18 : 2 }}
+                          style={{ left: vis[v.key] ? 18 : 2 }}
                         />
                       </button>
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-4 flex items-center gap-2 font-mono-x text-[10px] text-white/35">
-                  <GitBranch size={11} /> repo: hoichoi-content · branch: main
-                </p>
-              </section>
-            </div>
-            <p className="mt-3 font-mono-x text-[10px] tracking-[0.14em] text-white/30 uppercase">
-              রিরাইট তাপমাত্রা ও ফ্যাক্ট-গেট সেভ করলে সেগুলো shared settings টেবিলে যায় — ওয়েব অ্যাডমিন ও
-              GitHub পাইপলাইন একই ভ্যালু ব্যবহার করবে। বাকি প্রেফারেন্স শুধু এই মেশিনে (localStorage) থাকে।
-            </p>
-          </div>
-        )}
-
-        {/* Sources / Categories stay mounted: data loads once when Settings
-            opens, and switching tabs is instant (CSS visibility only) instead
-            of respawning a runner subprocess + re-fetch on every tab switch. */}
-        <div className={tab === "sources" ? "" : "hidden"}>
-          <DeskSourceManager />
-        </div>
-
-        <div className={tab === "categories" ? "" : "hidden"}>
-          <DeskCategoryManager />
-        </div>
-
-        <div className={tab === "providers" ? "" : "hidden"}>
-          <DeskProviderManager />
-        </div>
-
-        <div className={tab === "notices" ? "" : "hidden"}>
-          <DeskNoticeManager />
-        </div>
-
-        {tab === "sync" && (
-          <>
-            <div className="panel mt-5">
-              <p className="panel-title">GitHub Actions · অটো কালেকশনের জন্য</p>
-              <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
-                ডেস্ক বন্ধ থাকলেও GitHub Actions-এর cron একই কাজ করে — কিন্তু সেটি
-                শুধু রিপোজিটরি সিক্রেট পড়তে পারে। নিচে যেগুলো নেই, সেগুলো না
-                যোগ করা পর্যন্ত ক্রন ব্যর্থ হবে।
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button className="btn-ghost" disabled={ghLoading} onClick={() => void loadGithubSecrets()}>
-                  {ghLoading ? "⏳ যাচাই হচ্ছে…" : "↻ GitHub সিক্রেট চেক করুন"}
-                </button>
-              </div>
-              {ghErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {ghErr}</p>}
-              {ghSecrets && (
-                <div className="mt-3 space-y-1.5">
-                  {ghSecrets.length === 0 && (
-                    <p className="text-[11.5px] font-bold text-alizarin">
-                      রিপোজিটরিতে একটিও Actions secret নেই — উপরের ফিল্ডগুলো সেভ করলে
-                      সেগুলো নিজে থেকেই GitHub-এ চলে যাবে।
-                    </p>
-                  )}
-                  {SECRET_SPECS.map((spec) => {
-                    // An LLM key is satisfied by any of its variants.
-                    const variants =
-                      spec.name === "LLM_PROVIDER_KEY" ? LLM_SECRET_NAMES : [spec.name];
-                    const found = variants
-                      .map((v) => ghSecrets.find((s) => s.name === v))
-                      .find(Boolean);
-                    const blocking = spec.requirement === "required" && !found;
-                    return (
-                      <details
-                        key={spec.name}
-                        className={`rounded-lg border px-3 py-2 ${
-                          blocking ? "border-alizarin/40 bg-alizarin/5" : "border-ink/10"
-                        }`}
-                      >
-                        <summary className="flex cursor-pointer list-none items-center gap-2 text-[11.5px]">
-                          <span className={found ? "text-lime" : blocking ? "text-alizarin" : "text-ink-soft"}>
-                            {found ? "✓" : blocking ? "✕" : "–"}
-                          </span>
-                          <span className="font-mono-x text-[11px] text-ink">{spec.name}</span>
-                          <span className="text-ink-soft">
-                            {found
-                              ? `— GitHub-এ আছে (${new Date(found.updated_at).toLocaleString("bn-BD")})`
-                              : blocking
-                                ? "— আবশ্যক, GitHub-এ নেই"
-                                : spec.requirement === "recommended"
-                                  ? "— প্রস্তাবিত, GitHub-এ নেই"
-                                  : "— ঐচ্ছিক, GitHub-এ নেই"}
-                          </span>
-                        </summary>
-                        <div className="mt-2 space-y-2 border-t border-ink/10 pt-2">
-                          <p className="text-[11.5px] leading-relaxed text-ink-soft">
-                            {spec.purposeBn}
-                          </p>
-                          <ol className="list-inside list-decimal space-y-1 text-[11.5px] leading-relaxed text-ink-soft">
-                            {spec.howToBn.map((step, i) => (
-                              <li key={i} className="whitespace-pre-wrap">{step}</li>
-                            ))}
-                          </ol>
-                          <code className="block overflow-x-auto rounded bg-ink/5 px-2 py-1 font-mono-x text-[10.5px] whitespace-pre-wrap text-ink">
-                            {spec.envExample}
-                          </code>
-                          <p className="text-[11px] text-alizarin">
-                            না দিলে: {spec.ifMissingBn}
-                          </p>
-                        </div>
-                      </details>
-                    );
-                  })}
-                </div>
-              )}
-              {!ghSecrets && (
-                <p className="mt-3 text-[11.5px] leading-relaxed text-ink-soft">
-                  উপরের চেক বাটনে চাপলে প্রতিটি সিক্রেটের বর্তমান অবস্থা দেখা যাবে এবং
-                  প্রতিটির নিচে ধাপে ধাপে কোথা থেকে পাবেন তা লেখা থাকবে।
-                </p>
-              )}
-            </div>
-
-            <div className="panel mt-5">
-              <p className="panel-title">Database sync · cloud ↔ local</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <button className={cloud !== false ? "btn bg-lime" : "btn-ghost"} onClick={() => void toggleCloud(true)}>
-                  ☁ Cloud sync (default)
-                </button>
-                <button className={cloud === false ? "btn bg-lime" : "btn-ghost"} onClick={() => void toggleCloud(false)}>
-                  ◌ Local only
-                </button>
-                <button className="btn-ghost" onClick={() => void refreshMode()}>
-                  ↻ refresh
-                </button>
-              </div>
-              <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
-                {cloud === null
-                  ? "Cloud সিঙ্ক: desktop পাইপলাইন সরাসরি shared Turso DB-তে লেখে → web অ্যাডমিন তাৎক্ষণিক দেখে। GitHub-এ কিছুই আপলোড লাগে না।"
-                  : cloud
-                    ? "বর্তমান: ☁ Cloud sync — runs + settings shared Turso DB (web)-এ যায়।"
-                    : "বর্তমান: ◌ Local only — desktop নিজের file DB-তে চলে; ম্যানুয়াল resync হবে।"}
-              </p>
-            </div>
-
-            <div className="panel mt-5">
-              <p className="panel-title">One-Click Sync · Web ↔ Desktop</p>
-              <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
-                Shared Turso DB-এ পরিবর্তন merge করুন। Conflict সমাধান: updated_at time-based
-                (newer wins)। এখন source_categories, comments ও reader_reports-ও সিঙ্ক হয়।
-              </p>
-              <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
-                Local-only মোডে স্বয়ংক্রিয় সিঙ্ক চালু: সেটিংস খুললেই Pull, এবং সোর্স/বিভাগ/
-                ব্র্যান্ডিং পরিবর্তন করলে Push — web অ্যাডমিন ও ডেস্কটপ একই কনফিগার দেখাবে।
-                Cloud sync মোডে একই DB ব্যবহার হয় বলে অতিরিক্ত সিঙ্ক লাগে না।
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button className="btn" disabled={syncing !== null} onClick={() => void doSync("push")}>
-                  {syncing === "push" ? "⏳ পাঠানো হচ্ছে…" : "☁ ডেস্ক → ওয়েব"}
-                </button>
-                <button className="btn-ghost" disabled={syncing !== null} onClick={() => void doSync("pull")}>
-                  {syncing === "pull" ? "⏳ আনা হচ্ছে…" : "⬇ ওয়েব → ডেস্ক"}
-                </button>
-                <button
-                  className="btn-ghost"
-                  disabled={syncing !== null}
-                  onClick={() => void doFullSync()}
-                >
-                  ↻ পূর্ণ সিঙ্ক (আগে পাঠান, পরে আনুন)
-                </button>
-              </div>
-              {cloud === true && (
-                <p className="mt-2 text-[11.5px] font-bold text-amber-300">
-                  Cloud sync মোড সক্রিয় — এই বাটনগুলো shared DB-কে রিফ্রেশ করে; পুরোনো
-                  স্থানীয় file DB cloud-এ কপি করে না।
-                </p>
-              )}
-              <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
-                ডেস্ক → ওয়েব = এই ডেস্কটপের file DB থেকে shared Turso DB-তে কপি। ওয়েব → ডেস্ক = উল্টো।
-                সিঙ্কের জন্য API Vault-এ Turso URL ও টোকেন থাকতে হবে — Cloud sync মোড বন্ধ
-                থাকলেও এই বাটনগুলো কাজ করে, কারণ এগুলোই cloud DB-তে লেখার পথ। তবে Cloud sync
-                মোড চালু থাকলে ডেস্কটপ ইতিমধ্যেই cloud DB ব্যবহার করছে, তাই push/pull
-                অপ্রয়োজনীয় ও ঝুঁকিপূর্ণ — সেক্ষেত্রে বাটন বন্ধ থাকে।
-              </p>
-              {syncMsg && <p className="mt-2 whitespace-pre-line text-[11.5px] font-bold text-ink">✓ {syncMsg}</p>}
-              {syncErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {syncErr}</p>}
-            </div>
-          </>
-        )}
-
-        {tab === "site" && (
-          <>
-            <div className="panel mt-5">
-              <p className="panel-title">Site branding · web & desktop</p>
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                {BRAND_FIELDS.map((f) => {
-                  const Render = "multiline" in f && f.multiline ? "textarea" : "input";
-                  return (
-                    <label key={f.key} className="block">
-                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">{f.label}</span>
-                      <Render
-                        className="field mt-1 w-full"
-                        rows={3}
-                        value={brand[f.key] ?? ""}
-                        onChange={(e) => setBrand((prev) => ({ ...prev, [f.key]: e.target.value }))}
-                      />
                     </label>
-                  );
-                })}
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button className="btn" onClick={() => void saveBrand()}>
-                  💾 Save branding
-                </button>
-                <button className="btn-ghost" onClick={() => void loadBrand()}>
-                  Load current
-                </button>
-              </div>
-              {brandMsg && <p className="mt-2 text-[11.5px] font-bold text-ink">✓ {brandMsg}</p>}
-              {brandErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {brandErr}</p>}
-            </div>
-
-            <div className="panel mt-5">
-              <p className="panel-title">বিজ্ঞাপন স্লট (Ad Slots) · Web & Desktop</p>
-              <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
-                প্রতিটি স্লটে আপনার অ্যাড নেটওয়ার্কের (AdSense, Adsterra ইত্যাদি) HTML/JS কোড পেস্ট করুন। খালি থাকলে ডিফল্ট স্পন্সর কার্ড দেখাবে।
-              </p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
-                {AD_SLOTS.map((s) => (
-                  <label key={s.key} className="flex flex-col gap-1.5">
-                    <span className="text-[11px] font-bold text-ink-soft uppercase tracking-wide">{s.label}</span>
-                    <textarea
-                      className="field h-24 resize-none font-mono text-[10px]"
-                      placeholder={s.placeholder}
-                      value={adSlots[s.key] ?? ""}
-                      onChange={(e) => setAdSlots((prev) => ({ ...prev, [s.key]: e.target.value }))}
-                    />
-                  </label>
-                ))}
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button className="btn" onClick={() => void saveAdSlots()}>
-                  💾 Save ad slots
-                </button>
-                <button className="btn-ghost" onClick={() => void loadAdSlots()}>
-                  Load current
-                </button>
-              </div>
-              {adSlotsMsg && <p className="mt-2 text-[11.5px] font-bold text-ink">✓ {adSlotsMsg}</p>}
-              {adSlotsErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {adSlotsErr}</p>}
-            </div>
-
-            <div className="panel mt-5">
-              <p className="flex items-center gap-2 panel-title">
-                <LayoutDashboard size={14} className="text-lime" /> ওয়েব ভিজিবিলিটি ও থিম · app_config_json
-              </p>
-              <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
-                কোন সেকশন ওয়েবসাইটে দেখাবে, না দেখাবে — তা ঠিক করুন। Web অ্যাডমিনের settings
-                পেজ এই একই কনফিগ নিয়ন্ত্রণ করে; দুদিক থেকেই একই JSON আপডেট হয়। ডিফল্ট থিম
-                প্রথম লোডে দর্শকের ব্রাউজারে বসে (localStorage পছন্দ থাকলে সেটি জিতে)।
-              </p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {VIS_ITEMS.map((v) => (
-                  <label key={v.key} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5">
-                    <span className="min-w-0">
-                      <span className="block text-[12.5px] font-bold text-white">{v.label}</span>
-                      <span className="block text-[10.5px] text-white/40">{v.hint}</span>
+                  ))}
+                </div>
+                <label className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-alizarin/45 bg-alizarin/10 px-3 py-2.5">
+                  <span className="min-w-0">
+                    <span className="block text-[12.5px] font-bold text-alizarin">
+                      {vis.maintenance_mode
+                        ? "মেইনটেন্যান্স চলছে"
+                        : "মেইনটেন্যান্স মোড"}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => setVis({ ...vis, [v.key]: !vis[v.key] })}
-                      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${vis[v.key] ? "bg-lime" : "bg-white/15"}`}
-                    >
-                      <span
-                        className="absolute top-0.5 h-4 w-4 rounded-full bg-night transition-all"
-                        style={{ left: vis[v.key] ? 18 : 2 }}
-                      />
-                    </button>
-                  </label>
-                ))}
-              </div>
-              <label className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-alizarin/45 bg-alizarin/10 px-3 py-2.5">
-                <span className="min-w-0">
-                  <span className="block text-[12.5px] font-bold text-alizarin">
-                    {vis.maintenance_mode ? "মেইনটেন্যান্স চলছে" : "মেইনটেন্যান্স মোড"}
+                    <span className="block text-[10.5px] text-white/40">
+                      চালু করলে সাধারণ দর্শকরা মেইনটেন্যান্স পেজ দেখবে; লগ-ইন করা
+                      অ্যাডমিনদের জন্য সাইট খোলা থাকবে।
+                    </span>
                   </span>
-                  <span className="block text-[10.5px] text-white/40">
-                    চালু করলে সাধারণ দর্শকরা মেইনটেন্যান্স পেজ দেখবে; লগ-ইন করা অ্যাডমিনদের জন্য সাইট খোলা থাকবে।
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setVis({ ...vis, maintenance_mode: !vis.maintenance_mode })}
-                  className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${vis.maintenance_mode ? "bg-alizarin" : "bg-white/15"}`}
-                  aria-pressed={vis.maintenance_mode === true}
-                  aria-label="মেইনটেন্যান্স মোড"
-                >
-                  <span
-                    className="absolute top-0.5 h-4 w-4 rounded-full bg-night transition-all"
-                    style={{ left: vis.maintenance_mode ? 18 : 2 }}
-                  />
-                </button>
-              </label>
-              {/* Hero scene template — same list and same component the web
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setVis({
+                        ...vis,
+                        maintenance_mode: !vis.maintenance_mode,
+                      })
+                    }
+                    className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${vis.maintenance_mode ? "bg-alizarin" : "bg-white/15"}`}
+                    aria-pressed={vis.maintenance_mode === true}
+                    aria-label="মেইনটেন্যান্স মোড"
+                  >
+                    <span
+                      className="absolute top-0.5 h-4 w-4 rounded-full bg-night transition-all"
+                      style={{ left: vis.maintenance_mode ? 18 : 2 }}
+                    />
+                  </button>
+                </label>
+                {/* Hero scene template — same list and same component the web
                   admin renders, so the two consoles can never disagree. */}
-              <div className="mt-4 border-t border-white/10 pt-3">
-                <p className="text-[11.5px] font-bold text-white">হিরো সিন টেমপ্লেট</p>
-                <p className="mt-1 text-[10.5px] leading-relaxed text-white/40">
-                  হোম পেজের ডান কলামে সংগ্রহ-প্রক্রিয়ার দৃশ্য কোন লেআউটে দেখাবে। সব টেমপ্লেট আসল
-                  ডেটাই দেখায় (উৎস, সংগ্রহ/ডুপ্লিকেট/প্রকাশিত সংখ্যা) — শুধু সাজানো আলাদা।
-                </p>
-                <div className="mt-2 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                  {HERO_SCENE_STYLES.map((st) => {
-                    const active = vis.hero_scene_style === st.key;
-                    return (
-                      <button
-                        key={st.key}
-                        type="button"
-                        onClick={() => setVis({ ...vis, hero_scene_style: st.key })}
-                        aria-pressed={active}
-                        className={`overflow-hidden rounded-lg border text-left transition-colors ${
-                          active ? "border-lime" : "border-white/12 hover:border-white/35"
-                        }`}
-                      >
-                        <div className="relative h-[74px] overflow-hidden">
-                          <div
-                            className="absolute top-0 left-0 origin-top-left"
-                            style={{ width: "250%", height: "300%", transform: "scale(0.4)" }}
-                          >
-                            <HeroScene style={st.key} stats={SCENE_PREVIEW_STATS} feature={null} preview />
+                <div className="mt-4 border-t border-white/10 pt-3">
+                  <p className="text-[11.5px] font-bold text-white">
+                    হিরো সিন টেমপ্লেট
+                  </p>
+                  <p className="mt-1 text-[10.5px] leading-relaxed text-white/40">
+                    হোম পেজের ডান কলামে সংগ্রহ-প্রক্রিয়ার দৃশ্য কোন লেআউটে দেখাবে। সব
+                    টেমপ্লেট আসল ডেটাই দেখায় (উৎস, সংগ্রহ/ডুপ্লিকেট/প্রকাশিত সংখ্যা) —
+                    শুধু সাজানো আলাদা।
+                  </p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                    {HERO_SCENE_STYLES.map((st) => {
+                      const active = vis.hero_scene_style === st.key;
+                      return (
+                        <button
+                          key={st.key}
+                          type="button"
+                          onClick={() =>
+                            setVis({ ...vis, hero_scene_style: st.key })
+                          }
+                          aria-pressed={active}
+                          className={`overflow-hidden rounded-lg border text-left transition-colors ${
+                            active
+                              ? "border-lime"
+                              : "border-white/12 hover:border-white/35"
+                          }`}
+                        >
+                          <div className="relative h-[74px] overflow-hidden">
+                            <div
+                              className="absolute top-0 left-0 origin-top-left"
+                              style={{
+                                width: "250%",
+                                height: "300%",
+                                transform: "scale(0.4)",
+                              }}
+                            >
+                              <HeroScene
+                                style={st.key}
+                                stats={SCENE_PREVIEW_STATS}
+                                feature={null}
+                                preview
+                              />
+                            </div>
                           </div>
-                        </div>
-                        <div className={`flex items-center justify-between gap-1 px-2 py-1 ${active ? "bg-lime/10" : ""}`}>
-                          <span className={`text-[10.5px] font-bold ${active ? "text-lime" : "text-white/80"}`}>{st.bn}</span>
-                          {active && <span className="text-[10px] text-lime">✓</span>}
-                        </div>
-                      </button>
-                    );
-                  })}
+                          <div
+                            className={`flex items-center justify-between gap-1 px-2 py-1 ${active ? "bg-lime/10" : ""}`}
+                          >
+                            <span
+                              className={`text-[10.5px] font-bold ${active ? "text-lime" : "text-white/80"}`}
+                            >
+                              {st.bn}
+                            </span>
+                            {active && (
+                              <span className="text-[10px] text-lime">✓</span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
 
-              <div className="mt-4 border-t border-white/10 pt-3">
-                <p className="text-[11.5px] font-bold text-white">ওয়েবসাইটের বাংলা ফন্ট</p>
-                <p className="mt-1 text-[10.5px] leading-relaxed text-white/40">
-                  ওয়েব অ্যাডমিনের ডিজাইন ট্যাবের সঙ্গে একই পছন্দ — টাইটেল, বর্ণনা ও
-                  ট্যাগ/বিভাগের জন্য বান্ডল করা {BANGLA_FONTS.length}টি পরিবার থেকে বেছে নিন।
-                </p>
-                <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                  <label className="block">
-                    <span className="text-[10.5px] text-white/45">শিরোনাম</span>
-                    <select
-                      className="field mt-1 w-full"
-                      value={vis.typography?.headline ?? ""}
-                      onChange={(e) =>
-                        setVis({
-                          ...vis,
-                          typography: { ...(vis.typography ?? { headline: "", body: "", meta: "" }), headline: e.target.value },
-                        })
-                      }
+                <div className="mt-4 border-t border-white/10 pt-3">
+                  <p className="text-[11.5px] font-bold text-white">
+                    ওয়েবসাইটের বাংলা ফন্ট
+                  </p>
+                  <p className="mt-1 text-[10.5px] leading-relaxed text-white/40">
+                    ওয়েব অ্যাডমিনের ডিজাইন ট্যাবের সঙ্গে একই পছন্দ — টাইটেল, বর্ণনা ও
+                    ট্যাগ/বিভাগের জন্য বান্ডল করা {BANGLA_FONTS.length}টি পরিবার
+                    থেকে বেছে নিন।
+                  </p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                    <label className="block">
+                      <span className="text-[10.5px] text-white/45">
+                        শিরোনাম
+                      </span>
+                      <select
+                        className="field mt-1 w-full"
+                        value={vis.typography?.headline ?? ""}
+                        onChange={(e) =>
+                          setVis({
+                            ...vis,
+                            typography: {
+                              ...(vis.typography ?? {
+                                headline: "",
+                                body: "",
+                                meta: "",
+                              }),
+                              headline: e.target.value,
+                            },
+                          })
+                        }
+                      >
+                        <option value="">ডিফল্ট — Noto Serif Bengali</option>
+                        {BANGLA_FONTS.map((f) => (
+                          <option key={f.id} value={f.id}>
+                            {f.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="text-[10.5px] text-white/45">বডি</span>
+                      <select
+                        className="field mt-1 w-full"
+                        value={vis.typography?.body ?? ""}
+                        onChange={(e) =>
+                          setVis({
+                            ...vis,
+                            typography: {
+                              ...(vis.typography ?? {
+                                headline: "",
+                                body: "",
+                                meta: "",
+                              }),
+                              body: e.target.value,
+                            },
+                          })
+                        }
+                      >
+                        <option value="">ডিফল্ট — Hind Siliguri</option>
+                        {BANGLA_FONTS.map((f) => (
+                          <option key={f.id} value={f.id}>
+                            {f.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="text-[10.5px] text-white/45">
+                        ট্যাগ ও বিভাগ
+                      </span>
+                      <select
+                        className="field mt-1 w-full"
+                        value={vis.typography?.meta ?? ""}
+                        onChange={(e) =>
+                          setVis({
+                            ...vis,
+                            typography: {
+                              ...(vis.typography ?? {
+                                headline: "",
+                                body: "",
+                                meta: "",
+                              }),
+                              meta: e.target.value,
+                            },
+                          })
+                        }
+                      >
+                        <option value="">বডির ফন্টই ব্যবহার হবে</option>
+                        {BANGLA_FONTS.map((f) => (
+                          <option key={f.id} value={f.id}>
+                            {f.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                    <p className="text-[10px] tracking-[0.18em] text-white/35 uppercase">
+                      লাইভ প্রিভিউ
+                    </p>
+                    <p
+                      className="mt-1 text-[23px] leading-snug text-white"
+                      style={{
+                        fontFamily: banglaFontStack(
+                          vis.typography?.headline,
+                          "Noto Serif Bengali",
+                          "serif",
+                        ),
+                      }}
                     >
-                      <option value="">ডিফল্ট — Noto Serif Bengali</option>
-                      {BANGLA_FONTS.map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {f.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="block">
-                    <span className="text-[10.5px] text-white/45">বডি</span>
-                    <select
-                      className="field mt-1 w-full"
-                      value={vis.typography?.body ?? ""}
-                      onChange={(e) =>
-                        setVis({
-                          ...vis,
-                          typography: { ...(vis.typography ?? { headline: "", body: "", meta: "" }), body: e.target.value },
-                        })
-                      }
+                      শিরোনাম এমন দেখাবে — হৈচৈ
+                    </p>
+                    <p
+                      className="mt-1 text-[12.5px] leading-relaxed text-white/60"
+                      style={{
+                        fontFamily: banglaFontStack(
+                          vis.typography?.body,
+                          "Hind Siliguri",
+                          "sans-serif",
+                        ),
+                      }}
                     >
-                      <option value="">ডিফল্ট — Hind Siliguri</option>
-                      {BANGLA_FONTS.map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {f.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="block">
-                    <span className="text-[10.5px] text-white/45">ট্যাগ ও বিভাগ</span>
-                    <select
-                      className="field mt-1 w-full"
-                      value={vis.typography?.meta ?? ""}
-                      onChange={(e) =>
-                        setVis({
-                          ...vis,
-                          typography: { ...(vis.typography ?? { headline: "", body: "", meta: "" }), meta: e.target.value },
-                        })
-                      }
+                      সংবাদের বডি এই ফন্টে পড়া হবে। যুক্তাক্ষর: ক্ষ্ম, ন্ত, স্ত্র, ঞ্জ।
+                    </p>
+                    <p
+                      className="mt-1 text-[10.5px] font-bold tracking-wide text-lime"
+                      style={{
+                        fontFamily: banglaFontStack(
+                          vis.typography?.meta || vis.typography?.body,
+                          "Hind Siliguri",
+                          "sans-serif",
+                        ),
+                      }}
                     >
-                      <option value="">বডির ফন্টই ব্যবহার হবে</option>
-                      {BANGLA_FONTS.map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {f.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                      ট্যাগ · বিভাগ · বিষয়
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              {/*
+                {/*
                 The sidebar template picker.
 
                 Same twelve templates as the web console, from the same shared
@@ -1521,603 +1980,839 @@ export default function Settings({
                 browser console follows) and the desk's local mirror (so this
                 window restyles immediately, even offline).
               */}
-              <div className="mt-4 border-t border-white/10 pt-3">
-                <p className="text-[11.5px] font-bold text-white">সাইডবার টেমপ্লেট</p>
-                <p className="mt-1 text-[10.5px] leading-relaxed text-white/40">
-                  বাম মেনুর চেহারা — বারোটি টেমপ্লেট, একই মেনু ও একই শর্টকাট। মেনুর ক্রম বা নাম
-                  বদলায় না, শুধু প্যানেলের রূপ; ওয়েব কনসোলও এই একই পছন্দ দেখে।
-                </p>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {SIDEBAR_STYLES.map((st) => {
-                    const active = sidebarStyle === st.id;
-                    return (
-                      <button
-                        key={st.id}
-                        type="button"
-                        onClick={() => {
-                          // One decision, two places: the local mirror restyles
-                          // this window now, the shared config tells the browser
-                          // console. A failed save leaves the desk styled but
-                          // says so, instead of pretending both agree.
-                          setVis({ ...vis, admin_sidebar_style: st.id });
-                          setSidebarStyle(st.id);
-                          setDeskSidebarStyle(st.id);
-                          void (async () => {
-                            try {
-                              await settingsSet(await getRunEnv(), {
-                                app_config_json: JSON.stringify({ ...vis, admin_sidebar_style: st.id }),
-                              });
-                              setVisErr(null);
-                            } catch {
-                              setVisErr("সাইডবার পছন্দ সার্ভারে সংরক্ষণ করা যায়নি — শুধু এই ডেস্কে প্রয়োগ হয়েছে।");
-                            }
-                          })();
-                        }}
-                        aria-pressed={active}
-                        className={`flex items-start gap-2 rounded-lg border p-2 text-left transition-colors ${
-                          active ? "border-lime bg-lime/10" : "border-white/12 hover:border-white/35"
-                        }`}
-                      >
-                        <span
-                          aria-hidden="true"
-                          className="grid h-[42px] w-[54px] shrink-0 content-start gap-[3px] p-[5px]"
-                          style={{ background: st.swatch.bg, borderRadius: st.swatch.radius, border: `1px solid ${st.swatch.bar}` }}
+                <div className="mt-4 border-t border-white/10 pt-3">
+                  <p className="text-[11.5px] font-bold text-white">
+                    সাইডবার টেমপ্লেট
+                  </p>
+                  <p className="mt-1 text-[10.5px] leading-relaxed text-white/40">
+                    বাম মেনুর চেহারা — বারোটি টেমপ্লেট, একই মেনু ও একই শর্টকাট। মেনুর
+                    ক্রম বা নাম বদলায় না, শুধু প্যানেলের রূপ; ওয়েব কনসোলও এই একই পছন্দ
+                    দেখে।
+                  </p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {SIDEBAR_STYLES.map((st) => {
+                      const active = sidebarStyle === st.id;
+                      return (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() => {
+                            // One decision, two places: the local mirror restyles
+                            // this window now, the shared config tells the browser
+                            // console. A failed save leaves the desk styled but
+                            // says so, instead of pretending both agree.
+                            setVis({ ...vis, admin_sidebar_style: st.id });
+                            setSidebarStyle(st.id);
+                            setDeskSidebarStyle(st.id);
+                            void (async () => {
+                              try {
+                                await settingsSet(await getRunEnv(), {
+                                  app_config_json: JSON.stringify({
+                                    ...vis,
+                                    admin_sidebar_style: st.id,
+                                  }),
+                                });
+                                setVisErr(null);
+                              } catch {
+                                setVisErr(
+                                  "সাইডবার পছন্দ সার্ভারে সংরক্ষণ করা যায়নি — শুধু এই ডেস্কে প্রয়োগ হয়েছে।",
+                                );
+                              }
+                            })();
+                          }}
+                          aria-pressed={active}
+                          className={`flex items-start gap-2 rounded-lg border p-2 text-left transition-colors ${
+                            active
+                              ? "border-lime bg-lime/10"
+                              : "border-white/12 hover:border-white/35"
+                          }`}
                         >
-                          <span style={{ background: st.swatch.accent, height: 4, width: "52%", borderRadius: st.swatch.radius }} />
-                          <span style={{ background: st.swatch.bar, height: 3, width: "92%", opacity: 0.85 }} />
-                          <span style={{ background: st.swatch.bar, height: 3, width: "78%", opacity: 0.6 }} />
-                        </span>
-                        <span className="min-w-0">
-                          <span className={`block text-[11px] font-bold ${active ? "text-lime" : "text-white/85"}`}>
-                            {st.name}
-                            {active ? " ✓" : ""}
+                          <span
+                            aria-hidden="true"
+                            className="grid h-[42px] w-[54px] shrink-0 content-start gap-[3px] p-[5px]"
+                            style={{
+                              background: st.swatch.bg,
+                              borderRadius: st.swatch.radius,
+                              border: `1px solid ${st.swatch.bar}`,
+                            }}
+                          >
+                            <span
+                              style={{
+                                background: st.swatch.accent,
+                                height: 4,
+                                width: "52%",
+                                borderRadius: st.swatch.radius,
+                              }}
+                            />
+                            <span
+                              style={{
+                                background: st.swatch.bar,
+                                height: 3,
+                                width: "92%",
+                                opacity: 0.85,
+                              }}
+                            />
+                            <span
+                              style={{
+                                background: st.swatch.bar,
+                                height: 3,
+                                width: "78%",
+                                opacity: 0.6,
+                              }}
+                            />
                           </span>
-                          <span className="mt-0.5 block font-mono-x text-[9px] tracking-[0.1em] text-white/35 uppercase">
-                            {st.latin}
+                          <span className="min-w-0">
+                            <span
+                              className={`block text-[11px] font-bold ${active ? "text-lime" : "text-white/85"}`}
+                            >
+                              {st.name}
+                              {active ? " ✓" : ""}
+                            </span>
+                            <span className="mt-0.5 block font-mono-x text-[9px] tracking-[0.1em] text-white/35 uppercase">
+                              {st.latin}
+                            </span>
                           </span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-end gap-3">
-                <label className="block">
-                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">ডিফল্ট থিম</span>
-                  <select
-                    className="field mt-1 w-44"
-                    value={vis.theme_default}
-                    onChange={(e) => setVis({ ...vis, theme_default: e.target.value as "light" | "dark" })}
-                  >
-                    <option value="light">light</option>
-                    <option value="dark">dark</option>
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">Surge threshold</span>
-                  <input
-                    type="number"
-                    className="field mt-1 w-32"
-                    value={vis.surge_threshold}
-                    onChange={(e) => setVis({ ...vis, surge_threshold: Number(e.target.value) })}
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
-                    হোমপেজ কালেকশন
-                  </span>
-                  <input
-                    type="number"
-                    min={4}
-                    max={50}
-                    className="field mt-1 w-32"
-                    value={vis.home_post_count}
-                    onChange={(e) => setVis({ ...vis, home_post_count: Math.min(50, Math.max(4, Number(e.target.value) || 12)) })}
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
-                    সম্পর্কিত পোস্ট
-                  </span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={8}
-                    className="field mt-1 w-32"
-                    value={vis.detail_similar_count}
-                    onChange={(e) => setVis({ ...vis, detail_similar_count: Math.min(8, Math.max(1, Number(e.target.value) || 3)) })}
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
-                    মন্তব্য দেখানো
-                  </span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={50}
-                    className="field mt-1 w-32"
-                    value={vis.comments_show_count}
-                    onChange={(e) => setVis({ ...vis, comments_show_count: Math.min(50, Math.max(1, Number(e.target.value) || 10)) })}
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
-                    ব্র্যান্ড অ্যানিমেশন
-                  </span>
-                  <select
-                    className="field mt-1 w-44"
-                    value={vis.brand_animation}
-                    onChange={(e) => setVis({ ...vis, brand_animation: e.target.value as SiteAppConfig["brand_animation"] })}
-                  >
-                    {BRAND_ANIMATIONS.map((b) => (
-                      <option key={b.value} value={b.value}>
-                        {b.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div className="block min-w-[16rem] flex-1 space-y-2">
-                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
-                    হিরো ডেকোরেটিভ ইফেক্ট
-                  </span>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {(
-                      [
-                        ["drift", "ড্রিফট ব্লব"],
-                        ["floaty", "ফ্লোটিং কার্ড"],
-                        ["beam", "বিম লাইট"],
-                        ["headline_grad", "গ্রেডিয়েন্ট হেডলাইন"],
-                        ["kin_mask", "কাইনেটিক মাস্ক"],
-                        ["tauri_win", "উইন্ডো ক্রোম"],
-                        ["ping", "লাইভ পিং"],
-                      ] as const
-                    ).map(([key, label]) => (
-                      <label key={key} className="flex items-center gap-2 text-[11.5px] text-ink-soft">
-                        <input
-                          type="checkbox"
-                          checked={vis.hero_effects[key]}
-                          onChange={(e) =>
-                            setVis({
-                              ...vis,
-                              hero_effects: { ...vis.hero_effects, [key]: e.target.checked },
-                            })
-                          }
-                        />
-                        {label}
-                      </label>
-                    ))}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-                <label className="block min-w-[16rem] flex-1">
-                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
-                    ডিফল্ট পোস্ট ছবি (URL)
-                  </span>
-                  <input
-                    className="field mt-1 w-full"
-                    placeholder="https://… অথবা /uploads/…"
-                    value={vis.default_post_image}
-                    onChange={(e) => setVis({ ...vis, default_post_image: e.target.value })}
-                  />
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  <button className="btn" onClick={() => void saveVis()}>
-                    💾 Save visibility & theme
-                  </button>
-                  <button className="btn-ghost" onClick={() => void loadAdSlots()}>
-                    Load current
-                  </button>
-                  <button className="btn-ghost" onClick={() => void resetVis()}>
-                    ⟲ Reset to defaults
-                  </button>
-                </div>
-              </div>
-              {visMsg && <p className="mt-2 text-[11.5px] font-bold text-ink">✓ {visMsg}</p>}
-              {visErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {visErr}</p>}
-              {!visLoaded && (
-                <p className="mt-2 text-[11.5px] text-ink-soft/60">
-                  ⟳ লোড হচ্ছে… settings-এ ক্লিক করলে ডিফল্ট মান দেখাবে।
-                </p>
-              )}
-            </div>
 
+                <div className="mt-3 flex flex-wrap items-end gap-3">
+                  <label className="block">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                      ডিফল্ট থিম
+                    </span>
+                    <select
+                      className="field mt-1 w-44"
+                      value={vis.theme_default}
+                      onChange={(e) =>
+                        setVis({
+                          ...vis,
+                          theme_default: e.target.value as "light" | "dark",
+                        })
+                      }
+                    >
+                      <option value="light">light</option>
+                      <option value="dark">dark</option>
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                      Surge threshold
+                    </span>
+                    <input
+                      type="number"
+                      className="field mt-1 w-32"
+                      value={vis.surge_threshold}
+                      onChange={(e) =>
+                        setVis({
+                          ...vis,
+                          surge_threshold: Number(e.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                      হোমপেজ কালেকশন
+                    </span>
+                    <input
+                      type="number"
+                      min={4}
+                      max={50}
+                      className="field mt-1 w-32"
+                      value={vis.home_post_count}
+                      onChange={(e) =>
+                        setVis({
+                          ...vis,
+                          home_post_count: Math.min(
+                            50,
+                            Math.max(4, Number(e.target.value) || 12),
+                          ),
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                      সম্পর্কিত পোস্ট
+                    </span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={8}
+                      className="field mt-1 w-32"
+                      value={vis.detail_similar_count}
+                      onChange={(e) =>
+                        setVis({
+                          ...vis,
+                          detail_similar_count: Math.min(
+                            8,
+                            Math.max(1, Number(e.target.value) || 3),
+                          ),
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                      মন্তব্য দেখানো
+                    </span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={50}
+                      className="field mt-1 w-32"
+                      value={vis.comments_show_count}
+                      onChange={(e) =>
+                        setVis({
+                          ...vis,
+                          comments_show_count: Math.min(
+                            50,
+                            Math.max(1, Number(e.target.value) || 10),
+                          ),
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                      ব্র্যান্ড অ্যানিমেশন
+                    </span>
+                    <select
+                      className="field mt-1 w-44"
+                      value={vis.brand_animation}
+                      onChange={(e) =>
+                        setVis({
+                          ...vis,
+                          brand_animation: e.target
+                            .value as SiteAppConfig["brand_animation"],
+                        })
+                      }
+                    >
+                      {BRAND_ANIMATIONS.map((b) => (
+                        <option key={b.value} value={b.value}>
+                          {b.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="block min-w-[16rem] flex-1 space-y-2">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                      হিরো ডেকোরেটিভ ইফেক্ট
+                    </span>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {(
+                        [
+                          ["drift", "ড্রিফট ব্লব"],
+                          ["floaty", "ফ্লোটিং কার্ড"],
+                          ["beam", "বিম লাইট"],
+                          ["headline_grad", "গ্রেডিয়েন্ট হেডলাইন"],
+                          ["kin_mask", "কাইনেটিক মাস্ক"],
+                          ["tauri_win", "উইন্ডো ক্রোম"],
+                          ["ping", "লাইভ পিং"],
+                        ] as const
+                      ).map(([key, label]) => (
+                        <label
+                          key={key}
+                          className="flex items-center gap-2 text-[11.5px] text-ink-soft"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={vis.hero_effects[key]}
+                            onChange={(e) =>
+                              setVis({
+                                ...vis,
+                                hero_effects: {
+                                  ...vis.hero_effects,
+                                  [key]: e.target.checked,
+                                },
+                              })
+                            }
+                          />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <label className="block min-w-[16rem] flex-1">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                      ডিফল্ট পোস্ট ছবি (URL)
+                    </span>
+                    <input
+                      className="field mt-1 w-full"
+                      placeholder="https://… অথবা /uploads/…"
+                      value={vis.default_post_image}
+                      onChange={(e) =>
+                        setVis({ ...vis, default_post_image: e.target.value })
+                      }
+                    />
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <button className="btn" onClick={() => void saveVis()}>
+                      💾 Save visibility & theme
+                    </button>
+                    <button
+                      className="btn-ghost"
+                      onClick={() => void loadAdSlots()}
+                    >
+                      Load current
+                    </button>
+                    <button
+                      className="btn-ghost"
+                      onClick={() => void resetVis()}
+                    >
+                      ⟲ Reset to defaults
+                    </button>
+                  </div>
+                </div>
+                {visMsg && (
+                  <p className="mt-2 text-[11.5px] font-bold text-ink">
+                    ✓ {visMsg}
+                  </p>
+                )}
+                {visErr && (
+                  <p className="mt-2 text-[11.5px] font-bold text-alizarin">
+                    ✕ {visErr}
+                  </p>
+                )}
+                {!visLoaded && (
+                  <p className="mt-2 text-[11.5px] text-ink-soft/60">
+                    ⟳ লোড হচ্ছে… settings-এ ক্লিক করলে ডিফল্ট মান দেখাবে।
+                  </p>
+                )}
+              </div>
+
+              <div className="panel mt-5">
+                <p className="flex items-center gap-2 panel-title">
+                  <RefreshCw size={14} className="text-lime" /> ওয়েব রিফ্রেশ
+                  (revalidate)
+                </p>
+                <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+                  ব্রাউজারের Vercel ক্যাশ দ্রুত ফুটিয়ে নতুন পোস্ট/এডিট তাৎক্ষণিক দেখাতে
+                  <code className="text-lime"> /api/revalidate</code> কল করুন।
+                  secret খালি রাখলে শুধু
+                  <code className="text-white"> secret </code> params ছাড়াই রান
+                  করবে (সাইট পাবলিক হলে ঝুঁকি আছে — ভল্ট ট্যাবে{" "}
+                  <code className="text-lime">revalidate_secret</code> সেট করুন)।
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button onClick={() => void doRefreshWeb()} className="btn">
+                    <RefreshCw size={13} /> এখনই রিফ্রেশ করুন
+                  </button>
+                  <code className="rounded bg-white/[0.05] px-2 py-1 font-mono-x text-[10.5px] text-white/50">
+                    {SITE_URL}/api/revalidate?secret=…
+                  </code>
+                </div>
+                {webMsg && (
+                  <p className="mt-2 text-[11.5px] font-bold text-ink">
+                    ✓ {webMsg}
+                  </p>
+                )}
+                {webErr && (
+                  <p className="mt-2 text-[11.5px] font-bold text-alizarin">
+                    ✕ {webErr}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
+          {tab === "admin" && (
             <div className="panel mt-5">
-              <p className="flex items-center gap-2 panel-title">
-                <RefreshCw size={14} className="text-lime" /> ওয়েব রিফ্রেশ (revalidate)
-              </p>
+              <p className="panel-title">Admin access · one-time login codes</p>
               <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
-                ব্রাউজারের Vercel ক্যাশ দ্রুত ফুটিয়ে নতুন পোস্ট/এডিট তাৎক্ষণিক দেখাতে
-                <code className="text-lime"> /api/revalidate</code> কল করুন। secret খালি রাখলে শুধু
-                <code className="text-white"> secret </code> params ছাড়াই রান করবে (সাইট পাবলিক হলে
-                ঝুঁকি আছে — ভল্ট ট্যাবে <code className="text-lime">revalidate_secret</code> সেট করুন)।
+                কোড ১০ মিনিটের জন্য বৈধ, একবার ব্যবহারেই শেষ। ওয়েব অ্যাডমিনে
+                password-এর বদলে এই কোড দিয়ে ঢোকা যায় — পাসওয়ার্ড আর ব্যবহার হয়
+                না।
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button onClick={() => void doRefreshWeb()} className="btn">
-                  <RefreshCw size={13} /> এখনই রিফ্রেশ করুন
+                <input
+                  className="field min-w-48 flex-1"
+                  placeholder="admin ইমেইল (admin_user)"
+                  value={admEmail}
+                  onChange={(e) => setAdmEmail(e.target.value)}
+                />
+                <input
+                  className="field min-w-48 flex-1"
+                  placeholder="লেবেল (যেমন desktop-chrome)"
+                  value={admLabel}
+                  onChange={(e) => setAdmLabel(e.target.value)}
+                />
+                <button className="btn" onClick={() => void createCode()}>
+                  ✦ কোড তৈরি
                 </button>
-                <code className="rounded bg-white/[0.05] px-2 py-1 font-mono-x text-[10.5px] text-white/50">
-                  {SITE_URL}/api/revalidate?secret=…
-                </code>
-              </div>
-              {webMsg && <p className="mt-2 text-[11.5px] font-bold text-ink">✓ {webMsg}</p>}
-              {webErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {webErr}</p>}
-            </div>
-          </>
-        )}
-
-        {tab === "admin" && (
-          <div className="panel mt-5">
-            <p className="panel-title">Admin access · one-time login codes</p>
-            <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
-              কোড ১০ মিনিটের জন্য বৈধ, একবার ব্যবহারেই শেষ। ওয়েব অ্যাডমিনে
-              password-এর বদলে এই কোড দিয়ে ঢোকা যায় — পাসওয়ার্ড আর ব্যবহার হয় না।
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <input
-                className="field min-w-48 flex-1"
-                placeholder="admin ইমেইল (admin_user)"
-                value={admEmail}
-                onChange={(e) => setAdmEmail(e.target.value)}
-              />
-              <input
-                className="field min-w-48 flex-1"
-                placeholder="লেবেল (যেমন desktop-chrome)"
-                value={admLabel}
-                onChange={(e) => setAdmLabel(e.target.value)}
-              />
-              <button className="btn" onClick={() => void createCode()}>
-                ✦ কোড তৈরি
-              </button>
-              <button className="btn-ghost" onClick={() => void loadAdminCodes()}>
-                ↻ refresh
-              </button>
-              <button className="btn-ghost" onClick={() => void logoutAllWebSessions()}>
-                ⏻ সব ওয়েব সেশন লগ আউট
-              </button>
-            </div>
-            <div className="mt-5 border-t border-ink/10 pt-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-ink-soft">
-                  ডিভাইস ও সেশন · {toBn(sessions.filter((x) => !x.revoked_at).length)} টি সক্রিয়
-                </p>
-                <button className="btn-ghost" onClick={() => void loadSessions()}>
+                <button
+                  className="btn-ghost"
+                  onClick={() => void loadAdminCodes()}
+                >
                   ↻ refresh
                 </button>
+                <button
+                  className="btn-ghost"
+                  onClick={() => void logoutAllWebSessions()}
+                >
+                  ⏻ সব ওয়েব সেশন লগ আউট
+                </button>
               </div>
-              {sessions.length === 0 ? (
-                <p className="mt-2 text-[11.5px] text-ink-soft">
-                  কোনো সেশন নেই — ওয়েব অ্যাডমিনে কেউ লগইন করেনি।
-                </p>
-              ) : (
-                <div className="mt-2 overflow-x-auto">
+              <div className="mt-5 border-t border-ink/10 pt-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-ink-soft">
+                    ডিভাইস ও সেশন ·{" "}
+                    {toBn(sessions.filter((x) => !x.revoked_at).length)} টি
+                    সক্রিয়
+                  </p>
+                  <button
+                    className="btn-ghost"
+                    onClick={() => void loadSessions()}
+                  >
+                    ↻ refresh
+                  </button>
+                </div>
+                {sessions.length === 0 ? (
+                  <p className="mt-2 text-[11.5px] text-ink-soft">
+                    কোনো সেশন নেই — ওয়েব অ্যাডমিনে কেউ লগইন করেনি।
+                  </p>
+                ) : (
+                  <div className="mt-2 overflow-x-auto">
+                    <table className="w-full text-left text-[11.5px]">
+                      <thead className="text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+                        <tr>
+                          <th className="py-1 pr-3">ডিভাইস</th>
+                          <th className="py-1 pr-3">অ্যাডমিন</th>
+                          <th className="py-1 pr-3">শেষ ব্যবহার</th>
+                          <th className="py-1 pr-3">অবস্থা</th>
+                          <th className="py-1" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sessions.map((row) => (
+                          <tr key={row.id} className="border-t border-ink/10">
+                            <td className="py-1.5 pr-3 font-semibold text-ink">
+                              {row.device_name ?? "—"}
+                              <span className="ml-1 text-[10px] text-ink-soft">
+                                {row.device_os ?? ""}
+                              </span>
+                            </td>
+                            <td className="py-1.5 pr-3 text-ink-soft">
+                              {row.email}
+                            </td>
+                            <td className="py-1.5 pr-3 text-ink-soft">
+                              {row.last_used_at
+                                ? bnTime(row.last_used_at)
+                                : "—"}
+                            </td>
+                            <td className="py-1.5 pr-3">
+                              {row.revoked_at ? (
+                                <span className="text-[10px] font-bold uppercase text-ink-soft">
+                                  বাতিল · {row.revoked_by ?? "—"}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold uppercase text-lime">
+                                  সক্রিয়
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-1.5">
+                              {!row.revoked_at && (
+                                <button
+                                  className="btn-ghost"
+                                  disabled={sessBusy === row.id}
+                                  onClick={() => void revokeSession(row)}
+                                >
+                                  ⏻ বাতিল
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              {newCode && (
+                <div className="mt-3 border-2 border-dashed border-lime bg-paper-deep px-4 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-ink-soft">
+                    ইমেইল + কোড দিয়ে লগইন করুন →
+                  </p>
+                  <p className="mt-1 font-mono text-[28px] font-black tracking-[0.18em] text-lime">
+                    {newCode}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      className="btn"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(newCode);
+                        setAdmMsg("কোড কপি হয়েছে — clipboard-এ।");
+                      }}
+                    >
+                      ⧉ Copy code
+                    </button>
+                    <button
+                      className="btn-ghost"
+                      onClick={() => setNewCode(null)}
+                    >
+                      ✕ লুকাও
+                    </button>
+                  </div>
+                </div>
+              )}
+              {admCodes.length > 0 && (
+                <div className="mt-3 overflow-x-auto">
                   <table className="w-full text-left text-[11.5px]">
-                    <thead className="text-[10px] uppercase tracking-[0.18em] text-ink-soft">
-                      <tr>
-                        <th className="py-1 pr-3">ডিভাইস</th>
-                        <th className="py-1 pr-3">অ্যাডমিন</th>
-                        <th className="py-1 pr-3">শেষ ব্যবহার</th>
-                        <th className="py-1 pr-3">অবস্থা</th>
-                        <th className="py-1" />
+                    <thead>
+                      <tr className="border-b border-ink/20 text-[10px] uppercase tracking-wider text-ink-soft">
+                        <th className="py-1 pr-2">email</th>
+                        <th className="py-1 pr-2">label</th>
+                        <th className="py-1 pr-2">created</th>
+                        <th className="py-1 pr-2">expires</th>
+                        <th className="py-1 pr-2">state</th>
+                        <th className="py-1 pr-2"></th>
                       </tr>
                     </thead>
                     <tbody>
-                      {sessions.map((row) => (
-                        <tr key={row.id} className="border-t border-ink/10">
-                          <td className="py-1.5 pr-3 font-semibold text-ink">
-                            {row.device_name ?? "—"}
-                            <span className="ml-1 text-[10px] text-ink-soft">{row.device_os ?? ""}</span>
-                          </td>
-                          <td className="py-1.5 pr-3 text-ink-soft">{row.email}</td>
-                          <td className="py-1.5 pr-3 text-ink-soft">
-                            {row.last_used_at ? bnTime(row.last_used_at) : "—"}
-                          </td>
-                          <td className="py-1.5 pr-3">
-                            {row.revoked_at ? (
-                              <span className="text-[10px] font-bold uppercase text-ink-soft">
-                                বাতিল · {row.revoked_by ?? "—"}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-bold uppercase text-lime">সক্রিয়</span>
-                            )}
-                          </td>
-                          <td className="py-1.5">
-                            {!row.revoked_at && (
-                              <button
-                                className="btn-ghost"
-                                disabled={sessBusy === row.id}
-                                onClick={() => void revokeSession(row)}
+                      {admCodes.map((c) => {
+                        const state = c.used_at
+                          ? "✓ used"
+                          : c.revoked_at
+                            ? "✕ revoked"
+                            : new Date(c.expires_at) < new Date()
+                              ? "expired"
+                              : "active";
+                        return (
+                          <tr key={c.id} className="border-b border-ink/10">
+                            <td className="py-1 pr-2 font-mono text-[10.5px]">
+                              {c.email}
+                            </td>
+                            <td className="py-1 pr-2">{c.label ?? "—"}</td>
+                            <td className="py-1 pr-2 text-[10.5px]">
+                              {c.created_at.slice(0, 16).replace("T", " ")}
+                            </td>
+                            <td className="py-1 pr-2 text-[10.5px]">
+                              {c.expires_at.slice(0, 16).replace("T", " ")}
+                            </td>
+                            <td className="py-1 pr-2">
+                              <span
+                                className={
+                                  state === "active"
+                                    ? "bg-lime px-1.5 py-0.5 text-[10px] font-bold"
+                                    : "px-1.5 py-0.5 text-[10px] font-bold text-ink-soft/70"
+                                }
                               >
-                                ⏻ বাতিল
-                              </button>
-                            )}
+                                {state}
+                              </span>
+                            </td>
+                            <td className="py-1 pr-2">
+                              {state === "active" && (
+                                <button
+                                  className="text-[10px] font-bold text-alizarin underline"
+                                  onClick={() => void revokeCode(c.id)}
+                                >
+                                  বাতিল
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {admMsg && (
+                <p className="mt-2 text-[11.5px] font-bold text-ink">
+                  ✓ {admMsg}
+                </p>
+              )}
+              {admErr && (
+                <p className="mt-2 text-[11.5px] font-bold text-alizarin">
+                  ✕ {admErr}
+                </p>
+              )}
+
+              <div className="mt-8 border-t border-ink/15 pt-5">
+                <p className="flex items-center gap-2 text-[13px] font-bold text-white">
+                  <ShieldCheck size={14} className="text-lime" /> লগইন লগ (কোন
+                  ইমেইল/আইপি থেকে ঢোকার চেষ্টা)
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-ink-soft">
+                  ওয়েব অ্যাডমিন কনসোলে প্রতিটি সাইন-ইন attempt (সফল + ব্যর্থ) রেকর্ড
+                  হয় (`loginlog list` রানারের একই তথ্য)। ডেস্কটপ ও ওয়েব একই টেবিল
+                  দেখে।
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    className="btn-ghost"
+                    disabled={logBusy}
+                    onClick={() => void loadLoginLog()}
+                  >
+                    ↻ রিফ্রেশ
+                  </button>
+                  <button
+                    className="text-[11px] font-bold text-alizarin underline"
+                    disabled={logBusy}
+                    onClick={() => void clearLog()}
+                  >
+                    সব মুছুন
+                  </button>
+                </div>
+                {logErr && (
+                  <p className="mt-2 text-[11.5px] font-bold text-alizarin">
+                    ✕ {logErr}
+                  </p>
+                )}
+                {logMsg && (
+                  <p className="mt-2 text-[11.5px] font-bold text-ink">
+                    ✓ {logMsg}
+                  </p>
+                )}
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full text-left text-[11.5px]">
+                    <thead>
+                      <tr className="border-b border-ink/20 text-[10px] uppercase tracking-wider text-ink-soft">
+                        <th className="py-1 pr-2">state</th>
+                        <th className="py-1 pr-2">email</th>
+                        <th className="py-1 pr-2">IP</th>
+                        <th className="py-1 pr-2">বার্তা</th>
+                        <th className="py-1 pr-2">সময়</th>
+                        <th className="py-1 pr-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(logLog?.rows ?? []).map((row) => (
+                        <tr key={row.id} className="border-b border-ink/10">
+                          <td className="py-1 pr-2">
+                            <span
+                              className={`px-1.5 py-0.5 text-[10px] font-bold ${
+                                row.ok
+                                  ? "bg-lime text-night"
+                                  : "bg-alizarin text-paper"
+                              }`}
+                            >
+                              {row.ok ? "সফল" : "ব্যর্থ"}
+                            </span>
+                          </td>
+                          <td className="py-1 pr-2 font-mono text-[10.5px]">
+                            {row.email}
+                          </td>
+                          <td className="py-1 pr-2 font-mono text-[10.5px] text-ink-soft">
+                            {row.ip ?? "—"}
+                          </td>
+                          <td className="py-1 pr-2">{row.message ?? "—"}</td>
+                          <td className="py-1 pr-2 font-mono-x text-[10px] text-ink-soft">
+                            {row.created_at.slice(0, 16).replace("T", " ")}
+                          </td>
+                          <td className="py-1 pr-2 text-right">
+                            <button
+                              className="text-[10px] font-bold text-alizarin underline"
+                              disabled={logBusy}
+                              onClick={() => void removeLog(row.id)}
+                            >
+                              মুছুন
+                            </button>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                  {logLog && logLog.rows.length === 0 && (
+                    <p className="py-4 text-center text-[11.5px] text-ink-soft">
+                      কোনো লগইন এন্ট্রি নেই।
+                    </p>
+                  )}
                 </div>
-              )}
-            </div>
-            {newCode && (
-              <div className="mt-3 border-2 border-dashed border-lime bg-paper-deep px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-ink-soft">
-                  ইমেইল + কোড দিয়ে লগইন করুন →
-                </p>
-                <p className="mt-1 font-mono text-[28px] font-black tracking-[0.18em] text-lime">{newCode}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button
-                    className="btn"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(newCode);
-                      setAdmMsg("কোড কপি হয়েছে — clipboard-এ।");
-                    }}
-                  >
-                    ⧉ Copy code
-                  </button>
-                  <button className="btn-ghost" onClick={() => setNewCode(null)}>
-                    ✕ লুকাও
-                  </button>
-                </div>
-              </div>
-            )}
-            {admCodes.length > 0 && (
-              <div className="mt-3 overflow-x-auto">
-                <table className="w-full text-left text-[11.5px]">
-                  <thead>
-                    <tr className="border-b border-ink/20 text-[10px] uppercase tracking-wider text-ink-soft">
-                      <th className="py-1 pr-2">email</th>
-                      <th className="py-1 pr-2">label</th>
-                      <th className="py-1 pr-2">created</th>
-                      <th className="py-1 pr-2">expires</th>
-                      <th className="py-1 pr-2">state</th>
-                      <th className="py-1 pr-2"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {admCodes.map((c) => {
-                      const state = c.used_at
-                        ? "✓ used"
-                        : c.revoked_at
-                          ? "✕ revoked"
-                          : new Date(c.expires_at) < new Date()
-                            ? "expired"
-                            : "active";
-                      return (
-                        <tr key={c.id} className="border-b border-ink/10">
-                          <td className="py-1 pr-2 font-mono text-[10.5px]">{c.email}</td>
-                          <td className="py-1 pr-2">{c.label ?? "—"}</td>
-                          <td className="py-1 pr-2 text-[10.5px]">{c.created_at.slice(0, 16).replace("T", " ")}</td>
-                          <td className="py-1 pr-2 text-[10.5px]">{c.expires_at.slice(0, 16).replace("T", " ")}</td>
-                          <td className="py-1 pr-2">
-                            <span
-                              className={
-                                state === "active" ? "bg-lime px-1.5 py-0.5 text-[10px] font-bold" : "px-1.5 py-0.5 text-[10px] font-bold text-ink-soft/70"
-                              }
-                            >
-                              {state}
-                            </span>
-                          </td>
-                          <td className="py-1 pr-2">
-                            {state === "active" && (
-                              <button className="text-[10px] font-bold text-alizarin underline" onClick={() => void revokeCode(c.id)}>
-                                বাতিল
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {admMsg && <p className="mt-2 text-[11.5px] font-bold text-ink">✓ {admMsg}</p>}
-            {admErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {admErr}</p>}
-
-            <div className="mt-8 border-t border-ink/15 pt-5">
-              <p className="flex items-center gap-2 text-[13px] font-bold text-white">
-                <ShieldCheck size={14} className="text-lime" /> লগইন লগ (কোন ইমেইল/আইপি থেকে ঢোকার চেষ্টা)
-              </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-ink-soft">
-                ওয়েব অ্যাডমিন কনসোলে প্রতিটি সাইন-ইন attempt (সফল + ব্যর্থ) রেকর্ড হয়
-                (`loginlog list` রানারের একই তথ্য)। ডেস্কটপ ও ওয়েব একই টেবিল দেখে।
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button className="btn-ghost" disabled={logBusy} onClick={() => void loadLoginLog()}>
-                  ↻ রিফ্রেশ
-                </button>
-                <button className="text-[11px] font-bold text-alizarin underline" disabled={logBusy} onClick={() => void clearLog()}>
-                  সব মুছুন
-                </button>
-              </div>
-              {logErr && <p className="mt-2 text-[11.5px] font-bold text-alizarin">✕ {logErr}</p>}
-              {logMsg && <p className="mt-2 text-[11.5px] font-bold text-ink">✓ {logMsg}</p>}
-              <div className="mt-3 overflow-x-auto">
-                <table className="w-full text-left text-[11.5px]">
-                  <thead>
-                    <tr className="border-b border-ink/20 text-[10px] uppercase tracking-wider text-ink-soft">
-                      <th className="py-1 pr-2">state</th>
-                      <th className="py-1 pr-2">email</th>
-                      <th className="py-1 pr-2">IP</th>
-                      <th className="py-1 pr-2">বার্তা</th>
-                      <th className="py-1 pr-2">সময়</th>
-                      <th className="py-1 pr-2"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(logLog?.rows ?? []).map((row) => (
-                      <tr key={row.id} className="border-b border-ink/10">
-                        <td className="py-1 pr-2">
-                          <span
-                            className={`px-1.5 py-0.5 text-[10px] font-bold ${
-                              row.ok ? "bg-lime text-night" : "bg-alizarin text-paper"
-                            }`}
-                          >
-                            {row.ok ? "সফল" : "ব্যর্থ"}
-                          </span>
-                        </td>
-                        <td className="py-1 pr-2 font-mono text-[10.5px]">{row.email}</td>
-                        <td className="py-1 pr-2 font-mono text-[10.5px] text-ink-soft">{row.ip ?? "—"}</td>
-                        <td className="py-1 pr-2">{row.message ?? "—"}</td>
-                        <td className="py-1 pr-2 font-mono-x text-[10px] text-ink-soft">
-                          {row.created_at.slice(0, 16).replace("T", " ")}
-                        </td>
-                        <td className="py-1 pr-2 text-right">
-                          <button
-                            className="text-[10px] font-bold text-alizarin underline"
-                            disabled={logBusy}
-                            onClick={() => void removeLog(row.id)}
-                          >
-                            মুছুন
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {logLog && logLog.rows.length === 0 && (
-                  <p className="py-4 text-center text-[11.5px] text-ink-soft">কোনো লগইন এন্ট্রি নেই।</p>
+                {logLog && logLog.total > 0 && (
+                  <p className="mt-2 font-mono-x text-[10px] tracking-wide text-ink-soft uppercase">
+                    মোট {logLog.total} · পৃষ্ঠা {logLog.page}/{logLog.pages} ·
+                    নতুন—পুরনো
+                  </p>
                 )}
               </div>
-              {logLog && logLog.total > 0 && (
-                <p className="mt-2 font-mono-x text-[10px] tracking-wide text-ink-soft uppercase">
-                  মোট {logLog.total} · পৃষ্ঠা {logLog.page}/{logLog.pages} · নতুন—পুরনো
+            </div>
+          )}
+
+          {tab === "backup" && (
+            <>
+              <div className="panel mt-5">
+                <p className="panel-title">ম্যানুয়াল ব্যাকআপ, রিসেট ও সিঙ্ক</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <input
+                    type="password"
+                    className="field min-w-56 flex-1"
+                    placeholder="backup passphrase (encryption key)"
+                    value={bkPass}
+                    onChange={(e) => setBkPass(e.target.value)}
+                  />
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button className="btn" onClick={() => void doExport()}>
+                    ⬇ Export backup
+                  </button>
+                  <button className="btn-ghost" onClick={() => void doImport()}>
+                    ⬆ Restore backup
+                  </button>
+                  <button className="btn-ghost" onClick={() => void doReset()}>
+                    ⟲ Reset content
+                  </button>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button className="btn" onClick={() => void doSync("push")}>
+                    ☁ Push local → cloud
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    onClick={() => void doSync("pull")}
+                  >
+                    ⬇ Pull cloud → local
+                  </button>
+                </div>
+                <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+                  ব্যাকআপ ফাইল AES-256-GCM দিয়ে এনক্রিপ্ট হয়; passphrase কখনো ডিস্কে
+                  লেখা হয় না। Restore আগের ডেটা REPLACE করে। Push = local file
+                  DB → shared Turso; Pull = cloud → local।
+                </p>
+              </div>
+
+              <div className="panel mt-5">
+                <p className="panel-title">
+                  স্বয়ংক্রিয় ব্যাকআপ ও রোটেশন (Auto Backup)
+                </p>
+                <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
+                  পাইপলাইন সফলভাবে শেষ হলে নির্দিষ্ট ফোল্ডারে স্বয়ংক্রিয় ব্যাকআপ রাখা
+                  হয় এবং পুরনো ব্যাকআপ ছাঁটাই (rotation) করা হয়।
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                      ব্যাকআপ ফোল্ডার
+                    </span>
+                    <input
+                      className="field mt-1 w-full"
+                      placeholder="C:\Backups\Hoichoi"
+                      value={bkAuto.folder}
+                      onChange={(e) =>
+                        saveBkAuto({ ...bkAuto, folder: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">
+                      সর্বোচ্চ সংখ্যা (Keep)
+                    </span>
+                    <input
+                      type="number"
+                      className="field mt-1 w-full"
+                      min={1}
+                      max={100}
+                      value={bkAuto.keep}
+                      onChange={(e) =>
+                        saveBkAuto({
+                          ...bkAuto,
+                          keep: Number(e.target.value) || 7,
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[12px] font-bold text-white">
+                      রান শেষে অটো-ব্যাকআপ চালু
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        saveBkAuto({ ...bkAuto, enabled: !bkAuto.enabled })
+                      }
+                      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${bkAuto.enabled ? "bg-lime" : "bg-white/15"}`}
+                    >
+                      <span
+                        className="absolute top-0.5 h-4 w-4 rounded-full bg-night transition-all"
+                        style={{ left: bkAuto.enabled ? 18 : 2 }}
+                      />
+                    </button>
+                  </div>
+                  <input
+                    type="password"
+                    className="field w-56 text-[11px]"
+                    placeholder="অটো-ব্যাকআপ পাসফ্রেজ"
+                    value={bkAuto.pass}
+                    onChange={(e) =>
+                      saveBkAuto({ ...bkAuto, pass: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    className="btn"
+                    onClick={() => void doAutoBackupNow()}
+                  >
+                    ⚡ এখনই ফোল্ডারে ব্যাকআপ নিন
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    onClick={() => void doVerifyBackup()}
+                  >
+                    🔍 ব্যাকআপ ফাইল যাচাই (Verify)
+                  </button>
+                </div>
+              </div>
+
+              {bkMsg && (
+                <p className="mt-3 whitespace-pre-line text-[11.5px] font-bold text-ink">
+                  ✓ {bkMsg}
                 </p>
               )}
-            </div>
-          </div>
-        )}
+              {bkErr && (
+                <p className="mt-3 text-[11.5px] font-bold text-alizarin">
+                  ✕ {bkErr}
+                </p>
+              )}
+            </>
+          )}
 
-        {tab === "backup" && (
-          <>
-            <div className="panel mt-5">
-              <p className="panel-title">ম্যানুয়াল ব্যাকআপ, রিসেট ও সিঙ্ক</p>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <input
-                  type="password"
-                  className="field min-w-56 flex-1"
-                  placeholder="backup passphrase (encryption key)"
-                  value={bkPass}
-                  onChange={(e) => setBkPass(e.target.value)}
-                />
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button className="btn" onClick={() => void doExport()}>
-                  ⬇ Export backup
-                </button>
-                <button className="btn-ghost" onClick={() => void doImport()}>
-                  ⬆ Restore backup
-                </button>
-                <button className="btn-ghost" onClick={() => void doReset()}>
-                  ⟲ Reset content
-                </button>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button className="btn" onClick={() => void doSync("push")}>
-                  ☁ Push local → cloud
-                </button>
-                <button className="btn-ghost" onClick={() => void doSync("pull")}>
-                  ⬇ Pull cloud → local
-                </button>
-              </div>
-              <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
-                ব্যাকআপ ফাইল AES-256-GCM দিয়ে এনক্রিপ্ট হয়; passphrase কখনো ডিস্কে লেখা হয় না। Restore
-                আগের ডেটা REPLACE করে। Push = local file DB → shared Turso; Pull = cloud → local।
-              </p>
-            </div>
+          {tab === "media" && <MediaStoragePanel />}
 
-            <div className="panel mt-5">
-              <p className="panel-title">স্বয়ংক্রিয় ব্যাকআপ ও রোটেশন (Auto Backup)</p>
-              <p className="mt-2 text-[11.5px] leading-relaxed text-ink-soft">
-                পাইপলাইন সফলভাবে শেষ হলে নির্দিষ্ট ফোল্ডারে স্বয়ংক্রিয় ব্যাকআপ রাখা হয় এবং পুরনো ব্যাকআপ
-                ছাঁটাই (rotation) করা হয়।
-              </p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <label className="block">
-                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">ব্যাকআপ ফোল্ডার</span>
-                  <input
-                    className="field mt-1 w-full"
-                    placeholder="C:\Backups\Hoichoi"
-                    value={bkAuto.folder}
-                    onChange={(e) => saveBkAuto({ ...bkAuto, folder: e.target.value })}
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-[10.5px] font-bold uppercase tracking-wide text-ink-soft">সর্বোচ্চ সংখ্যা (Keep)</span>
-                  <input
-                    type="number"
-                    className="field mt-1 w-full"
-                    min={1}
-                    max={100}
-                    value={bkAuto.keep}
-                    onChange={(e) => saveBkAuto({ ...bkAuto, keep: Number(e.target.value) || 7 })}
-                  />
-                </label>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-[12px] font-bold text-white">রান শেষে অটো-ব্যাকআপ চালু</span>
-                  <button
-                    type="button"
-                    onClick={() => saveBkAuto({ ...bkAuto, enabled: !bkAuto.enabled })}
-                    className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${bkAuto.enabled ? "bg-lime" : "bg-white/15"}`}
-                  >
-                    <span className="absolute top-0.5 h-4 w-4 rounded-full bg-night transition-all" style={{ left: bkAuto.enabled ? 18 : 2 }} />
-                  </button>
+          {tab === "vault" && (
+            <div className="mt-5 space-y-3">
+              {FIELDS.map((f) => (
+                <div key={f.name} className="panel flex items-center gap-3">
+                  <div className="w-64 shrink-0">
+                    <p className="font-mono text-[10.5px] font-bold">
+                      {f.label}
+                    </p>
+                    <Show name={f.name} />
+                  </div>
+                  <div className="flex flex-1 items-center gap-2">
+                    <input
+                      className="field flex-1"
+                      type={f.secret ? "password" : "text"}
+                      placeholder={f.secret ? "henry… (hidden)" : "value"}
+                      value={values[f.name] ?? ""}
+                      onChange={(e) =>
+                        setValues((prev) => ({
+                          ...prev,
+                          [f.name]: e.target.value,
+                        }))
+                      }
+                    />
+                    <button
+                      className="btn"
+                      disabled={!(values[f.name] ?? "").trim()}
+                      onClick={() => void save(f)}
+                    >
+                      Save
+                    </button>
+                    <button className="btn-ghost" onClick={() => void clear(f)}>
+                      Clear
+                    </button>
+                  </div>
                 </div>
-                <input
-                  type="password"
-                  className="field w-56 text-[11px]"
-                  placeholder="অটো-ব্যাকআপ পাসফ্রেজ"
-                  value={bkAuto.pass}
-                  onChange={(e) => saveBkAuto({ ...bkAuto, pass: e.target.value })}
-                />
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button className="btn" onClick={() => void doAutoBackupNow()}>
-                  ⚡ এখনই ফোল্ডারে ব্যাকআপ নিন
-                </button>
-                <button className="btn-ghost" onClick={() => void doVerifyBackup()}>
-                  🔍 ব্যাকআপ ফাইল যাচাই (Verify)
-                </button>
-              </div>
+              ))}
             </div>
-
-            {bkMsg && <p className="mt-3 whitespace-pre-line text-[11.5px] font-bold text-ink">✓ {bkMsg}</p>}
-            {bkErr && <p className="mt-3 text-[11.5px] font-bold text-alizarin">✕ {bkErr}</p>}
-          </>
-        )}
-
-        {tab === "media" && <MediaStoragePanel />}
-
-        {tab === "vault" && (
-          <div className="mt-5 space-y-3">
-            {FIELDS.map((f) => (
-              <div key={f.name} className="panel flex items-center gap-3">
-                <div className="w-64 shrink-0">
-                  <p className="font-mono text-[10.5px] font-bold">{f.label}</p>
-                  <Show name={f.name} />
-                </div>
-                <div className="flex flex-1 items-center gap-2">
-                  <input
-                    className="field flex-1"
-                    type={f.secret ? "password" : "text"}
-                    placeholder={f.secret ? "henry… (hidden)" : "value"}
-                    value={values[f.name] ?? ""}
-                    onChange={(e) => setValues((prev) => ({ ...prev, [f.name]: e.target.value }))}
-                  />
-                  <button className="btn" disabled={!(values[f.name] ?? "").trim()} onClick={() => void save(f)}>
-                    Save
-                  </button>
-                  <button className="btn-ghost" onClick={() => void clear(f)}>
-                    Clear
-                  </button>
-                </div>
-              </div>
-          ))}
-        </div>
-      )}
+          )}
         </div>
       </div>
     </div>

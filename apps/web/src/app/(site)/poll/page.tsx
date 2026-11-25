@@ -1,26 +1,51 @@
-import { getFeaturedPoll, getPollResults, listPolls, pollResultsVisible } from "@hoichoi/db";
+import {
+  getFeaturedPoll,
+  getPollResults,
+  listPolls,
+  pollResultsVisible,
+} from "@hoichoi/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getSettings } from "@/lib/settings";
 import { parseAppConfig } from "@hoichoi/db";
 import { PollWidget } from "@/components/polls/PollWidget";
 import { bnNum } from "@/lib/bn";
+import { getLocale } from "@/lib/locale";
 
 export const dynamic = "force-dynamic";
 
-export default async function PollPage() {
+export default async function PollPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ lang?: string }>;
+}) {
+  const sp = await searchParams;
+  const locale = await getLocale(sp);
+  const b = (bn: string, en: string) => (locale === "en" ? en : bn);
   const [settings, polls] = await Promise.all([getSettings(), listPolls()]);
   if (!parseAppConfig(settings.app_config_json).show_live_polls) notFound();
 
   const featured = await getFeaturedPoll();
-  const summaries = await Promise.all(polls.map(async (poll) => ({
-    poll,
-    results: pollResultsVisible(poll, false) ? await getPollResults(poll.id) : [],
-  })));
-  const openPolls = summaries.filter(({ poll }) => poll.status === "open" && poll.id !== featured?.id);
-  const scheduledPolls = summaries.filter(({ poll }) => poll.status === "scheduled");
+  const summaries = await Promise.all(
+    polls.map(async (poll) => ({
+      poll,
+      results: pollResultsVisible(poll, false)
+        ? await getPollResults(poll.id)
+        : [],
+    })),
+  );
+  const openPolls = summaries.filter(
+    ({ poll }) => poll.status === "open" && poll.id !== featured?.id,
+  );
+  const scheduledPolls = summaries.filter(
+    ({ poll }) => poll.status === "scheduled",
+  );
   const closedPolls = summaries.filter(({ poll }) => poll.status === "closed");
-  const totalVotes = summaries.reduce((sum, { results }) => sum + results.reduce((count, result) => count + result.votes, 0), 0);
+  const totalVotes = summaries.reduce(
+    (sum, { results }) =>
+      sum + results.reduce((count, result) => count + result.votes, 0),
+    0,
+  );
 
   return (
     <main>
@@ -28,23 +53,39 @@ export default async function PollPage() {
         <div className="pointer-events-none absolute -top-32 -left-24 h-[420px] w-[420px] rounded-full bg-alizarin/15 blur-[110px]" />
         <div className="pointer-events-none absolute -right-20 bottom-[-140px] h-[380px] w-[380px] rounded-full bg-lime/10 blur-[120px]" />
         <div className="relative mx-auto max-w-site px-4 py-12 md:px-8 md:py-16">
-          <p className="font-mono-x text-[10px] tracking-[0.24em] text-lime uppercase">▚ পাঠকের মতামত · LIVE POLLS</p>
+          <p className="font-mono-x text-[10px] tracking-[0.24em] text-lime uppercase">
+            ▚ {b("পাঠকের মতামত", "READER OPINION")} · LIVE POLLS
+          </p>
           <h1 className="mt-4 font-serif-bn text-[clamp(2.5rem,7vw,5.25rem)] leading-[1.02] font-black text-ink">
-            আপনার মতামত <span className="text-alizarin">গুরুত্বপূর্ণ</span>
+            {b("আপনার মতামত", "Your opinion")}{" "}
+            <span className="text-alizarin">{b("গুরুত্বপূর্ণ", "matters")}</span>
           </h1>
           <p className="mt-4 max-w-2xl text-[14px] leading-relaxed text-ink-soft">
-            চলমান বিষয় নিয়ে সরাসরি ভোট দিন, ফলাফল দেখুন, আর অন্য পাঠকদের মতের সঙ্গে তুলনা করুন।
+            {b(
+              "চলমান বিষয় নিয়ে সরাসরি ভোট দিন, ফলাফল দেখুন, আর অন্য পাঠকদের মতের সঙ্গে তুলনা করুন।",
+              "Vote directly on the issues of the day, see the results, and compare your view with other readers.",
+            )}
           </p>
           <div className="mt-8 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              [bnNum(polls.filter((poll) => poll.status === "open").length), "চলমান পোল"],
-              [bnNum(totalVotes), "দেখানো ভোট"],
-              [bnNum(new Set(polls.map((poll) => poll.topic)).size), "বিষয়"],
-              ["৬", "ভোটের ডিজাইন"],
+              [
+                bnNum(polls.filter((poll) => poll.status === "open").length),
+                b("চলমান পোল", "Open polls"),
+              ],
+              [bnNum(totalVotes), b("দেখানো ভোট", "Votes shown")],
+              [
+                bnNum(new Set(polls.map((poll) => poll.topic)).size),
+                b("বিষয়", "Topics"),
+              ],
+              ["৬", b("ভোটের ডিজাইন", "Poll designs")],
             ].map(([value, label]) => (
               <div key={label} className="border-l border-ink/15 pl-3">
-                <p className="font-serif-bn text-[25px] leading-none font-black text-ink">{value}</p>
-                <p className="mt-1.5 font-mono-x text-[9px] tracking-[0.14em] text-ink-soft uppercase">{label}</p>
+                <p className="font-serif-bn text-[25px] leading-none font-black text-ink">
+                  {value}
+                </p>
+                <p className="mt-1.5 font-mono-x text-[9px] tracking-[0.14em] text-ink-soft uppercase">
+                  {label}
+                </p>
               </div>
             ))}
           </div>
@@ -56,14 +97,26 @@ export default async function PollPage() {
           <section>
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="eyebrow">▚ FEATURED POLL · এখন ভোট দিন</p>
-                <h2 className="mt-1 font-serif-bn text-[25px] font-black text-ink md:text-[32px]">প্রধান পোল</h2>
+                <p className="eyebrow">
+                  ▚ FEATURED POLL · {b("এখন ভোট দিন", "VOTE NOW")}
+                </p>
+                <h2 className="mt-1 font-serif-bn text-[25px] font-black text-ink md:text-[32px]">
+                  {b("প্রধান পোল", "Featured poll")}
+                </h2>
               </div>
-              <Link href={`/poll/${featured.slug}`} className="text-[12px] font-bold text-alizarin hover:underline">পোলের বিস্তারিত →</Link>
+              <Link
+                href={`/poll/${featured.slug}`}
+                className="text-[12px] font-bold text-alizarin hover:underline"
+              >
+                {b("পোলের বিস্তারিত", "Poll details")} →
+              </Link>
             </div>
             <PollWidget
               poll={featured}
-              initialResults={summaries.find(({ poll }) => poll.id === featured.id)?.results ?? []}
+              initialResults={
+                summaries.find(({ poll }) => poll.id === featured.id)
+                  ?.results ?? []
+              }
             />
           </section>
         )}
@@ -71,9 +124,17 @@ export default async function PollPage() {
         {openPolls.length > 0 && (
           <section className="mt-12">
             <p className="eyebrow">▚ OPEN NOW</p>
-            <h2 className="mt-1 font-serif-bn text-[24px] font-black text-ink md:text-[30px]">আরও চলমান পোল</h2>
+            <h2 className="mt-1 font-serif-bn text-[24px] font-black text-ink md:text-[30px]">
+              {b("আরও চলমান পোল", "More open polls")}
+            </h2>
             <div className="mt-5 grid gap-4 xl:grid-cols-2">
-              {openPolls.map(({ poll, results }) => <PollWidget key={poll.id} poll={poll} initialResults={results} />)}
+              {openPolls.map(({ poll, results }) => (
+                <PollWidget
+                  key={poll.id}
+                  poll={poll}
+                  initialResults={results}
+                />
+              ))}
             </div>
           </section>
         )}
@@ -81,13 +142,28 @@ export default async function PollPage() {
         {scheduledPolls.length > 0 && (
           <section className="mt-12 border-t-2 border-ink pt-8">
             <p className="eyebrow">▚ COMING UP</p>
-            <h2 className="mt-1 font-serif-bn text-[24px] font-black text-ink md:text-[30px]">ভোট শীঘ্রই খুলবে</h2>
+            <h2 className="mt-1 font-serif-bn text-[24px] font-black text-ink md:text-[30px]">
+              {b("ভোট শীঘ্রই খুলবে", "Polls opening soon")}
+            </h2>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               {scheduledPolls.map(({ poll }) => (
-                <Link key={poll.id} href={`/poll/${poll.slug}`} className="group border border-ink/15 bg-card p-4 transition-colors hover:border-ink">
-                  <span className="font-mono-x text-[9px] font-bold tracking-[0.16em] uppercase" style={{ color: poll.topicColor }}>{poll.topic}</span>
-                  <span className="mt-2 block font-serif-bn text-[16px] font-bold text-ink group-hover:text-alizarin">{poll.question}</span>
-                  <span className="mt-3 block text-[11px] text-ink-soft">নির্ধারিত · বিস্তারিত দেখুন →</span>
+                <Link
+                  key={poll.id}
+                  href={`/poll/${poll.slug}`}
+                  className="group border border-ink/15 bg-card p-4 transition-colors hover:border-ink"
+                >
+                  <span
+                    className="font-mono-x text-[9px] font-bold tracking-[0.16em] uppercase"
+                    style={{ color: poll.topicColor }}
+                  >
+                    {poll.topic}
+                  </span>
+                  <span className="mt-2 block font-serif-bn text-[16px] font-bold text-ink group-hover:text-alizarin">
+                    {poll.question}
+                  </span>
+                  <span className="mt-3 block text-[11px] text-ink-soft">
+                    {b("নির্ধারিত · বিস্তারিত দেখুন", "Scheduled · See details")} →
+                  </span>
                 </Link>
               ))}
             </div>
@@ -97,15 +173,34 @@ export default async function PollPage() {
         {closedPolls.length > 0 && (
           <section className="mt-12 border-t-2 border-ink pt-8">
             <p className="eyebrow">▚ RESULTS · ফলাফল</p>
-            <h2 className="mt-1 font-serif-bn text-[24px] font-black text-ink md:text-[30px]">শেষ হওয়া পোল</h2>
+            <h2 className="mt-1 font-serif-bn text-[24px] font-black text-ink md:text-[30px]">
+              {b("শেষ হওয়া পোল", "Closed polls")}
+            </h2>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               {closedPolls.map(({ poll, results }) => {
-                const votes = results.reduce((sum, result) => sum + result.votes, 0);
+                const votes = results.reduce(
+                  (sum, result) => sum + result.votes,
+                  0,
+                );
                 return (
-                  <Link key={poll.id} href={`/poll/${poll.slug}`} className="group border border-ink/15 bg-card p-4 transition-colors hover:border-ink">
-                    <span className="font-mono-x text-[9px] font-bold tracking-[0.16em] uppercase" style={{ color: poll.topicColor }}>{poll.topic} · ফল প্রকাশিত</span>
-                    <span className="mt-2 block font-serif-bn text-[16px] font-bold text-ink group-hover:text-alizarin">{poll.question}</span>
-                    <span className="mt-3 block font-mono-x text-[9px] text-ink-soft">{bnNum(votes)} ভোট · ফলাফল দেখুন →</span>
+                  <Link
+                    key={poll.id}
+                    href={`/poll/${poll.slug}`}
+                    className="group border border-ink/15 bg-card p-4 transition-colors hover:border-ink"
+                  >
+                    <span
+                      className="font-mono-x text-[9px] font-bold tracking-[0.16em] uppercase"
+                      style={{ color: poll.topicColor }}
+                    >
+                      {poll.topic} · {b("ফল প্রকাশিত", "results published")}
+                    </span>
+                    <span className="mt-2 block font-serif-bn text-[16px] font-bold text-ink group-hover:text-alizarin">
+                      {poll.question}
+                    </span>
+                    <span className="mt-3 block font-mono-x text-[9px] text-ink-soft">
+                      {bnNum(votes)}{" "}
+                      {b("ভোট · ফলাফল দেখুন", "votes · See results")} →
+                    </span>
                   </Link>
                 );
               })}
@@ -113,36 +208,61 @@ export default async function PollPage() {
           </section>
         )}
 
-        {polls.length === 0 && <p className="mt-8 border border-dashed border-ink/20 px-4 py-10 text-center text-[12px] text-ink-soft">এখনো কোনো পোল প্রকাশিত হয়নি।</p>}
+        {polls.length === 0 && (
+          <p className="mt-8 border border-dashed border-ink/20 px-4 py-10 text-center text-[12px] text-ink-soft">
+            {b(
+              "এখনো কোনো পোল প্রকাশিত হয়নি।",
+              "No polls have been published yet.",
+            )}
+          </p>
+        )}
 
-        <section aria-labelledby="poll-method" className="mt-12 border-t border-ink/10 pt-6">
-          <h2 id="poll-method" className="font-mono-x text-[10px] tracking-[0.18em] text-ink-soft uppercase">
+        <section
+          aria-labelledby="poll-method"
+          className="mt-12 border-t border-ink/10 pt-6"
+        >
+          <h2
+            id="poll-method"
+            className="font-mono-x text-[10px] tracking-[0.18em] text-ink-soft uppercase"
+          >
             ভোট কীভাবে গোনা হয়
           </h2>
           <ul className="mt-3 grid gap-3 text-[12.5px] leading-relaxed text-ink-soft sm:grid-cols-2">
             <li>
-              <strong className="text-ink">প্রতি ব্রাউজার একটি ভোট।</strong> ভোট আপনার ব্রাউজারে রাখা একটি
-              অনামী সেশন আইডির সঙ্গে যুক্ত — অ্যাকাউন্ট বা ইমেইল লাগে না।
+              <strong className="text-ink">প্রতি ব্রাউজার একটি ভোট।</strong> ভোট
+              আপনার ব্রাউজারে রাখা একটি অনামী সেশন আইডির সঙ্গে যুক্ত — অ্যাকাউন্ট বা
+              ইমেইল লাগে না।
             </li>
             <li>
-              <strong className="text-ink">একই নেটওয়ার্ক থেকে অনেক সেশন সন্দেহজনক।</strong> শুধু হ্যাশ করা নেটওয়ার্ক
-              সংরক্ষণ করা হয়, কখনো আপনার আইপি ঠিকানা নয়।
+              <strong className="text-ink">
+                একই নেটওয়ার্ক থেকে অনেক সেশন সন্দেহজনক।
+              </strong>{" "}
+              শুধু হ্যাশ করা নেটওয়ার্ক সংরক্ষণ করা হয়, কখনো আপনার আইপি ঠিকানা নয়।
             </li>
             <li>
-              <strong className="text-ink">অস্বাভাবিক গতি পর্যালোচনায় যায়।</strong> এক মিনিটে অস্বাভাবিক ভোট বা
-              এক অপশনে প্রায় সব ভোট গেলে সম্পাদক যাচাই করেন।
+              <strong className="text-ink">
+                অস্বাভাবিক গতি পর্যালোচনায় যায়।
+              </strong>{" "}
+              এক মিনিটে অস্বাভাবিক ভোট বা এক অপশনে প্রায় সব ভোট গেলে সম্পাদক যাচাই
+              করেন।
             </li>
             <li>
-              <strong className="text-ink">বাতিল মানে মুছে ফেলা নয়।</strong> সন্দেহজনক ভোট বাতিল হিসেবে চিহ্নিত হয়,
-              ফল থেকে বাদ যায়, কিন্তু রেকর্ডে থাকে — কারণ ও কে বাতিল করেছে সহ।
+              <strong className="text-ink">বাতিল মানে মুছে ফেলা নয়।</strong>{" "}
+              সন্দেহজনক ভোট বাতিল হিসেবে চিহ্নিত হয়, ফল থেকে বাদ যায়, কিন্তু রেকর্ডে
+              থাকে — কারণ ও কে বাতিল করেছে সহ।
             </li>
           </ul>
           <p className="mt-3 text-[11.5px] text-ink-soft">
-            এটা বৈজ্ঞানিক জরিপ নয় — পাঠকের মতামতের তাৎক্ষণিক ছবি। কোনো পোলের ফল Editorial-এ প্রকাশিত
-            প্রতিবেদনের বিকল্প নয়।
+            এটা বৈজ্ঞানিক জরিপ নয় — পাঠকের মতামতের তাৎক্ষণিক ছবি। কোনো পোলের ফল
+            Editorial-এ প্রকাশিত প্রতিবেদনের বিকল্প নয়।
           </p>
         </section>
-        <Link href="/" className="mt-8 inline-flex text-[12px] font-bold text-alizarin hover:underline">← হোমপেজে ফিরুন</Link>
+        <Link
+          href="/"
+          className="mt-8 inline-flex text-[12px] font-bold text-alizarin hover:underline"
+        >
+          ← হোমপেজে ফিরুন
+        </Link>
       </div>
     </main>
   );

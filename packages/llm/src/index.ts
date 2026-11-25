@@ -8,6 +8,7 @@ export * from "./prompts";
 export * from "./image-util";
 export * from "./image-resolver";
 export * from "./image-prompt";
+export * from "./visual-brief";
 export * from "./art-director";
 export * from "./task";
 export * from "./gateway";
