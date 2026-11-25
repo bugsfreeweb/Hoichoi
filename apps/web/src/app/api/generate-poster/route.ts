@@ -190,6 +190,23 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  try {
+    return await handlePost(req);
+  } catch (err) {
+    // A blank 500 hides which step failed; this keeps the reason visible to the
+    // editor and to the deployment log without leaking a stack to the browser.
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "পোস্টার তৈরি করা যায়নি।",
+        detail: err instanceof Error ? err.message : String(err),
+      },
+      { status: 500 },
+    );
+  }
+}
+
+async function handlePost(req: NextRequest) {
   const guard = await requireApiRole("editor");
   if ("response" in guard) return guard.response;
   const user = guard.user;
