@@ -732,6 +732,18 @@ export function normalisePlan(
   if (pullQuote && !groundedQuote(pullQuote, article)) {
     pullQuote = firstSentence(article) || fallback.pullQuote || headline;
   }
+  // A quote that only repeats the headline is not a second idea. The headline
+  // is a 48-character cut of the title, so the pull-quote often equals the full
+  // title and bypasses a strict equality check. Compare on punctuation-free
+  // prefixes: a measured poster showed the same line twice and left a large
+  // empty block where the bullets should have been.
+  const bare = (value: string) => value.replace(/[\s,।.!?]+/g, "").trim();
+  const q = bare(pullQuote ?? "");
+  const h = bare(headline);
+  if (pullQuote && q && h && (q === h || q.startsWith(h) || h.startsWith(q))) {
+    pullQuote = null;
+    if (bullets.length === 0) bullets = fallback.bullets.slice(0, 3);
+  }
 
   const proposedLayout = isPosterDesignLayout(obj.layout_variant)
     ? obj.layout_variant

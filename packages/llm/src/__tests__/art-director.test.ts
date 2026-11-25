@@ -423,5 +423,20 @@ check("a historical older generation is not in the present-tense cast", () => {
   assert.ok(flood.people.some((x) => /elderly/.test(x)));
 });
 
+check("the pull-quote never repeats the headline", () => {
+  const plan = normalisePlan(
+    {
+      headline: article.title,
+      content_mode: "quote",
+      pull_quote: article.title,
+      bullets: [],
+    },
+    article,
+    [],
+  );
+  assert.notEqual(plan.pullQuote, plan.headline);
+  assert.ok(plan.bullets.length > 0, "the empty block was not filled");
+});
+
 console.log(`
 [art-director] ${passed} checks passed`);
