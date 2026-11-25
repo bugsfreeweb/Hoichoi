@@ -252,6 +252,19 @@ const BN_MONTHS = [
 ] as const;
 
 /** A Bengali date line without importing the DB's formatter (llm has no db dep). */
+/**
+ * The footer is a fact, not a flourish.
+ *
+ * A measured render returned "সূত্র: রিবিম টেকনালজি | ২৮ নভেম্বর ২০২৬" for a BBC
+ * Technology story published on the 25th: the model transliterated the source
+ * wrongly and invented the date. Source and date come from the article row, so
+ * the plan always rebuilds this line instead of trusting the model's version.
+ */
+function footerFor(article: PosterArticle): string {
+  const source = clampText(article.source, 40) || "হৈচৈ";
+  return `সূত্র: ${source} | ${banglaDateLine(article.publishedAt)}`;
+}
+
 export function banglaDateLine(input?: string | null): string {
   const d = input ? new Date(input) : new Date();
   const when = Number.isNaN(d.getTime()) ? new Date() : d;
@@ -480,8 +493,6 @@ function fallbackPlan(
   const bullets = isQuoteStory
     ? []
     : sentences.slice(0, 3).map((s) => clipPhrase(s, 72));
-  const dateText = banglaDateLine(article.publishedAt);
-  const source = clampText(article.source, 40) || "হৈচৈ";
   const wanted = avoidRepetition(
     { layout: LAYOUT_OF_DESK[desk]!, paletteId: PALETTE_OF_DESK[desk]! },
     recentlyUsed,
@@ -500,7 +511,7 @@ function fallbackPlan(
     bullets,
     pullQuote: isQuoteStory ? clampText(sentences[0] ?? rawTitle, 120) : null,
     badgeText: CATEGORY_DESK.find((c) => c.desk === desk)?.badge ?? "সংবাদ",
-    footerText: `সূত্র: ${source} | ${dateText}`,
+    footerText: footerFor(article),
     layout: wanted.layout,
     paletteId: wanted.paletteId,
     visualStyle: STYLE_OF_DESK[desk] ?? "editorial digital illustration",
@@ -761,8 +772,9 @@ export function normalisePlan(
     bullets,
     pullQuote,
     badgeText: correctedBadge(obj.badge_text, article, fallback.badgeText),
-    footerText:
-      clipPhrase(clampText(obj.footer_text, 140), 90) || fallback.footerText,
+    // Never ship a model-written source/date: it hallucinated both in a measured
+    // render. The article row is the only authority for this line.
+    footerText: footerFor(article),
     layout: rotated.layout,
     paletteId: rotated.paletteId,
     visualStyle: style,

@@ -353,5 +353,19 @@ check("a price story is not mistaken for a plate of rice", () => {
   assert.ok(!subjects.objects.some((o) => /rice|food/.test(o)));
 });
 
+check(
+  "the footer's source and date come from the article, not the model",
+  () => {
+    const plan = normalisePlan(
+      { footer_text: "সূত্র: রিবিম টেকনালজি | ২৮ নভেম্বর ২০২৬" },
+      article,
+      [],
+    );
+    assert.match(plan.footerText, /হৈচৈ ডেস্ক/);
+    assert.match(plan.footerText, /২৪ নভেম্বর ২০২৬/);
+    assert.doesNotMatch(plan.footerText, /রিবিম|২৮ নভেম্বর/);
+  },
+);
+
 console.log(`
 [art-director] ${passed} checks passed`);
