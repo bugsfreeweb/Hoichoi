@@ -272,7 +272,7 @@ async function handlePost(req: NextRequest) {
           const candidates = [wiki.thumbnail?.source, wiki.originalimage?.source].filter(
             (u): u is string => Boolean(u),
           );
-          stages.imageTries = [];
+          const imageTries: Array<Record<string, unknown>> = [];
           for (const url of candidates) {
             try {
               const img = await fetch(url, {
@@ -283,14 +283,14 @@ async function handlePost(req: NextRequest) {
                   referer: "https://en.wikipedia.org/",
                 },
               });
-              stages.imageTries.push({
+              imageTries.push({
                 host: new URL(url).host,
                 status: img.status,
                 type: img.headers.get("content-type"),
                 length: (await img.arrayBuffer()).byteLength,
               });
             } catch (err) {
-              stages.imageTries.push({
+              imageTries.push({
                 host: (() => {
                   try {
                     return new URL(url).host;
@@ -302,6 +302,7 @@ async function handlePost(req: NextRequest) {
               });
             }
           }
+          stages.imageTries = imageTries;
         } catch (err) {
           stages.wikiError = err instanceof Error ? err.message : String(err);
         }
