@@ -55,6 +55,7 @@ import {
   orientImagePrompt,
   paletteSummary,
   publicFigureFor,
+  storyAnchors,
   type PosterArticle,
 } from "@hoichoi/llm";
 import {
@@ -247,7 +248,10 @@ async function handlePost(req: NextRequest) {
     const stages: Record<string, unknown> = { stage: "start" };
     try {
       stages.stage = "portrait";
-      stages.figure = publicFigureFor({ title: str(body?.title) || "Jensen Huang" });
+      const probeTitle = str(body?.title) || "Jensen Huang";
+      stages.probeTitle = probeTitle;
+      stages.anchors = storyAnchors({ title: probeTitle });
+      stages.figure = publicFigureFor({ title: probeTitle });
       const portrait = await publicFigurePortrait({
         title: str(body?.title) || "Jensen Huang",
       });
