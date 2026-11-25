@@ -327,7 +327,7 @@ function AdminChrome({
         <div className="fixed inset-0 z-[60] lg:hidden">
           <button
             type="button"
-            aria-label="মেনু বন্ধ করুন"
+            aria-label={locale === "en" ? "Close menu" : "মেনু বন্ধ করুন"}
             onClick={() => setMobileOpen(false)}
             className="absolute inset-0 bg-black/55 backdrop-blur-sm"
           />
@@ -366,7 +366,7 @@ function AdminChrome({
               <button
                 type="button"
                 onClick={() => setMobileOpen(true)}
-                aria-label="মেনু খুলুন"
+                aria-label={locale === "en" ? "Open menu" : "মেনু খুলুন"}
                 aria-expanded={mobileOpen}
                 className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-ink/20 text-ink transition hover:bg-ink/5 lg:hidden"
               >
@@ -387,7 +387,7 @@ function AdminChrome({
               </span>
               <div className="min-w-0">
                 <p className="truncate text-[14px] leading-tight font-bold text-ink">
-                  হৈচৈ কন্ট্রোল
+                  {locale === "en" ? "Hoichoi Control" : "হৈচৈ কন্ট্রোল"}
                 </p>
                 <p className="font-mono-x text-[8.5px] tracking-[0.2em] text-ink-soft uppercase">
                   WEB TWIN · DESK IS PRIMARY

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Bell, ChevronDown, Trash2 } from "lucide-react";
 import { POLL_MS, useQueueCounts } from "./queue-counts";
-import { t } from "@/i18n";
+import { useBi, useLocale, useT } from "@/components/i18n/LocaleProvider";
 
 /**
  * Live queue badge and alert panel in the header.
@@ -26,25 +26,34 @@ function toBn(v: number): string {
   return String(v).replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)] ?? d);
 }
 
+/** Bangla digits only in Bangla; an English reader keeps Latin numerals. */
+function num(v: number, en: boolean): string {
+  return en ? String(v) : toBn(v);
+}
+
 const SEVERITY_STYLE: Record<string, { dot: string; text: string }> = {
   critical: { dot: "bg-alizarin", text: "text-alizarin" },
   warn: { dot: "bg-amberx", text: "text-amberx" },
   info: { dot: "bg-cat-blue", text: "text-cat-blue" },
 };
 
-/** "৩ মিনিট" / "২ ঘণ্টা" / "৪ দিন" — a bell is about when, not what date. */
-function ageBn(iso: string): string {
+/** "৩ মিনিট" / "3m" — a bell is about when, not what date. */
+function ageLabel(iso: string, en: boolean): string {
   const then = new Date(iso).getTime();
   if (!Number.isFinite(then)) return "";
   const mins = Math.max(0, Math.round((Date.now() - then) / 60_000));
-  if (mins < 1) return "এইমাত্র";
-  if (mins < 60) return `${toBn(mins)} মিনিট`;
+  if (mins < 1) return en ? "now" : "এইমাত্র";
+  if (mins < 60) return en ? `${mins}m` : `${toBn(mins)} মিনিট`;
   const hours = Math.round(mins / 60);
-  if (hours < 24) return `${toBn(hours)} ঘণ্টা`;
-  return `${toBn(Math.round(hours / 24))} দিন`;
+  if (hours < 24) return en ? `${hours}h` : `${toBn(hours)} ঘণ্টা`;
+  return en ? `${Math.round(hours / 24)}d` : `${toBn(Math.round(hours / 24))} দিন`;
 }
 
 export function NotificationBell() {
+  const t = useT();
+  const b = useBi();
+  const { locale } = useLocale();
+  const en = locale === "en";
   const { urgent, alerts, unread, stale, refresh } = useQueueCounts();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -108,21 +117,21 @@ export function NotificationBell() {
           // the last background poll saw.
           refresh();
         }}
-        aria-label={`কিউ আপডেট${total > 0 ? ` (${toBn(total)}টি অপেক্ষমাণ)` : ""}`}
+        aria-label={`${b("কিউ আপডেট", "Queue updates")}${total > 0 ? ` (${num(total, en)} ${b("অপেক্ষমাণ", "waiting")})` : ""}`}
         aria-expanded={open}
         aria-controls="queue-bell-panel"
-        className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 text-white/70 transition-colors hover:border-white/40 hover:text-white"
+        className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-ink/20 text-ink-soft transition-colors hover:border-ink/45 hover:bg-ink/5 hover:text-ink"
       >
         <Bell size={15} />
         {total > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-alizarin px-1 font-mono-x text-[9px] font-bold text-on-accent">
-            {total > 99 ? "৯৯+" : toBn(total)}
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-alizarin px-1 font-mono-x text-[9px] font-bold text-white">
+            {total > 99 ? "99+" : num(total, en)}
           </span>
         )}
         {stale && (
           <span
             className="absolute -right-0.5 -bottom-0.5 h-2 w-2 rounded-full bg-amberx"
-            title="সর্বশেষ হালনাগাদ করা যায়নি"
+            title={b("সর্বশেষ হালনাগাদ করা যায়নি", "Could not refresh the latest counts")}
           />
         )}
       </button>
@@ -131,20 +140,20 @@ export function NotificationBell() {
         <div
           id="queue-bell-panel"
           role="group"
-          aria-label="কিউ আপডেট"
+          aria-label={b("কিউ আপডেট", "Queue updates")}
           className="absolute right-0 z-50 mt-2 flex w-[min(22rem,calc(100vw-2rem))] flex-col rounded-xl border border-ink/20 bg-paper shadow-2xl text-ink"
         >
           <div className="flex items-center justify-between gap-2 border-b border-ink/10 px-3 py-2">
             <p className="font-mono-x text-[9.5px] tracking-[0.18em] text-ink-soft uppercase">
               {t("notify.queues")}
-              {stale ? " (অসাময়িক)" : ""}
+              {stale ? (en ? " (stale)" : " (অসাময়িক)") : ""}
             </p>
             <Link
               href="/admin/notifications"
               onClick={() => setOpen(false)}
               className="font-mono-x text-[9.5px] text-alizarin underline"
             >
-              সব দেখুন
+              {b("সব দেখুন", "See all")}
             </Link>
           </div>
 
@@ -152,7 +161,7 @@ export function NotificationBell() {
           <div className="max-h-[30vh] overflow-y-auto px-1.5 py-1">
             {urgent.length === 0 && (
               <p className="px-2 py-2 text-[12px] text-ink-soft">
-                {stale ? t("notify.stale") : "কোনো তথ্য পাওয়া যায়নি।"}
+                {stale ? t("notify.stale") : b("কোনো তথ্য পাওয়া যায়নি।", "Nothing to show yet.")}
               </p>
             )}
             {urgent.map((i) => (
@@ -168,7 +177,7 @@ export function NotificationBell() {
                     i.count > 0 ? "bg-alizarin text-on-accent" : "bg-ink/10 text-ink-soft"
                   }`}
                 >
-                  {toBn(i.count)}
+                  {num(i.count, en)}
                 </span>
               </Link>
             ))}
@@ -177,8 +186,8 @@ export function NotificationBell() {
           <div className="flex items-center justify-between gap-2 border-t border-ink/10 px-3 py-1.5">
             <p className="font-mono-x text-[9.5px] tracking-[0.18em] text-ink-soft uppercase">
               {t("notify.events")}
-              {alerts.length ? ` · ${toBn(alerts.length)}` : ""}
-              {unreadAlerts ? ` · ${toBn(unreadAlerts)} নতুন` : ""}
+              {alerts.length ? ` · ${num(alerts.length, en)}` : ""}
+              {unreadAlerts ? ` · ${num(unreadAlerts, en)} ${b("নতুন", "new")}` : ""}
             </p>
             <div className="flex items-center gap-1.5">
               {unreadAlerts > 0 && (
@@ -188,7 +197,7 @@ export function NotificationBell() {
                   disabled={busy}
                   className="rounded-md border border-ink/25 px-1.5 py-0.5 font-mono-x text-[9px] font-bold whitespace-nowrap text-ink-soft hover:border-ink hover:text-ink disabled:opacity-50"
                 >
-                  সব পড়া
+                  {b("সব পড়া", "Mark read")}
                 </button>
               )}
               {alerts.length > 0 && (
@@ -196,10 +205,10 @@ export function NotificationBell() {
                   type="button"
                   onClick={() => void post({ clear: true })}
                   disabled={busy}
-                  title="যেগুলো পড়া হয়েছে সেগুলো সরিয়ে ফেলুন"
+                  title={b("যেগুলো পড়া হয়েছে সেগুলো সরিয়ে ফেলুন", "Clear the alerts you have already read")}
                   className="rounded-md border border-alizarin/60 px-1.5 py-0.5 font-mono-x text-[9px] font-bold whitespace-nowrap text-alizarin hover:bg-alizarin hover:text-on-accent disabled:opacity-50"
                 >
-                  পরিষ্কার
+                  {b("পরিষ্কার", "Clear")}
                 </button>
               )}
             </div>
@@ -234,7 +243,7 @@ export function NotificationBell() {
                           {a.title_bn}
                         </span>
                         <span className="shrink-0 font-mono-x text-[9.5px] whitespace-nowrap text-ink-soft">
-                          {ageBn(a.created_at)}
+                          {ageLabel(a.created_at, en)}
                         </span>
                         <ChevronDown
                           size={12}
@@ -245,8 +254,8 @@ export function NotificationBell() {
                         type="button"
                         onClick={() => void dismiss(a.id)}
                         disabled={busy}
-                        title="মুছে ফেলুন"
-                        aria-label={`${a.title_bn} — মুছে ফেলুন`}
+                        title={b("মুছে ফেলুন", "Dismiss")}
+                        aria-label={`${a.title_bn} — ${b("মুছে ফেলুন", "Dismiss")}`}
                         className="shrink-0 rounded p-1 text-ink-soft opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 hover:text-alizarin"
                       >
                         <Trash2 size={12} />
@@ -264,7 +273,7 @@ export function NotificationBell() {
                               onClick={() => setOpen(false)}
                               className="text-[11.5px] font-bold text-alizarin underline"
                             >
-                              খুলুন
+                              {b("খুলুন", "Open")}
                             </Link>
                           ) : null}
                           {!a.read_at ? (
@@ -274,7 +283,7 @@ export function NotificationBell() {
                               disabled={busy}
                               className="text-[11.5px] text-ink-soft underline hover:text-ink"
                             >
-                              পড়া হয়েছে
+                              {b("পড়া হয়েছে", "Mark read")}
                             </button>
                           ) : null}
                         </div>
@@ -287,7 +296,9 @@ export function NotificationBell() {
           </div>
 
           <p className="border-t border-ink/10 px-3 py-1.5 font-mono-x text-[9.5px] text-ink-soft">
-            {stale ? "সংযোগ ফিরে এলে হালনাগাদ হবে" : `${POLL_MS / 1000}s পরপর হালনাগাদ হয়`}
+            {stale
+              ? b("সংযোগ ফিরে এলে হালনাগাদ হবে", "Updates resume when the connection returns")
+              : b(`${POLL_MS / 1000}s পরপর হালনাগাদ হয়`, `Refreshes every ${POLL_MS / 1000}s`)}
           </p>
         </div>
       )}

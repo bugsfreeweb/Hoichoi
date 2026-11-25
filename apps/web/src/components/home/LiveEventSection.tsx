@@ -10,6 +10,7 @@ import type { LiveEventSettings } from "@hoichoi/shared-types";
 import LiveProvider from "@/components/live/LiveProvider";
 import LiveTemplate from "@/components/live-templates/LiveTemplate";
 import { protectLiveEventCard, protectLiveEventFeed } from "@/lib/live-stream-proxy";
+import { getLocale } from "@/lib/locale";
 
 export async function LiveEventSection({
   enabled,
@@ -35,16 +36,17 @@ export async function LiveEventSection({
   const feed = protectLiveEventFeed(rawFeed);
   const publicCards = cards.map(protectLiveEventCard);
   const template = (event.template === "auto" ? settings.default_theme : event.template) as LiveThemeKey;
+  const en = (await getLocale()) === "en";
 
   return (
     <section className="border-y border-ink/15 bg-paper-deep/30 py-7">
       <header className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-4 md:px-8">
         <div className="flex items-center gap-2">
           <Radio size={15} className="text-alizarin" />
-          <p className="font-mono-x text-[10px] tracking-[0.2em] text-alizarin uppercase">হৈচৈ লাইভ · আসল ইভেন্ট</p>
+          <p className="font-mono-x text-[10px] tracking-[0.2em] text-alizarin uppercase">{en ? "HOICHOI LIVE · REAL EVENTS" : "হৈচৈ লাইভ · আসল ইভেন্ট"}</p>
         </div>
         <Link href="/live" className="inline-flex items-center gap-1 text-[12px] font-bold text-ink-soft hover:text-alizarin">
-          সব লাইভ ইভেন্ট <ArrowUpRight size={13} />
+          {en ? "All live events" : "সব লাইভ ইভেন্ট"} <ArrowUpRight size={13} />
         </Link>
       </header>
       <LiveProvider key={feed.event.id} initial={feed}>

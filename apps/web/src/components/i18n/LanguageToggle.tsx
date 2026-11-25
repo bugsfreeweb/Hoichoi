@@ -30,8 +30,14 @@ export function LanguageToggle({ className }: { className?: string }) {
           aria-pressed={locale === code}
           title={code === "bn" ? t("lang.bn", undefined, locale) : t("lang.en", undefined, locale)}
           className={clsx(
-            "rounded-full px-2 py-1 leading-none transition-colors",
-            locale === code ? "bg-current/90 text-[color:var(--toggle-ink,#0b0b0b)]" : "opacity-70 hover:opacity-100",
+            "rounded-full px-2 py-1 leading-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2",
+            // The selected half cannot use `bg-current`: its own `color` is dark
+            // ink, so the pill painted dark-on-dark and the active label vanished.
+            // A fixed cream pill with near-black text reads on both the dark site
+            // header and the cream console rail.
+            locale === code
+              ? "bg-[#f3eee1] text-[#0b0b0b] shadow-sm"
+              : "opacity-70 hover:bg-current/10 hover:opacity-100",
           )}
         >
           {code === "bn" ? "বাংলা" : "EN"}

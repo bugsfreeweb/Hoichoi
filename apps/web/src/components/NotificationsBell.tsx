@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Notice } from "@hoichoi/shared-types";
 import { Bell, Check, ExternalLink } from "lucide-react";
+import { useBi, useLocale } from "@/components/i18n/LocaleProvider";
 
 const TONE_DOT: Record<Notice["tone"], string> = {
   info: "#22d3ee",
@@ -23,24 +24,27 @@ function readRead(): Record<string, string> {
   }
 }
 
-function bnTime(iso: string): string {
+/** Relative age in the reader's language, not a fixed Bangla string. */
+function timeAgo(iso: string, locale: string): string {
   const d = new Date(iso);
-  const now = new Date();
-  const diff = now.getTime() - d.getTime();
-  if (diff < 60_000) return "এইমাত্র";
+  const diff = Date.now() - d.getTime();
+  const en = locale === "en";
+  if (diff < 60_000) return en ? "just now" : "এইমাত্র";
   if (diff < 3_600_000) {
     const m = Math.floor(diff / 60_000);
-    return `${m} মিনিট আগে`;
+    return en ? `${m}m ago` : `${m} মিনিট আগে`;
   }
   if (diff < 86_400_000) {
     const h = Math.floor(diff / 3_600_000);
-    return `${h} ঘণ্টা আগে`;
+    return en ? `${h}h ago` : `${h} ঘণ্টা আগে`;
   }
-  return d.toLocaleDateString("bn-BD", { day: "numeric", month: "short" });
+  return d.toLocaleDateString(en ? "en-GB" : "bn-BD", { day: "numeric", month: "short" });
 }
 
 /** নোটিফিকেশন ঘণ্টা — active notices (desktop ও web অ্যাডমিন থেকে আসা)। */
 export function NotificationsBell() {
+  const b = useBi();
+  const { locale } = useLocale();
   const [notices, setNotices] = useState<Notice[]>([]);
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -93,7 +97,7 @@ export function NotificationsBell() {
     <div className="relative" ref={ref}>
       <button
         type="button"
-        aria-label="নোটিফিকেশন"
+        aria-label={b("নোটিফিকেশন", "Notifications")}
         aria-expanded={open}
         onClick={() => {
           setOpen((v) => !v);
@@ -103,7 +107,7 @@ export function NotificationsBell() {
       >
         <Bell size={14} />
         {unread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-alizarin px-1 text-[9px] font-black text-on-accent">
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-alizarin px-1 text-[9px] font-black text-white">
             {unread}
           </span>
         )}
@@ -112,22 +116,24 @@ export function NotificationsBell() {
       {open && (
         <div className="absolute right-0 top-9 z-50 w-[clamp(16rem,88vw,24rem)] overflow-hidden rounded-2xl border border-white/10 bg-[#10141b] shadow-2xl shadow-black/50">
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
-            <p className="text-[11.5px] font-bold tracking-wide text-white/80 uppercase">নোটিফিকেশন</p>
+            <p className="text-[11.5px] font-bold tracking-wide text-white/80 uppercase">
+              {b("নোটিফিকেশন", "Notifications")}
+            </p>
             {notices.length > 0 && (
               <button
                 type="button"
                 onClick={markAllRead}
                 className="flex items-center gap-1 text-[10.5px] font-bold text-lime hover:underline"
               >
-                <Check size={11} /> সব দেখা হয়েছে
+                <Check size={11} /> {b("সব দেখা হয়েছে", "Mark all read")}
               </button>
             )}
           </div>
 
           <div className="scroll-slim max-h-80 overflow-auto">
-            {!loaded && <p className="px-4 py-8 text-center text-[12px] text-white/70">লোড হচ্ছে…</p>}
+            {!loaded && <p className="px-4 py-8 text-center text-[12px] text-white/70">{b("লোড হচ্ছে…", "Loading…")}</p>}
             {loaded && notices.length === 0 && (
-              <p className="px-4 py-8 text-center text-[12px] text-white/70">কোনো নোটিফিকেশন নেই</p>
+              <p className="px-4 py-8 text-center text-[12px] text-white/70">{b("কোনো নোটিফিকেশন নেই", "No notifications yet")}</p>
             )}
             {notices.map((n) => {
               const read = readRead();
@@ -136,11 +142,11 @@ export function NotificationsBell() {
                 <>
                   <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white/10" style={{ background: TONE_DOT[n.tone] }} />
                   <span className="min-w-0 flex-1">
-                    <span className={`block text-[12.5px] font-bold ${isRead ? "text-white/55" : "text-white"}`}>{n.title}</span>
-                    {n.body && <span className="mt-0.5 line-clamp-2 block text-[11px] leading-snug text-white/45">{n.body}</span>}
-                    <span className="mt-1 block text-[9.5px] font-mono-x text-white/30 uppercase">{bnTime(n.updated_at)}</span>
+                    <span className={`block text-[12.5px] font-bold ${isRead ? "text-white/65" : "text-white"}`}>{n.title}</span>
+                    {n.body && <span className="mt-0.5 line-clamp-2 block text-[11px] leading-snug text-white/65">{n.body}</span>}
+                    <span className="mt-1 block text-[9.5px] font-mono-x text-white/55 uppercase">{timeAgo(n.updated_at, locale)}</span>
                   </span>
-                  {n.url && <ExternalLink size={11} className="shrink-0 text-white/30" />}
+                  {n.url && <ExternalLink size={11} className="shrink-0 text-white/55" />}
                 </>
               );
               return n.url ? (
