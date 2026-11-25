@@ -73,7 +73,7 @@ check("anti-repetition is read from the last five designs", () => {
 });
 
 check("the encoded poster and its design tokens both travel back", () => {
-  assert.match(route, /data_url: `data:\$\{output\.rendered\.contentType\};base64,/);
+  assert.match(route, /data_url: `data:\$\{inlineType\};base64,/);
   assert.match(route, /layout: plan\.layout/);
   assert.match(route, /palette: paletteSummary\(plan\)/);
   assert.match(route, /directed_by: directedBy/);
@@ -177,6 +177,13 @@ check("a named public figure gets their real portrait, not a synthetic likeness"
   assert.match(publicFigure, /en\.wikipedia\.org\/api\/rest_v1\/page\/summary/);
   assert.match(publicFigure, /ছবি: উইকিমিডিয়া কমন্স/);
   assert.match(publicFigure, /AbortSignal\.timeout/);
+});
+
+check("the inline preview stays under the serverless response limit", () => {
+  assert.match(route, /sharp\(output\.rendered\.bytes\)/);
+  assert.match(route, /webp\(\{ quality: 88, effort: 4 \}\)/);
+  assert.match(route, /preview\.length \* 1\.37 < 4_200_000/);
+  assert.match(route, /content_type: inlineType/);
 });
 
 check("the vocabulary is the brief's, once", () => {

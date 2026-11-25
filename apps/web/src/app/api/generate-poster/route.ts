@@ -31,6 +31,7 @@
  * the first. `?format=image` (optionally `&aspect=4:5`) returns raw bytes.
  */
 import { NextRequest, NextResponse } from "next/server";
+import sharp from "sharp";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {
@@ -494,31 +495,56 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const imagePayload = (output: (typeof outputs)[number]) => ({
-    aspect: output.aspect,
-    media_path: output.mediaPath,
-    stored: output.stored,
-    content_type: output.rendered.contentType,
-    width: output.rendered.width,
-    height: output.rendered.height,
-    bytes: output.rendered.bytes.length,
-    provider: output.visual?.provider ?? null,
-    model: output.visual?.model ?? null,
-    used_fallback_visual: output.rendered.usedFallbackVisual,
-    data_url: `data:${output.rendered.contentType};base64,${output.rendered.bytes.toString("base64")}`,
-  });
+  /**
+   * Vercel caps a function response at 4.5 MB. A 4:5 PNG is ~3.5 MB and its
+   * base64 is ~4.8 MB, so returning both frames as PNG data URLs produced a
+   * blank 500 in production even though the render itself succeeded. The saved
+   * file stays the full PNG; the inline copy the CMS previews is WebP, which is
+   * visually identical at this size and an order of magnitude smaller.
+   */
+  const imagePayload = async (output: (typeof outputs)[number]) => {
+    let preview = output.rendered.bytes;
+    let previewType = output.rendered.contentType;
+    try {
+      preview = await sharp(output.rendered.bytes)
+        .webp({ quality: 88, effort: 4 })
+        .toBuffer();
+      previewType = "image/webp";
+    } catch {
+      /* sharp is unavailable: fall back to the PNG, which still works locally */
+    }
+    const inline =
+      preview.length > 0 && preview.length * 1.37 < 4_200_000 ? preview : output.rendered.bytes;
+    const inlineType = inline === output.rendered.bytes ? output.rendered.contentType : previewType;
+    return {
+      aspect: output.aspect,
+      media_path: output.mediaPath,
+      stored: output.stored,
+      content_type: inlineType,
+      width: output.rendered.width,
+      height: output.rendered.height,
+      bytes: output.rendered.bytes.length,
+      provider: output.visual?.provider ?? null,
+      model: output.visual?.model ?? null,
+      used_fallback_visual: output.rendered.usedFallbackVisual,
+      data_url: `data:${inlineType};base64,${inline.toString("base64")}`,
+    };
+  };
+
+  const payloads = await Promise.all(outputs.map(imagePayload));
+  const primaryPayload = payloads[0]!;
 
   return NextResponse.json({
     ok: true,
     design: designPayload(plan, direction.source, primary.prompt, primary.aspect),
     image: {
-      ...imagePayload(primary),
+      ...primaryPayload,
       attached: attach && Boolean(primary.mediaPath),
     },
-    posters: outputs.map((output) => ({
+    posters: outputs.map((output, index) => ({
       design: designPayload(plan, direction.source, output.prompt, output.aspect),
       image: {
-        ...imagePayload(output),
+        ...payloads[index]!,
         attached:
           output.aspect === primary.aspect && attach && Boolean(output.mediaPath),
       },
