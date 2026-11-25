@@ -263,6 +263,29 @@ const CLUE_GLOSSARY: ReadonlyArray<readonly [RegExp, string]> = [
   [/রংপুর/i, "Rangpur"],
   [/ময়মনসিংহ/i, "Mymensingh"],
   [/কুমিল্লা/i, "Cumilla"],
+  // Named companies, people and hardware. A named subject is the difference
+  // between a picture *of this story* and a generic corporate meeting.
+  [/নিভিডিয়া|এনভিডিয়া|nvidia/i, "NVIDIA"],
+  [/জেসেন\s*হুয়াং|jensen\s*huang/i, "Jensen Huang"],
+  [/স্যাম\s*অল্টম্যান|sam\s*altman/i, "Sam Altman"],
+  [/ইলন\s*মাস্ক|elon\s*musk/i, "Elon Musk"],
+  [/ওপেনএআই|openai/i, "OpenAI"],
+  [/মাইক্রোসফট|microsoft/i, "Microsoft"],
+  [/গুগল|google/i, "Google"],
+  [/অ্যাপল|apple/i, "Apple"],
+  [/মেটা|meta/i, "Meta"],
+  [/টেসলা|tesla/i, "Tesla"],
+  [/এএমডি|amd/i, "AMD"],
+  [/ইন্টেল|intel/i, "Intel"],
+  [/জিপিইউ|গ্রাফিক্স\s*কার্ড|gpu/i, "GPU hardware"],
+  [/সেমিকন্ডাক্টর|চিপ|semiconductor|chip/i, "semiconductor chips"],
+  [/ডেটা\s*সেন্টার|data\s*center/i, "data centre"],
+  [/প্রধান\s*নির্বাহী\s*কর্মকর্তা|সিইও|ceo/i, "CEO"],
+  [/কর্মী|কর্মচারী|employee/i, "employees"],
+  [/সদর\s*দপ্তর|প্রধান\s*কার্যালয়|headquarters|hq/i, "company headquarters"],
+  [/কৃত্রিম\s*বুদ্ধিমত্তা|এআই|artificial intelligence/i, "artificial intelligence"],
+  [/শেয়ার\s*বাজার|স্টক|stock market/i, "stock market"],
+  [/বিনিয়োগ|investment/i, "investment"],
   [/ডিজিটাল/i, "digital"],
   [/আন্তর্জাতিক/i, "international"],
   [/রাষ্ট্রপতি/i, "president"],
@@ -313,6 +336,102 @@ export function extractVisualCues(text: string): string[] {
     cues.add(`figure ${m[0].trim()}`);
   }
   return [...cues].slice(0, 10);
+}
+
+/**
+ * The named things this story is actually about.
+ *
+ * `extractVisualCues` is deliberately broad (it also collects amounts and city
+ * names). This is the same extraction, but ordered and filtered so an image
+ * prompt gets the subject first: a company, a person, a product, then a role
+ * and a place. The art director uses it both in its instructions and as a
+ * post-check, because a model can write a beautiful prompt about "a confident
+ * CEO" while dropping the only fact that made the story specific.
+ */
+export function storyAnchors(input: {
+  title?: string | null;
+  summary?: string | null;
+  body?: string | null;
+  tags?: string[] | null;
+}): string[] {
+  const text = [input.title, input.summary, input.body, ...(input.tags ?? [])]
+    .filter(Boolean)
+    .join(" ");
+  const cues = extractVisualCues(text);
+  const named = cues.filter((cue) =>
+    /^(NVIDIA|Jensen Huang|Sam Altman|Elon Musk|OpenAI|Microsoft|Google|Apple|Meta|Tesla|AMD|Intel|GPU hardware|semiconductor chips|data centre|CEO|employees|company headquarters|artificial intelligence|stock market|investment)$/i.test(cue),
+  );
+  const cities = cues.filter((cue) => /^(Dhaka|Chattogram|Rajshahi|Khulna|Sylhet|Barishal|Rangpur|Mymensingh|Cumilla)$/i.test(cue));
+  const rest = cues.filter((cue) => !named.includes(cue) && !cities.includes(cue) && !cue.startsWith("figure "));
+  return [...new Set([...named, ...cities, ...rest])].slice(0, 8);
+}
+
+/**
+ * How a named public figure is recognised in a picture.
+ *
+ * A model told only "Jensen Huang" often draws a generic middle-aged executive.
+ * These are descriptive, not impersonations: the aim is an editorial portrait
+ * that a reader of the story recognises, without inventing a private scene.
+ */
+export const PUBLIC_FIGURE_LOOKS: Readonly<Record<string, string>> = {
+  "Jensen Huang":
+    "a Taiwanese-American man in his early 60s with short silver-black hair and glasses, wearing his signature black leather jacket",
+  "Sam Altman":
+    "a lean American man in his late 30s with short brown hair, wearing a plain dark sweater",
+  "Elon Musk":
+    "a tall American man in his early 50s with short dark hair, wearing a dark blazer",
+  "Satya Nadella":
+    "an Indian-American man in his late 50s with short dark hair and glasses, wearing a dark suit",
+  "Tim Cook":
+    "an American man in his early 60s with short grey hair and glasses, wearing a plain dark shirt",
+  "Mark Zuckerberg":
+    "an American man in his early 40s with short dark hair, wearing a plain grey T-shirt",
+};
+
+/** Public figures whose Wikipedia lead image can stand in for an AI likeness. */
+export const PUBLIC_FIGURE_WIKI: Readonly<Record<string, string>> = {
+  "Jensen Huang": "Jensen_Huang",
+  "Sam Altman": "Sam_Altman",
+  "Elon Musk": "Elon_Musk",
+  "Satya Nadella": "Satya_Nadella",
+  "Tim Cook": "Tim_Cook",
+  "Mark Zuckerberg": "Mark_Zuckerberg",
+};
+
+/** The first named person in this story who has a known portrait, if any. */
+export function publicFigureFor(input: {
+  title?: string | null;
+  summary?: string | null;
+  body?: string | null;
+}): { name: string; wiki: string } | null {
+  const anchors = storyAnchors(input);
+  for (const name of anchors) {
+    const wiki = PUBLIC_FIGURE_WIKI[name];
+    if (wiki) return { name, wiki };
+  }
+  return null;
+}
+
+/** The visual signature of a named company, without drawing its logo. */
+export const COMPANY_LOOK: Readonly<Record<string, string>> = {
+  NVIDIA: "green-lit GPU accelerator boards and a dark data-centre aisle, no visible logo",
+  OpenAI: "a minimal white research office with a soft screen glow, no visible logo",
+  Microsoft: "a glass office atrium with cool blue light, no visible logo",
+  Google: "a bright open-plan campus with coloured accents, no visible logo",
+  Apple: "a minimalist light-grey studio with brushed aluminium, no visible logo",
+  Tesla: "a clean factory floor with robotic arms and an electric car silhouette, no visible logo",
+  AMD: "a lab bench with processor wafers under cool light, no visible logo",
+  Intel: "a semiconductor clean-room with blue light and silicon wafers, no visible logo",
+};
+
+/** Append the identity cues the anchors imply, when the prompt has not used them. */
+export function anchorAppearance(anchors: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const anchor of anchors) {
+    const look = PUBLIC_FIGURE_LOOKS[anchor] ?? COMPANY_LOOK[anchor];
+    if (look && !out.includes(look)) out.push(look);
+  }
+  return out.slice(0, 2);
 }
 
 /** The scene sentence for a category, falling back to a neutral editorial scene. */

@@ -16,6 +16,7 @@ import {
   orientImagePrompt,
   paletteSummary,
 } from "../art-director";
+import { publicFigureFor } from "../image-prompt";
 import { POSTER_DESIGN_LAYOUTS, POSTER_PALETTES } from "@hoichoi/shared-types";
 
 let passed = 0;
@@ -67,7 +68,7 @@ check("avoidRepetition walks to the first unused combination", () => {
   assert.notEqual(`${result.layout}|${result.paletteId}`, "split_left_media|tech_navy_cyan");
 });
 
-check("a headline longer than 45 characters is trimmed without cutting a word", () => {
+check("a headline longer than the limit is trimmed without cutting a word", () => {
   const long = normalisePlan(
     { headline: "এটি একটি অত্যন্ত দীর্ঘ বাংলা শিরোনাম যা পোস্টারের সীমা ছাড়িয়ে যাবে এবং কেটে ফেলা দরকার" },
     article,
@@ -132,6 +133,66 @@ check("paletteSummary reports real tokens, not the model's prose", () => {
   const summary = paletteSummary(plan);
   assert.match(summary.bg, /^#[0-9a-f]{6}$/i);
   assert.match(summary.accent, /^#[0-9a-f]{6}$/i);
+});
+
+const nvidia = {
+  title: "নিভিডিয়ার কর্মীরা জেসেন হুয়াংকে হিরো হিসেবে স্বাগত জানান",
+  summary: "নিভিডিয়ার কর্মীরা প্রতিষ্ঠাতা জেসেন হুয়াংকে প্রত্যাবর্তনের সময় হিরো হিসেবে স্বাগত জানিয়েছেন।",
+  content:
+    "জেসেন হুয়াং নিভিডিয়ার প্রধান নির্বাহী কর্মকর্তা হিসেবে প্রতিষ্ঠানের প্রধান কার্যালয়ে ফিরে এসেছেন। কর্মীরা তাকে হিরো হিসেবে স্বাগত জানিয়েছেন।",
+  category: "corruption",
+  source: "Techcrunch",
+};
+
+check("a named subject reaches the image prompt instead of generic stock art", () => {
+  const plan = normalisePlan(
+    { image_prompt: "A confident CEO being applauded by enthusiastic employees in a modern office." },
+    nvidia,
+  );
+  assert.match(plan.imagePrompt, /GPU company/i);
+  assert.match(plan.imagePrompt, /Jensen Huang/);
+  assert.match(plan.imagePrompt, /black leather jacket/i);
+  assert.match(plan.imagePrompt, /no text/i);
+});
+
+check("a mis-filed category does not mislabel the story", () => {
+  const plan = normalisePlan(null, nvidia, []);
+  assert.equal(plan.badgeText, "প্রযুক্তি");
+  assert.ok(!plan.imagePrompt.includes("নিভিডিয়ার"), "the image prompt is English, not a pasted Bangla title");
+});
+
+check("the art director is told the visual anchors and the real desk", () => {
+  const prompt = artDirectorPrompt(nvidia, []);
+  assert.match(prompt, /VISUAL ANCHORS/);
+  assert.match(prompt, /Jensen Huang/);
+  assert.match(prompt, /NVIDIA/);
+  assert.match(prompt, /DESK HINT \(derived from the article's own words\): tech/);
+});
+
+check("a truncated model headline is rebuilt from the title at a word boundary", () => {
+  const plan = normalisePlan(
+    { headline: "নিভিডিয়ার কর্মীরা জেসেন হুয়াংকে হিরো হিসেবে স্ব" },
+    nvidia,
+    [],
+  );
+  assert.ok(Array.from(plan.headline).length <= 48);
+  assert.ok(!plan.headline.endsWith("স্ব"), "the last word is not half a conjunct");
+  assert.ok(plan.headline.includes("নিভিডিয়ার"));
+});
+
+check("an invented quote is replaced by a sentence the story actually contains", () => {
+  const plan = normalisePlan(
+    { content_mode: "quote", pull_quote: "‘আমি এখানে ফিরে এসে গর্বিত’ – জেসেন হুয়াং" },
+    nvidia,
+    [],
+  );
+  assert.ok(plan.pullQuote?.startsWith("নিভিডিয়ার কর্মীরা প্রতিষ্ঠাতা"), plan.pullQuote ?? "none");
+  assert.ok(!plan.pullQuote?.includes("গর্বিত"));
+});
+
+check("a named public figure resolves to a real Wikipedia portrait", () => {
+  assert.deepEqual(publicFigureFor(nvidia), { name: "Jensen Huang", wiki: "Jensen_Huang" });
+  assert.equal(publicFigureFor({ title: "বাজেট ঘোষণা আজ" }), null);
 });
 
 async function asyncChecks(): Promise<void> {

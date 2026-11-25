@@ -19,6 +19,11 @@
  *     silently crops a 1920×1080 poster.
  */
 import { readFile } from "node:fs/promises";
+// Static on purpose: Next's server bundle cannot resolve a dynamically named
+// package from the lambda directory, even when it is a real dependency. The
+// module is small; only the browser binary is optional, and a launch failure is
+// already handled as PosterBrowserUnavailable.
+import { chromium as bundledChromium } from "playwright-core";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { POSTER_HTML_FRAME, posterHtml, type PosterContent } from "./template";
@@ -196,7 +201,37 @@ async function withBrowser<T>(
 ): Promise<T> {
   let launched: BrowserHandle | null = null;
   let lastError: unknown = null;
-  for (const name of ["playwright", "playwright-core"]) {
+  const serverless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  let executablePath: string | undefined;
+  let args = ["--no-sandbox", "--disable-dev-shm-usage"];
+  if (serverless) {
+    // A Vercel function has no system browser. @sparticuz/chromium ships a
+    // headless build and unpacks it into /tmp; without this the route can only
+    // ever report "no Chromium" in production.
+    try {
+      const mod = (await import("@sparticuz/chromium")) as unknown as {
+        default?: { executablePath: () => Promise<string>; args: string[] };
+        executablePath?: () => Promise<string>;
+        args?: string[];
+      };
+      const pack = mod.default ?? mod;
+      executablePath = await pack.executablePath!();
+      args = [...(pack.args ?? []), ...args];
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  try {
+    launched = await (bundledChromium as unknown as {
+      launch: (opts?: Record<string, unknown>) => Promise<BrowserHandle>;
+    }).launch({
+      args,
+      ...(executablePath ? { executablePath } : {}),
+    });
+  } catch (err) {
+    lastError = err;
+  }
+  for (const name of launched ? [] : ["playwright", "playwright-core"]) {
     try {
       // A dynamic, non-literal specifier: this module must import cleanly in a
       // runtime that has no browser package installed at all.
@@ -207,7 +242,8 @@ async function withBrowser<T>(
       };
       if (!mod.chromium) continue;
       launched = await mod.chromium.launch({
-        args: ["--no-sandbox", "--disable-dev-shm-usage"],
+        args,
+        ...(executablePath ? { executablePath } : {}),
       });
       break;
     } catch (err) {

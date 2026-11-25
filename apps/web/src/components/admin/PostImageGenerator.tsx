@@ -34,13 +34,22 @@ interface PosterFrame {
   width?: number | null;
   height?: number | null;
   attached?: boolean;
+  provider?: string | null;
+  model?: string | null;
 }
 
 interface PosterResponse {
   ok?: boolean;
   error?: string;
   warnings?: string[];
-  design?: { layout?: string; aspect?: PosterAspect; palette?: { label?: string }; directed_by?: string };
+  design?: {
+    layout?: string;
+    aspect?: PosterAspect;
+    palette?: { label?: string };
+    directed_by?: string;
+    /** Exactly the prompt the image provider received, after composition. */
+    image_prompt?: string;
+  };
   image?: PosterFrame;
   posters?: Array<{ design?: PosterResponse["design"]; image?: PosterFrame }>;
 }
@@ -54,6 +63,9 @@ interface PosterPreview {
   directedBy: string;
   width: number | null;
   height: number | null;
+  provider: string | null;
+  model: string | null;
+  prompt: string | null;
 }
 
 /** How often the panel re-checks for a queued image. */
@@ -305,6 +317,9 @@ export function PostImageGenerator({
           directedBy: p.design?.directed_by ?? "fallback",
           width: p.image!.width ?? null,
           height: p.image!.height ?? null,
+          provider: p.image!.provider ?? null,
+          model: p.image!.model ?? null,
+          prompt: p.design?.image_prompt ?? null,
         }));
       if (!frames.length) throw new Error("পোস্টার তৈরি হয়নি");
       setPosters(frames);
@@ -719,6 +734,8 @@ export function PostImageGenerator({
             <span className="text-[11px] text-ink-soft">
               {posters[0].layout} · {posters[0].palette} ·{" "}
               {posters[0].directedBy === "llm" ? "আর্ট ডিরেক্টর" : "ফলব্যাক প্ল্যানার"}
+              {posters[0].provider ? ` · ${posters[0].provider}` : ""}
+              {posters[0].model ? ` · ${posters[0].model}` : ""}
             </span>
           )}
         </div>
@@ -905,6 +922,9 @@ export function PostImageGenerator({
 
         {posters.length > 0 && (
           <div className="mt-3 flex flex-wrap items-start gap-3">
+            {/* The editor saw a headline and a style; the model saw this text. It
+                used to be invisible, so "the same prompt" could mean two different
+                instructions. Show the exact string that was sent. */}
             {posters.map((p) => {
               const active = p.aspect === activeAspect;
               return (
@@ -933,6 +953,22 @@ export function PostImageGenerator({
             })}
           </div>
         )}
+
+        {(() => {
+          const chosen = posters.find((p) => p.aspect === activeAspect) ?? posters[0];
+          if (!chosen?.prompt) return null;
+          return (
+            <details className="mt-3 border border-ink/15 bg-paper px-3 py-2 text-[11px] text-ink-soft">
+              <summary className="cursor-pointer font-bold text-ink">
+                AI-কে পাঠানো ঠিক যে প্রম্পট · {chosen.provider ?? "unknown"}
+                {chosen.model ? ` · ${chosen.model}` : ""}
+              </summary>
+              <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap font-mono-x text-[10.5px] leading-relaxed">
+                {chosen.prompt}
+              </pre>
+            </details>
+          );
+        })()}
       </div>
     </div>
   );

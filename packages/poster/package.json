@@ -15,7 +15,8 @@
   "dependencies": {
     "sharp": "^0.33.5",
     "playwright-core": "^1.49.1",
-    "@hoichoi/shared-types": "workspace:*"
+    "@hoichoi/shared-types": "workspace:*",
+    "@sparticuz/chromium": "^143.0.4"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

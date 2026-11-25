@@ -32,6 +32,7 @@ import {
   paletteById,
 } from "@hoichoi/shared-types";
 import { newResolver, type ResolverOptions } from "./resolver";
+import { anchorAppearance, storyAnchors } from "./image-prompt";
 import { ProviderError } from "./types";
 
 export interface PosterArticle {
@@ -93,14 +94,14 @@ export interface ArtDirectorResult {
  * excluded here — lettering and identifiable people.
  */
 export const DESIGN_IMAGE_NEGATIVE =
-  "readable text, letters, words, numbers, captions, headlines, typographic signage, logos, brand marks, watermarks, identifiable faces, portraits of specific people, children, deformed hands, extra limbs, clutter";
+  "readable text, letters, words, numbers, captions, headlines, typographic signage, logos, brand marks, watermarks, children, deformed hands, extra limbs, duplicated people, generic corporate stock-photo meeting, unrelated objects, clutter";
 
 export const ART_DIRECTOR_SCHEMA = {
   type: "OBJECT",
   properties: {
     headline: {
       type: "STRING",
-      description: "Punchy Bengali headline, maximum 45 characters. No quotes.",
+      description: "Punchy, complete Bengali headline, maximum 48 characters. No quotes. Never end mid-word.",
     },
     highlight_word: {
       type: "STRING",
@@ -171,16 +172,49 @@ You design one social poster per story. You do not write articles and you never 
 
 Hard rules:
 1. All reader-facing copy is Bengali. Do not translate Bengali names into English.
-2. The headline is at most 45 Bengali characters, active voice, no trailing ellipsis.
+2. The headline is a complete phrase of at most 48 Bengali characters, active voice, no trailing ellipsis and never cut mid-word.
 3. highlight_word must appear verbatim inside headline.
 4. Choose content_mode by story type: explainers, policy and roundups get exactly 3 bullets; profiles, opinion, emotion and conflict get one pull-quote and no bullets.
 5. The badge is a short Bengali category tag, not a sentence.
 6. Pick one layout_variant and one palette_id that fit the story's mood. Never repeat a (layout, palette) pair from recently_used_designs, and never repeat the single most recent palette.
 7. image_prompt is English, describes only the focal visual, matches visual_style and the palette's mood, and ends with: "No text, no letters, no numbers, no logos, no watermark."
-8. Return JSON only. No markdown, no commentary.`;
+8. Ground the image in the story's named subject. If TITLE/SUMMARY/VISUAL ANCHORS name a person, company, product or place, the focal visual must show that exact person/company/product/place in an editorial way. A named public figure may be shown as a recognisable editorial subject. Never replace the named subject with a generic meeting, generic office or anonymous silhouette.
+9. CATEGORY is a filing label and may be wrong. TITLE and SUMMARY are the facts; when they disagree, follow the title.
+10. Return JSON only. No markdown, no commentary.`;
 
 function clampText(value: unknown, max: number): string {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, max) : "";
+}
+
+/** Code points, not UTF-16 units: a Bengali cluster can be several units wide. */
+const HEADLINE_MAX = 48;
+
+/** Cut at a word boundary, so a headline never ends in half a conjunct. */
+function clipHeadline(value: string, max = HEADLINE_MAX): string {
+  const text = value.replace(/\s+/g, " ").trim();
+  const chars = Array.from(text);
+  if (chars.length <= max) return text;
+  const cut = chars.slice(0, max).join("");
+  const space = cut.lastIndexOf(" ");
+  const base = space >= Math.floor(max * 0.55) ? cut.slice(0, space) : cut;
+  return base.replace(/[।,;:\-–—\s]+$/u, "").trim() || cut.trim();
+}
+
+/**
+ * Never shorten a headline into a fragment.
+ *
+ * The model returned the first 45 code points of the title, which ended on the
+ * "স্ব" of "স্বাগত": a visible truncation, not a headline. When the model's line
+ * is only a prefix of the real title, the title supplies the missing words and
+ * the cut lands on a space instead. A genuinely rewritten headline is untouched.
+ */
+function headlineFor(raw: unknown, article: PosterArticle): string {
+  const title = (article.title ?? "").replace(/\s+/g, " ").trim();
+  const model = clipHeadline(clampText(raw, 220));
+  if (model && title.startsWith(model) && Array.from(title).length > Array.from(model).length) {
+    return clipHeadline(title);
+  }
+  return model;
 }
 
 function banglaDigits(n: number): string {
@@ -224,6 +258,28 @@ function deskForCategory(category?: string | null): string {
   const value = (category ?? "").trim();
   return CATEGORY_DESK.find((c) => c.match.test(value))?.desk ?? "breaking";
 }
+
+/**
+ * The desk the *story* belongs to, not the one its filing label claims.
+ *
+ * The collector labelled an NVIDIA leadership story "corruption", which sent it
+ * to the breaking desk: a crimson layout, a "ব্রেকিং নিউজ" badge and a generic
+ * corporate-office picture. The title and body are the facts; the category is a
+ * useful hint only. This reads the whole article first, then falls back to the
+ * category, so a mislabelled technology story still gets a technology poster.
+ */
+function deskForArticle(article: PosterArticle): string {
+  const lead = [article.title, article.summary, article.category].filter(Boolean).join(" ");
+  const all = [lead, article.content, article.source].filter(Boolean).join(" ");
+  if (TECH_STORY.test(lead)) return "tech";
+  const onLead = CATEGORY_DESK.find((c) => c.match.test(lead));
+  if (onLead) return onLead.desk;
+  const content = CATEGORY_DESK.find((c) => c.match.test(all));
+  if (content) return content.desk;
+  return deskForCategory(article.category);
+}
+
+const TECH_STORY = /নিভিডিয়া|এনভিডিয়া|জিপিইউ|কৃত্রিম বুদ্ধিমত্তা|এআই|চিপ|সেমিকন্ডাক্টর|প্রযুক্তি|সফটওয়্যার|nvidia|gpu|openai|microsoft|google|apple|meta|tesla|amd|intel|artificial intelligence/i;
 
 const PALETTE_OF_DESK: Record<string, PosterPaletteId> = {
   tech: "tech_navy_cyan",
@@ -305,18 +361,9 @@ function fallbackPlan(
   article: PosterArticle,
   recentlyUsed: readonly RecentlyUsedDesign[],
 ): PosterDesignPlan {
-  const desk = deskForCategory(article.category);
+  const desk = deskForArticle(article);
   const rawTitle = (article.title || "সংবাদ").replace(/\s+/g, " ").trim();
-  let headline = rawTitle;
-  if (headline.length > 45) {
-    const cut = headline.slice(0, 45);
-    // Prefer the last clause boundary inside the budget over a mid-phrase word:
-    // "বিনিয়োগ, নতুন" is a correct 45-character cut and a bad headline.
-    const boundary = Math.max(cut.lastIndexOf("।"), cut.lastIndexOf(","), cut.lastIndexOf("?"));
-    const base = boundary >= 18 ? cut.slice(0, boundary) : cut.slice(0, Math.max(12, cut.lastIndexOf(" ")));
-    headline = base.trim().replace(/[।,\-–—;:]+$/g, "").trim();
-    if (!headline) headline = cut.trim();
-  }
+  const headline = clipHeadline(rawTitle);
   const titleWords = wordsOf(headline).sort((a, b) => b.length - a.length);
   const highlightWord = titleWords.find((w) => !STOPWORDS.has(w) && headline.includes(w)) ?? "";
   // The summary is two sentences on most stories; the body is where the third
@@ -341,7 +388,10 @@ function fallbackPlan(
     recentlyUsed,
   );
   const palette = paletteById(wanted.paletteId) ?? POSTER_PALETTES[0]!;
-  const subject = clampText(rawTitle, 180) || "the story's central subject";
+  const anchors = storyAnchors(article);
+  const subject = anchors.length
+    ? anchors.slice(0, 5).join(", ")
+    : clampText(rawTitle, 180) || "the story's central subject";
   return {
     headline,
     highlightWord,
@@ -353,8 +403,123 @@ function fallbackPlan(
     paletteId: wanted.paletteId,
     visualStyle: STYLE_OF_DESK[desk] ?? "editorial digital illustration",
     texture: TEXTURE_OF_LAYOUT[wanted.layout],
-    imagePrompt: `${STYLE_OF_DESK[desk] ?? "editorial digital illustration"} of ${subject}. Colour mood: ${palette.label} (${palette.mood}), background ${palette.bg}, accent ${palette.accent}. Wide 16:9 composition with a clear focal subject and generous negative space. No text, no letters, no numbers, no logos, no watermark.`,
+    imagePrompt: groundedPrompt(
+      `${STYLE_OF_DESK[desk] ?? "editorial digital illustration"} of ${subject}.`,
+      article,
+      palette,
+    ),
   };
+}
+
+/**
+ * Keep a prompt attached to the story's named subject.
+ *
+ * A measured NVIDIA story produced "a confident CEO … applauded by enthusiastic
+ * employees": true to the mood, and useless as a news image, because the company
+ * and the person never reached the model. Anchors are extracted from the article
+ * itself (Bangla-to-English glossary plus Latin proper nouns), and appended only
+ * when the prompt has not already named one, so a good prompt is not rewritten.
+ */
+/** A label that came from a mis-filed category must not overrule the story. */
+function correctedBadge(raw: unknown, article: PosterArticle, fallback: string): string {
+  const badge = clampText(raw, 24) || fallback;
+  const claimed = deskForCategory(article.category);
+  const actual = deskForArticle(article);
+  if (claimed === actual) return badge;
+  // The story's own desk wins outright. The old rule only corrected a badge
+  // that exactly matched the category badge, so a model answer of "খেলা" for a
+  // mis-filed NVIDIA story survived.
+  return CATEGORY_DESK.find((c) => c.desk === actual)?.badge ?? badge;
+}
+
+function groundedPrompt(
+  prompt: string,
+  article: PosterArticle,
+  palette: { bg: string; accent: string; mood: string } | null,
+): string {
+  const anchors = storyAnchors(article);
+  const noText = /no text|without text|text-free/i.test(prompt);
+  let out = prompt
+    .replace(/\s*No text,? no letters,? no numbers,? no logos?,? (?:and )?no watermark\.?\s*$/i, "")
+    .replace(/[\s.]+$/, "");
+  const lower = out.toLowerCase();
+  // Per-anchor, not "did any of them appear": a prompt that says "employees"
+  // used to pass this check and drop the company and the CEO it was about.
+  const missing = anchors.filter((a) => !lower.includes(a.toLowerCase()));
+  if (missing.length) {
+    out += `. The image must be specific to this story: ${missing.slice(0, 6).join(", ")}. `;
+    out += "Show the named person, company, product or place from the article; do not substitute a generic office, meeting or anonymous figure.";
+  }
+  const looks = anchorAppearance(anchors);
+  if (looks.length) {
+    out = out.replace(/[,\s]+$/, "");
+    out += `. Recognisable details: ${looks.join("; ")}.`;
+  }
+  if (palette) {
+    out = out.replace(/[.\s]+$/, "");
+    out += `. Colour direction: background ${palette.bg}, accent ${palette.accent}, mood ${palette.mood}.`;
+  }
+  if (noText || !/no text|without text|text-free/i.test(out)) {
+    out += " No text, no letters, no numbers, no logos, no watermark.";
+  }
+  out = out.replace(
+    /\b(?:with|and)\s+(?:subtle|visible|clear|prominent)\s+[A-Z][\w&-]*\s+branding/gi,
+    "with no visible branding",
+  );
+  /**
+   * A brand name in a prompt is an invitation to draw its logo. The company is
+   * still described (a GPU company, an AI company), but the wordmark is not put
+   * in front of a model that has no way to render it correctly. The publisher
+   * and the desk are already named in the HTML around the picture.
+   */
+  const NEUTRAL: Record<string, string> = {
+    NVIDIA: "the GPU company",
+    OpenAI: "the AI company",
+    Microsoft: "the software company",
+    Google: "the search company",
+    Apple: "the device company",
+    Meta: "the social platform",
+    Tesla: "the electric-car company",
+    AMD: "the chip company",
+    Intel: "the chip company",
+  };
+  out = out.replace(
+    /(NVIDIA|OpenAI|Microsoft|Google|Apple|Meta|Tesla|AMD|Intel)/g,
+    (name) => NEUTRAL[name] ?? "the company",
+  );
+  if (!/blank signage/i.test(out)) {
+    out += " Every sign, screen, badge and rack panel stays blank and unlettered; hands are anatomically natural.";
+  }
+  return out.replace(/\s+/g, " ").trim();
+}
+
+/** The first real sentence of the article, used when a model quote is invented. */
+function firstSentence(article: PosterArticle): string {
+  const text = [article.summary, article.content].filter(Boolean).join(" ").trim();
+  return text.split(/(?<=[।.!?])\s+/)[0]?.trim() ?? "";
+}
+
+/**
+ * A quote in a newspaper must be something the story actually says.
+ *
+ * The art director is asked for "one impactful quote", and it sometimes writes a
+ * plausible sentence the article never contained. Attribution and quote marks are
+ * stripped before checking, and a twenty-character stem is enough to survive a
+ * different punctuation style while still catching invention.
+ */
+function groundedQuote(quote: string, article: PosterArticle): boolean {
+  const plain = quote
+    .replace(/[“”‘’"']/g, "")
+    .replace(/\s*[–—-]\s*[^–—]{2,40}$/u, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (Array.from(plain).length < 12) return false;
+  const stem = Array.from(plain).slice(0, 20).join("");
+  const source = [article.title, article.summary, article.content]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ");
+  return source.includes(stem);
 }
 
 /**
@@ -374,7 +539,7 @@ export function normalisePlan(
   const fallback = fallbackPlan(article, recentlyUsed);
   const obj = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
 
-  const headline = clampText(obj.headline, 45) || fallback.headline;
+  const headline = headlineFor(obj.headline, article) || fallback.headline;
   let highlight = clampText(obj.highlight_word, 24);
   if (!highlight || !headline.includes(highlight)) {
     highlight = wordsOf(headline).sort((a, b) => b.length - a.length)[0] ?? "";
@@ -399,6 +564,10 @@ export function normalisePlan(
     if (bullets.length === 0) pullQuote = fallback.pullQuote ?? headline;
   }
 
+  if (pullQuote && !groundedQuote(pullQuote, article)) {
+    pullQuote = firstSentence(article) || fallback.pullQuote || headline;
+  }
+
   const proposedLayout = isPosterDesignLayout(obj.layout_variant)
     ? obj.layout_variant
     : fallback.layout;
@@ -411,27 +580,23 @@ export function normalisePlan(
   const style = isPosterVisualStyle(obj.visual_style) ? obj.visual_style : fallback.visualStyle;
   const palette = paletteById(rotated.paletteId) ?? POSTER_PALETTES[0]!;
   const texture = isPosterTexture(obj.texture) ? obj.texture : TEXTURE_OF_LAYOUT[rotated.layout];
-  const fallbackSubject = clampText(article.title, 180) || "the story's central subject";
-  let imagePrompt = clampText(obj.image_prompt, 1200);
-  if (!imagePrompt) {
-    imagePrompt = `${style} of ${fallbackSubject}. Colour mood: ${palette.label} (${palette.mood}), background ${palette.bg}, accent ${palette.accent}. Wide composition with one clear focal subject and generous negative space.`;
-  }
-  if (!imagePrompt.includes(palette.accent)) {
-    // The palette is a render decision, not a suggestion: if the model's prompt
-    // names a different colour mood, the accent and ground are appended so the
-    // focal visual and the CSS frame belong to the same page.
-    imagePrompt = `${imagePrompt.replace(/[\s.]+$/, "")}. Colour direction: background ${palette.bg}, accent ${palette.accent}, mood ${palette.mood}.`;
-  }
-  if (!/no text|without text|text-free/i.test(imagePrompt)) {
-    imagePrompt = `${imagePrompt.replace(/[\s.]+$/, "")}. No text, no letters, no numbers, no logos, no watermark.`;
-  }
+  const anchors = storyAnchors(article);
+  const fallbackSubject = anchors.length
+    ? anchors.slice(0, 5).join(", ")
+    : clampText(article.title, 180) || "the story's central subject";
+  const rawImagePrompt = clampText(obj.image_prompt, 1200);
+  const imagePrompt = groundedPrompt(
+    rawImagePrompt || `${style} of ${fallbackSubject}. Wide composition with one clear focal subject and generous negative space.`,
+    article,
+    palette,
+  );
 
   return {
     headline,
     highlightWord: highlight,
     bullets,
     pullQuote,
-    badgeText: clampText(obj.badge_text, 24) || fallback.badgeText,
+    badgeText: correctedBadge(obj.badge_text, article, fallback.badgeText),
     footerText: clampText(obj.footer_text, 90) || fallback.footerText,
     layout: rotated.layout,
     paletteId: rotated.paletteId,
@@ -455,10 +620,14 @@ export function artDirectorPrompt(
   return [
     `TITLE: ${article.title ?? ""}`,
     `CATEGORY: ${article.category ?? "unknown"}`,
+    `DESK HINT (derived from the article's own words): ${deskForArticle(article)}`,
     `SOURCE: ${article.source ?? "unknown"}`,
     `PUBLISHED: ${article.publishedAt ?? ""}`,
     `SUMMARY: ${clampText(article.summary, 700)}`,
     `CONTENT: ${clampText(article.content, 2200)}`,
+    `VISUAL ANCHORS (the image must be about these, not generic stock art): ${
+      storyAnchors(article).join(", ") || "none named — use the story's own subject"
+    }`,
     `recently_used_designs: ${recent || "none"}`,
     "Design the poster and return the JSON object.",
   ].join("\n\n");

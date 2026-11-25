@@ -43,6 +43,7 @@ const socialCopyMigration = read("packages/db/migrations/043_post_social_copy.sq
 const adminPostPage = read("apps/web/src/app/admin/(console)/posts/[id]/page.tsx");
 const postEditor = read("apps/web/src/components/admin/PostEditor.tsx");
 const migration = read("packages/db/migrations/040_poster_designs.sql");
+const publicFigure = read("apps/web/src/lib/public-figure.ts");
 const aspectMigration = read("packages/db/migrations/041_poster_design_aspect.sql");
 const embedded = read("packages/db/src/migrations.generated.ts");
 
@@ -167,6 +168,15 @@ check("Facebook and X get the card each actually renders", () => {
   assert.match(panel, /navigator\.clipboard\.writeText\(shareUrl\)/);
   assert.match(panel, /document\.execCommand\("copy"\)/);
   assert.match(panel, /কপি লিংক/);
+});
+
+check("a named public figure gets their real portrait, not a synthetic likeness", () => {
+  assert.match(route, /publicFigurePortrait\(article\)/);
+  assert.match(route, /provider: "Wikimedia Commons"/);
+  assert.match(route, /visualStyle: "cinematic photojournalism"/);
+  assert.match(publicFigure, /en\.wikipedia\.org\/api\/rest_v1\/page\/summary/);
+  assert.match(publicFigure, /ছবি: উইকিমিডিয়া কমন্স/);
+  assert.match(publicFigure, /AbortSignal\.timeout/);
 });
 
 check("the vocabulary is the brief's, once", () => {

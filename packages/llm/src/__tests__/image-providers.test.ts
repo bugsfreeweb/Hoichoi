@@ -67,7 +67,8 @@ try {
   assert.equal(cloudflareBody.prompt, "A train station");
   assert.ok(!("size" in cloudflareBody), "no OpenAI-style size field either");
   assert.equal(cloudflareRequests[0]?.url, "https://api.cloudflare.com/client/v4/accounts/account123/ai/run/@cf/black-forest-labs/flux-1-schnell");
-  assert.equal(cloudflareRequests[0]?.body.steps, 4);
+  // 8 is the binding's maximum: more prompt-following, still one call.
+  assert.equal(cloudflareRequests[0]?.body.steps, 8);
   assert.deepEqual(Buffer.from(cloudflareResult.bytes), png);
   assert.equal(cloudflareResult.contentType, "image/png");
 

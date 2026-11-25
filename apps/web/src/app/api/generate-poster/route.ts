@@ -50,6 +50,7 @@ import {
   directPosterDesign,
   extensionForMime,
   generateImage,
+  imageSizeFor,
   orientImagePrompt,
   paletteSummary,
   type PosterArticle,
@@ -73,6 +74,7 @@ import {
   type PosterAspect,
 } from "@hoichoi/shared-types";
 import { forbidden, requireApiRole } from "@/lib/auth";
+import { publicFigurePortrait } from "@/lib/public-figure";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -274,7 +276,22 @@ export async function POST(req: NextRequest) {
     recentlyUsed,
     signal: AbortSignal.timeout(45_000),
   });
-  const plan = direction.plan;
+  let plan = direction.plan;
+
+  // A story about a real person should show that person. Wikipedia's lead
+  // portrait is a real photograph, not a synthetic likeness; when it resolves,
+  // it replaces the generated focal visual for every frame and the footer
+  // carries the credit. Any failure falls through to the image model.
+  const portrait = await publicFigurePortrait(article).catch(() => null);
+  if (portrait) {
+    plan = {
+      ...plan,
+      // The photo is a photograph; the "3D isometric render" label the art
+      // director chose for a generated visual must not sit under a real portrait.
+      visualStyle: "cinematic photojournalism",
+      footerText: `${plan.footerText} · ${portrait.credit}`.slice(0, 120),
+    };
+  }
 
   // The desk gives the masthead its date and lets the image prompt carry the
   // publication's own framing of the category.
@@ -304,11 +321,28 @@ export async function POST(req: NextRequest) {
     promptFor.set(aspect, prompt);
     if (visuals.has(ratio)) continue;
 
+    if (portrait) {
+      const visual: Visual = {
+        background: portrait.bytes,
+        provider: "Wikimedia Commons",
+        model: portrait.source,
+        prompt: `${portrait.name} — ${portrait.credit}`,
+      };
+      visuals.set(ratio, visual);
+      promptFor.set(aspect, visual.prompt);
+      continue;
+    }
+
     try {
       const result = await generateImage(
         {
           prompt,
           aspectRatio: ratio,
+          // Native size where the provider supports it. Without this, every
+          // provider also received "Compose for a 16:9 aspect ratio" as prose —
+          // a second, sometimes conflicting instruction on top of the prompt the
+          // editor saw. The editor now sees exactly what was sent.
+          size: imageSizeFor(ratio),
           negativePrompt: DESIGN_IMAGE_NEGATIVE,
           count: 1,
         },

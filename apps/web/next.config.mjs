@@ -20,10 +20,23 @@ const nextConfig = {
    * and the alternative is a picture with no readable headline.
    */
   outputFileTracingIncludes: {
-    "/api/**": ["../../packages/db/migrations/**/*.sql", "../../packages/poster/fonts/**/*"],
+    "/api/**": [
+      "../../packages/db/migrations/**/*.sql",
+      "../../packages/poster/fonts/**/*",
+      "../../node_modules/.pnpm/@sparticuz+chromium@*/node_modules/@sparticuz/chromium/**/*",
+    ],
     "/admin/**": ["../../packages/db/migrations/**/*.sql"],
   },
-  serverExternalPackages: ["@libsql/client", "bcryptjs", "sharp"],
+  serverExternalPackages: [
+    "@libsql/client",
+    "bcryptjs",
+    "sharp",
+    // Loaded through a dynamic import so the module is importable without a
+    // browser. Bundling it would hide the package from Node at request time.
+    "playwright",
+    "playwright-core",
+    "@sparticuz/chromium",
+  ],
   async headers() {
     return [
       {

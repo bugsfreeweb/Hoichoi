@@ -431,7 +431,9 @@ export class OpenAICompatProvider implements LLMProvider {
      */
     const payload: Record<string, unknown> = {
       prompt: shortenImagePrompt(prompt),
-      steps: 4,
+      // 4 is the binding's fast default; 8 is its maximum and visibly improves
+      // prompt adherence (hardware, faces, object counts) at one extra step.
+      steps: 8,
     };
     const res = await fetch(url, {
       method: "POST",
