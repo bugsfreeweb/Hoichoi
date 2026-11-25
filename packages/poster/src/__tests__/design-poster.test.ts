@@ -44,7 +44,11 @@ const base: DesignPosterContent = {
   backgroundDataUrl: null,
   logoDataUrl: null,
   fonts: [
-    { family: "Hind Siliguri", weight: 700, dataUrl: "data:font/ttf;base64,AAAA" },
+    {
+      family: "Hind Siliguri",
+      weight: 700,
+      dataUrl: "data:font/ttf;base64,AAAA",
+    },
     { family: "Galada", weight: 400, dataUrl: "data:font/ttf;base64,BBBB" },
   ],
   brand: "হৈচৈ",
@@ -62,33 +66,48 @@ check("all five layouts render a complete document", () => {
   for (const layout of POSTER_DESIGN_LAYOUTS) {
     const html = designPosterHtml({ ...base, layout });
     assert.match(html, /^<!doctype html>/);
-    assert.ok(html.includes(`data-layout="${layout}"`), `${layout} must name its shape`);
+    assert.ok(
+      html.includes(`data-layout="${layout}"`),
+      `${layout} must name its shape`,
+    );
     assert.ok(html.includes("--bg-color:"), "palette variables are injected");
     assert.ok(html.includes("--accent-color:"), "accent variable is injected");
-    assert.ok(html.includes("data:image/svg+xml"), "a procedural texture is embedded");
+    assert.ok(
+      html.includes("data:image/svg+xml"),
+      "a procedural texture is embedded",
+    );
     assert.ok(html.includes("@font-face"), "Bengali fonts are inlined");
     assert.ok(html.includes('class="hl"'), "the highlight word is marked");
   }
 });
 
-check("the headline is escaped, and the highlight is not a random substring", () => {
-  const html = designPosterHtml({
-    ...base,
-    headline: "নতুন <script> বিনিয়োগ",
-    highlightWord: "বিনিয়োগ",
-  });
-  assert.ok(!html.includes("<script>"), "raw markup cannot enter the document");
-  assert.ok(html.includes("&lt;script&gt;"));
-  assert.ok(html.includes('<mark class="hl">বিনিয়োগ</mark>'));
-});
+check(
+  "the headline is escaped, and the highlight is not a random substring",
+  () => {
+    const html = designPosterHtml({
+      ...base,
+      headline: "নতুন <script> বিনিয়োগ",
+      highlightWord: "বিনিয়োগ",
+    });
+    assert.ok(
+      !html.includes("<script>"),
+      "raw markup cannot enter the document",
+    );
+    assert.ok(html.includes("&lt;script&gt;"));
+    assert.ok(html.includes('<mark class="hl">বিনিয়োগ</mark>'));
+  },
+);
 
-check("split layouts ask for a square visual; hero and spotlight ask for 16:9", () => {
-  assert.equal(focalAspectFor("split_left_media"), "1:1");
-  assert.equal(focalAspectFor("split_right_media"), "1:1");
-  assert.equal(focalAspectFor("editorial_magazine_grid"), "1:1");
-  assert.equal(focalAspectFor("hero_overlay_gradient"), "16:9");
-  assert.equal(focalAspectFor("breaking_spotlight"), "16:9");
-});
+check(
+  "split layouts ask for a square visual; hero and spotlight ask for 16:9",
+  () => {
+    assert.equal(focalAspectFor("split_left_media"), "1:1");
+    assert.equal(focalAspectFor("split_right_media"), "1:1");
+    assert.equal(focalAspectFor("editorial_magazine_grid"), "1:1");
+    assert.equal(focalAspectFor("hero_overlay_gradient"), "16:9");
+    assert.equal(focalAspectFor("breaking_spotlight"), "16:9");
+  },
+);
 
 check("the 4:5 frame changes the visual ratio, not the design", () => {
   assert.equal(focalAspectFor("hero_overlay_gradient", "4:5"), "9:16");
@@ -102,24 +121,40 @@ check("the 4:5 frame changes the visual ratio, not the design", () => {
 check("portrait overrides are present without a second markup tree", () => {
   const html = designPosterHtml({ ...base, aspect: "4:5" });
   assert.ok(html.includes('data-aspect="4:5"'));
-  assert.ok(html.includes('[data-aspect="4:5"]'), "the portrait overrides are inlined");
+  assert.ok(
+    html.includes('[data-aspect="4:5"]'),
+    "the portrait overrides are inlined",
+  );
   assert.ok(html.includes('4:5"][data-layout="split_left_media"]'));
 });
 
-check("portrait headline type is smaller than landscape for the same words", () => {
-  assert.ok(
-    designHeadlineSizeFor("split_left_media", "প্রযুক্তি খাতে নতুন বিনিয়োগ", "4:5") <
-      designHeadlineSizeFor("split_left_media", "প্রযুক্তি খাতে নতুন বিনিয়োগ", "16:9"),
-  );
-});
+check(
+  "portrait headline type is smaller than landscape for the same words",
+  () => {
+    assert.ok(
+      designHeadlineSizeFor(
+        "split_left_media",
+        "প্রযুক্তি খাতে নতুন বিনিয়োগ",
+        "4:5",
+      ) <
+        designHeadlineSizeFor(
+          "split_left_media",
+          "প্রযুক্তি খাতে নতুন বিনিয়োগ",
+          "16:9",
+        ),
+    );
+  },
+);
 
 check("headline type steps down as the headline grows", () => {
   assert.equal(designHeadlineSizeFor("split_left_media", "ছোট শিরোনাম"), 80);
   const medium = "এটি একটি মাঝারি দৈর্ঘ্যের বাংলা শিরোনাম";
   assert.ok(designHeadlineSizeFor("split_left_media", medium) < 80);
   assert.ok(
-    designHeadlineSizeFor("split_left_media", medium + " এবং আরও অনেক বেশি লেখা যোগ করা হলো এখানে") <
-      designHeadlineSizeFor("split_left_media", medium),
+    designHeadlineSizeFor(
+      "split_left_media",
+      medium + " এবং আরও অনেক বেশি লেখা যোগ করা হলো এখানে",
+    ) < designHeadlineSizeFor("split_left_media", medium),
   );
 });
 
@@ -133,14 +168,21 @@ check("textures are deterministic per seed and differ across seeds", () => {
 
 check("a light accent gets dark ink, a dark accent gets white", () => {
   assert.equal(onAccent(palette), "#0B0F14");
-  assert.equal(onAccent(resolvePalette("breaking_obsidian_crimson")), "#FFFFFF");
+  assert.equal(
+    onAccent(resolvePalette("breaking_obsidian_crimson")),
+    "#FFFFFF",
+  );
 });
 
 check("a pull-quote replaces bullets in the markup", () => {
-  const html = designPosterHtml({ ...base, pullQuote: "এটাই মূল কথা", bullets: [] });
+  const html = designPosterHtml({
+    ...base,
+    pullQuote: "এটাই মূল কথা",
+    bullets: [],
+  });
   assert.ok(html.includes("এটাই মূল কথা"));
   assert.ok(!html.includes('<ul class="bullets">'));
-  assert.ok(html.includes('class="quote"'));
+  assert.ok(html.includes('class="quote quote-only"'));
 });
 
 console.log(`\n[design-poster] ${passed} checks passed`);

@@ -41,6 +41,17 @@ body[data-aspect="4:5"][data-layout="split_left_media"] .copy{left:0;right:0;top
 body[data-aspect="4:5"][data-layout="split_left_media"] .copy::before{background:linear-gradient(180deg,color-mix(in srgb,var(--bg-color) 70%,transparent) 0%,var(--bg-color) 12%);}
 body[data-aspect="4:5"][data-layout="split_left_media"] .footer{margin-bottom:30px;}
 
+/* A quote-only portrait has no bullets to fill the copy column. Without this,
+   the flexible spacer left a third of the poster empty below one sentence. */
+body[data-aspect="4:5"][data-layout="split_left_media"] .quote-only,
+body[data-aspect="4:5"][data-layout="split_right_media"] .quote-only{
+  flex:1;align-self:stretch;display:flex;align-items:center;margin:6px 0 8px;
+  padding:22px 22px 22px 26px;border-left:5px solid var(--accent-color);
+  border-radius:4px;background:color-mix(in srgb,var(--accent-color) 10%,transparent);
+}
+body[data-aspect="4:5"][data-layout="split_left_media"] .quote-only p,
+body[data-aspect="4:5"][data-layout="split_right_media"] .quote-only p{font-size:32px;line-height:1.55;}
+
 /* ---------- 2. split_right_media ---------- */
 body[data-aspect="4:5"][data-layout="split_right_media"] .copy{left:0;top:0;width:100%;height:56%;bottom:auto;padding:42px ${s}px 20px;gap:14px;}
 body[data-aspect="4:5"][data-layout="split_right_media"] .media-frame{left:${s}px;right:${s}px;top:58%;bottom:${s}px;width:auto;height:auto;padding:0;}

@@ -11,7 +11,12 @@
  * one post to the next should see a different *kind* of page.
  */
 import type { DesignPosterContent } from "./tokens";
-import { banglaNumber, escapeHtml, headlineHtml, headlineSizeFor } from "./tokens";
+import {
+  banglaNumber,
+  escapeHtml,
+  headlineHtml,
+  headlineSizeFor,
+} from "./tokens";
 
 function mediaLayer(content: DesignPosterContent, extraClass = ""): string {
   if (content.backgroundDataUrl) {
@@ -37,7 +42,9 @@ function badge(content: DesignPosterContent): string {
 /** Bullets when the story got bullets; a pull-quote when it got one. */
 function support(content: DesignPosterContent): string {
   if (content.pullQuote) {
-    return `<figure class="quote"><p>${escapeHtml(content.pullQuote)}</p></figure>`;
+    // `quote-only` lets the portrait recomposition give a short quote the space
+    // that would otherwise be an empty column between it and the footer.
+    return `<figure class="quote quote-only"><p>${escapeHtml(content.pullQuote)}</p></figure>`;
   }
   if (content.bullets.length === 0) return "";
   return `<ul class="bullets">${content.bullets
@@ -63,7 +70,11 @@ function watermark(content: DesignPosterContent, extra = ""): string {
 }
 
 function headline(content: DesignPosterContent): string {
-  const size = headlineSizeFor(content.layout, content.headline, content.aspect);
+  const size = headlineSizeFor(
+    content.layout,
+    content.headline,
+    content.aspect,
+  );
   return `<h1 class="headline" style="--headline-size:${size}px">${headlineHtml(content.headline, content.highlightWord)}</h1>`;
 }
 
