@@ -343,9 +343,8 @@ export function normalizeCloudflareModel(
   const afterRun = input.includes("/ai/run/")
     ? input.slice(input.indexOf("/ai/run/") + "/ai/run/".length)
     : input;
-  const raw = afterRun
-    .replace(/^https?:\/\/[^/]{1,253}/i, "")
-    .replace(/\/+$/, "");
+  let raw = afterRun.replace(/^https?:\/\/[^/]{1,253}/i, "");
+  while (raw.endsWith("/")) raw = raw.slice(0, -1);
   if (!raw) return null;
   if (raw.startsWith(CLOUDFLARE_MODEL_PREFIX)) return raw;
   const alias = CLOUDFLARE_MODEL_ALIASES[raw.toLowerCase()];
