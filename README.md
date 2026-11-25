@@ -1942,7 +1942,8 @@ when the count is non-zero, and `/admin/security#code-alerts` renders each
 alert with a rule-specific fix hint (bounded regex, parsed hostname, workflow
 permissions, crypto RNG, and so on) plus a direct link to the alert. The desktop
 shows the same list as a banner above the workspace, reading GitHub directly
-with the PAT already in the vault — no deployment secret is needed for the desk.
+with the PAT already in the vault — no deployment secret is needed for the desk —
+and `Notifier.tsx` raises one native OS notification per new alert number.
 An unconfigured install says which variable is missing instead of pretending
 there are zero findings.
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { isTauri } from "../lib/tauri";
+import { listCodeScanningAlerts } from "../lib/github";
 
 /**
  * Native desktop notifications for desk events.
@@ -31,6 +32,10 @@ interface Alert {
 export default function Notifier() {
   const seen = useRef<Set<string>>(new Set());
   const first = useRef(true);
+  // Repository findings have their own ids and arrive from GitHub, not the
+  // notifications table. Seeded on the first poll so history does not pop up.
+  const seenSecurity = useRef<Set<number>>(new Set());
+  const firstSecurity = useRef(true);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -39,9 +44,12 @@ export default function Notifier() {
 
     const load = async (): Promise<void> => {
       try {
-        const res = await fetch("http://localhost:3070/api/admin/notifications", {
-          cache: "no-store",
-        });
+        const res = await fetch(
+          "http://localhost:3070/api/admin/notifications",
+          {
+            cache: "no-store",
+          },
+        );
         if (!res.ok) return;
         const data = (await res.json()) as { ok?: boolean; alerts?: Alert[] };
         if (cancelled || !data.ok || !Array.isArray(data.alerts)) return;
@@ -54,9 +62,8 @@ export default function Notifier() {
           return;
         }
 
-        const { sendNotification, isPermissionGranted, requestPermission } = await import(
-          "@tauri-apps/plugin-notification"
-        );
+        const { sendNotification, isPermissionGranted, requestPermission } =
+          await import("@tauri-apps/plugin-notification");
         let granted = await isPermissionGranted();
         if (!granted) granted = (await requestPermission()) === "granted";
         if (!granted) return;
@@ -66,7 +73,10 @@ export default function Notifier() {
           seen.current.add(alert.id);
           if (alert.severity === "info" || alert.read_at) continue;
           sendNotification({
-            title: alert.severity === "critical" ? `হৈচৈ · জরুরি — ${alert.title_bn}` : `হৈচৈ — ${alert.title_bn}`,
+            title:
+              alert.severity === "critical"
+                ? `হৈচৈ · জরুরি — ${alert.title_bn}`
+                : `হৈচৈ — ${alert.title_bn}`,
             body: alert.body_bn ?? undefined,
           });
         }
@@ -79,11 +89,48 @@ export default function Notifier() {
       }
     };
 
+    /** New code-scanning alerts → one OS toast per alert number. */
+    const loadSecurity = async (): Promise<void> => {
+      try {
+        const result = await listCodeScanningAlerts();
+        if (cancelled || result.open === 0) return;
+        if (firstSecurity.current) {
+          for (const a of result.alerts) seenSecurity.current.add(a.number);
+          firstSecurity.current = false;
+          return;
+        }
+        const fresh = result.alerts.filter(
+          (a) => !seenSecurity.current.has(a.number),
+        );
+        if (fresh.length === 0) return;
+        const { sendNotification, isPermissionGranted, requestPermission } =
+          await import("@tauri-apps/plugin-notification");
+        let granted = await isPermissionGranted();
+        if (!granted) granted = (await requestPermission()) === "granted";
+        if (!granted) return;
+        for (const a of fresh) {
+          seenSecurity.current.add(a.number);
+          sendNotification({
+            title: `হৈচৈ · নিরাপত্তা — ${a.ruleId}`,
+            body: `${a.path}${a.startLine ? `:${a.startLine}` : ""} — ${a.title}`,
+          });
+        }
+      } catch {
+        /* vault locked / GitHub offline: the banner retries on its own timer */
+      }
+    };
+
     void load();
+    void loadSecurity();
     timer = window.setInterval(() => void load(), POLL_MS);
+    const securityTimer = window.setInterval(
+      () => void loadSecurity(),
+      5 * 60_000,
+    );
     return () => {
       cancelled = true;
       if (timer) window.clearInterval(timer);
+      window.clearInterval(securityTimer);
     };
   }, []);
 

@@ -85,6 +85,11 @@ check("the desk shows the same findings without a new token", () => {
   const app = read("apps/desktop/src/App.tsx");
   if (!app.includes("<SecurityBanner />"))
     throw new Error("banner is not mounted");
+  const notifier = read("apps/desktop/src/components/Notifier.tsx");
+  if (!notifier.includes("listCodeScanningAlerts"))
+    throw new Error("no native notification");
+  if (!notifier.includes("seenSecurity"))
+    throw new Error("the same alert can ring twice");
 });
 
 console.log(`\nsecurity-alerts: ${passed} checks passed`);
