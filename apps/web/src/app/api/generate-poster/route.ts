@@ -63,6 +63,7 @@ import {
   PosterBrowserUnavailable,
   focalAspectFor,
   renderDesignPoster,
+  renderHtmlToPng,
 } from "@hoichoi/poster";
 import {
   POSTER_ASPECTS,
@@ -213,6 +214,35 @@ async function handlePost(req: NextRequest) {
   if (user.role !== "admin" && user.role !== "editor") return forbidden();
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+
+  // Admin-only deployment probe: tells the operator which step a serverless
+  // runtime can actually reach, without spending a text or image generation.
+  if (body?.diagnose === true) {
+    const stages: Record<string, unknown> = { stage: "start" };
+    try {
+      stages.stage = "portrait";
+      const portrait = await publicFigurePortrait({
+        title: str(body?.title) || "Jensen Huang",
+      });
+      stages.portrait = portrait ? `${portrait.name} (${portrait.bytes.length} bytes)` : null;
+      stages.stage = "browser";
+      const png = await renderHtmlToPng("<html><body><h1>ok</h1></body></html>", {
+        width: 200,
+        height: 100,
+      });
+      stages.stage = "done";
+      stages.png = png.length;
+      return NextResponse.json({ ok: true, ...stages });
+    } catch (err) {
+      return NextResponse.json({
+        ok: false,
+        ...stages,
+        detail: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack?.split("\n").slice(0, 4) : null,
+      });
+    }
+  }
+
   const postId = str(body?.postId);
 
   // A saved post is the normal CMS path; an explicit article makes the route
