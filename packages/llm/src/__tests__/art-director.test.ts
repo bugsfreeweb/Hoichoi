@@ -378,5 +378,22 @@ check("a sentence-opening capital is not a named subject", () => {
   assert.ok(a.some((x) => /European/.test(x)));
 });
 
+check(
+  "a flood story draws water, boats and families, not a living room",
+  () => {
+    const subjects = extractVisualSubjects({
+      title: "Sylhet floods displace thousands as rivers swell",
+      summary:
+        "Heavy rain has swollen rivers, forcing families in rural villages to leave their homes.",
+      body: "Volunteers in raincoats unload rice from wooden boats at a school relief camp.",
+    });
+    assert.ok(!subjects.interiors.some((x) => /living room/.test(x)));
+    assert.ok(subjects.exteriors.some((x) => /floodwater/.test(x)));
+    assert.ok(subjects.objects.some((x) => /rescue boats/.test(x)));
+    assert.ok(subjects.people.some((x) => /family/.test(x)));
+    assert.ok(subjects.places.some((x) => /relief camp/.test(x)));
+  },
+);
+
 console.log(`
 [art-director] ${passed} checks passed`);

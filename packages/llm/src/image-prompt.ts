@@ -380,7 +380,7 @@ export function storyAnchors(input: {
   // are stopped by this list; "Europe" is not on it and still reaches the brief
   // through the country lexicon as "a European setting".
   const CAP_OPENERS = new Set(
-    "A An The This That These Those It Its In On At For With From After Before As But And Or If When While How Why What Who Where New Small Big Young Old Good Bad More Most Less First Last Next Many Some All Two Three Report Story News".split(
+    "A An The This That These Those It Its In On At For With From After Before As But And Or If When While How Why What Who Where New Small Big Young Old Good Bad More Most Less First Last Next Many Some All Two Three Report Story News Heavy Severe Massive Deadly Global Local Major Minor Rising Thousands Flood Floods Water Rain Storm Heat Cold".split(
       " ",
     ),
   );

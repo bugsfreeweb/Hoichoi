@@ -99,9 +99,19 @@ const ENTRY: readonly Entry[] = [
     label: "a businessperson in a dark suit",
   },
   {
-    re: /পরিবার|family|parents|মা-বাবা/i,
+    re: /পরিবার|famil(?:y|ies)|parents|মা-বাবা/i,
     kind: "people",
     label: "a family",
+  },
+  {
+    re: /বয়স্ক|প্রবীণ|elderly|older\s+(?:people|residents)/i,
+    kind: "people",
+    label: "elderly people",
+  },
+  {
+    re: /স্বেচ্ছাসেবক|volunteer|rescue\s+worker/i,
+    kind: "people",
+    label: "relief volunteers in raincoats",
   },
 
   // ── Countries and regions ────────────────────────────────────────────────
@@ -167,6 +177,22 @@ const ENTRY: readonly Entry[] = [
     label: "EV charging points",
   },
   {
+    re: /বন্যা|বন্যায়|প্লাবিত|জলোচ্ছ্বাস|flood(?:s|ed|ing)?|floodwater/i,
+    kind: "exterior",
+    label: "floodwater covering a village road",
+    suppresses: "a quiet rural road",
+  },
+  {
+    re: /নৌকা|boat|ferry|rescue\s+craft/i,
+    kind: "object",
+    label: "wooden rescue boats",
+  },
+  {
+    re: /আশ্রয়কেন্দ্র|ত্রাণ\s+শিবির|relief\s+camp|shelter|school\s+building\s+turned\s+into/i,
+    kind: "place",
+    label: "a schoolyard relief camp",
+  },
+  {
     re: /শোরুম|showroom|dealership/i,
     kind: "interior",
     label: "a bright car showroom floor",
@@ -181,8 +207,10 @@ const ENTRY: readonly Entry[] = [
     kind: "interior",
     label: "a modern open-plan office",
   },
+  // "homes" is not a room. A flood or housing story says home without meaning
+  // an interior; only an explicit room earns an indoor label.
   {
-    re: /বাড়ি|ঘর|বাসা|home|house|apartment|flat/i,
+    re: /বসার\s+ঘর|living\s+room|drawing\s+room|interior\s+of\s+a\s+(?:home|house|flat)/i,
     kind: "interior",
     label: "a modest modern living room",
   },
@@ -520,6 +548,11 @@ export function extractVisualSubjects(input: {
   const urban = "an urban street with pavements and parked cars";
   const rural = "a quiet rural road";
   if (out.exteriors.includes(urban) && out.exteriors.includes(rural)) {
+    out.exteriors = out.exteriors.filter((label) => label !== rural);
+  }
+  // A flooded road is a specific exterior; the generic rural road beside it
+  // only asks the model to draw two settings.
+  if (out.exteriors.includes("floodwater covering a village road")) {
     out.exteriors = out.exteriors.filter((label) => label !== rural);
   }
 
