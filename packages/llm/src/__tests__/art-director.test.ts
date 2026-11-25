@@ -407,5 +407,21 @@ check("story content, not only the summary, reaches the anchors", () => {
   assert.ok(!a.some((x) => /receding toward the horizon/.test(x)));
 });
 
+check("a historical older generation is not in the present-tense cast", () => {
+  const car = extractVisualSubjects({
+    title: "Small cars gain popularity among young people in Europe",
+    summary:
+      "Previously, such vehicles were often associated with older individuals; now they are a preferred choice for urban youth.",
+  });
+  assert.ok(car.people.some((x) => /young adults/.test(x)));
+  assert.ok(!car.people.some((x) => /elderly/.test(x)));
+
+  const flood = extractVisualSubjects({
+    title: "Sylhet floods displace thousands",
+    body: "Elderly residents and families left their homes for a relief camp.",
+  });
+  assert.ok(flood.people.some((x) => /elderly/.test(x)));
+});
+
 console.log(`
 [art-director] ${passed} checks passed`);

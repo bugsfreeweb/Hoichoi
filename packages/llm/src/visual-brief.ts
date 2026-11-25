@@ -564,6 +564,17 @@ export function extractVisualSubjects(input: {
   }
   // A flooded road is a specific exterior; the generic rural road beside it
   // only asks the model to draw two settings.
+  // "Previously these cars were for older drivers" is the story's contrast,
+  // not its cast. When the present-tense subject is young adults and the older
+  // group is introduced by a past-tense marker, drop the older group.
+  const historical =
+    /previously|traditionally|once|used\s+to|no\s+longer|historically|were\s+often|in\s+the\s+past/i.test(
+      text,
+    );
+  if (historical && out.people.some((label) => /young adults/.test(label))) {
+    out.people = out.people.filter((label) => !/elderly people/.test(label));
+  }
+
   if (out.exteriors.includes("floodwater covering a village road")) {
     out.exteriors = out.exteriors.filter(
       (label) =>
