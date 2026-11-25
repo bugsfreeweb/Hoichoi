@@ -189,6 +189,12 @@ export async function GET() {
   });
 }
 
+// A cold art-direction call, a Wikipedia portrait and a Chromium launch do not
+// fit in Vercel's 10s default. Without this the platform kills the function and
+// returns a blank 500 before the route can report anything.
+export const maxDuration = 300;
+export const runtime = "nodejs";
+
 export async function POST(req: NextRequest) {
   try {
     return await handlePost(req);
