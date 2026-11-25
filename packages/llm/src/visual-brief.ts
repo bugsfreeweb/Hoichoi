@@ -346,7 +346,7 @@ const ENTRY: readonly Entry[] = [
   {
     re: /sacks?\s+of\s+rice|bags?\s+of\s+rice|চালের\s+বস্তা/i,
     kind: "object",
-    label: "sacks of rice",
+    label: "plain unlabelled burlap sacks of rice",
   },
   {
     re: /rice\s+padd(?:y|ies)|paddy\s+field|ধান\s+খেত/i,

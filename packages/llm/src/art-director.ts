@@ -616,7 +616,7 @@ function groundedPrompt(
   );
   if (!/blank signage/i.test(out)) {
     out +=
-      " Every shop sign, awning, number plate, car badge and rack panel stays completely blank and unlettered; hands are anatomically natural.";
+      " Every sack, shop sign, awning, number plate, car badge and rack panel stays completely blank and unlettered; hands are anatomically natural.";
   }
   return out.replace(/\s+/g, " ").trim();
 }
