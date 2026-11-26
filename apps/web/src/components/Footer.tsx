@@ -31,11 +31,9 @@ export async function Footer() {
   const about = locale === "en" ? aboutDefault : settings.footer_about_bn || aboutDefault;
   // Lipighor's terms allow webfont use only with a footer backlink, so the
   // credit appears exactly when one of its families is actually selected.
-  const creditFont = [
-    appConfig.typography?.headline,
-    appConfig.typography?.body,
-    appConfig.typography?.meta,
-  ]
+  // Every surface counts, not only the original three roles: selecting a
+  // Lipighor face for the footer alone still owes the attribution link.
+  const creditFont = Object.values(appConfig.typography ?? {})
     .map((id) => (id ? banglaFontById(id) : null))
     .find((font) => font?.license === "web-with-attribution");
   // The submit link is the site's only growth channel, so it is surfaced in the
