@@ -92,6 +92,11 @@ check(
       "the gallery must not label every photo illustrative",
     );
     assert.match(gallery, /ছবি: সংগৃহীত/);
+    const dict = read(ROOT, "packages", "i18n", "src", "dictionary.ts");
+    assert.ok(
+      !dict.includes("পুনর্লিখন · প্রতীকী"),
+      "the card credit must not call an AI rewrite an illustrative photo",
+    );
   },
 );
 
