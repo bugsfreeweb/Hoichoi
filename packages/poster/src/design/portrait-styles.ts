@@ -53,8 +53,8 @@ body[data-aspect="4:5"][data-layout="split_left_media"] .quote-only p,
 body[data-aspect="4:5"][data-layout="split_right_media"] .quote-only p{font-size:32px;line-height:1.55;}
 
 /* ---------- 2. split_right_media ---------- */
-body[data-aspect="4:5"][data-layout="split_right_media"] .copy{left:0;top:0;width:100%;height:56%;bottom:auto;padding:42px ${s}px 20px;gap:14px;}
-body[data-aspect="4:5"][data-layout="split_right_media"] .media-frame{left:${s}px;right:${s}px;top:58%;bottom:${s}px;width:auto;height:auto;padding:0;}
+body[data-aspect="4:5"][data-layout="split_right_media"] .copy{left:0;top:0;width:100%;height:50%;bottom:auto;padding:30px ${s}px 18px;gap:12px;}
+body[data-aspect="4:5"][data-layout="split_right_media"] .media-frame{left:${s}px;right:${s}px;top:52%;bottom:${s}px;width:auto;height:auto;padding:0;}
 body[data-aspect="4:5"][data-layout="split_right_media"] .media-frame .media{inset:0;}
 body[data-aspect="4:5"][data-layout="split_right_media"] .media-frame::before{left:-10px;top:-10px;width:64px;height:64px;border-left-width:5px;border-top-width:5px;}
 body[data-aspect="4:5"][data-layout="split_right_media"] .media-frame::after{right:-10px;bottom:-10px;width:64px;height:64px;border-right-width:5px;border-bottom-width:5px;}
