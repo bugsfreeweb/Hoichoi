@@ -152,7 +152,7 @@ export default async function LiveHubPage({
           <span className="flex w-fit items-center gap-2 rounded-full border border-lime/40 bg-lime/10 px-3 py-1 font-mono-x text-[10px] tracking-[0.2em] text-lime uppercase">
             <Radio size={11} /> {b("হৈচৈ লাইভ ডেস্ক", "HOICHOI LIVE DESK")}
           </span>
-          <h1 className="headline-grad mt-5 font-serif-bn text-[56px] leading-[0.95] font-black tracking-tight md:text-[88px]">
+          <h1 className="bnfont-page-title headline-grad mt-5 font-serif-bn text-[56px] leading-[0.95] font-black tracking-tight md:text-[88px]">
             লাইভ<span className="text-alizarin">!</span>
           </h1>
           <p className="mt-4 max-w-xl text-[14px] leading-relaxed text-ink/60">

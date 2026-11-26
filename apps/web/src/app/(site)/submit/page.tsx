@@ -19,7 +19,7 @@ export default async function SubmitPage({
       <p className="font-mono-x text-[10.5px] tracking-[0.26em] text-alizarin uppercase">
         ▚ SUBMIT A PAGE · ২ মিনিট
       </p>
-      <h1 className="mt-2 font-serif-bn text-[40px] font-black text-ink md:text-[52px]">
+      <h1 className="bnfont-page-title mt-2 font-serif-bn text-[40px] font-black text-ink md:text-[52px]">
         {b("পেজ প্রস্তাব করুন", "Suggest a page")}
       </h1>
       <p className="mt-4 max-w-2xl text-[14.5px] leading-relaxed text-ink-soft">

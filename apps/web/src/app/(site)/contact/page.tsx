@@ -16,7 +16,7 @@ export default async function ContactPage({
       <p className="font-mono-x text-[10.5px] tracking-[0.26em] text-alizarin uppercase">
         ▚ CONTACT THE DESK
       </p>
-      <h1 className="mt-2 font-serif-bn text-[40px] font-black text-ink md:text-[52px]">
+      <h1 className="bnfont-page-title mt-2 font-serif-bn text-[40px] font-black text-ink md:text-[52px]">
         {b("যোগাযোগ", "Contact")}
       </h1>
       <p className="mt-4 text-[15px] leading-relaxed text-ink-soft">

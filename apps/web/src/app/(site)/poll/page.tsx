@@ -56,7 +56,7 @@ export default async function PollPage({
           <p className="font-mono-x text-[10px] tracking-[0.24em] text-lime uppercase">
             ▚ {b("পাঠকের মতামত", "READER OPINION")} · LIVE POLLS
           </p>
-          <h1 className="mt-4 font-serif-bn text-[clamp(2.5rem,7vw,5.25rem)] leading-[1.02] font-black text-ink">
+          <h1 className="bnfont-page-title mt-4 font-serif-bn text-[clamp(2.5rem,7vw,5.25rem)] leading-[1.02] font-black text-ink">
             {b("আপনার মতামত", "Your opinion")}{" "}
             <span className="text-alizarin">{b("গুরুত্বপূর্ণ", "matters")}</span>
           </h1>

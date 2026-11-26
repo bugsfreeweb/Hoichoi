@@ -19,7 +19,7 @@ export default async function ReportPage({
       <p className="font-mono-x text-[10.5px] tracking-[0.26em] text-alizarin uppercase">
         ▚ REPORT CONTENT
       </p>
-      <h1 className="mt-2 font-serif-bn text-[40px] font-black text-ink md:text-[52px]">
+      <h1 className="bnfont-page-title mt-2 font-serif-bn text-[40px] font-black text-ink md:text-[52px]">
         {b("কনটেন্ট রিপোর্ট করুন", "Report content")}
       </h1>
       <p className="mt-4 text-[14.5px] leading-relaxed text-ink-soft">
