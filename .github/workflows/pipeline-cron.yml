@@ -134,6 +134,16 @@ jobs:
           done
           echo "::error::scrape failed after 3 attempts — see the log above for the cause"
           exit 1
+      - name: Repair missing post media
+        # A source can publish before its image is reachable, or a previous run
+        # can fail between inserting the post and mirroring the bytes. Repair is
+        # bounded and skips generated posters; it must not fail the whole run, so
+        # the commit step below still keeps whatever media did arrive.
+        continue-on-error: true
+        run: |
+          echo "── media repair (bounded) ──"
+          cd apps/scraper
+          npx tsx src/cli.ts media repair --limit 60
       - name: Commit mirrored media
         # The deployed site is serverless: it can only serve bytes that exist in
         # git, because Vercel builds from the repository. When no remote storage

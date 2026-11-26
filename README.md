@@ -343,6 +343,12 @@ rewrite is reported in the run summary instead of leaving collection stuck.
 
 Run from anywhere with `npx tsx --env-file=.env apps/scraper/src/cli.ts <cmd>`.
 
+The eight-hourly workflow now runs a bounded `media repair --limit 60` between the
+pipeline and the mirrored-media commit. A post whose source image arrives late, or a run
+that dies between inserting a post and writing its bytes, is repaired on the next schedule
+instead of staying broken until someone notices. The step is deliberately non-fatal; the
+commit still preserves every image that did arrive.
+
 | Command                                                                         | What it does                                                                                      |
 | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `scrape [--mock] [--max-sources N] [--max-posts N]`                             | Run the full pipeline                                                                             |

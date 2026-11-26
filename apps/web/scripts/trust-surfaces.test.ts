@@ -195,4 +195,13 @@ check("posters render the headline without description prose", () => {
   assert.match(layouts, /headline\(content\)/);
 });
 
+check("the eight-hourly run repairs missing media before it commits", () => {
+  const wf = read(ROOT, ".github", "workflows", "pipeline-cron.yml");
+  assert.match(wf, /media repair --limit 60/);
+  const repairAt = wf.indexOf("Repair missing post media");
+  const commitAt = wf.indexOf("Commit mirrored media");
+  assert.ok(repairAt > 0 && commitAt > repairAt, "repair must precede the media commit");
+  assert.match(wf, /continue-on-error: true/);
+});
+
 console.log(`[web] trust-surfaces: ${passed} checks passed`);
