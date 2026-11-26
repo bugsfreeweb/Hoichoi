@@ -150,7 +150,28 @@ jobs:
           else
             count=$(git diff --cached --name-only | wc -l)
             git commit -m "chore(media): mirror ${count} scraped image(s) for the deployed site"
-            git push origin HEAD:${{ github.ref_name }}
+            # Another push can land while this scrape runs (a code commit, or a
+            # docs commit). The old single push then failed and the images were
+            # lost with the runner. Rebase onto whatever is on the branch and
+            # retry; media files never conflict with source changes.
+            pushed=0
+            for attempt in 1 2 3 4; do
+              git fetch origin "${{ github.ref_name }}"
+              if git rebase "origin/${{ github.ref_name }}"; then
+                if git push origin "HEAD:${{ github.ref_name }}"; then
+                  pushed=1
+                  break
+                fi
+              else
+                git rebase --abort || true
+              fi
+              echo "media push retry ${attempt} in $((attempt * 10))s…"
+              sleep $((attempt * 10))
+            done
+            if [ "$pushed" -ne 1 ]; then
+              echo "::error::could not push mirrored media after 4 attempts"
+              exit 1
+            fi
           fi
       - name: Ping deploy hook (if configured)
         if: env.VERCEL_DEPLOY_HOOK_URL != ''
