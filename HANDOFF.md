@@ -52,6 +52,12 @@ anything. The current priority is correctness, trust and small verified fixes.
 - Latest manual pipeline run:
   `sources=36 scraped=81 rewritten=8 published=7 review=1 duplicates=62 failed=30`
 - Latest media repair: `checked=848 missing=0 failed=0`
+- Facebook ingestion: **30 Facebook sources + 6 news sources**; the latest raw
+  rows were scraped at `2026-11-26T09:39Z`. The collector already turns those
+  posts into published stories automatically; no manual Facebook export is in
+  the loop.
+- Outbound auto-posting **to** a Facebook Page is not implemented. It needs a
+  Page id and a token with `pages_manage_posts`; do not invent one.
 - Open GitHub code-scanning alerts: **0** after `922db21` fixed the four
   hostname-substring findings in `source-type.ts` / `taxonomy.ts`.
 - Root `Bangla Fonts/` is intentionally gitignored. The tracked library is
