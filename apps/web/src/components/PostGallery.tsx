@@ -26,13 +26,15 @@ export function PostGallery({
   fallbackText: string;
   images: string[];
 }) {
-  const all = primarySrc && primaryKind !== "video" ? [primarySrc, ...images] : images;
+  const all =
+    primarySrc && primaryKind !== "video" ? [primarySrc, ...images] : images;
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
 
   const close = useCallback(() => setOpen(false), []);
   const step = useCallback(
-    (dir: number) => setIndex((i) => (all.length ? (i + dir + all.length) % all.length : 0)),
+    (dir: number) =>
+      setIndex((i) => (all.length ? (i + dir + all.length) % all.length : 0)),
     [all.length],
   );
 
@@ -64,7 +66,13 @@ export function PostGallery({
           {primarySrc ? (
             primaryKind === "video" ? (
               // eslint-disable-next-line jsx-a11y/media-has-caption
-              <video src={primarySrc} controls muted playsInline className="photo-grade max-h-[75vh] w-full bg-black object-contain" />
+              <video
+                src={primarySrc}
+                controls
+                muted
+                playsInline
+                className="photo-grade max-h-[75vh] w-full bg-black object-contain"
+              />
             ) : (
               <button
                 type="button"
@@ -79,7 +87,12 @@ export function PostGallery({
                   an unusually wide photo left large dead bars inside a
                   full-width frame and looked broken.
                 */}
-                <MediaFrame src={primarySrc} alt={title} heightClass="max-h-[76vh] min-h-[240px]" priority />
+                <MediaFrame
+                  src={primarySrc}
+                  alt={title}
+                  heightClass="max-h-[76vh] min-h-[240px]"
+                  priority
+                />
                 <span className="pointer-events-none absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full bg-night/70 px-3 py-1.5 font-mono-x text-[9.5px] tracking-[0.16em] text-white uppercase opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
                   ⛶ বড় করুন
                 </span>
@@ -88,14 +101,18 @@ export function PostGallery({
           ) : (
             <div className="flex min-h-[240px] w-full items-center justify-center bg-paper-deep">
               <div className="flex h-full items-center justify-center px-6">
-                <p className="text-center font-serif-bn text-[15px] font-bold leading-relaxed text-ink/40">{fallbackText}</p>
+                <p className="text-center font-serif-bn text-[15px] font-bold leading-relaxed text-ink/40">
+                  {fallbackText}
+                </p>
               </div>
             </div>
           )}
         </div>
         <figcaption className="mt-3 flex items-center justify-between text-[10.5px] text-ink-soft/85">
-          <span>ছবি: {author ?? "প্রতীকী"} · প্রতীকী</span>
-          <span className="font-mono-x tracking-wide">SHOT_{hash.toUpperCase()}.PNG · PLAYWRIGHT CAPTURE · 1440×900</span>
+          <span>{author ? `ছবি: ${author}` : "ছবি: সংগৃহীত"}</span>
+          <span className="font-mono-x tracking-wide">
+            SHOT_{hash.toUpperCase()}.PNG · PLAYWRIGHT CAPTURE · 1440×900
+          </span>
         </figcaption>
 
         {images.length > 0 && (
@@ -145,7 +162,10 @@ export function PostGallery({
             <>
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); step(-1); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  step(-1);
+                }}
                 className="absolute left-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-[26px] text-white transition-colors hover:bg-white/20 md:left-8"
                 aria-label="আগের ছবি"
               >
@@ -153,7 +173,10 @@ export function PostGallery({
               </button>
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); step(1); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  step(1);
+                }}
                 className="absolute right-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-[26px] text-white transition-colors hover:bg-white/20 md:right-8"
                 aria-label="পরের ছবি"
               >
