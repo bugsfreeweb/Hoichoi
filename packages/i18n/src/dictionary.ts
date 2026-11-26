@@ -110,7 +110,10 @@ export const DICTIONARY = {
   },
   "site.footer.item.health": { bn: "সিস্টেম হেলথ", en: "System health" },
   "site.footer.item.adminConsole": { bn: "অ্যাডমিন কনসোল", en: "Admin console" },
-  "site.footer.item.factGate": { bn: "কোয়ালিটি গেট নীতি", en: "Fact-gate policy" },
+  "site.footer.item.factGate": {
+    bn: "কোয়ালিটি গেট নীতি",
+    en: "Fact-gate policy",
+  },
   "site.footer.item.duplicateGate": { bn: "ডুপ্লিকেট গেট", en: "Duplicate gate" },
   "site.footer.item.dataApi": { bn: "ডেটা API", en: "Data API" },
   "site.footer.item.rss": { bn: "RSS ফিড", en: "RSS feed" },
@@ -163,8 +166,8 @@ export const DICTIONARY = {
   "site.card.readMore": { bn: "পুরোটা পড়ুন", en: "Read the full story" },
   "site.card.minutes": { bn: "{n} মিনিট", en: "{n} min read" },
   "site.card.illustrative": {
-    bn: "পুনর্লিখন · প্রতীকী",
-    en: "Rewrite · illustrative",
+    bn: "AI পুনর্লিখন",
+    en: "AI rewrite",
   },
   "site.card.source": { bn: "সোর্স · {name}", en: "Source · {name}" },
   "site.card.aiRewrite": { bn: "AI সহায়তায় প্রস্তুত", en: "AI-assisted" },
