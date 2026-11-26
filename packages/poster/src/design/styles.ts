@@ -173,6 +173,7 @@ body[data-layout="editorial_magazine_grid"] .pullbox .quote p{font-size:34px;}
 body[data-layout="editorial_magazine_grid"] .col-left .bullets li{font-size:21px;}
 body[data-layout="editorial_magazine_grid"] .spacer{flex:1;min-height:4px;}
 body[data-layout="editorial_magazine_grid"] .footer{margin-top:2px;}
+body[data-layout="editorial_magazine_grid"] .col-left .headline{flex:0 0 auto;margin-top:auto;margin-bottom:auto;}
 
 /* ---------- 5. breaking_spotlight ---------- */
 body[data-layout="breaking_spotlight"] .bg{background:
@@ -186,7 +187,7 @@ body[data-layout="breaking_spotlight"] .ticker-top .date{margin-left:auto;font-s
 body[data-layout="breaking_spotlight"] .masthead{position:absolute;left:${SAFE}px;top:${104}px;z-index:4;}
 body[data-layout="breaking_spotlight"] .spotlight{position:absolute;left:50%;top:${96}px;transform:translateX(-50%);width:404px;height:404px;border-radius:50%;overflow:hidden;border:5px solid var(--accent-color);box-shadow:0 0 0 16px color-mix(in srgb, var(--accent-color) 14%, transparent), 0 34px 90px rgba(0,0,0,0.55);z-index:2;}
 body[data-layout="breaking_spotlight"] .spotlight .media{inset:0;}
-body[data-layout="breaking_spotlight"] .center{position:absolute;left:${SAFE}px;right:${SAFE}px;top:532px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:18px;z-index:3;}
+body[data-layout="breaking_spotlight"] .center{position:absolute;left:${SAFE}px;right:${SAFE}px;top:532px;bottom:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:18px;z-index:3;}
 body[data-layout="breaking_spotlight"] .center .badge{align-self:center;}
 body[data-layout="breaking_spotlight"] .center .headline{max-width:1480px;-webkit-line-clamp:3;text-shadow:0 6px 34px rgba(0,0,0,0.6);}
 body[data-layout="breaking_spotlight"] .center .quote{border-left:none;padding-left:0;max-width:1320px;}

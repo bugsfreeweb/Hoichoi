@@ -88,7 +88,7 @@ body[data-aspect="4:5"][data-layout="breaking_spotlight"] .ticker-top .date{font
 body[data-aspect="4:5"][data-layout="breaking_spotlight"] .masthead{left:${s}px;top:74px;}
 body[data-aspect="4:5"][data-layout="breaking_spotlight"] .newsroom{display:none;}
 body[data-aspect="4:5"][data-layout="breaking_spotlight"] .spotlight{width:330px;height:330px;top:68px;border-width:4px;box-shadow:0 0 0 12px color-mix(in srgb,var(--accent-color) 14%,transparent),0 24px 60px rgba(0,0,0,0.55);}
-body[data-aspect="4:5"][data-layout="breaking_spotlight"] .center{left:${s}px;right:${s}px;top:430px;gap:11px;}
+body[data-aspect="4:5"][data-layout="breaking_spotlight"] .center{left:${s}px;right:${s}px;top:430px;bottom:110px;justify-content:center;gap:11px;}
 body[data-aspect="4:5"][data-layout="breaking_spotlight"] .center:has(.quote){top:520px;}
 body[data-aspect="4:5"][data-layout="breaking_spotlight"] .center .headline{max-width:984px;-webkit-line-clamp:4;}
 body[data-aspect="4:5"][data-layout="breaking_spotlight"] .center .quote{max-width:960px;}
