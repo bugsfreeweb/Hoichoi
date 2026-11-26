@@ -52,6 +52,8 @@ anything. The current priority is correctness, trust and small verified fixes.
 - Latest manual pipeline run:
   `sources=36 scraped=81 rewritten=8 published=7 review=1 duplicates=62 failed=30`
 - Latest media repair: `checked=848 missing=0 failed=0`
+- Open GitHub code-scanning alerts: **0** after `922db21` fixed the four
+  hostname-substring findings in `source-type.ts` / `taxonomy.ts`.
 - Root `Bangla Fonts/` is intentionally gitignored. The tracked library is
   `packages/bangla-fonts/`.
 
