@@ -89,7 +89,19 @@ export function canonicalDesk(slug: string): CategorySlug | null {
 }
 
 const TECH_RE =
-  /(?:\bAI\b|কৃত্রিম বুদ্ধিমত্তা|এআই|artificial intelligence|machine learning|LLM|OpenAI|Anthropic|NVIDIA|Nvidia|এনভিডিয়া|GPU|chip|চিপ|semiconductor|software|সফটওয়্যার|developer|ডেভেলপার|database|ডেটাবেস|Figma|biotech|robotics|robot|cloud|cloud computing|cybersecurity|সাইবার|smartphone|iPhone|Android|app\b|অ্যাপ|Hacker News|TechCrunch)/i;
+  /(?:\bAI\b|কৃত্রিম বুদ্ধিমত্তা|এআই|artificial intelligence|machine learning|LLM|OpenAI|Anthropic|NVIDIA|Nvidia|এনভিডিয়া|GPU|chip|চিপ|semiconductor|software|সফটওয়্যার|developer|ডেভেলপার|database|ডেটাবেস|Figma|biotech|robotics|robot|cloud|cloud computing|cybersecurity|সাইবার|smartphone|iPhone|Android|app\b|অ্যাপ|Hacker News|TechCrunch|হ্যাকার|হ্যাক|পাসওয়ার্ড|password|hack|ransomware|breach|ডেটা চুরি)/i;
+const SECURITY_INCIDENT_RE =
+  /(?:হ্যাক|হ্যাকার|hack|ransomware|cyberattack|cyber attack|data breach|ডেটা চুরি|পাসওয়ার্ড চুরি|password leak|vulnerab|malware|ফিশিং|phishing|security flaw)/i;
+const FINANCE_RE =
+  /(?:IPO|আইপিও|revenue|earnings|valuation|funding|raises? \$|stock|শেয়ার|market cap|profit|লাভ|রাজস্ব)/i;
+const HEALTH_RE =
+  /(?:স্বাস্থ্য|চিকিৎসা|ঔষধ|ওষুধ|ভ্যাকসিন|টিকা|গর্ভনিরোধক|গর্ভাবস্থা|রোগ|হাসপাতাল|ডাক্তার|ক্যান্সার|ডায়াবেটিস|মানসিক স্বাস্থ্য|health|medicine|vaccine|contracept|pregnan|disease|hospital|doctor)/i;
+const SPORTS_RE =
+  /(?:ক্রিকেট|ফুটবল|খেলোয়াড়|ম্যাচ|গোল|টুর্নামেন্ট|অলিম্পিক|cricket|football|match|goal|tournament|olympic|athlete)/i;
+const ENTERTAINMENT_RE =
+  /(?:সিনেমা|চলচ্চিত্র|অভিনেতা|অভিনেত্রী|গান|সংগীত|বিনোদন|film|movie|actor|actress|music|entertainment|cinema)/i;
+const INTERNATIONAL_RE =
+  /(?:রাশিয়া|ইউক্রেন|গাজা|ইসরায়েল|ফিলিস্তিন|আমেরিকা|যুক্তরাষ্ট্র|চীন|ভারত|পাকিস্তান|ইউরোপ|নেটো|জাতিসংঘ|যুদ্ধ|international|ukraine|russia|gaza|israel|nato|united nations|war\b)/i;
 const AI_RE =
   /(?:\bAI\b|কৃত্রিম বুদ্ধিমত্তা|এআই|artificial intelligence|machine learning|LLM|OpenAI|Anthropic|NVIDIA|Nvidia|GPU|Gemini|ChatGPT|model\b)/i;
 const STARTUP_RE =
@@ -187,6 +199,56 @@ export function guardCategory(
       slug: "misc",
       reason: "corruption label had no corruption evidence",
     };
+  }
+
+  // A technology outlet's security incident is technology, even when its
+  // business desk was the fallback. Funding/IPO copy stays on economy.
+  if (
+    techSource &&
+    canonical === "economy" &&
+    SECURITY_INCIDENT_RE.test(corpus) &&
+    !FINANCE_RE.test(corpus)
+  ) {
+    return {
+      slug: "technology",
+      reason: "technology outlet security story filed as business",
+    };
+  }
+
+  // A "misc" row is the least informative outcome of classification, not a
+  // verdict. Clear health, sport, entertainment and world copy gets its desk.
+  if (canonical === "misc") {
+    // Only the headline decides a promotion out of misc. The body of a long
+    // story mentions sport, illness and foreign countries incidentally, and
+    // matching there filed unrelated copy on the wrong desk.
+    const title = text.split("\n")[0] ?? "";
+    if (AI_RE.test(title)) {
+      return { slug: "ai", reason: "clear AI headline filed as misc" };
+    }
+    if (TECH_RE.test(title)) {
+      return {
+        slug: "technology",
+        reason: "clear technology headline filed as misc",
+      };
+    }
+    if (SPORTS_RE.test(title)) {
+      return { slug: "sports", reason: "clear sport copy filed as misc" };
+    }
+    if (HEALTH_RE.test(title)) {
+      return { slug: "health", reason: "clear health headline filed as misc" };
+    }
+    if (ENTERTAINMENT_RE.test(title)) {
+      return {
+        slug: "entertainment",
+        reason: "clear entertainment copy filed as misc",
+      };
+    }
+    if (INTERNATIONAL_RE.test(title)) {
+      return {
+        slug: "international",
+        reason: "clear world copy filed as misc",
+      };
+    }
   }
 
   // A technology story assigned to a generic desk is not corruption either.

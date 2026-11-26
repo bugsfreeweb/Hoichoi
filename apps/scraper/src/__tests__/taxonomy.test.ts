@@ -54,6 +54,47 @@ check("technology content misfiled elsewhere moves to a tech desk", () => {
   );
 });
 
+check("a technology outlet's security incident is not filed as business", () => {
+  assert.equal(
+    guardCategory(
+      "হ্যাকাররা ১পাসওয়ার্ডে ঢুকে পড়েছে, গ্রাহকের পাসওয়ার্ড নিরাপদ বলে কোম্পানি দাবি করেছে।",
+      "economy",
+      "Techcrunch",
+    )?.slug,
+    "technology",
+  );
+});
+
+check("a funding story at a technology outlet keeps the business desk", () => {
+  assert.equal(
+    guardCategory(
+      "The company raised a new funding round ahead of its IPO valuation.",
+      "economy",
+      "Techcrunch",
+    ),
+    null,
+  );
+});
+
+check("clear world and health copy leaves the misc desk", () => {
+  assert.equal(
+    guardCategory(
+      "রাশিয়া ও ইউক্রেন যুদ্ধে প্রায় পাঁচ লাখ মানুষ হতাহত হয়েছে।",
+      "misc",
+      "BBC Bangla",
+    )?.slug,
+    "international",
+  );
+  assert.equal(
+    guardCategory(
+      "গর্ভনিরোধক ব্যবহার নিয়ে প্রচলিত ভ্রান্ত ধারণা ও স্বাস্থ্য পরামর্শ।",
+      "misc",
+      "BBC Bangla",
+    )?.slug,
+    "health",
+  );
+});
+
 check("sensitive desks and political social posts require a human", () => {
   assert.equal(
     needsHumanReview({
