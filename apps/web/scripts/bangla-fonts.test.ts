@@ -145,6 +145,11 @@ check("the chosen families reach the site and the desk", () => {
     read("apps/desktop/src/index.css"),
     /--fb: var\(--font-serif-bn/,
   );
+  // Windows WebView2 paints the option popup itself; white labels on a white
+  // list were the desktop twin of the web admin's invisible font dropdowns.
+  const deskCss = read("apps/desktop/src/index.css");
+  assert.match(deskCss, /select option,\s*select optgroup/);
+  assert.match(deskCss, /background-color: #ffffff;\s*color: #141414;/);
   assert.match(
     read("apps/desktop/src/App.tsx"),
     /applyTypography\(cfg\.typography\)/,
