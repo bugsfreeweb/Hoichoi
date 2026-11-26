@@ -2,10 +2,9 @@ name: Pipeline cron
 
 on:
   schedule:
-    # Every 2 hours, offset to avoid the top-of-hour rush.
     # Every 8 hours (00:17, 08:17, 16:17 UTC), off the top of the hour to avoid
-    # the scheduler's peak. Eight-hourly keeps the account well inside GitHub
-    # Actions' free minutes for a private repo.
+    # the scheduler's peak. This interval is the one the site reads from
+    # settings.pipeline_hours; change both together.
     - cron: "17 */8 * * *"
   workflow_dispatch:
   repository_dispatch:
