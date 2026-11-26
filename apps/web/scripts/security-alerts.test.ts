@@ -38,6 +38,28 @@ check("the API is admin-only and refreshes on request", () => {
     throw new Error("a stale cache could hide a fixed alert");
 });
 
+check("an admin can dismiss an alert without leaving the console", () => {
+  const route = read("apps/web/src/app/api/admin/security-alerts/route.ts");
+  if (!route.includes("export async function POST"))
+    throw new Error("no dismiss action");
+  if (!route.includes('user.role !== "admin"')) throw new Error("not admin-only");
+  if (!route.includes("security.alert_dismiss"))
+    throw new Error("a dismissal is not audited");
+  const lib = read("apps/web/src/lib/github-alerts.ts");
+  if (!lib.includes("dismissCodeAlert")) throw new Error("no GitHub writer");
+  if (!lib.includes('state: "dismissed"'))
+    throw new Error("wrong GitHub state");
+  if (!lib.includes('"false positive"') || !lib.includes('"used in tests"'))
+    throw new Error("dismiss reasons are incomplete");
+  if (!lib.includes("cache = null"))
+    throw new Error("a stale open count would survive the dismissal");
+  const panel = read("apps/web/src/components/admin/SecurityAlertsPanel.tsx");
+  if (!panel.includes("Dismiss on GitHub"))
+    throw new Error("the panel has no dismiss control");
+  if (!panel.includes("does not fix the code"))
+    throw new Error("the panel does not say dismissal is not a fix");
+});
+
 check("the GitHub reader accepts both security and trigger tokens", () => {
   const src = read("apps/web/src/lib/github-alerts.ts");
   for (const name of ["GH_SECURITY_TOKEN", "GH_TRIGGER_TOKEN", "GH_REPO"]) {

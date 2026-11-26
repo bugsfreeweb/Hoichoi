@@ -157,6 +157,10 @@ check("source type is derived from the original URL", () => {
     sourceTypeFromUrl("https://techcrunch.com/2026/01/01/story"),
     "news",
   );
+  // Hostname labels, not a substring a hostile URL can contain.
+  assert.equal(sourceTypeFromUrl("https://fb.com.example/x"), "news");
+  assert.equal(sourceTypeFromUrl("https://notfb.com/x"), "news");
+  assert.equal(sourceTypeFromUrl("https://example.gov.example/x"), "news");
 });
 
 check("AI rewrite quality is bounded and damaged by missing Bengali", () => {

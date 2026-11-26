@@ -77,7 +77,6 @@ export function layoutBody(content: DesignPosterContent): string {
         </section>
         <figure class="media-frame">
           ${mediaLayer(content)}
-          <figcaption class="frame-caption">${content.visualStyle}</figcaption>
         </figure>
         <div class="vignette"></div>
         ${watermark(content)}
@@ -95,7 +94,6 @@ export function layoutBody(content: DesignPosterContent): string {
           ${headline(content)}
           ${footer(content)}
         </section>
-        <div class="photo-credit">${content.visualStyle}</div>
         ${watermark(content)}
       </div>`;
 
@@ -113,7 +111,6 @@ export function layoutBody(content: DesignPosterContent): string {
           </section>
           <div class="col-right">
             <figure class="visual">${mediaLayer(content)}</figure>
-            <div class="visual-caption"><span>${escapeHtml(content.badgeText)}</span><span>${escapeHtml(content.dateText ?? "")}</span></div>
           </div>
         </div>
         ${watermark(content)}
@@ -153,7 +150,6 @@ export function layoutBody(content: DesignPosterContent): string {
           ${headline(content)}
           ${footer(content)}
         </section>
-        <div class="photo-credit">${content.visualStyle}</div>
         ${watermark(content)}
       </div>`;
   }

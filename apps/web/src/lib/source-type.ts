@@ -8,9 +8,30 @@ export function inferSourceType(post: {
 }): SourceType {
   if (post.source_type && post.source_type !== "unknown")
     return post.source_type;
-  const url = (post.source_url ?? "").toLowerCase();
-  if (url.includes("facebook.com") || url.includes("fb.com")) return "facebook";
-  if (url.includes(".gov")) return "government";
-  if (url.startsWith("http")) return "news";
+  const raw = (post.source_url ?? "").trim();
+  if (!raw) return "unknown";
+  let url: URL;
+  try {
+    url = new URL(/^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`);
+  } catch {
+    return "unknown";
+  }
+  // Compare the hostname, never the whole URL: `fb.com.example` and
+  // `notfb.com` are not Facebook, and a path or query may contain those words.
+  const host = url.hostname.toLowerCase();
+  if (
+    host === "facebook.com" ||
+    host.endsWith(".facebook.com") ||
+    host === "fb.com" ||
+    host.endsWith(".fb.com") ||
+    host === "fb.watch" ||
+    host.endsWith(".fb.watch")
+  ) {
+    return "facebook";
+  }
+  if (/(^|\.)gov(\.[a-z]{2})?$/.test(host) || host.endsWith(".government")) {
+    return "government";
+  }
+  if (url.protocol === "http:" || url.protocol === "https:") return "news";
   return "unknown";
 }

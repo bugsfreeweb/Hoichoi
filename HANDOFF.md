@@ -180,6 +180,9 @@ Do not redo these unless a regression is proven.
 - `breaking_spotlight` vertically centres its badge/headline block.
 - Portrait `split_right_media` copy panel is 50% and the photo starts at 52%.
 - All five layouts were rendered and checked at 16:9 and 4:5.
+- Internal style captions (`CINEMATIC PHOTOJOURNALISM`, duplicate badge/date
+  captions) were removed from the poster markup. A poster shows only the brand,
+  badge, headline, photo, source/date footer and watermark.
 
 ### Category / taxonomy
 - `canonicalDesk()` and `guardCategory()` enforce the fixed taxonomy.
@@ -192,6 +195,14 @@ Do not redo these unless a regression is proven.
 ### Media repair
 - The eight-hourly workflow runs bounded `media repair --limit 60` before the
   media commit, with `continue-on-error: true`.
+
+### Security alerts
+- The admin `SecurityAlertsPanel` can dismiss a GitHub code-scanning alert with
+  a reason (`false positive`, `won't fix`, `used in tests`) and an optional
+  comment. The action is audited as `security.alert_dismiss`.
+- The GitHub reader compares **hostname labels** for `sourceTypeFromUrl` /
+  `inferSourceType`; the four `js/incomplete-url-substring-sanitization` alerts
+  are fixed in code rather than dismissed.
 
 ### Font dropdowns
 - Web admin font selects pin `colorScheme: light`, white background and
@@ -279,6 +290,15 @@ layout is deterministic enough to verify locally first with
 ## 10. Handoff log
 
 Append a short entry after every completed task. Keep newest first.
+
+### 2026-11-26 — security alert actions + cleaner posters
+- Fixed four CodeQL `js/incomplete-url-substring-sanitization` alerts by parsing
+  hostnames instead of substring-matching URLs.
+- Added admin dismiss-with-reason for GitHub code-scanning alerts, with an audit
+  row; the panel states plainly that dismissal is not a fix.
+- Removed internal visual-style and duplicate metadata captions from posters.
+- Tests: `security-alerts` 6 checks, `design-poster` 11 checks; web build passed.
+- Commit: see `git log -1` for this handoff change.
 
 ### 2026-11-26 — desktop dropdown contrast verified in Tauri
 - Launched the real Tauri app (`tauri dev`) with WebView2 remote debugging and

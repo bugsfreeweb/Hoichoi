@@ -27,6 +27,18 @@ interface CodeAlert {
   createdAt: string;
 }
 
+type DismissReason = "false positive" | "won't fix" | "used in tests";
+
+const DISMISS_REASONS: Array<{
+  value: DismissReason;
+  bn: string;
+  en: string;
+}> = [
+  { value: "false positive", bn: "ভুল শনাক্ত", en: "False positive" },
+  { value: "won't fix", bn: "ঠিক করা হবে না", en: "Won't fix" },
+  { value: "used in tests", bn: "টেস্ট কোডে ব্যবহৃত", en: "Used in tests" },
+];
+
 interface Payload {
   ok: boolean;
   configured: boolean;
@@ -141,6 +153,12 @@ export default function SecurityAlertsPanel({ canSee }: { canSee: boolean }) {
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [drafts, setDrafts] = useState<
+    Record<
+      number,
+      { reason: DismissReason; comment: string; busy: boolean; msg?: string }
+    >
+  >({});
 
   const load = useCallback(
     async (refresh = false): Promise<void> => {
@@ -177,6 +195,70 @@ export default function SecurityAlertsPanel({ canSee }: { canSee: boolean }) {
   useEffect(() => {
     if (canSee) void load();
   }, [canSee, load]);
+
+  const draftFor = (number: number) =>
+    drafts[number] ?? {
+      reason: "won't fix" as DismissReason,
+      comment: "",
+      busy: false,
+    };
+
+  const setDraft = (
+    number: number,
+    patch: Partial<{ reason: DismissReason; comment: string; busy: boolean; msg: string }>,
+  ) => {
+    setDrafts((all) => ({
+      ...all,
+      [number]: { ...draftFor(number), ...patch },
+    }));
+  };
+
+  const dismiss = async (number: number) => {
+    const draft = draftFor(number);
+    setDraft(number, { busy: true, msg: undefined });
+    try {
+      const res = await fetch("/api/admin/security-alerts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          number,
+          reason: draft.reason,
+          comment: draft.comment,
+        }),
+      });
+      const j = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+      } | null;
+      if (!res.ok || !j?.ok) {
+        setDraft(number, {
+          busy: false,
+          msg: j?.error ?? `HTTP ${res.status}`,
+        });
+        return;
+      }
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              open: Math.max(0, prev.open - 1),
+              alerts: prev.alerts.filter((a) => a.number !== number),
+            }
+          : prev,
+      );
+      setDrafts((all) => {
+        const next = { ...all };
+        delete next[number];
+        return next;
+      });
+      void load(true);
+    } catch (e) {
+      setDraft(number, {
+        busy: false,
+        msg: e instanceof Error ? e.message : b("Dismiss ব্যর্থ", "Dismiss failed"),
+      });
+    }
+  };
 
   if (!canSee) return null;
 
@@ -338,6 +420,85 @@ export default function SecurityAlertsPanel({ canSee }: { canSee: boolean }) {
                     <ExternalLink size={10} />
                   </a>
                 )}
+
+                {(() => {
+                  const draft = draftFor(a.number);
+                  return (
+                    <div className="mt-2 border-t border-ink/10 pt-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <select
+                          aria-label={b("Dismiss করার কারণ", "Dismiss reason")}
+                          value={draft.reason}
+                          onChange={(e) =>
+                            setDraft(a.number, {
+                              reason: e.target.value as DismissReason,
+                              msg: undefined,
+                            })
+                          }
+                          style={{
+                            colorScheme: "light",
+                            backgroundColor: "#ffffff",
+                            color: "#141414",
+                          }}
+                          className="border border-ink/25 px-2 py-1 text-[10.5px] outline-none focus:border-ink"
+                        >
+                          {DISMISS_REASONS.map((r) => (
+                            <option
+                              key={r.value}
+                              value={r.value}
+                              style={{
+                                backgroundColor: "#ffffff",
+                                color: "#141414",
+                              }}
+                            >
+                              {b(r.bn, r.en)}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          value={draft.comment}
+                          onChange={(e) =>
+                            setDraft(a.number, {
+                              comment: e.target.value,
+                              msg: undefined,
+                            })
+                          }
+                          maxLength={280}
+                          placeholder={b(
+                            "মন্তব্য (ঐচ্ছিক)",
+                            "Comment (optional)",
+                          )}
+                          style={{
+                            backgroundColor: "#ffffff",
+                            color: "#141414",
+                          }}
+                          className="min-w-0 flex-1 border border-ink/25 px-2 py-1 text-[10.5px] outline-none placeholder:text-[#6b6250] focus:border-ink"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void dismiss(a.number)}
+                          disabled={draft.busy}
+                          className="border border-ink/30 bg-ink px-2 py-1 text-[10px] font-bold text-paper hover:bg-alizarin disabled:cursor-wait disabled:opacity-50"
+                        >
+                          {draft.busy
+                            ? b("বন্ধ হচ্ছে…", "Dismissing…")
+                            : b("GitHub-এ বন্ধ করুন", "Dismiss on GitHub")}
+                        </button>
+                      </div>
+                      <p className="mt-1 text-[9.5px] leading-relaxed text-ink-soft">
+                        {b(
+                          "এটি কোড ঠিক করে না — কারণসহ অ্যালার্টটি GitHub-এ dismissed হিসেবে বন্ধ হয় এবং এই তালিকা থেকে সরে যায়।",
+                          "This does not fix the code — it marks the alert dismissed on GitHub with the reason and removes it from this list.",
+                        )}
+                      </p>
+                      {draft.msg && (
+                        <p className="mt-1 font-mono-x text-[9.5px] text-alizarin">
+                          {draft.msg}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
               </li>
             );
           })}

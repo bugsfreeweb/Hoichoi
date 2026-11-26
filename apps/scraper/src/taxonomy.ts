@@ -370,9 +370,30 @@ export function rewriteQuality(out: {
 }
 
 export function sourceTypeFromUrl(url: string): SourceType {
-  const u = (url ?? "").toLowerCase();
-  if (u.includes("facebook.com") || u.includes("fb.com")) return "facebook";
-  if (u.includes(".gov") || u.includes("government")) return "government";
-  if (u.startsWith("http")) return "news";
+  const raw = (url ?? "").trim();
+  if (!raw) return "unknown";
+  let parsed: URL;
+  try {
+    parsed = new URL(/^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`);
+  } catch {
+    return "unknown";
+  }
+  // The hostname, not substring matches on the full URL. This is both the
+  // CodeQL fix and the correct rule: fb.com.example is not Facebook.
+  const host = parsed.hostname.toLowerCase();
+  if (
+    host === "facebook.com" ||
+    host.endsWith(".facebook.com") ||
+    host === "fb.com" ||
+    host.endsWith(".fb.com") ||
+    host === "fb.watch" ||
+    host.endsWith(".fb.watch")
+  ) {
+    return "facebook";
+  }
+  if (/(^|\.)gov(\.[a-z]{2})?$/.test(host) || host.endsWith(".government")) {
+    return "government";
+  }
+  if (parsed.protocol === "http:" || parsed.protocol === "https:") return "news";
   return "unknown";
 }

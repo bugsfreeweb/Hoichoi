@@ -247,3 +247,105 @@ export async function securityAlerts(
     };
   }
 }
+
+export type DismissReason = "false positive" | "won't fix" | "used in tests";
+
+export const DISMISS_REASONS: readonly DismissReason[] = [
+  "false positive",
+  "won't fix",
+  "used in tests",
+];
+
+export interface DismissResult {
+  ok: boolean;
+  error?: string;
+}
+
+/**
+ * Dismiss one code-scanning alert on GitHub.
+ *
+ * This is an operator decision, not a fix. GitHub keeps the alert in its
+ * dismissed state with the reason and comment, and the next read drops it from
+ * the open list, so the console and the bell agree with the repository.
+ */
+export async function dismissCodeAlert(input: {
+  number: number;
+  reason: DismissReason;
+  comment?: string;
+}): Promise<DismissResult> {
+  const repo = repoName();
+  const tokenValue = token();
+  if (!repo || !tokenValue) {
+    return {
+      ok: false,
+      error: !repo
+        ? "GH_REPO সেট করা নেই।"
+        : "GH_SECURITY_TOKEN বা GH_TRIGGER_TOKEN সেট করা নেই।",
+    };
+  }
+  if (!Number.isInteger(input.number) || input.number <= 0) {
+    return { ok: false, error: "অ্যালার্ট নম্বর সঠিক নয়।" };
+  }
+  if (!DISMISS_REASONS.includes(input.reason)) {
+    return { ok: false, error: "dismiss করার কারণ সঠিক নয়।" };
+  }
+  const comment = (input.comment ?? "").trim().slice(0, 280);
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${repo}/code-scanning/alerts/${input.number}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${tokenValue}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "Hoichoi-Admin",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          state: "dismissed",
+          dismissed_reason: input.reason,
+          ...(comment ? { dismissed_comment: comment } : {}),
+        }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      },
+    );
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      if (res.status === 403) {
+        return {
+          ok: false,
+          error:
+            "টোকেনে Code scanning alerts লেখার অনুমতি নেই (403) — fine-grained টোকেনে Code scanning alerts: write দিন।",
+        };
+      }
+      if (res.status === 404) {
+        return {
+          ok: false,
+          error: "অ্যালার্টটি পাওয়া যায়নি বা ইতিমধ্যে বন্ধ (404)।",
+        };
+      }
+      if (res.status === 422) {
+        return {
+          ok: false,
+          error: `GitHub কারণটি গ্রহণ করেনি (422): ${body.slice(0, 160)}`,
+        };
+      }
+      return {
+        ok: false,
+        error: `GitHub API ${res.status}: ${body.slice(0, 180)}`,
+      };
+    }
+
+    cache = null;
+    return { ok: true };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "GitHub-এ পৌঁছানো যায়নি।",
+    };
+  }
+}
