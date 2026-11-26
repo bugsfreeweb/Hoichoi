@@ -70,6 +70,18 @@ const ALIASES: Record<string, CategorySlug> = {
   misc: "misc",
   uncategorized: "misc",
   other: "misc",
+  accident: "misc",
+  tutorial: "technology",
+  research: "analysis",
+  inspiration: "opinion",
+  "history-traditions": "opinion",
+  literature: "opinion",
+  diaspora: "international",
+  viral: "social-media",
+  "social-welfare": "bangladesh",
+  "helping-others": "bangladesh",
+  "medical-science": "health",
+  "rural-life": "agriculture",
 };
 
 export function canonicalDesk(slug: string): CategorySlug | null {
@@ -94,7 +106,10 @@ function hasCorruptionEvidence(text: string): boolean {
   const re = new RegExp(CORRUPTION_EVIDENCE_RE.source, "gi");
   for (const match of text.matchAll(re)) {
     const at = match.index ?? 0;
-    const context = text.slice(Math.max(0, at - 100), at + match[0].length + 100);
+    const context = text.slice(
+      Math.max(0, at - 100),
+      at + match[0].length + 100,
+    );
     if (!NEGATED_EVIDENCE_RE.test(context)) return true;
   }
   return false;
@@ -121,15 +136,27 @@ export function guardCategory(
   // desk (or business), never on the corruption desk by default.
   if (canonical === "corruption" && techSource) {
     if (AI_RE.test(corpus)) {
-      return { slug: "ai", reason: "technology outlet story filed as corruption" };
+      return {
+        slug: "ai",
+        reason: "technology outlet story filed as corruption",
+      };
     }
     if (STARTUP_RE.test(corpus)) {
-      return { slug: "startup", reason: "technology outlet funding story filed as corruption" };
+      return {
+        slug: "startup",
+        reason: "technology outlet funding story filed as corruption",
+      };
     }
     if (BUSINESS_RE.test(corpus)) {
-      return { slug: "economy", reason: "technology outlet business story filed as corruption" };
+      return {
+        slug: "economy",
+        reason: "technology outlet business story filed as corruption",
+      };
     }
-    return { slug: "technology", reason: "technology outlet story filed as corruption" };
+    return {
+      slug: "technology",
+      reason: "technology outlet story filed as corruption",
+    };
   }
 
   // Technology / AI / startup / business must not become corruption without
@@ -201,12 +228,21 @@ export const NEVER_AUTO_DESKS = new Set<string>([
 /** Content that must go to a human regardless of desk. */
 export function needsHumanReview(input: {
   category: string;
+  sourceCategory?: string;
   text: string;
   sourceType: SourceType;
   flags: readonly string[];
 }): { review: boolean; reason: string } {
   if (NEVER_AUTO_DESKS.has(input.category)) {
     return { review: true, reason: `sensitive desk: ${input.category}` };
+  }
+  // A sensitive source stays sensitive even when a weak classifier moves the
+  // story to a general desk. The source is the placement of record.
+  if (input.sourceCategory && NEVER_AUTO_DESKS.has(input.sourceCategory)) {
+    return {
+      review: true,
+      reason: `sensitive source desk: ${input.sourceCategory}`,
+    };
   }
   if (
     input.category === "health" &&

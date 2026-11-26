@@ -20,11 +20,22 @@
  * keeps one storage layout for desktop, local dev and production.
  */
 import { findRepoRoot, getClient, nowIso, updatePost } from "@hoichoi/db";
-import { imageSizeFor, composeImagePrompt, generateImage as llmGenerateImage } from "@hoichoi/llm";
+import {
+  imageSizeFor,
+  composeImagePrompt,
+  generateImage as llmGenerateImage,
+} from "@hoichoi/llm";
 import { POSTER_FRAME } from "@hoichoi/poster";
 import type { PosterLayout, PosterTheme } from "@hoichoi/poster";
 import { composeStoryPlate } from "./plate";
-import { downloadMedia, isVideoUrl, localMediaPath, mediaRoot, processImage, randomMediaName } from "./media";
+import {
+  downloadMedia,
+  isVideoUrl,
+  localMediaPath,
+  mediaRoot,
+  processImage,
+  randomMediaName,
+} from "./media";
 import { scrapePostUrls } from "./facebook";
 import { aiHeroEligible, generateAIHero } from "./ai-image";
 import { uploadRemote } from "./storage";
@@ -71,7 +82,10 @@ export function mirrorDirs(): string[] {
 }
 
 /** Copy `<src root>/<rel>` into every mirror folder. Returns the folders written. */
-export function mirrorMediaFile(rel: string, sourceRoot = mediaRoot()): string[] {
+export function mirrorMediaFile(
+  rel: string,
+  sourceRoot = mediaRoot(),
+): string[] {
   const src = path.resolve(sourceRoot, rel);
   if (!fs.existsSync(src)) return [];
   const written: string[] = [];
@@ -102,7 +116,11 @@ interface PostNeedingMedia {
 }
 
 /** Copy files that exist locally but are missing from the web mirror. */
-export async function syncExistingMediaToWeb(): Promise<{ checked: number; copied: number; missing: number }> {
+export async function syncExistingMediaToWeb(): Promise<{
+  checked: number;
+  copied: number;
+  missing: number;
+}> {
   const client = getClient();
   const res = await client.execute(
     "SELECT id, media_path FROM posts WHERE media_path IS NOT NULL AND media_path <> '' AND media_path NOT LIKE 'http%'",
@@ -170,11 +188,13 @@ export function mirrorOrphanedMedia(): number {
 }
 
 /** Download + attach media for every post that has none yet. */
-export async function backfillMissingMedia(opts: {
-  limit?: number;
-  dryRun?: boolean;
-  log?: (msg: string) => void;
-} = {}): Promise<{
+export async function backfillMissingMedia(
+  opts: {
+    limit?: number;
+    dryRun?: boolean;
+    log?: (msg: string) => void;
+  } = {},
+): Promise<{
   candidates: number;
   attached: number;
   alreadyLocal: number;
@@ -254,7 +274,13 @@ export async function backfillMissingMedia(opts: {
       failed += 1;
     }
   }
-  return { candidates: rows.length, attached, alreadyLocal, failed, dryRun: Boolean(opts.dryRun) };
+  return {
+    candidates: rows.length,
+    attached,
+    alreadyLocal,
+    failed,
+    dryRun: Boolean(opts.dryRun),
+  };
 }
 
 interface PostNeedingAIHero {
@@ -272,11 +298,13 @@ interface PostNeedingAIHero {
  * `GOOGLE_API_KEY` must be present; sensitive categories are always skipped,
  * and posts already given an AI image (raw_meta.ai_generated) are not retried.
  */
-export async function aiFillMissingHeroes(opts: {
-  limit?: number;
-  dryRun?: boolean;
-  log?: (msg: string) => void;
-} = {}): Promise<{
+export async function aiFillMissingHeroes(
+  opts: {
+    limit?: number;
+    dryRun?: boolean;
+    log?: (msg: string) => void;
+  } = {},
+): Promise<{
   candidates: number;
   generated: number;
   skippedSensitive: number;
@@ -286,7 +314,9 @@ export async function aiFillMissingHeroes(opts: {
   const log = opts.log ?? (() => undefined);
   const client = getClient();
   if (!process.env.GOOGLE_API_KEY) {
-    throw new Error("AI hero fill requires GOOGLE_API_KEY (Gemini). Set it and retry.");
+    throw new Error(
+      "AI hero fill requires GOOGLE_API_KEY (Gemini). Set it and retry.",
+    );
   }
   const limit = Math.max(1, Math.min(500, opts.limit ?? 200));
   const res = await client.execute({
@@ -346,7 +376,13 @@ export async function aiFillMissingHeroes(opts: {
     });
     generated += 1;
   }
-  return { candidates: rows.length, generated, skippedSensitive, failed, dryRun: Boolean(opts.dryRun) };
+  return {
+    candidates: rows.length,
+    generated,
+    skippedSensitive,
+    failed,
+    dryRun: Boolean(opts.dryRun),
+  };
 }
 
 /**
@@ -359,11 +395,13 @@ export async function aiFillMissingHeroes(opts: {
  * fresh AI plate from the story itself, mirrors it into every root and rewrites
  * `media_path` to the file that now exists.
  */
-export async function repairMissingMedia(opts: {
-  limit?: number;
-  dryRun?: boolean;
-  log?: (msg: string) => void;
-} = {}): Promise<{
+export async function repairMissingMedia(
+  opts: {
+    limit?: number;
+    dryRun?: boolean;
+    log?: (msg: string) => void;
+  } = {},
+): Promise<{
   checked: number;
   missing: number;
   repaired: number;
@@ -376,13 +414,18 @@ export async function repairMissingMedia(opts: {
   const res = await client.execute(
     `SELECT p.id, p.raw_post_id, p.category, p.title_bn, p.summary_bn, p.body_bn, p.source_name, p.media_path
      FROM posts p
-     WHERE p.media_path IS NOT NULL AND p.media_path <> '' AND p.media_path NOT LIKE 'http%'
+     WHERE p.media_path IS NOT NULL AND p.media_path <> ''
+       AND p.media_path NOT LIKE 'http%'
+       AND p.media_path NOT LIKE 'api/posters/%'
+       AND p.media_path NOT LIKE '/api/posters/%'
      ORDER BY p.created_at DESC`,
   );
   const rows = res.rows as unknown as Array<
     PostNeedingAIHero & { source_name: string | null; media_path: string }
   >;
-  const missing = rows.filter((row) => existingLocalCopies(row.media_path).length === 0);
+  const missing = rows.filter(
+    (row) => existingLocalCopies(row.media_path).length === 0,
+  );
   const targets = missing.slice(0, limit);
   let repaired = 0;
   let failed = 0;
@@ -429,11 +472,21 @@ export async function repairMissingMedia(opts: {
     repaired += 1;
   }
 
-  return { checked: rows.length, missing: missing.length, repaired, failed, dryRun: Boolean(opts.dryRun) };
+  return {
+    checked: rows.length,
+    missing: missing.length,
+    repaired,
+    failed,
+    dryRun: Boolean(opts.dryRun),
+  };
 }
 
 /** Re-download media that exists remotely but is missing from every local root. */
-export async function verifyMediaFiles(): Promise<{ total: number; present: number; absent: string[] }> {
+export async function verifyMediaFiles(): Promise<{
+  total: number;
+  present: number;
+  absent: string[];
+}> {
   const client = getClient();
   const res = await client.execute(
     "SELECT id, media_path FROM posts WHERE media_path IS NOT NULL AND media_path <> '' AND media_path NOT LIKE 'http%'",
@@ -441,7 +494,8 @@ export async function verifyMediaFiles(): Promise<{ total: number; present: numb
   const rows = res.rows as unknown as Array<{ id: string; media_path: string }>;
   const absent: string[] = [];
   for (const row of rows) {
-    if (existingLocalCopies(row.media_path).length === 0) absent.push(row.media_path);
+    if (existingLocalCopies(row.media_path).length === 0)
+      absent.push(row.media_path);
   }
   return { total: rows.length, present: rows.length - absent.length, absent };
 }
@@ -453,11 +507,13 @@ export async function verifyMediaFiles(): Promise<{ total: number; present: numb
  * posts, so the page is fetched once and the result applied to every post that
  * points at it.
  */
-export async function recoverOrphanedMedia(opts: {
-  limit?: number;
-  dryRun?: boolean;
-  log?: (msg: string) => void;
-} = {}): Promise<{
+export async function recoverOrphanedMedia(
+  opts: {
+    limit?: number;
+    dryRun?: boolean;
+    log?: (msg: string) => void;
+  } = {},
+): Promise<{
   posts: number;
   permalinks: number;
   recovered: number;
@@ -472,7 +528,11 @@ export async function recoverOrphanedMedia(opts: {
        AND source_url IS NOT NULL AND source_url <> ''
      ORDER BY created_at DESC`,
   );
-  const rows = res.rows as unknown as Array<{ id: string; source_url: string; created_at: string }>;
+  const rows = res.rows as unknown as Array<{
+    id: string;
+    source_url: string;
+    created_at: string;
+  }>;
   const byPermalink = new Map<string, typeof rows>();
   for (const row of rows) {
     const key = row.source_url.split("?")[0]!;
@@ -480,7 +540,10 @@ export async function recoverOrphanedMedia(opts: {
     list.push(row);
     byPermalink.set(key, list);
   }
-  const permalinks = [...byPermalink.keys()].slice(0, Math.max(1, opts.limit ?? 50));
+  const permalinks = [...byPermalink.keys()].slice(
+    0,
+    Math.max(1, opts.limit ?? 50),
+  );
 
   if (opts.dryRun) {
     return {
@@ -535,10 +598,18 @@ export async function recoverOrphanedMedia(opts: {
       });
     }
     recovered += 1;
-    log(`[media] recovered ${targets.length} post(s) from ${post.fbPostUrl.slice(0, 60)}… -> ${rel}`);
+    log(
+      `[media] recovered ${targets.length} post(s) from ${post.fbPostUrl.slice(0, 60)}… -> ${rel}`,
+    );
   }
 
-  return { posts: rows.length, permalinks: permalinks.length, recovered, withoutMedia, dryRun: false };
+  return {
+    posts: rows.length,
+    permalinks: permalinks.length,
+    recovered,
+    withoutMedia,
+    dryRun: false,
+  };
 }
 
 export { downloadMedia, localMediaPath };
@@ -577,9 +648,7 @@ export interface ManualImageResult {
  * "photograph") in English. Reading the row here means every caller gets a real
  * headline and desk without having to remember to pass them.
  */
-async function plateFacts(
-  postId: string,
-): Promise<{
+async function plateFacts(postId: string): Promise<{
   title: string | null;
   summary: string | null;
   category: string | null;
@@ -592,7 +661,12 @@ async function plateFacts(
         args: [postId],
       })
     ).rows[0] as
-      | { title_bn?: string; summary_bn?: string; category?: string; source_name?: string }
+      | {
+          title_bn?: string;
+          summary_bn?: string;
+          category?: string;
+          source_name?: string;
+        }
       | undefined;
     return {
       title: row?.title_bn?.trim() || null,
@@ -675,7 +749,9 @@ export async function generateManualImage(opts: {
     );
   } catch (err) {
     renderError = err instanceof Error ? err.message : String(err);
-    log(`[img-gen] provider chain refused, drawing the branded plate instead: ${renderError}`);
+    log(
+      `[img-gen] provider chain refused, drawing the branded plate instead: ${renderError}`,
+    );
   }
   // processImage always writes webp (and re-encodes/resizes), so the media name
   // must carry the .webp extension regardless of what the provider returned.
@@ -719,7 +795,10 @@ export async function generateManualImage(opts: {
   if (attach) {
     // `media_origin` tells the badge the truth: a plate carrying only our own
     // backdrop is marked as such even when it was requested as "AI".
-    await updatePost(opts.postId, { media_path: applied, media_origin: rendered ? "ai" : "plate" });
+    await updatePost(opts.postId, {
+      media_path: applied,
+      media_origin: rendered ? "ai" : "plate",
+    });
   }
   const notes = [warning, renderError].filter(Boolean) as string[];
   return {

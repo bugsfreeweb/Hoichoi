@@ -132,6 +132,17 @@ check(
   },
 );
 
+check("the pipeline stores only fixed desks and gates by source", () => {
+  const pipeline = read(ROOT, "apps", "scraper", "src", "pipeline.ts");
+  assert.match(pipeline, /canonicalDesk\(guardedSlug\)/);
+  assert.match(pipeline, /sourceCategory: source\.category/);
+});
+
+check("media repair never overwrites a generated poster", () => {
+  const repair = read(ROOT, "apps", "scraper", "src", "media-backfill.ts");
+  assert.match(repair, /p\.media_path NOT LIKE 'api\/posters\/%'/);
+});
+
 check("the schema carries trust metadata and a legacy-desk remap", () => {
   const trust = read(
     ROOT,

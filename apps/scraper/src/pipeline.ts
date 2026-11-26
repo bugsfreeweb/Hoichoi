@@ -29,7 +29,9 @@ import { mirrorMediaFile } from "./media-backfill";
 import { processVideo } from "./video";
 import { makeSlug, rewritePost } from "./rewrite";
 import {
+  canonicalDesk,
   guardCategory,
+  NEVER_AUTO_DESKS,
   needsHumanReview,
   rewriteQuality,
   sourceTypeFromUrl,
@@ -879,8 +881,16 @@ export async function runPipeline(
           detectedCategory,
           source.page_name,
         );
-        const postCategory: CategorySlug =
+        // Every stored category must be a fixed desk. A legacy descriptor or a
+        // detected slug outside the list is normalised here so new rows cannot
+        // reintroduce the old active/inactive split.
+        const guardedSlug: string =
           guard && cats.has(guard.slug) ? guard.slug : detectedCategory;
+        const postCategory: CategorySlug =
+          canonicalDesk(guardedSlug) ??
+          (NEVER_AUTO_DESKS.has(guardedSlug)
+            ? (guardedSlug as CategorySlug)
+            : "misc");
         if (postCategory !== source.category) {
           log(
             `[classify] "${source.page_name}" → ${postCategory} (${detected?.confidence ?? 0}% · ${detected?.matches.length ?? 0} hits)`,
@@ -1157,6 +1167,7 @@ ${outcome.rewritten.body_bn}`,
         // allegations, election/casualty/health claims always need a person.
         const humanGate = needsHumanReview({
           category: postCategory,
+          sourceCategory: source.category,
           text: `${sp.rawText}
 ${outcome.rewritten.title_bn}
 ${outcome.rewritten.body_bn}`,

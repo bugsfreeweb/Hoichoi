@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
-import { guardCategory, needsHumanReview, rewriteQuality, sourceTypeFromUrl } from "../taxonomy";
+import {
+  canonicalDesk,
+  guardCategory,
+  needsHumanReview,
+  rewriteQuality,
+  sourceTypeFromUrl,
+} from "../taxonomy";
 
 let passed = 0;
 function check(name: string, fn: () => void) {
@@ -38,28 +44,78 @@ check("a real corruption investigation keeps its desk", () => {
 });
 
 check("technology content misfiled elsewhere moves to a tech desk", () => {
-  assert.equal(guardCategory("Figma released a database feature for developers.", "viral", "Techcrunch")?.slug, "technology");
+  assert.equal(
+    guardCategory(
+      "Figma released a database feature for developers.",
+      "viral",
+      "Techcrunch",
+    )?.slug,
+    "technology",
+  );
 });
 
 check("sensitive desks and political social posts require a human", () => {
   assert.equal(
-    needsHumanReview({ category: "missing-children", text: "", sourceType: "facebook", flags: [] }).review,
+    needsHumanReview({
+      category: "missing-children",
+      text: "",
+      sourceType: "facebook",
+      flags: [],
+    }).review,
     true,
   );
   assert.equal(
-    needsHumanReview({ category: "politics", text: "মন্ত্রী অভিযুক্ত", sourceType: "facebook", flags: [] }).review,
+    needsHumanReview({
+      category: "politics",
+      text: "মন্ত্রী অভিযুক্ত",
+      sourceType: "facebook",
+      flags: [],
+    }).review,
     true,
   );
   assert.equal(
-    needsHumanReview({ category: "sports", text: "A normal match report.", sourceType: "news", flags: [] }).review,
+    needsHumanReview({
+      category: "sports",
+      text: "A normal match report.",
+      sourceType: "news",
+      flags: [],
+    }).review,
     false,
   );
 });
 
+check("a sensitive source stays sensitive after a weak classifier move", () => {
+  assert.equal(
+    needsHumanReview({
+      category: "crime",
+      sourceCategory: "child-sexual-abuse",
+      text: "সাধারণ অপরাধের খবর",
+      sourceType: "news",
+      flags: [],
+    }).review,
+    true,
+  );
+});
+
+check("legacy descriptors normalise to fixed desks", () => {
+  assert.equal(canonicalDesk("accident"), "misc");
+  assert.equal(canonicalDesk("tech"), "technology");
+  assert.equal(canonicalDesk("research"), "analysis");
+});
+
 check("source type is derived from the original URL", () => {
-  assert.equal(sourceTypeFromUrl("https://www.facebook.com/x/posts/1"), "facebook");
-  assert.equal(sourceTypeFromUrl("https://example.gov.bd/notice"), "government");
-  assert.equal(sourceTypeFromUrl("https://techcrunch.com/2026/01/01/story"), "news");
+  assert.equal(
+    sourceTypeFromUrl("https://www.facebook.com/x/posts/1"),
+    "facebook",
+  );
+  assert.equal(
+    sourceTypeFromUrl("https://example.gov.bd/notice"),
+    "government",
+  );
+  assert.equal(
+    sourceTypeFromUrl("https://techcrunch.com/2026/01/01/story"),
+    "news",
+  );
 });
 
 check("AI rewrite quality is bounded and damaged by missing Bengali", () => {
