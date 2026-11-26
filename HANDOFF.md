@@ -198,6 +198,10 @@ Do not redo these unless a regression is proven.
   `#141414` text so options stay readable in dark and light themes.
 - Desktop `select option` / `optgroup` get the same explicit light surface.
   The closed control still follows the app theme.
+- Verified inside the real Tauri WebView2 window (not only Vite/Chromium):
+  dark theme closed control `rgb(233,230,218)` on `rgb(10,12,16)`, options
+  `rgb(20,20,20)` on `rgb(255,255,255)`; light theme closed control already
+  white with dark ink.
 
 ---
 
@@ -252,21 +256,18 @@ These are product rules, not suggestions.
 
 ## 9. Current next steps (priority order)
 
-1. **Desktop font check.** Open the desktop Settings → font panel and confirm
-   native option lists are readable in dark and light themes. The CSS rule is in
-   `apps/desktop/src/index.css`; verify in a real Tauri window if possible.
-2. **Poster production sample.** After the next collector run, regenerate one
+1. **Poster production sample.** After the next collector run, regenerate one
    poster against production and inspect the actual 4:5 output. The art director
    may choose any layout; verify the layout it chose.
-3. **Category quality sweep.** Re-run the category audit after a fresh run. Look
+2. **Category quality sweep.** Re-run the category audit after a fresh run. Look
    for clear misfiles, but remember `Hacker News` is a technology source and may
    legitimately file general-interest stories there. Prefer manual correction
    through `/admin/moderation` over broad new heuristics.
-4. **Bilingual sweep.** Some client components still contain one-language labels.
+3. **Bilingual sweep.** Some client components still contain one-language labels.
    Fix labels/statuses only, not layout.
-5. **Facebook preview refresh.** Open the post URL in Facebook Sharing Debugger
+4. **Facebook preview refresh.** Open the post URL in Facebook Sharing Debugger
    and re-scrape to confirm the 4:5 `og:image` and 1080×1350 dimensions.
-6. **Security alerts.** In about a week, check open code-scanning alerts again:
+5. **Security alerts.** In about a week, check open code-scanning alerts again:
    `gh api repos/bugsfreeweb/Hoichoi/code-scanning/alerts?state=open`.
 
 Do not start by generating lots of posters. Each image costs allowance and the
@@ -278,6 +279,13 @@ layout is deterministic enough to verify locally first with
 ## 10. Handoff log
 
 Append a short entry after every completed task. Keep newest first.
+
+### 2026-11-26 — desktop dropdown contrast verified in Tauri
+- Launched the real Tauri app (`tauri dev`) with WebView2 remote debugging and
+  probed a generated `.field` select in both themes.
+- Options: `rgb(20,20,20)` on `rgb(255,255,255)`; dark closed control keeps its
+  dark surface. The CSS rule is live in WebView2, not just in Chromium.
+- Commit: `a435c28` (no code change after verification).
 
 ### 2026-11-26 — font dropdown visibility
 - Web font selects pinned to a light popup surface; verified in both themes with
