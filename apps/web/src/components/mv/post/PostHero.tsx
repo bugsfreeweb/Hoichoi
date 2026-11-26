@@ -104,7 +104,7 @@ function EditorialDoc({ post, density }: { post: PostRecord; density: "compact" 
               <LiveDot tone="hot" /> {post.category}
             </Badge>
             <Badge tone="ok">
-              <ShieldCheck className="h-3 w-3" /> ফ্যাক্ট-গেট {bn(post.factScore)}
+              <ShieldCheck className="h-3 w-3" /> কোয়ালিটি গেট {bn(post.factScore)}
             </Badge>
             <Badge tone="mute">
               <Hash className="h-3 w-3" /> {post.hash}
@@ -170,7 +170,7 @@ function CinemaCover({ post }: { post: PostRecord }) {
               { k: "ভিউ", v: post.views },
               { k: "শেয়ার", v: post.shares },
               { k: "মন্তব্য", v: post.comments },
-              { k: "ফ্যাক্ট স্কোর", v: post.factScore },
+              { k: "AI কোয়ালিটি স্কোর", v: post.factScore },
             ].map((s) => (
               <div key={s.k} className="bg-ink-950/85 px-5 py-4 backdrop-blur">
                 <p className="font-latin text-2xl font-bold text-mist-100">
@@ -441,7 +441,7 @@ function BylineChips({ post }: { post: PostRecord }) {
       <Reveal y={12}>
         <div className="mask-fade-r flex items-center gap-2.5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {[
-            { Icon: ShieldCheck, k: `ফ্যাক্ট ${bn(post.factScore)}`, tone: "ok" },
+            { Icon: ShieldCheck, k: `AI কোয়ালিটি ${bn(post.factScore)}`, tone: "ok" },
             { Icon: Hash, k: post.hash, tone: "cool" },
             { Icon: UserRound, k: post.author, tone: "mute" },
             { Icon: MapPin, k: post.location, tone: "mute" },

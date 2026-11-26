@@ -48,7 +48,7 @@ export function toMvPost(post: ProdPostLike, fallback = ""): PostRecord {
     categorySlug: post.category,
     source: post.source_name ?? "সূত্র",
     sourceUrl: post.source_url ?? "",
-    author: post.original_author_name ?? "হৈচৈ ফ্যাক্ট-গেট",
+    author: post.original_author_name ?? "হৈচৈ কোয়ালিটি গেট",
     location: "ঢাকা",
     image: resolvePostImage(post.slug, post.category, own, fallback),
     tags: [],

@@ -52,7 +52,7 @@ const INITIAL_NODES: Omit<GraphNode, "vx" | "vy">[] = [
   // Categories
   {
     id: "cat-viral",
-    label: "ভাইরাল ফ্যাক্ট-চেক",
+    label: "ভাইরাল দাবি",
     type: "category",
     x: 230,
     y: 160,
@@ -131,7 +131,7 @@ const INITIAL_NODES: Omit<GraphNode, "vx" | "vy">[] = [
   },
   {
     id: "pipe-llm",
-    label: "LLM ফ্যাক্ট-গেট ০.৯০",
+    label: "LLM কোয়ালিটি গেট ০.৯০",
     type: "pipeline",
     x: 500,
     y: 280,
@@ -653,7 +653,7 @@ export default function ObsidianGraph({ height = 480 }: { height?: number }) {
                     </span>
                     {active.factScore ? (
                       <span className="mono-label flex items-center gap-1 text-mint-400">
-                        <ShieldCheck className="h-3 w-3" /> ফ্যাক্ট {bn(active.factScore)}
+                        <ShieldCheck className="h-3 w-3" /> কোয়ালিটি {bn(active.factScore)}
                       </span>
                     ) : null}
                   </div>

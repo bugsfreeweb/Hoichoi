@@ -12,6 +12,11 @@ import { getClient, nowIso } from "./client";
 
 export type VerificationStatus =
   | "unverified"
+  | "source_claimed"
+  | "partially_verified"
+  | "verified"
+  | "disputed"
+  | "retracted"
   | "single_source"
   | "multi_source"
   | "human_verified"
@@ -19,13 +24,35 @@ export type VerificationStatus =
 
 export type ClaimStatus = "unchecked" | "supported" | "disputed" | "false";
 
-export const VERIFICATION_LABELS: Record<VerificationStatus, { bn: string; en: string }> = {
-  unverified: { bn: "অযাচাইকৃত", en: "Unverified" },
+export const VERIFICATION_LABELS: Record<
+  VerificationStatus,
+  { bn: string; en: string }
+> = {
+  unverified: { bn: "যাচাই বাকি", en: "Unverified" },
+  source_claimed: { bn: "সোশ্যাল মিডিয়া দাবি", en: "Social-media claim" },
+  partially_verified: { bn: "আংশিক যাচাইকৃত", en: "Partially verified" },
+  verified: { bn: "যাচাইকৃত", en: "Verified" },
+  disputed: { bn: "বিতর্কিত", en: "Disputed" },
+  retracted: { bn: "প্রত্যাহৃত", en: "Retracted" },
   single_source: { bn: "একক সূত্র", en: "Single source" },
   multi_source: { bn: "একাধিক সূত্র", en: "Multi-source" },
   human_verified: { bn: "সম্পাদক যাচাইকৃত", en: "Editor verified" },
   corrected: { bn: "সংশোধিত", en: "Corrected" },
 };
+
+/** Weakest → strongest. A request may downgrade, never upgrade, a derived grade. */
+export const VERIFICATION_ORDER: VerificationStatus[] = [
+  "unverified",
+  "disputed",
+  "source_claimed",
+  "partially_verified",
+  "verified",
+  "retracted",
+  "single_source",
+  "multi_source",
+  "human_verified",
+  "corrected",
+];
 
 export interface ClaimRow {
   id: string;
@@ -51,31 +78,45 @@ export interface CorrectionRow {
 }
 
 /**
- * Decide the grade from evidence. This is deliberately conservative:
- *  - fewer than 2 distinct sources → never multi_source;
- *  - human_verified needs a named verifier;
- *  - any disputed claim downgrades to unverified (a correctable, honest state).
+ * Decide the human verification grade from records.
+ *
+ * Invariants:
+ *  - AI rewrite quality is not an input; it cannot promote a story.
+ *  - `verified` needs a named reviewer, at least one evidence URL and at least
+ *    one supported claim.
+ *  - a disputed/false claim is `disputed`, never silently `verified`.
+ *  - two independent sources without human review are only partially verified.
  */
 export function gradeFromEvidence(input: {
   sourceCount: number;
   verifierName?: string | null;
-  claims?: { status: ClaimStatus }[];
+  claims?: { status: ClaimStatus; evidence_url?: string | null }[];
   correctedAt?: string | null;
+  evidenceCount?: number;
 }): VerificationStatus {
   const claims = input.claims ?? [];
-  if (claims.some((c) => c.status === "disputed" || c.status === "false")) return "unverified";
+  if (claims.some((c) => c.status === "disputed" || c.status === "false"))
+    return "disputed";
   if (input.correctedAt) return "corrected";
   const verifier = input.verifierName?.trim();
-  if (verifier && input.sourceCount >= 2) return "human_verified";
-  if (verifier && input.sourceCount >= 1) return "single_source";
-  if (input.sourceCount >= 2) return "multi_source";
-  if (input.sourceCount >= 1) return "single_source";
+  const supportedWithEvidence = claims.filter(
+    (c) => c.status === "supported" && !!c.evidence_url?.trim(),
+  ).length;
+  const evidenceCount = Math.max(
+    input.evidenceCount ?? 0,
+    supportedWithEvidence,
+  );
+  if (verifier && evidenceCount >= 1 && input.sourceCount >= 1)
+    return "verified";
+  if (verifier && input.sourceCount >= 1) return "partially_verified";
+  if (input.sourceCount >= 2) return "partially_verified";
+  if (input.sourceCount >= 1) return "source_claimed";
   return "unverified";
 }
 
-/** Should the badge be shown at all? Only when there is something to say. */
+/** Every known grade is shown; "unverified" says "যাচাই বাকি", not a tick. */
 export function showsBadge(status: string | null | undefined): boolean {
-  return status === "multi_source" || status === "human_verified" || status === "corrected";
+  return !!status && status in VERIFICATION_LABELS;
 }
 
 function mapClaim(row: Record<string, unknown>): ClaimRow {
@@ -105,7 +146,10 @@ function mapCorrection(row: Record<string, unknown>): CorrectionRow {
   };
 }
 
-export async function listClaims(postId: string, db?: Client): Promise<ClaimRow[]> {
+export async function listClaims(
+  postId: string,
+  db?: Client,
+): Promise<ClaimRow[]> {
   const client = db ?? getClient();
   const res = await client.execute({
     sql: "SELECT * FROM claims WHERE post_id = ? ORDER BY created_at ASC",
@@ -147,7 +191,10 @@ export async function upsertClaim(
         input.id,
       ],
     });
-    const res = await client.execute({ sql: "SELECT * FROM claims WHERE id = ?", args: [input.id] });
+    const res = await client.execute({
+      sql: "SELECT * FROM claims WHERE id = ?",
+      args: [input.id],
+    });
     return mapClaim(res.rows[0] as Record<string, unknown>);
   }
 
@@ -158,21 +205,40 @@ export async function upsertClaim(
   await client.execute({
     sql: `INSERT INTO claims (id, post_id, claim_bn, status, evidence_url, evidence_note, checked_by, checked_at, created_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [id, input.postId, claim, status, evidenceUrl, evidenceNote, checkedBy, checked, now],
+    args: [
+      id,
+      input.postId,
+      claim,
+      status,
+      evidenceUrl,
+      evidenceNote,
+      checkedBy,
+      checked,
+      now,
+    ],
   });
   // Read the row back instead of reconstructing it: a hand-built return value is
   // how the evidence link silently came back as null.
-  const res = await client.execute({ sql: "SELECT * FROM claims WHERE id = ?", args: [id] });
+  const res = await client.execute({
+    sql: "SELECT * FROM claims WHERE id = ?",
+    args: [id],
+  });
   return mapClaim(res.rows[0] as Record<string, unknown>);
 }
 
 export async function deleteClaim(id: string, db?: Client): Promise<number> {
   const client = db ?? getClient();
-  const res = await client.execute({ sql: "DELETE FROM claims WHERE id = ?", args: [id] });
+  const res = await client.execute({
+    sql: "DELETE FROM claims WHERE id = ?",
+    args: [id],
+  });
   return res.rowsAffected;
 }
 
-export async function listCorrections(postId: string, db?: Client): Promise<CorrectionRow[]> {
+export async function listCorrections(
+  postId: string,
+  db?: Client,
+): Promise<CorrectionRow[]> {
   const client = db ?? getClient();
   const res = await client.execute({
     sql: "SELECT * FROM correction_history WHERE post_id = ? ORDER BY created_at DESC",
@@ -225,13 +291,31 @@ export async function recordCorrection(
 export async function setVerification(
   postId: string,
   status: VerificationStatus,
-  opts: { note?: string | null; verifierName?: string | null } = {},
+  opts: {
+    note?: string | null;
+    verifierName?: string | null;
+    reviewerId?: string | null;
+    evidence?: string[] | null;
+  } = {},
   db?: Client,
 ): Promise<void> {
   const client = db ?? getClient();
-  const verifiedAt = status === "human_verified" || status === "multi_source" ? nowIso() : null;
+  const reviewed = status === "verified" || status === "human_verified";
+  const verifiedAt = reviewed ? nowIso() : null;
   await client.execute({
-    sql: `UPDATE posts SET verification_status = ?, verification_note = ?, verified_by = ?, verified_at = ? WHERE id = ?`,
-    args: [status, opts.note?.trim() || null, opts.verifierName?.trim() || null, verifiedAt, postId],
+    sql: `UPDATE posts SET verification_status = ?, verification_note = ?, verified_by = ?,
+                 verified_at = ?, reviewer_id = ?, review_notes = ?,
+                 verification_evidence = ?, is_human_reviewed = ? WHERE id = ?`,
+    args: [
+      status,
+      opts.note?.trim() || null,
+      opts.verifierName?.trim() || null,
+      verifiedAt,
+      opts.reviewerId?.trim() || opts.verifierName?.trim() || null,
+      opts.note?.trim() || null,
+      JSON.stringify(opts.evidence ?? []),
+      reviewed ? 1 : 0,
+      postId,
+    ],
   });
 }

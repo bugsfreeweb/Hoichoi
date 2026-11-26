@@ -86,7 +86,10 @@ export const DICTIONARY = {
   "site.nav.live": { bn: "লাইভ", en: "Live" },
   "site.nav.liveBadge": { bn: "সরাসরি", en: "Live" },
   "site.nav.adminAria": { bn: "প্রশাসন", en: "Administration" },
-  "site.nav.pipelineActive": { bn: "সংগ্রহ পাইপলাইন সক্রিয়", en: "Collection pipeline active" },
+  "site.nav.pipelineActive": {
+    bn: "সংগ্রহ পাইপলাইন সক্রিয়",
+    en: "Collection pipeline active",
+  },
   "site.nav.categories": { bn: "ক্যাটাগরি", en: "Categories" },
   "site.nav.deskLaunch": { bn: "ডেস্ক লঞ্চ", en: "Desk launch" },
   "site.nav.records": { bn: "{n} রেকর্ড", en: "{n} records" },
@@ -101,49 +104,106 @@ export const DICTIONARY = {
   "site.footer.col.connect": { bn: "সংযোগ", en: "Connect" },
   "site.footer.item.collect": { bn: "সর্বশেষ সংগ্রহ", en: "Latest collection" },
   "site.footer.item.insights": { bn: "লাইভ ইনসাইটস", en: "Live insights" },
-  "site.footer.item.pipeline": { bn: "অটোমেশন পাইপলাইন", en: "Automation pipeline" },
+  "site.footer.item.pipeline": {
+    bn: "অটোমেশন পাইপলাইন",
+    en: "Automation pipeline",
+  },
   "site.footer.item.health": { bn: "সিস্টেম হেলথ", en: "System health" },
   "site.footer.item.adminConsole": { bn: "অ্যাডমিন কনসোল", en: "Admin console" },
-  "site.footer.item.factGate": { bn: "ফ্যাক্ট-গেট নীতি", en: "Fact-gate policy" },
+  "site.footer.item.factGate": { bn: "কোয়ালিটি গেট নীতি", en: "Fact-gate policy" },
   "site.footer.item.duplicateGate": { bn: "ডুপ্লিকেট গেট", en: "Duplicate gate" },
   "site.footer.item.dataApi": { bn: "ডেটা API", en: "Data API" },
   "site.footer.item.rss": { bn: "RSS ফিড", en: "RSS feed" },
   "site.footer.item.newsletter": { bn: "নিউজলেটার", en: "Newsletter" },
   "site.footer.item.repository": { bn: "রিপোজিটরি", en: "Repository" },
-  "site.footer.nl.already": { bn: "এই ইমেইল আগেই যুক্ত আছে", en: "This address is already subscribed" },
-  "site.footer.nl.thanks": { bn: "যুক্ত হয়েছে — ধন্যবাদ!", en: "You are in — thank you!" },
-  "site.footer.nl.failed": { bn: "সম্পন্ন করা যায়নি", en: "That did not go through" },
+  "site.footer.nl.already": {
+    bn: "এই ইমেইল আগেই যুক্ত আছে",
+    en: "This address is already subscribed",
+  },
+  "site.footer.nl.thanks": {
+    bn: "যুক্ত হয়েছে — ধন্যবাদ!",
+    en: "You are in — thank you!",
+  },
+  "site.footer.nl.failed": {
+    bn: "সম্পন্ন করা যায়নি",
+    en: "That did not go through",
+  },
   "site.footer.nl.placeholder": { bn: "আপনার ইমেইল", en: "Your email" },
   "site.footer.nl.emailAria": { bn: "ইমেইল ঠিকানা", en: "Email address" },
   "site.footer.nl.sending": { bn: "পাঠানো হচ্ছে…", en: "Sending…" },
   "site.footer.nl.joined": { bn: "যুক্ত হয়েছে", en: "Subscribed" },
   "site.footer.nl.subscribe": { bn: "সাবস্ক্রাইব", en: "Subscribe" },
   "site.footer.copyright": {
-    bn: "হৈচৈ · ফিড থেকে সংগ্রহ, যাচাই শেষে প্রকাশ।",
-    en: "Hoichoi · collected from feeds, published after verification.",
+    bn: "হৈচৈ · ফিড থেকে সংগ্রহ, সম্পাদকীয় নীতিতে প্রকাশ।",
+    en: "Hoichoi · collected from feeds, published under our editorial policy.",
   },
   "site.footer.copyrightRoom": { bn: "হৈচৈ নিউজরুম", en: "Hoichoi newsroom" },
   "site.footer.location": { bn: "ঢাকা, বাংলাদেশ", en: "Dhaka, Bangladesh" },
   "site.footer.mission": {
-    bn: "শহর ফিডে যা বলে, আমরা তা যাচাই করে লিখি। প্রতিটি প্রতিবেদনে থাকে হ্যাশ-স্ট্যাম্প, ফ্যাক্ট-গেট স্কোর আর মানুষের রিভিউ লগ।",
-    en: "We verify what the city feeds say before we write it. Every report carries a hash stamp, a fact-gate score and a human review log.",
+    bn: "ফিডের দাবি আমরা যাচাইয়ের প্রক্রিয়ায় লিখি। প্রতিটি প্রতিবেদনে সূত্র, সময় ও যাচাইয়ের অবস্থা দেখা যায়; AI স্কোর স্বতন্ত্র ফ্যাক্ট-চেক নয়।",
+    en: "We write from feed claims through a verification process. Every report shows its source, time and verification state; an AI score is not an independent fact-check.",
   },
-  "site.footer.digest": { bn: "দৈনিক ডাইজেস্ট · সকাল ৭টা", en: "Daily digest · 7 am" },
-  "site.footer.subscribers": { bn: "ইতিমধ্যে {n} জন সাবস্ক্রাইবার", en: "{n} subscribers already" },
+  "site.footer.digest": {
+    bn: "দৈনিক ডাইজেস্ট · সকাল ৭টা",
+    en: "Daily digest · 7 am",
+  },
+  "site.footer.subscribers": {
+    bn: "ইতিমধ্যে {n} জন সাবস্ক্রাইবার",
+    en: "{n} subscribers already",
+  },
   "site.footer.pipelineHeading": { bn: "পাইপলাইন", en: "Pipeline" },
   "site.footer.systemOk": { bn: "সিস্টেম স্বাভাবিক", en: "Systems normal" },
   "site.footer.runLog": { bn: "সর্বশেষ রান-লগ", en: "Latest run log" },
   "site.footer.opsInfo": { bn: "পরিচালন তথ্য", en: "Operations" },
   "site.footer.ops.db": { bn: "টার্সো ডাটাবেস", en: "Turso database" },
-  "site.footer.ops.factGate": { bn: "ফ্যাক্ট-গেট", en: "Fact gate" },
+  "site.footer.ops.factGate": { bn: "কোয়ালিটি গেট", en: "Fact gate" },
   "site.footer.ops.gitBot": { bn: "গিট কমিট বট", en: "Git commit bot" },
   "site.footer.ops.isr": { bn: "আইএসআর ডিপ্লয়", en: "ISR deploy" },
   "site.footer.closing": { bn: "ঢাকা", en: "Dhaka" },
   "site.card.readMore": { bn: "পুরোটা পড়ুন", en: "Read the full story" },
   "site.card.minutes": { bn: "{n} মিনিট", en: "{n} min read" },
-  "site.card.illustrative": { bn: "পুনর্লিখন · প্রতীকী", en: "Rewrite · illustrative" },
+  "site.card.illustrative": {
+    bn: "পুনর্লিখন · প্রতীকী",
+    en: "Rewrite · illustrative",
+  },
   "site.card.source": { bn: "সোর্স · {name}", en: "Source · {name}" },
-  "site.card.aiRewrite": { bn: "এআই পুনর্লিখন", en: "AI rewrite" },
+  "site.card.aiRewrite": { bn: "AI সহায়তায় প্রস্তুত", en: "AI-assisted" },
+  "site.card.originalPost": { bn: "মূল পোস্ট দেখুন", en: "View original post" },
+  "site.card.originalNews": { bn: "মূল সংবাদ পড়ুন", en: "Read original story" },
+  "site.verify.unverified": { bn: "যাচাই বাকি", en: "Unverified" },
+  "site.verify.sourceClaimed": {
+    bn: "সোশ্যাল মিডিয়া দাবি",
+    en: "Social-media claim",
+  },
+  "site.verify.partiallyVerified": {
+    bn: "আংশিক যাচাইকৃত",
+    en: "Partially verified",
+  },
+  "site.verify.verified": { bn: "যাচাইকৃত", en: "Verified" },
+  "site.verify.disputed": { bn: "বিতর্কিত", en: "Disputed" },
+  "site.verify.retracted": { bn: "প্রত্যাহৃত", en: "Retracted" },
+  "site.verify.singleSource": { bn: "একক সূত্র", en: "Single source" },
+  "site.verify.multiSource": { bn: "একাধিক সূত্র", en: "Multi-source" },
+  "site.verify.humanVerified": { bn: "সম্পাদক যাচাইকৃত", en: "Editor verified" },
+  "site.verify.corrected": { bn: "সংশোধিত", en: "Corrected" },
+  "site.source.facebook": { bn: "ফেসবুক পোস্ট", en: "Facebook post" },
+  "site.source.news": { bn: "সংবাদমাধ্যম", en: "News outlet" },
+  "site.source.government": { bn: "সরকারি সূত্র", en: "Government source" },
+  "site.source.user": { bn: "ইউজার সাবমিশন", en: "User submission" },
+  "site.source.unknown": { bn: "অজানা সূত্র", en: "Unknown source" },
+  "site.verify.aiGate": {
+    bn: "AI পুনর্লিখন গেট: {score}",
+    en: "AI rewrite quality: {score}",
+  },
+  "site.verify.aiGateTip": {
+    bn: "এই স্কোর AI-পুনর্লিখনের গুণগত যাচাই নির্দেশ করে; এটি স্বতন্ত্র ফ্যাক্ট-চেক নয়।",
+    en: "This score measures AI rewrite quality; it is not an independent fact-check.",
+  },
+  "site.verify.humanReviewed": { bn: "মানব যাচাই", en: "Human reviewed" },
+  "site.verify.needsReview": {
+    bn: "মানব যাচাই বাকি",
+    en: "Human review pending",
+  },
   "site.ad.sponsor": { bn: "হৈচৈ লাইভ", en: "Hoichoi Live" },
   "site.ad.headline": { bn: "আপনার বিজ্ঞাপন এখানে", en: "Your ad goes here" },
   "site.ad.sub": {
@@ -159,12 +219,18 @@ export const DICTIONARY = {
   // ── Public site: masthead ────────────────────────────────────────────────
   "site.masthead.onlineEdition": { bn: "অনলাইন সংস্করণ", en: "Online edition" },
   "site.masthead.price": { bn: "মূল্য: অবৈতনিক", en: "Price: free" },
-  "site.masthead.desk": { bn: "স্বয়ংক্রিয় নিউজ ডেস্ক", en: "Autonomous news desk" },
+  "site.masthead.desk": {
+    bn: "স্বয়ংক্রিয় নিউজ ডেস্ক",
+    en: "Autonomous news desk",
+  },
 
   // ── Public site: footer ──────────────────────────────────────────────────
   "site.footer.about": { bn: "আমাদের সম্পর্কে", en: "About" },
   "site.footer.contact": { bn: "যোগাযোগ", en: "Contact" },
-  "site.footer.fontCredit": { bn: "বাংলা ফন্ট: লিপিঘর", en: "Bangla type: Lipighor" },
+  "site.footer.fontCredit": {
+    bn: "বাংলা ফন্ট: লিপিঘর",
+    en: "Bangla type: Lipighor",
+  },
   "site.footer.privacy": { bn: "গোপনীয়তা", en: "Privacy" },
   "site.footer.cookies": { bn: "কুকি নীতি", en: "Cookies" },
   "site.footer.dmca": { bn: "ডিএমসিএ", en: "DMCA" },
@@ -172,18 +238,27 @@ export const DICTIONARY = {
   "site.footer.sections": { bn: "বিভাগ", en: "Sections" },
   "site.footer.pages": { bn: "পাতা", en: "Pages" },
   "site.footer.rights": { bn: "সর্বস্বত্ব সংরক্ষিত", en: "All rights reserved" },
-  "site.footer.independent": { bn: "স্বতন্ত্র, বিজ্ঞাপন-সমর্থিত সংবাদ", en: "Independent, ad-supported news" },
+  "site.footer.independent": {
+    bn: "স্বতন্ত্র, বিজ্ঞাপন-সমর্থিত সংবাদ",
+    en: "Independent, ad-supported news",
+  },
   "site.footer.submitSource": { bn: "সোর্স জমা দিন", en: "Submit a source" },
   "site.footer.reportError": { bn: "ভুল রিপোর্ট", en: "Report an error" },
   "site.footer.aboutUs": { bn: "সম্পর্কে", en: "About us" },
-  "site.footer.editorialPolicy": { bn: "সম্পাদকীয় নীতি", en: "Editorial policy" },
+  "site.footer.editorialPolicy": {
+    bn: "সম্পাদকীয় নীতি",
+    en: "Editorial policy",
+  },
   "site.footer.aiPolicy": { bn: "এআই নীতি", en: "AI policy" },
   "site.footer.corrections": { bn: "সংশোধন নীতি", en: "Corrections" },
   "site.footer.securityPolicy": { bn: "নিরাপত্তা নীতি", en: "Security policy" },
   "site.footer.retention": { bn: "ধারণ নীতি", en: "Retention policy" },
   "site.footer.terms": { bn: "শর্তাবলি", en: "Terms" },
   "site.footer.sectionsHeading": { bn: "বিভাগসমূহ", en: "Sections" },
-  "site.footer.noSections": { bn: "কোনো বিভাগ এখনো যোগ হয়নি।", en: "No sections have been added yet." },
+  "site.footer.noSections": {
+    bn: "কোনো বিভাগ এখনো যোগ হয়নি।",
+    en: "No sections have been added yet.",
+  },
   "site.footer.wantHeading": {
     bn: "আপনি কি এমন কোনো ফেসবুক পেজ বা গ্রুপ জানেন?",
     en: "Do you know a Facebook page or group we should follow?",
@@ -192,13 +267,19 @@ export const DICTIONARY = {
     bn: "সংবাদ-ধাঁচের গুরুত্বপূর্ণ পোস্ট প্রকাশ করে এমন সব পেজ ও গ্রুপ আমাদের কাছে জানান। অ্যাডমিন যাচাই করে অনুমোদন করলেই সেটি সোর্স হিসেবে যুক্ত হয়।",
     en: "Tell us about pages and groups that publish important news-shaped posts. Once an editor verifies and approves one, it joins our sources.",
   },
-  "site.footer.submitSourceCta": { bn: "সোর্স জমা দিন →", en: "Submit a source →" },
+  "site.footer.submitSourceCta": {
+    bn: "সোর্স জমা দিন →",
+    en: "Submit a source →",
+  },
   "site.footer.blueprint": { bn: "সিস্টেম ব্লুপ্রিন্ট →", en: "System blueprint →" },
   "site.footer.credit": {
-    bn: "ছবি: Pexels ফটোগ্রাফারগণ · এটি একটি প্রযুক্তি প্রদর্শনী (মকআপ) — সব চরিত্র ও ঘটনাবহুল কাল্পনিক এবং কেবল সচেতনতামূলক বিন্যাসে রচিত।",
-    en: "Photographs: Pexels photographers · This is a technology demonstration (mockup) — all characters and events are fictional, written for awareness only.",
+    bn: "ছবি: সংবাদমাধ্যম ও উন্মুক্ত উৎস · প্রতিবেদনগুলো AI সহায়তায় পুনর্লিখিত; প্রকাশের আগে সম্পাদকীয় যাচাই প্রযোজ্য।",
+    en: "Photographs: news outlets and open sources · Stories are AI-assisted rewrites; editorial verification applies before publication.",
   },
-  "site.footer.newAdvertiser": { bn: "নতুন বিজ্ঞাপনদাতা? নিবন্ধন", en: "New advertiser? Sign up" },
+  "site.footer.newAdvertiser": {
+    bn: "নতুন বিজ্ঞাপনদাতা? নিবন্ধন",
+    en: "New advertiser? Sign up",
+  },
   "site.footer.aboutFallback": {
     bn: "ফেসবুক পেজ ও গ্রুপ, অনলাইন সংবাদপত্র, ম্যাগাজিন এবং সামাজিক মাধ্যমে ছড়িয়ে পড়া গল্প সংগ্রহ করে যাচাই, ডুপ্লিকেট-ফিল্টার ও এআই-সম্পাদনার পর বাংলায় প্রকাশিত সংবাদ-ধাঁচের সাইট।",
     en: "A news-shaped site in Bangla that collects stories spreading through Facebook pages and groups, newspapers, magazines and social media, then verifies, de-duplicates and AI-edits them before publishing.",
@@ -237,8 +318,14 @@ export const DICTIONARY = {
 
   // ── Desktop desk: chrome ─────────────────────────────────────────────────
   "desk.chrome.tabs": { bn: "ট্যাব", en: "Tabs" },
-  "desk.chrome.controllerOnline": { bn: "কন্ট্রোলার অনলাইন", en: "Controller online" },
-  "desk.chrome.controllerOffline": { bn: "কন্ট্রোলার অফলাইন", en: "Controller offline" },
+  "desk.chrome.controllerOnline": {
+    bn: "কন্ট্রোলার অনলাইন",
+    en: "Controller online",
+  },
+  "desk.chrome.controllerOffline": {
+    bn: "কন্ট্রোলার অফলাইন",
+    en: "Controller offline",
+  },
   "desk.chrome.local": { bn: "লোকাল", en: "Local" },
   "desk.chrome.connected": { bn: "সংযুক্ত", en: "Connected" },
   "desk.chrome.disconnected": { bn: "বিচ্ছিন্ন", en: "Disconnected" },
@@ -251,19 +338,25 @@ export const DICTIONARY = {
   },
   "desk.chrome.switchLanguage": { bn: "ভাষা বদলান", en: "Switch language" },
   "desk.chrome.minimize": { bn: "মিনিমাইজ", en: "Minimise" },
-  "desk.chrome.maximize": { bn: "ম্যাক্সিমাইজ / পুনরুদ্ধার", en: "Maximise / restore" },
+  "desk.chrome.maximize": {
+    bn: "ম্যাক্সিমাইজ / পুনরুদ্ধার",
+    en: "Maximise / restore",
+  },
 
   // ── Migrated from the web dictionary ─────────────────────────────────
   // These keys were the first attempt at bilingual text (media dashboard,
   // notifications, privacy tooling, poll integrity). They move here so
   // there is one table, and apps/web/src/i18n re-exports this one.
-// ── Common ────────────────────────────────────────────────────────────────
+  // ── Common ────────────────────────────────────────────────────────────────
 
   // ── Media dashboard ───────────────────────────────────────────────────────
   "media.heading": { bn: "মিডিয়া ও কোটা", en: "Media & quota" },
   "media.bytes": { bn: "সংরক্ষিত আকার", en: "Stored bytes" },
   "media.quotaHeadroom": { bn: "কোটা বাকি", en: "Quota headroom" },
-  "media.failureTrend": { bn: "ব্যর্থতার ধারা (১৪ দিন)", en: "Failure trend (14 days)" },
+  "media.failureTrend": {
+    bn: "ব্যর্থতার ধারা (১৪ দিন)",
+    en: "Failure trend (14 days)",
+  },
   "media.noQuota": { bn: "কোটা নির্ধারিত হয়নি", en: "No quota set" },
   "media.reconcile": { bn: "ফাইল পুনর্মিলন", en: "File reconciliation" },
 
@@ -272,12 +365,21 @@ export const DICTIONARY = {
   "notify.markAll": { bn: "সব পড়া হয়েছে", en: "Mark all read" },
   "notify.events": { bn: "ঘটনা", en: "Events" },
   "notify.queues": { bn: "কিউ আপডেট", en: "Queue updates" },
-  "notify.stale": { bn: "সংযোগ ব্যর্থ — আপডেট আনা যায়নি।", en: "Connection failed — updates unavailable." },
+  "notify.stale": {
+    bn: "সংযোগ ব্যর্থ — আপডেট আনা যায়নি।",
+    en: "Connection failed — updates unavailable.",
+  },
   "notify.desktopTitle": { bn: "হৈচৈ — {title}", en: "Hoichoi — {title}" },
-  "notify.desktopCritical": { bn: "হৈচৈ · জরুরি — {title}", en: "Hoichoi · Critical — {title}" },
+  "notify.desktopCritical": {
+    bn: "হৈচৈ · জরুরি — {title}",
+    en: "Hoichoi · Critical — {title}",
+  },
 
   // ── Privacy / data-subject ────────────────────────────────────────────────
-  "privacy.heading": { bn: "ডেটা-সাবজেক্ট · এক্সপোর্ট / মুছে ফেলা", en: "Data subject · export / erase" },
+  "privacy.heading": {
+    bn: "ডেটা-সাবজেক্ট · এক্সপোর্ট / মুছে ফেলা",
+    en: "Data subject · export / erase",
+  },
   "privacy.explain": {
     bn: "পাঠকের গেস্ট আইডি দিন। শুধু ওই পাঠকের মন্তব্য, রিপোর্ট, সাবমিশন ও সরানোর অনুরোধ প্রযোজ্য।",
     en: "Enter the reader's guest id. Only that reader's comments, reports, submissions and removals are affected.",
@@ -289,7 +391,10 @@ export const DICTIONARY = {
     en: "This cannot be undone. Type ERASE to confirm.",
   },
   "privacy.eraseConfirm": { bn: "হ্যাঁ, মুছে ফেলুন", en: "Yes, erase" },
-  "privacy.erased": { bn: "{n}টি সারি মুছে ফেলা হয়েছে।", en: "{n} rows erased." },
+  "privacy.erased": {
+    bn: "{n}টি সারি মুছে ফেলা হয়েছে।",
+    en: "{n} rows erased.",
+  },
   "privacy.exported": { bn: "{n}টি সারি পাওয়া গেছে।", en: "{n} rows found." },
   "privacy.none": { bn: "কোনো সারি পাওয়া যায়নি।", en: "No rows found." },
 
@@ -297,17 +402,32 @@ export const DICTIONARY = {
   "poll.verdict.clean": { bn: "পরিষ্কার", en: "Clean" },
   "poll.verdict.flagged": { bn: "সন্দেহজনক", en: "Flagged" },
   "poll.verdict.suspicious": { bn: "অসততা সনাক্ত", en: "Suspicious" },
-  "poll.riskScore": { bn: "রিস্ক স্কোর {score}/১০০", en: "Risk score {score}/100" },
+  "poll.riskScore": {
+    bn: "রিস্ক স্কোর {score}/১০০",
+    en: "Risk score {score}/100",
+  },
   "poll.validVotes": { bn: "বৈধ ভোট {n}", en: "{n} valid votes" },
   "poll.invalidated": { bn: "বাতিল {n}", en: "{n} invalidated" },
-  "poll.networks": { bn: "নেটওয়ার্কভিত্তিক ভোট (শীর্ষ {n})", en: "Votes by network (top {n})" },
-  "poll.invalidateNetwork": { bn: "এই নেটওয়ার্কের ভোট বাতিল", en: "Invalidate this network" },
-  "poll.reason": { bn: "বাতিলের কারণ (অডিটে লেখা থাকবে)", en: "Reason (recorded in the audit log)" },
+  "poll.networks": {
+    bn: "নেটওয়ার্কভিত্তিক ভোট (শীর্ষ {n})",
+    en: "Votes by network (top {n})",
+  },
+  "poll.invalidateNetwork": {
+    bn: "এই নেটওয়ার্কের ভোট বাতিল",
+    en: "Invalidate this network",
+  },
+  "poll.reason": {
+    bn: "বাতিলের কারণ (অডিটে লেখা থাকবে)",
+    en: "Reason (recorded in the audit log)",
+  },
   "poll.reasonTooShort": {
     bn: "বাতিল করার কারণ লিখুন (কমপক্ষে ৩ অক্ষর)।",
     en: "Give a reason (at least 3 characters).",
   },
-  "poll.methodHeading": { bn: "ভোট কীভাবে গোনা হয়", en: "How votes are counted" },
+  "poll.methodHeading": {
+    bn: "ভোট কীভাবে গোনা হয়",
+    en: "How votes are counted",
+  },
 } as const satisfies Record<string, Entry>;
 
 export type MessageKey = keyof typeof DICTIONARY;

@@ -106,7 +106,7 @@ function DashboardVariant({ density }: { density: "compact" | "comfortable" | "s
         </Reveal>
 
         <Reveal delay={0.14} className="lg:col-span-2">
-          <ChartCard title="ফ্যাক্ট-গেট তুলনা" sub="কাঁচা ফিড বনাম পুনর্লিখিত প্রতিবেদনের স্কোর" height={280}>
+          <ChartCard title="কোয়ালিটি গেট তুলনা" sub="কাঁচা ফিড বনাম পুনর্লিখিত প্রতিবেদনের স্কোর" height={280}>
             <FactRadarChart data={FACT_RADAR} height={280} />
           </ChartCard>
         </Reveal>
@@ -123,7 +123,7 @@ function DashboardVariant({ density }: { density: "compact" | "comfortable" | "s
           { Icon: BarChart3, k: "মোট রেকর্ড", v: SYNC_SERIES[SYNC_SERIES.length - 1]?.collected ?? 0 },
           { Icon: LineIcon, k: "গড় দৈনিক সংগ্রহ", v: AVG_DAILY },
           { Icon: PieIcon, k: "প্রকাশের হার", v: 21 },
-          { Icon: RadarIcon, k: "গড় ফ্যাক্ট স্কোর", v: 88 },
+          { Icon: RadarIcon, k: "গড় AI কোয়ালিটি স্কোর", v: 88 },
         ].map((m, i) => (
           <Reveal key={m.k} delay={i * 0.06}>
             <div className="surface card-lift flex items-center gap-4 rounded-xl p-4">
@@ -316,7 +316,7 @@ function ObsidianGraphVariant({ density }: { density: "compact" | "comfortable" 
       <SectionHead
         kicker="▚ OBSIDIAN NEURAL MATRIX"
         title={<>ইন্টারেক্টিভ <span className="text-gradient">নলেজ গ্রাফ</span></>}
-        desc="অবসিডিয়ান-ধাঁচের ইন্টারঅ্যাক্টিভ নোড নেটওয়ার্ক। নোড টেনে দেখুন, ক্লিক করে সংযুক্ত খবর, বিভাগ ও ফ্যাক্ট-স্কোর পরীক্ষা করুন।"
+        desc="অবসিডিয়ান-ধাঁচের ইন্টারঅ্যাক্টিভ নোড নেটওয়ার্ক। নোড টেনে দেখুন, ক্লিক করে সংযুক্ত খবর, বিভাগ ও AI কোয়ালিটি স্কোর পরীক্ষা করুন।"
       />
       <Reveal>
         <ObsidianGraph height={540} />

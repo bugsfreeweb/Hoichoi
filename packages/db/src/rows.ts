@@ -88,6 +88,18 @@ export function mapPost(row: Record<string, unknown>): Post {
     ai_assisted: Number(row.ai_assisted ?? 0) === 1,
     ai_prompt_version: row.ai_prompt_version ? String(row.ai_prompt_version) : null,
     verification_note: (row.verification_note as string | null) ?? null,
+    verification_evidence: parseJson<string[]>(row.verification_evidence as string, []),
+    reviewer_id: (row.reviewer_id as string | null) ?? null,
+    review_notes: (row.review_notes as string | null) ?? null,
+    source_type: (row.source_type as Post["source_type"]) ?? "unknown",
+    source_reliability_score:
+      row.source_reliability_score == null ? null : Number(row.source_reliability_score),
+    ai_rewrite_quality_score:
+      row.ai_rewrite_quality_score == null ? null : Number(row.ai_rewrite_quality_score),
+    is_human_reviewed: Number(row.is_human_reviewed ?? 0) === 1,
+    is_feature_eligible: Number(row.is_feature_eligible ?? 0) === 1,
+    feature_approved_by: (row.feature_approved_by as string | null) ?? null,
+    feature_approved_at: (row.feature_approved_at as string | null) ?? null,
     verified_by: (row.verified_by as string | null) ?? null,
     verified_at: (row.verified_at as string | null) ?? null,
     source_url: String(row.source_url),

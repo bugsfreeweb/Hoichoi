@@ -10,6 +10,8 @@ import {
   pollResultsVisible,
   getAdSlot,
   dashboardSources,
+  collectorSnapshot,
+  dedupSummary,
 } from "@hoichoi/db";
 import { ScrollProgress } from "@/components/ScrollProgress";
 import Hero from "@/components/home/Hero";
@@ -68,6 +70,8 @@ export default async function HomePage({
     featuredPoll,
     infeedSlot,
     heroSourceRows,
+    collector,
+    dedup,
   ] = await Promise.all([
     windowPosts({ limit: PAGE_SIZE, offset }),
     countWindowPosts(),
@@ -76,6 +80,8 @@ export default async function HomePage({
     cfg.show_live_polls ? getFeaturedPoll() : Promise.resolve(null),
     cfg.show_ads ? getAdSlot("home_infeed") : Promise.resolve(null),
     dashboardSources().catch(() => []),
+    collectorSnapshot().catch(() => null),
+    dedupSummary().catch(() => ({ blocked: 0, runs: 0 })),
   ]);
   const pollResults =
     featuredPoll && pollResultsVisible(featuredPoll, false)
@@ -85,7 +91,13 @@ export default async function HomePage({
   // featured card, hero and grid all render a picture instead of a text tile.
   const posts = withDefaultImages(postsRaw, cfg.default_post_image);
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const featured = page === 1 ? (posts[0] ?? null) : null;
+  // The lead slot is not "whatever was published last". Prefer a story the
+  // pipeline marked feature-eligible; otherwise show the latest but label it as
+  // awaiting human review instead of an unconditional lead badge.
+  const featured =
+    page === 1
+      ? (posts.find((p) => p.is_feature_eligible) ?? posts[0] ?? null)
+      : null;
   const rest = page === 1 ? posts.filter((p) => p.id !== featured?.id) : posts;
   const topPicks = rest.slice(0, 3);
 
@@ -98,7 +110,7 @@ export default async function HomePage({
           lastRunIso={featured?.created_at ?? null}
           collected={total}
           published={posts.filter((p) => p.status === "published").length}
-          dups={0}
+          dups={dedup.blocked}
           featuredImg={featured ? mediaUrl(featured) : null}
           featuredTitle={featured?.title_bn ?? null}
           featuredCategory={
@@ -209,7 +221,10 @@ export default async function HomePage({
               </div>
               <span className="font-mono-x text-[10px] tracking-[0.2em] text-ink-soft uppercase">
                 SYNCED {timeBn(featured.created_at ?? new Date().toISOString())}{" "}
-                · AUTO-FEATURED
+                ·{" "}
+                {featured.is_feature_eligible
+                  ? b("LEAD STORY", "LEAD STORY")
+                  : b("মানব যাচাই বাকি", "AWAITING HUMAN REVIEW")}
               </span>
             </div>
           </Reveal>
@@ -459,15 +474,25 @@ export default async function HomePage({
               <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                   <p className="font-mono-x text-[10.5px] tracking-[0.26em] text-lime uppercase">
-                    AUTOMATION PIPELINE · EVERY 2 HOURS
+                    {b(
+                      `অটোমেশন পাইপলাইন · প্রতি ${bnNum(collector?.intervalHours ?? 8)} ঘণ্টায়`,
+                      `AUTOMATION PIPELINE · EVERY ${collector?.intervalHours ?? 8} HOURS`,
+                    )}
                   </p>
                   <h2 className="mt-2 font-serif-bn text-[30px] font-black md:text-[42px]">
-                    {b(
-                      "ফিড থেকে লাইভ — ছয় ধাপ,",
-                      "From feed to live — six steps,",
-                    )}{" "}
+                    {collector?.online
+                      ? b(
+                          "ফিড থেকে লাইভ — ছয় ধাপ,",
+                          "From feed to live — six steps,",
+                        )
+                      : b(
+                          "ফিড থেকে প্রকাশ — যাচাইয়ের পর,",
+                          "From feed to publish — after review,",
+                        )}{" "}
                     <span className="text-lime">
-                      {b("শূন্য ছোঁয়া।", "zero manual touch.")}
+                      {collector?.online
+                        ? b("শূন্য ছোঁয়া।", "zero manual touch.")
+                        : b("মানুষের যাচাই।", "human review.")}
                     </span>
                   </h2>
                   {/* `text-bandline/55` measured 3.88:1 on paper — below AA for 13px.
@@ -526,7 +551,7 @@ export default async function HomePage({
                   </h2>
                   <p className="mt-3 max-w-xl text-[13.5px] leading-relaxed text-ink-soft">
                     {b(
-                      "বামে: ফিডের কাঁচা অবস্থা — হুটোপাটো ক্যাপশন, বানান-ভুল, আধমাথা তথ্য। ডানে: হৈচৈর ফ্যাক্ট-গেট পার হওয়া পুনর্লিখন। হাতলটি ধরে টেনে নিজেই বিচার করুন।",
+                      "বামে: ফিডের কাঁচা অবস্থা — হুটোপাটো ক্যাপশন, বানান-ভুল, আধমাথা তথ্য। ডানে: হৈচৈর কোয়ালিটি গেট পার হওয়া পুনর্লিখন। হাতলটি ধরে টেনে নিজেই বিচার করুন।",
                       "Left: the raw feed — careless captions, typos, half-facts. Right: the rewrite after Hoichoi's fact gate. Drag the handle and judge for yourself.",
                     )}
                   </p>
@@ -582,8 +607,8 @@ export default async function HomePage({
             </div>
             <p className="max-w-sm text-[12.5px] leading-relaxed text-ink-soft">
               {b(
-                "প্রতিটি কার্ডের হ্যাশ স্ট্যাম্প দেখুন — এটাই এর জন্মসনদ। একই খবর দুইবার এখানে জায়গা পায় না; পায় শুধু যাচাই করা, পুনর্লিখিত সংস্করণ।",
-                "Every card carries a hash stamp — its birth certificate. The same story never appears twice; only the verified, rewritten version gets in.",
+                "প্রতিটি কার্ডের হ্যাশ স্ট্যাম্প দেখুন — এটাই এর জন্মসনদ। একই খবর দুইবার এখানে জায়গা পায় না; পায় শুধু যাচাইয়ের অবস্থাসহ পুনর্লিখিত সংস্করণ।",
+                "Every card carries a hash stamp — its birth certificate. The same story never appears twice; only the rewritten version with a visible verification state gets in.",
               )}
             </p>
           </div>

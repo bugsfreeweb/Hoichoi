@@ -1,4 +1,15 @@
-import { getClient, mapCategory, mapSource, nowIso, parseAppConfig, withTx, recordSourceError, clearSourceErrors, replaceCollectorImages, reapStalePipelineRuns } from "@hoichoi/db";
+import {
+  getClient,
+  mapCategory,
+  mapSource,
+  nowIso,
+  parseAppConfig,
+  withTx,
+  recordSourceError,
+  clearSourceErrors,
+  replaceCollectorImages,
+  reapStalePipelineRuns,
+} from "@hoichoi/db";
 import { gatewayProviderFromEnv, newResolver } from "@hoichoi/llm";
 import type {
   CategorySlug,
@@ -17,6 +28,12 @@ import { isVideoUrl, mediaRoot, processImage, randomMediaName } from "./media";
 import { mirrorMediaFile } from "./media-backfill";
 import { processVideo } from "./video";
 import { makeSlug, rewritePost } from "./rewrite";
+import {
+  guardCategory,
+  needsHumanReview,
+  rewriteQuality,
+  sourceTypeFromUrl,
+} from "./taxonomy";
 import { checkRepublication } from "./source-overlap";
 import { captureScreenshot } from "./screenshot";
 import { classifyContent, sourceCategoryCandidates } from "./classify";
@@ -46,31 +63,41 @@ function mediaFetchInit(timeoutMs = 20_000): RequestInit {
     headers: {
       "user-agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
-      accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+      accept:
+        "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
     },
     signal: AbortSignal.timeout(timeoutMs),
   };
 }
 
-export function sourceSkipReason(
-  row: Record<string, unknown>,
-): string | null {
+export function sourceSkipReason(row: Record<string, unknown>): string | null {
   const id = typeof row.id === "string" ? row.id.trim() : "";
   const name = typeof row.page_name === "string" ? row.page_name.trim() : "";
   const pageUrl = typeof row.page_url === "string" ? row.page_url.trim() : "";
   if (!id) return "missing source id";
   if (!name) return "missing source name";
-  if (!pageUrl || pageUrl.toLowerCase() === "null" || pageUrl.toLowerCase() === "undefined") {
+  if (
+    !pageUrl ||
+    pageUrl.toLowerCase() === "null" ||
+    pageUrl.toLowerCase() === "undefined"
+  ) {
     return "missing source URL";
   }
 
-  const platform = normalizePlatform(typeof row.platform === "string" ? row.platform : null);
-  if (platform !== "facebook" && platform !== "news" && platform !== "magazine") {
+  const platform = normalizePlatform(
+    typeof row.platform === "string" ? row.platform : null,
+  );
+  if (
+    platform !== "facebook" &&
+    platform !== "news" &&
+    platform !== "magazine"
+  ) {
     return `unsupported platform (${platform})`;
   }
   try {
     const url = new URL(pageUrl);
-    if (url.protocol !== "http:" && url.protocol !== "https:") return "source URL must use http or https";
+    if (url.protocol !== "http:" && url.protocol !== "https:")
+      return "source URL must use http or https";
   } catch {
     return "invalid source URL";
   }
@@ -85,7 +112,10 @@ export interface PipelineOptions {
   log?: (msg: string) => void;
 }
 
-export function parsePipelineLimit(value: string | undefined, name: string): number | undefined {
+export function parsePipelineLimit(
+  value: string | undefined,
+  name: string,
+): number | undefined {
   const raw = value?.trim();
   if (!raw) return undefined;
   const parsed = Number(raw);
@@ -148,12 +178,16 @@ export interface PipelineStats {
 }
 
 export function pipelineFinalStatus(
-  stats: Pick<PipelineStats, "sources" | "sourcesFailed" | "sourcesSkipped" | "rewritten" | "errors">,
+  stats: Pick<
+    PipelineStats,
+    "sources" | "sourcesFailed" | "sourcesSkipped" | "rewritten" | "errors"
+  >,
 ): "completed" | "failed" {
   if (
     (stats.sources > 0 && stats.sourcesFailed >= stats.sources) ||
     (stats.sources === 0 && stats.sourcesSkipped > 0) ||
-    (stats.rewritten === 0 && stats.errors.some((error) => error.startsWith("[rewrite]")))
+    (stats.rewritten === 0 &&
+      stats.errors.some((error) => error.startsWith("[rewrite]")))
   ) {
     return "failed";
   }
@@ -287,12 +321,16 @@ export function assessRisk(
   return { tier: "routine", status: "published" };
 }
 
-export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineStats> {
+export async function runPipeline(
+  opts: PipelineOptions = {},
+): Promise<PipelineStats> {
   const log = opts.log ?? ((s: string) => console.log(s));
   const client = getClient();
   // A runner holding a device token has no provider keys: rewrites go to the
   // server's gateway instead (see packages/llm/src/gateway.ts).
-  const resolver = newResolver({ gateway: gatewayProviderFromEnv() ?? undefined });
+  const resolver = newResolver({
+    gateway: gatewayProviderFromEnv() ?? undefined,
+  });
   const runId = crypto.randomUUID();
   const started = nowIso();
   const stats: PipelineStats = {
@@ -331,22 +369,32 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
   // 3 a.m. without disabling sources one by one or editing a workflow. The run is
   // recorded and closed as failed so the dashboard shows why nothing happened,
   // rather than showing a green run that collected nothing.
-  const pauseRes = await client.execute("SELECT collection_paused, collection_paused_reason FROM settings WHERE id = 1").catch(() => null);
+  const pauseRes = await client
+    .execute(
+      "SELECT collection_paused, collection_paused_reason FROM settings WHERE id = 1",
+    )
+    .catch(() => null);
   const pauseRow = (pauseRes?.rows[0] ?? {}) as Record<string, unknown>;
   if (Number(pauseRow.collection_paused ?? 0) === 1) {
-    const reason = pauseRow.collection_paused_reason ? String(pauseRow.collection_paused_reason) : "সংগ্রহ সাময়িকভাবে বন্ধ";
+    const reason = pauseRow.collection_paused_reason
+      ? String(pauseRow.collection_paused_reason)
+      : "সংগ্রহ সাময়িকভাবে বন্ধ";
     log(JSON.stringify({ event: "pipeline.paused", reason }));
-    await client.execute({
-      sql: "UPDATE pipeline_runs SET status = 'failed', finished_at = ?, error = ? WHERE id = ?",
-      args: [nowIso(), `কলেকশন বিরতিতে: ${reason}`, runId],
-    }).catch(() => undefined);
+    await client
+      .execute({
+        sql: "UPDATE pipeline_runs SET status = 'failed', finished_at = ?, error = ? WHERE id = ?",
+        args: [nowIso(), `কলেকশন বিরতিতে: ${reason}`, runId],
+      })
+      .catch(() => undefined);
     stats.status = "failed";
     stats.errors.push(`collection paused: ${reason}`);
     return stats;
   }
 
   // Settings
-  const catRes = await client.execute("SELECT * FROM category_configs ORDER BY sort_order");
+  const catRes = await client.execute(
+    "SELECT * FROM category_configs ORDER BY sort_order",
+  );
   const cats = new Map<CategorySlug, ReturnType<typeof mapCategory>>();
   for (const r of catRes.rows) {
     const c = mapCategory(r as Record<string, unknown>);
@@ -356,7 +404,10 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
   const setRow = (setRes.rows[0] ?? {}) as Record<string, unknown>;
   // Clamp before use so a hand-edited or absent column degrades to the
   // historical 0.3 instead of failing every rewrite.
-  const rewriteTemperature = Math.min(1, Math.max(0, Number(setRow.llm_temperature ?? 0.3)));
+  const rewriteTemperature = Math.min(
+    1,
+    Math.max(0, Number(setRow.llm_temperature ?? 0.3)),
+  );
   // Fact-gate threshold as a whole percent, defaulting to the historical 90.
   const factGate = Math.min(100, Math.max(0, Number(setRow.fact_gate ?? 90)));
   // AI fallback hero images: enabled unless the operator turned them off.
@@ -367,7 +418,9 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
     try {
       aiHeroProviderAvailable = await hasAIImageProvider();
       if (!aiHeroProviderAvailable) {
-        log("[ai-img] automatic image generation is on, but no active image provider with a key is configured");
+        log(
+          "[ai-img] automatic image generation is on, but no active image provider with a key is configured",
+        );
       }
     } catch (err) {
       const message = `[ai-img] provider lookup failed: ${(err as Error).message}`;
@@ -392,7 +445,10 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
     const reason = sourceSkipReason(row);
     if (reason) {
       stats.sourcesSkipped++;
-      const sourceName = typeof row.page_name === "string" && row.page_name.trim() ? row.page_name.trim() : String(row.id ?? "unknown");
+      const sourceName =
+        typeof row.page_name === "string" && row.page_name.trim()
+          ? row.page_name.trim()
+          : String(row.id ?? "unknown");
       const message = `[source] skipped ${sourceName}: ${reason}`;
       stats.errors.push(message);
       log(message);
@@ -400,18 +456,23 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
     }
     eligibleSources.push(mapSource(row));
   }
-  const sources = opts.maxSources === undefined
-    ? eligibleSources
-    : eligibleSources.slice(0, opts.maxSources);
+  const sources =
+    opts.maxSources === undefined
+      ? eligibleSources
+      : eligibleSources.slice(0, opts.maxSources);
   const deferredSources = eligibleSources.length - sources.length;
   if (deferredSources > 0) {
-    log(`[source] ${deferredSources} eligible sources deferred by the max-sources limit`);
+    log(
+      `[source] ${deferredSources} eligible sources deferred by the max-sources limit`,
+    );
   }
 
   // Multi-category membership (source_categories) — feeds the config fallback
   // and keeps the source's own category list accurate for the rewrite step.
   try {
-    const scRes = await client.execute("SELECT source_id, category_slug FROM source_categories");
+    const scRes = await client.execute(
+      "SELECT source_id, category_slug FROM source_categories",
+    );
     const scMap = new Map<string, CategorySlug[]>();
     for (const r of scRes.rows) {
       const row = r as Record<string, unknown>;
@@ -438,7 +499,9 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         });
       } else {
         if (!sessionCookie) {
-          log(`[facebook] trying public content without a session cookie · ${source.page_name}`);
+          log(
+            `[facebook] trying public content without a session cookie · ${source.page_name}`,
+          );
         }
         scraped = await scrapePage(source, {
           sessionCookie,
@@ -453,7 +516,11 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
       log(msg);
       stats.errors.push(msg);
       stats.sourcesFailed++;
-      await recordSourceError(source.id, "scrape", (err as Error).message).catch(() => undefined);
+      await recordSourceError(
+        source.id,
+        "scrape",
+        (err as Error).message,
+      ).catch(() => undefined);
       continue;
     }
 
@@ -478,8 +545,12 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
     // that works, because nothing above reports what was actually received.
     // Log the yield at the source so a text or media regression is visible
     // the moment it starts.
-    const withText = scraped.filter((p) => (p.rawText ?? "").trim().length > 0).length;
-    const withMedia = scraped.filter((p) => (p.mediaUrls?.length ?? 0) > 0).length;
+    const withText = scraped.filter(
+      (p) => (p.rawText ?? "").trim().length > 0,
+    ).length;
+    const withMedia = scraped.filter(
+      (p) => (p.mediaUrls?.length ?? 0) > 0,
+    ).length;
     log(
       `[scrape] ${source.page_name}: ${withText}/${scraped.length} with text, ` +
         `${withMedia}/${scraped.length} with media`,
@@ -502,11 +573,20 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (source_id, fb_post_id) DO NOTHING
           `,
-          args: [rawId, source.id, sp.fbPostId, sp.fbPostUrl, sp.rawText, mediaUrls, nowIso(), JSON.stringify({
-            video: sp.fbMediaIsVideo,
-            author_name: sp.authorName ?? null,
-            author_url: sp.authorProfileUrl ?? null,
-          })],
+          args: [
+            rawId,
+            source.id,
+            sp.fbPostId,
+            sp.fbPostUrl,
+            sp.rawText,
+            mediaUrls,
+            nowIso(),
+            JSON.stringify({
+              video: sp.fbMediaIsVideo,
+              author_name: sp.authorName ?? null,
+              author_url: sp.authorProfileUrl ?? null,
+            }),
+          ],
         });
         // `ON CONFLICT DO NOTHING` reports success while writing nothing, so a
         // previously-collected post that Facebook serves under a different URL
@@ -535,7 +615,9 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           });
           const prior = made.rows[0] as Record<string, unknown> | undefined;
           if (prior) {
-            log(`[dedup] already published as ${String(prior.id)} (${String(prior.status)})`);
+            log(
+              `[dedup] already published as ${String(prior.id)} (${String(prior.status)})`,
+            );
             stats.duplicatesBlocked++;
             continue;
           }
@@ -643,7 +725,9 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           try {
             pub = await uploadRemote(item.path);
           } catch (err) {
-            log(`[media] remote upload failed for ${item.path}: ${(err as Error).message}`);
+            log(
+              `[media] remote upload failed for ${item.path}: ${(err as Error).message}`,
+            );
           }
           if (pub) {
             item.path = pub;
@@ -728,15 +812,34 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
           args: [
-            photoPostId, rawId, source.id, source.category,
-            `${source.page_name} — ছবি পোস্ট`, "", "",
-            media.path, media.kind, media.kind === "none" ? null : (media as { origin?: string }).origin ?? "collector",
-            sp.fbPostUrl, source.page_name, slug, "pending_review",
-            "[]", null, null,
-            sp.authorName ?? null, null, now, now,
+            photoPostId,
+            rawId,
+            source.id,
+            source.category,
+            `${source.page_name} — ছবি পোস্ট`,
+            "",
+            "",
+            media.path,
+            media.kind,
+            media.kind === "none"
+              ? null
+              : ((media as { origin?: string }).origin ?? "collector"),
+            sp.fbPostUrl,
+            source.page_name,
+            slug,
+            "pending_review",
+            "[]",
+            null,
+            null,
+            sp.authorName ?? null,
+            null,
+            now,
+            now,
           ],
         });
-        await replaceCollectorImages(photoPostId, collected).catch(() => undefined);
+        await replaceCollectorImages(photoPostId, collected).catch(
+          () => undefined,
+        );
         stats.emptyText++;
         stats.pendingReview++;
         log(`[photo] held for review (no caption) · ${slug} · ${media.path}`);
@@ -758,15 +861,34 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         }
         const detected = classifyContent(
           sp.rawText,
-          sourceCategoryCandidates([...cats.keys()], [source.category, ...(source.categories ?? [])]),
+          sourceCategoryCandidates(
+            [...cats.keys()],
+            [source.category, ...(source.categories ?? [])],
+          ),
           source.category,
           kwProfiles,
         );
+        const detectedCategory: CategorySlug =
+          detected && typeof detected.slug === "string"
+            ? (detected.slug as CategorySlug)
+            : source.category;
+        // Deterministic veto: tech/AI/startup/business cannot become দুর্নীতি
+        // without explicit corruption evidence, whatever the source was pinned to.
+        const guard = guardCategory(
+          sp.rawText,
+          detectedCategory,
+          source.page_name,
+        );
         const postCategory: CategorySlug =
-          detected && typeof detected.slug === "string" ? (detected.slug as CategorySlug) : source.category;
+          guard && cats.has(guard.slug) ? guard.slug : detectedCategory;
         if (postCategory !== source.category) {
           log(
-            `[classify] "${source.page_name}" → ${postCategory} (${detected!.confidence}% · ${detected!.matches.length} hits)`,
+            `[classify] "${source.page_name}" → ${postCategory} (${detected?.confidence ?? 0}% · ${detected?.matches.length ?? 0} hits)`,
+          );
+        }
+        if (guard) {
+          log(
+            `[classify:guard] ${detectedCategory} → ${postCategory} — ${guard.reason}`,
           );
         }
         // Resolve a category config for the source. A freshly added source may use
@@ -774,7 +896,8 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         // category on a desktop-local DB). Falling back keeps the source producing
         // content instead of silently failing every post with "no category config".
         const resolved = resolveCategoryConfig(source, cats);
-        if (!resolved) throw new Error(`no category config — category_configs is empty`);
+        if (!resolved)
+          throw new Error(`no category config — category_configs is empty`);
         // Prefer the detected post's own category config when it exists here;
         // otherwise the source's best-effort config (see resolveCategoryConfig).
         const config = (cats.get(postCategory) ?? resolved).config;
@@ -785,8 +908,12 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
         // operator raising it see anything. The source's own category is treated
         // as authoritative, so an unrecognised post is not punished for the
         // source's configuration.
-        const gateApplies = detected !== null && detected.slug && postCategory !== source.category;
-        const lowConfidenceThisPost = gateApplies && detected.confidence < factGate;
+        const gateApplies =
+          detected !== null &&
+          detected.slug &&
+          postCategory !== source.category;
+        const lowConfidenceThisPost =
+          gateApplies && detected.confidence < factGate;
         if (lowConfidenceThisPost) {
           log(
             `[gate] "${source.page_name}" → ${postCategory} @ ${detected.confidence}% below ${factGate}% — held for review`,
@@ -819,15 +946,34 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `,
             args: [
-              confusedPostId, rawId, source.id, source.category,
-              "ক্যাটাগরি নির্ধারণ করা হয়নি", sp.rawText, "",
-              media.path, media.kind, media.kind === "none" ? null : (media as { origin?: string }).origin ?? "collector",
-              sp.fbPostUrl, source.page_name, slug, "pending_review",
-              "[]", null, null,
-              sp.authorName ?? null, null, now, now,
+              confusedPostId,
+              rawId,
+              source.id,
+              source.category,
+              "ক্যাটাগরি নির্ধারণ করা হয়নি",
+              sp.rawText,
+              "",
+              media.path,
+              media.kind,
+              media.kind === "none"
+                ? null
+                : ((media as { origin?: string }).origin ?? "collector"),
+              sp.fbPostUrl,
+              source.page_name,
+              slug,
+              "pending_review",
+              "[]",
+              null,
+              null,
+              sp.authorName ?? null,
+              null,
+              now,
+              now,
             ],
           });
-          await replaceCollectorImages(confusedPostId, collected).catch(() => undefined);
+          await replaceCollectorImages(confusedPostId, collected).catch(
+            () => undefined,
+          );
           stats.lowConfidence++;
           stats.pendingReview++;
           log(
@@ -861,7 +1007,9 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           excludeRawId: rawId, // STEP 4 stored this post's own pHash on this row
         });
         if (dup.duplicate) {
-          log(`[dedup] blocked ${dup.reason} → ${dup.matchedPostId ?? dup.matchedRawId ?? "?"}`);
+          log(
+            `[dedup] blocked ${dup.reason} → ${dup.matchedPostId ?? dup.matchedRawId ?? "?"}`,
+          );
           stats.duplicatesBlocked++;
           continue;
         }
@@ -877,112 +1025,116 @@ export async function runPipeline(opts: PipelineOptions = {}): Promise<PipelineS
           continue;
         }
 
-      // STEP 5.5: the picture, now that the story is in Bangla.
-      //
-      // These steps used to run before the rewrite, so the only text available
-      // was the source's — an English RSS lede or a Facebook caption. The result
-      // was a poster captioned in English, made from a prompt about the wrong
-      // language, on a site that publishes Bangla. Both the AI brief and the
-      // plate now read the rewritten headline, standfirst and body, which is the
-      // story a reader will actually meet: the render follows the article, and
-      // the lettering is the article's own.
-      //
-      // STEP 5.5a: AI fallback hero image. Only when a post truly has no media
-      // (nothing re-downloadable), the operator left the feature on, and there
-      // is enough text to draw a subject from. Sensitive categories are always
-      // skipped; the prompt itself bans text, logos, real people and children.
-      if (
-        media.kind === "none" &&
-        aiHeroEnabled &&
-        aiHeroProviderAvailable &&
-        aiHeroEligible(source.category) &&
-        (outcome.rewritten.title_bn ?? "").trim().length >= 8
-      ) {
-        try {
-          const aiRel = await generateAIHero({
-            title: outcome.rewritten.title_bn,
-            // The brief reads the rewritten story, so the render is about the
-            // article a reader will meet — not about the source's English lede.
-            summary: [outcome.rewritten.summary_bn, outcome.rewritten.body_bn]
-              .filter(Boolean)
-              .join(" ")
-              .slice(0, 1200),
-            category: postCategory,
-            source: source.page_name,
-            log,
-          });
-          if (!aiRel) log("[ai-img] fallback complete — no image");
-          if (aiRel) {
+        // STEP 5.5: the picture, now that the story is in Bangla.
+        //
+        // These steps used to run before the rewrite, so the only text available
+        // was the source's — an English RSS lede or a Facebook caption. The result
+        // was a poster captioned in English, made from a prompt about the wrong
+        // language, on a site that publishes Bangla. Both the AI brief and the
+        // plate now read the rewritten headline, standfirst and body, which is the
+        // story a reader will actually meet: the render follows the article, and
+        // the lettering is the article's own.
+        //
+        // STEP 5.5a: AI fallback hero image. Only when a post truly has no media
+        // (nothing re-downloadable), the operator left the feature on, and there
+        // is enough text to draw a subject from. Sensitive categories are always
+        // skipped; the prompt itself bans text, logos, real people and children.
+        if (
+          media.kind === "none" &&
+          aiHeroEnabled &&
+          aiHeroProviderAvailable &&
+          aiHeroEligible(source.category) &&
+          (outcome.rewritten.title_bn ?? "").trim().length >= 8
+        ) {
+          try {
+            const aiRel = await generateAIHero({
+              title: outcome.rewritten.title_bn,
+              // The brief reads the rewritten story, so the render is about the
+              // article a reader will meet — not about the source's English lede.
+              summary: [outcome.rewritten.summary_bn, outcome.rewritten.body_bn]
+                .filter(Boolean)
+                .join(" ")
+                .slice(0, 1200),
+              category: postCategory,
+              source: source.page_name,
+              log,
+            });
+            if (!aiRel) log("[ai-img] fallback complete — no image");
+            if (aiRel) {
+              media.kind = "image";
+              media.path = aiRel;
+              media.origin = "ai";
+              let pub: string | null = null;
+              try {
+                pub = await uploadRemote(aiRel);
+              } catch (err) {
+                log(
+                  `[media] AI hero remote upload failed: ${(err as Error).message}`,
+                );
+              }
+              if (pub) {
+                media.path = pub;
+                log(`[media] AI hero uploaded → ${pub}`);
+              } else {
+                const mirrored = mirrorMediaFile(aiRel);
+                if (mirrored.length > 0)
+                  log(`[media] AI hero mirrored → ${mirrored[0]}`);
+              }
+              stats.aiHero++;
+              collected.push({ path: media.path, kind: "image" });
+            }
+          } catch (err) {
+            log(`[media] AI hero failed: ${(err as Error).message}`);
+          }
+        }
+
+        /**
+         * STEP 5.5b: the plate. A published story always has a picture.
+         *
+         * Everything above can fail: the source's media is 403'd, AI generation is
+         * off, the provider is rate-limited or unconfigured. The old code then
+         * published with `media_kind = "none"` and the card fell back to a gradient
+         * — a story on a news site with no picture. This step draws the branded
+         * 16:9 plate (wordmark, desk, headline, date) over a deterministic backdrop
+         * derived from the story itself, so "no image" is no longer a publishable
+         * state. It needs no network and no key.
+         */
+        if (media.kind === "none") {
+          try {
+            const plateTitle =
+              (outcome.rewritten.title_bn ?? "").trim() || source.page_name;
+            const plate = await composeStoryPlate({
+              background: null,
+              title: plateTitle,
+              // The standfirst and the desk are what make the plate about *this*
+              // story rather than a headline over a generic wash.
+              summary: outcome.rewritten.summary_bn ?? null,
+              category: postCategory,
+              source: source.page_name,
+              seed: `${source.id}:${plateTitle}:${postCategory}`,
+            });
+            const rel = randomMediaName("img", "webp");
+            await processImage(plate, rel, { maxWidthPx: POSTER_FRAME.width });
             media.kind = "image";
-            media.path = aiRel;
-            media.origin = "ai";
+            media.path = rel;
+            media.origin = "plate";
             let pub: string | null = null;
             try {
-              pub = await uploadRemote(aiRel);
+              pub = await uploadRemote(rel);
             } catch (err) {
-              log(`[media] AI hero remote upload failed: ${(err as Error).message}`);
+              log(`[plate] remote upload failed: ${(err as Error).message}`);
             }
             if (pub) {
               media.path = pub;
-              log(`[media] AI hero uploaded → ${pub}`);
+              log(`[plate] uploaded → ${pub}`);
             } else {
-              const mirrored = mirrorMediaFile(aiRel);
-              if (mirrored.length > 0) log(`[media] AI hero mirrored → ${mirrored[0]}`);
+              const mirrored = mirrorMediaFile(rel);
+              if (mirrored.length > 0) log(`[plate] mirrored → ${mirrored[0]}`);
             }
-            stats.aiHero++;
-            collected.push({ path: media.path, kind: "image" });
-          }
-        } catch (err) {
-          log(`[media] AI hero failed: ${(err as Error).message}`);
-        }
-      }
-
-      /**
-       * STEP 5.5b: the plate. A published story always has a picture.
-       *
-       * Everything above can fail: the source's media is 403'd, AI generation is
-       * off, the provider is rate-limited or unconfigured. The old code then
-       * published with `media_kind = "none"` and the card fell back to a gradient
-       * — a story on a news site with no picture. This step draws the branded
-       * 16:9 plate (wordmark, desk, headline, date) over a deterministic backdrop
-       * derived from the story itself, so "no image" is no longer a publishable
-       * state. It needs no network and no key.
-       */
-      if (media.kind === "none") {
-        try {
-          const plateTitle = (outcome.rewritten.title_bn ?? "").trim() || source.page_name;
-          const plate = await composeStoryPlate({
-            background: null,
-            title: plateTitle,
-            // The standfirst and the desk are what make the plate about *this*
-            // story rather than a headline over a generic wash.
-            summary: outcome.rewritten.summary_bn ?? null,
-            category: postCategory,
-            source: source.page_name,
-            seed: `${source.id}:${plateTitle}:${postCategory}`,
-          });
-          const rel = randomMediaName("img", "webp");
-          await processImage(plate, rel, { maxWidthPx: POSTER_FRAME.width });
-          media.kind = "image";
-          media.path = rel;
-          media.origin = "plate";
-          let pub: string | null = null;
-          try {
-            pub = await uploadRemote(rel);
           } catch (err) {
-            log(`[plate] remote upload failed: ${(err as Error).message}`);
+            log(`[plate] failed: ${(err as Error).message}`);
           }
-          if (pub) {
-            media.path = pub;
-            log(`[plate] uploaded → ${pub}`);
-          } else {
-            const mirrored = mirrorMediaFile(rel);
-            if (mirrored.length > 0) log(`[plate] mirrored → ${mirrored[0]}`);
-          }
-        } catch (err) {
-          log(`[plate] failed: ${(err as Error).message}`);
         }
-      }
 
         // Publisher gate: summarise and quote briefly, never republish. Checked
         // against the raw text, because a fluent copy reads exactly like our own
@@ -1000,43 +1152,109 @@ ${outcome.rewritten.body_bn}`,
         }
 
         const decision = assessRisk(config, outcome.flags);
+        const sourceType = sourceTypeFromUrl(sp.fbPostUrl);
+        // Hard editorial gate: sensitive desks, political social posts, named
+        // allegations, election/casualty/health claims always need a person.
+        const humanGate = needsHumanReview({
+          category: postCategory,
+          text: `${sp.rawText}
+${outcome.rewritten.title_bn}
+${outcome.rewritten.body_bn}`,
+          sourceType,
+          flags: outcome.flags,
+        });
+        if (humanGate.review) {
+          log(`[review] ${humanGate.reason} — held · ${sp.fbPostUrl}`);
+        }
         // A weak category match escalates regardless of what the category or the
         // safety flags say: the content may be fine, but its placement on the
         // site is a guess, and a human should confirm it.
         const status: PostStatus =
-          lowConfidenceThisPost || overlap.exceedsLimit ? "pending_review" : decision.status;
+          lowConfidenceThisPost || overlap.exceedsLimit || humanGate.review
+            ? "pending_review"
+            : decision.status;
+        // Facebook posts are a claim from a page, not our reporting. News copy
+        // starts unverified until a human backs it with evidence.
+        const verificationStatus =
+          sourceType === "facebook" ? "source_claimed" : "unverified";
+        const aiQuality = rewriteQuality({
+          title_bn: outcome.rewritten.title_bn,
+          body_bn: outcome.rewritten.body_bn,
+          summary_bn: outcome.rewritten.summary_bn ?? "",
+          flags: outcome.flags,
+        });
+        // Never auto-feature a social post, a sensitive desk, or anything that
+        // went to human review. A human must approve the lead slot explicitly.
+        const featureEligible =
+          status === "published" &&
+          !humanGate.review &&
+          sourceType !== "facebook" &&
+          ![
+            "child-sexual-abuse",
+            "extramarital-crime",
+            "missing-children",
+            "politics",
+          ].includes(postCategory);
         const slug = makeSlug(outcome.rewritten.title_bn);
         const now = nowIso();
         const newPostId = crypto.randomUUID();
         await withTx(async (tx) => {
-          const embeddingJson = outcome.embedding ? JSON.stringify(outcome.embedding) : null;
+          const embeddingJson = outcome.embedding
+            ? JSON.stringify(outcome.embedding)
+            : null;
           await tx.execute({
             sql: `
               INSERT INTO posts (
                 id, raw_post_id, source_id, category, title_bn, body_bn, summary_bn,
                 media_path, media_kind, media_origin, source_url, source_name, slug, status,
                 safety_flags, embedding, case_status, original_author_name,
-                published_at, created_at, updated_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                published_at, created_at, updated_at,
+                verification_status, source_type, ai_rewrite_quality_score, is_feature_eligible
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `,
             args: [
-              newPostId, rawId, source.id, postCategory,
-              outcome.rewritten.title_bn, outcome.rewritten.body_bn, outcome.rewritten.summary_bn,
-              media.path, media.kind, media.kind === "none" ? null : (media as { origin?: string }).origin ?? "collector",
-              sp.fbPostUrl, source.page_name, slug, status,
-              JSON.stringify(outcome.flags), embeddingJson, outcome.rewritten.case_status ?? null,
-              sp.authorName ?? null, status === "published" ? now : null, now, now,
+              newPostId,
+              rawId,
+              source.id,
+              postCategory,
+              outcome.rewritten.title_bn,
+              outcome.rewritten.body_bn,
+              outcome.rewritten.summary_bn,
+              media.path,
+              media.kind,
+              media.kind === "none"
+                ? null
+                : ((media as { origin?: string }).origin ?? "collector"),
+              sp.fbPostUrl,
+              source.page_name,
+              slug,
+              status,
+              JSON.stringify(outcome.flags),
+              embeddingJson,
+              outcome.rewritten.case_status ?? null,
+              sp.authorName ?? null,
+              status === "published" ? now : null,
+              now,
+              now,
+              verificationStatus,
+              sourceType,
+              aiQuality,
+              featureEligible ? 1 : 0,
             ],
           });
           // vec0 row (invisible for local DBs when the extension is missing → ignore).
           if (outcome.embedding) {
-            await tx.execute({
-              sql: "INSERT INTO posts_vec (post_id, embedding) VALUES (?, ?)",
-              args: [slug, JSON.stringify(outcome.embedding)],
-            }).catch(() => {});
+            await tx
+              .execute({
+                sql: "INSERT INTO posts_vec (post_id, embedding) VALUES (?, ?)",
+                args: [slug, JSON.stringify(outcome.embedding)],
+              })
+              .catch(() => {});
           }
         });
-        await replaceCollectorImages(newPostId, collected).catch(() => undefined);
+        await replaceCollectorImages(newPostId, collected).catch(
+          () => undefined,
+        );
         if (status === "published") stats.published++;
         else stats.pendingReview++;
         stats.rewritten++;
@@ -1101,7 +1319,10 @@ ${outcome.rewritten.body_bn}`,
     ],
   });
 
-  const durationSeconds = Math.max(0, Math.round((Date.parse(finished) - Date.parse(started)) / 1000));
+  const durationSeconds = Math.max(
+    0,
+    Math.round((Date.parse(finished) - Date.parse(started)) / 1000),
+  );
   log(
     `[done] ${finalStatus} · sources=${stats.sources} skipped=${stats.sourcesSkipped} failed=${stats.sourcesFailed} ` +
       `scraped=${stats.scraped} rewritten=${stats.rewritten} published=${stats.published} ` +

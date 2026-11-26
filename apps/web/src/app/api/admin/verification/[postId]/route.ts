@@ -9,6 +9,7 @@ import {
   setVerification,
   upsertClaim,
   VERIFICATION_LABELS,
+  VERIFICATION_ORDER,
   type ClaimStatus,
   type VerificationStatus,
 } from "@hoichoi/db";
@@ -19,7 +20,12 @@ import { extractClaimCandidates } from "@hoichoi/shared-types";
 export const dynamic = "force-dynamic";
 
 const GRADES = Object.keys(VERIFICATION_LABELS) as VerificationStatus[];
-const CLAIM_STATUSES: ClaimStatus[] = ["unchecked", "supported", "disputed", "false"];
+const CLAIM_STATUSES: ClaimStatus[] = [
+  "unchecked",
+  "supported",
+  "disputed",
+  "false",
+];
 
 /**
  * Verification record for one post.
@@ -35,13 +41,23 @@ const CLAIM_STATUSES: ClaimStatus[] = ["unchecked", "supported", "disputed", "fa
  * `gradeFromEvidence` (source count, named verifier, disputed claims), so an
  * editor cannot label something "editor verified" with nothing behind it.
  */
-export async function GET(_req: NextRequest, ctx: { params: Promise<{ postId: string }> }) {
+export async function GET(
+  _req: NextRequest,
+  ctx: { params: Promise<{ postId: string }> },
+) {
   const guard = await requireApiRole("moderator");
   if ("response" in guard) return guard.response;
   const { postId } = await ctx.params;
   const post = await getPostById(postId);
-  if (!post) return NextResponse.json({ ok: false, error: "পোস্ট পাওয়া যায়নি।" }, { status: 404 });
-  const [claims, corrections] = await Promise.all([listClaims(postId), listCorrections(postId)]);
+  if (!post)
+    return NextResponse.json(
+      { ok: false, error: "পোস্ট পাওয়া যায়নি।" },
+      { status: 404 },
+    );
+  const [claims, corrections] = await Promise.all([
+    listClaims(postId),
+    listCorrections(postId),
+  ]);
   return NextResponse.json({
     ok: true,
     post: {
@@ -51,6 +67,11 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ postId: st
       source_url: post.source_url,
       verification_status: post.verification_status ?? "unverified",
       verification_note: post.verification_note ?? null,
+      verification_evidence: post.verification_evidence ?? [],
+      reviewer_id: post.reviewer_id ?? null,
+      source_type: post.source_type ?? "unknown",
+      ai_rewrite_quality_score: post.ai_rewrite_quality_score ?? null,
+      is_human_reviewed: post.is_human_reviewed ?? false,
       verified_by: post.verified_by ?? null,
       verified_at: post.verified_at ?? null,
     },
@@ -60,7 +81,10 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ postId: st
   });
 }
 
-export async function POST(req: NextRequest, ctx: { params: Promise<{ postId: string }> }) {
+export async function POST(
+  req: NextRequest,
+  ctx: { params: Promise<{ postId: string }> },
+) {
   const guard = await requireApiRole("editor");
   if ("response" in guard) return guard.response;
   const user = guard.user;
@@ -68,29 +92,37 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ postId: st
 
   const { postId } = await ctx.params;
   const post = await getPostById(postId);
-  if (!post) return NextResponse.json({ ok: false, error: "পোস্ট পাওয়া যায়নি।" }, { status: 404 });
+  if (!post)
+    return NextResponse.json(
+      { ok: false, error: "পোস্ট পাওয়া যায়নি।" },
+      { status: 404 },
+    );
 
-  const body = (await req.json().catch(() => null)) as
-    | {
-        action?: string;
-        status?: string;
-        note?: string;
-        id?: string;
-        claimId?: string;
-        claimBn?: string;
-        /** snake_case is accepted too: the console posts its form state as-is. */
-        claim_bn?: string;
-        evidenceUrl?: string;
-        evidence_url?: string;
-        evidenceNote?: string;
-      }
-    | null;
+  const body = (await req.json().catch(() => null)) as {
+    action?: string;
+    status?: string;
+    note?: string;
+    id?: string;
+    claimId?: string;
+    claimBn?: string;
+    /** snake_case is accepted too: the console posts its form state as-is. */
+    claim_bn?: string;
+    evidenceUrl?: string;
+    evidence_url?: string;
+    evidenceNote?: string;
+  } | null;
   const action = body?.action;
 
   if (action === "claim") {
     const claimText = (body?.claimBn ?? body?.claim_bn ?? "").trim();
-    if (!claimText) return NextResponse.json({ ok: false, error: "দাবির লেখা দরকার।" }, { status: 400 });
-    const claimStatus = CLAIM_STATUSES.includes(body?.status as ClaimStatus) ? (body?.status as ClaimStatus) : "unchecked";
+    if (!claimText)
+      return NextResponse.json(
+        { ok: false, error: "দাবির লেখা দরকার।" },
+        { status: 400 },
+      );
+    const claimStatus = CLAIM_STATUSES.includes(body?.status as ClaimStatus)
+      ? (body?.status as ClaimStatus)
+      : "unchecked";
     const claim = await upsertClaim({
       id: body?.claimId,
       postId,
@@ -123,40 +155,67 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ postId: st
 
   if (action === "claim_delete") {
     const id = body?.id?.trim();
-    if (!id) return NextResponse.json({ ok: false, error: "id দরকার।" }, { status: 400 });
+    if (!id)
+      return NextResponse.json(
+        { ok: false, error: "id দরকার।" },
+        { status: 400 },
+      );
     const removed = await deleteClaim(id);
-    await audit(user, { action: "verification.claim_delete", entityType: "post", entityId: postId, summary: "দাবি মুছে ফেলা হয়েছে" }, req);
+    await audit(
+      user,
+      {
+        action: "verification.claim_delete",
+        entityType: "post",
+        entityId: postId,
+        summary: "দাবি মুছে ফেলা হয়েছে",
+      },
+      req,
+    );
     return NextResponse.json({ ok: true, removed });
   }
 
   if (action !== "grade") {
-    return NextResponse.json({ ok: false, error: "unknown action" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "unknown action" },
+      { status: 400 },
+    );
   }
 
   const claims = await listClaims(postId);
   const corrections = await listCorrections(postId);
   const requested = body?.status;
   if (requested && !GRADES.includes(requested as VerificationStatus)) {
-    return NextResponse.json({ ok: false, error: "অজানা গ্রেড।" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "অজানা গ্রেড।" },
+      { status: 400 },
+    );
   }
 
   // Derived grade: the strongest thing the evidence supports, unless the editor
   // explicitly picks a weaker one (downgrading is always allowed).
+  const evidenceUrls = claims
+    .map((c) => c.evidence_url?.trim())
+    .filter((u): u is string => !!u);
   const derived = gradeFromEvidence({
     sourceCount: post.source_url ? 1 : 0,
-    verifierName: user.role === "admin" || user.role === "editor" ? user.email : null,
+    verifierName:
+      user.role === "admin" || user.role === "editor" ? user.email : null,
     claims,
     correctedAt: corrections[0]?.created_at ?? null,
+    evidenceCount: evidenceUrls.length,
   });
-  const order: VerificationStatus[] = ["unverified", "single_source", "multi_source", "corrected", "human_verified"];
   const chosen = (requested as VerificationStatus | undefined) ?? derived;
-  const finalStatus = order.indexOf(chosen) <= order.indexOf(derived) ? chosen : derived;
+  const finalStatus =
+    VERIFICATION_ORDER.indexOf(chosen) <= VERIFICATION_ORDER.indexOf(derived)
+      ? chosen
+      : derived;
 
-  await setVerification(
-    postId,
-    finalStatus,
-    { note: body?.note ?? post.verification_note ?? null, verifierName: user.email },
-  );
+  await setVerification(postId, finalStatus, {
+    note: body?.note ?? post.verification_note ?? null,
+    verifierName: user.email,
+    reviewerId: user.user_id,
+    evidence: evidenceUrls,
+  });
   await audit(
     user,
     {
@@ -169,20 +228,35 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ postId: st
     req,
   );
 
-  return NextResponse.json({ ok: true, status: finalStatus, derived, clamped: finalStatus !== chosen });
+  return NextResponse.json({
+    ok: true,
+    status: finalStatus,
+    derived,
+    clamped: finalStatus !== chosen,
+  });
 }
 
 /** Record a correction; the caller supplies the old/new text it is replacing. */
-export async function PATCH(req: NextRequest, ctx: { params: Promise<{ postId: string }> }) {
+export async function PATCH(
+  req: NextRequest,
+  ctx: { params: Promise<{ postId: string }> },
+) {
   const guard = await requireApiRole("editor");
   if ("response" in guard) return guard.response;
   const user = guard.user;
   if (user.role !== "admin" && user.role !== "editor") return forbidden();
   const { postId } = await ctx.params;
-  const body = (await req.json().catch(() => null)) as
-    | { field?: string; oldValue?: string; newValue?: string; reason?: string }
-    | null;
-  if (!body?.field) return NextResponse.json({ ok: false, error: "field দরকার।" }, { status: 400 });
+  const body = (await req.json().catch(() => null)) as {
+    field?: string;
+    oldValue?: string;
+    newValue?: string;
+    reason?: string;
+  } | null;
+  if (!body?.field)
+    return NextResponse.json(
+      { ok: false, error: "field দরকার।" },
+      { status: 400 },
+    );
   const row = await recordCorrection({
     postId,
     field: body.field,
@@ -191,7 +265,19 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ postId: s
     reason: body.reason ?? null,
     correctedBy: user.email,
   });
-  await setVerification(postId, "corrected", { note: body.reason ?? null, verifierName: user.email });
-  await audit(user, { action: "verification.correct", entityType: "post", entityId: postId, summary: `সংশোধন: ${body.field}` }, req);
+  await setVerification(postId, "corrected", {
+    note: body.reason ?? null,
+    verifierName: user.email,
+  });
+  await audit(
+    user,
+    {
+      action: "verification.correct",
+      entityType: "post",
+      entityId: postId,
+      summary: `সংশোধন: ${body.field}`,
+    },
+    req,
+  );
   return NextResponse.json({ ok: true, correction: row });
 }

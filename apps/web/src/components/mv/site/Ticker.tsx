@@ -148,7 +148,7 @@ function NoticeBar() {
     <div className="relative z-50 border-b border-white/8 bg-ink-900/90 py-1.5 px-4 text-center">
       <p className="text-[13px] text-mist-300 inline-flex items-center gap-2">
         <span className="h-1.5 w-1.5 rounded-full bg-mint-400" />
-        <span>হৈচৈ লাইভ ফ্যাক্ট-চেক ফিড · সব তথ্য উৎস যাচাইকৃত ও সংগৃহীত</span>
+        <span>হৈচৈ লাইভ ফিড · সব তথ্য উৎস ও যাচাইয়ের অবস্থাসহ সংগৃহীত</span>
       </p>
     </div>
   );

@@ -8,6 +8,8 @@ import { readMinutesBn, shortId } from "@/lib/bn";
 import { mediaUrl } from "@/lib/media";
 import SafeImage from "@/components/SafeImage";
 import VerificationBadge from "@/components/VerificationBadge";
+import SourceTypeBadge from "@/components/SourceTypeBadge";
+import { inferSourceType } from "@/lib/source-type";
 import { useLocale, useT } from "@/components/i18n/LocaleProvider";
 
 interface ArticleCardProps {
@@ -18,16 +20,72 @@ interface ArticleCardProps {
 
 const Icons = {
   Globe: (
-    <svg xmlns="http://www.w3.org/2000/svg" width="9.5" height="9.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="9.5"
+      height="9.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
   ),
   Hash: (
-    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="M16 3l-2 18"/></svg>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 9h16" />
+      <path d="M4 15h16" />
+      <path d="M10 3 8 21" />
+      <path d="M16 3l-2 18" />
+    </svg>
   ),
   Timer: (
-    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M10 2h4"/></svg>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="13" r="8" />
+      <path d="M12 9v4l2 2" />
+      <path d="M10 2h4" />
+    </svg>
   ),
   Pin: (
-    <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="11.5"
+      height="11.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
   ),
 };
 
@@ -36,7 +94,11 @@ function plainReadMinutes(body: string): string {
   return String(Math.max(1, Math.round(body.trim().split(/\s+/).length / 200)));
 }
 
-export default function ArticleCard({ post, index, categories }: ArticleCardProps) {
+export default function ArticleCard({
+  post,
+  index,
+  categories,
+}: ArticleCardProps) {
   // Card chrome follows the reader's language; the story itself stays as
   // published until its English edition exists (see the translation pipeline).
   const { locale } = useLocale();
@@ -50,14 +112,24 @@ export default function ArticleCard({ post, index, categories }: ArticleCardProp
           {post.media_path && post.media_kind !== "none" ? (
             post.media_kind === "video" ? (
               <video
-                src={mediaUrl({ media_path: post.media_path, media_kind: post.media_kind }) ?? undefined}
+                src={
+                  mediaUrl({
+                    media_path: post.media_path,
+                    media_kind: post.media_kind,
+                  }) ?? undefined
+                }
                 className="photo-grade h-full w-full object-cover"
                 muted
                 playsInline
               />
             ) : (
               <SafeImage
-                src={mediaUrl({ media_path: post.media_path, media_kind: post.media_kind }) ?? ""}
+                src={
+                  mediaUrl({
+                    media_path: post.media_path,
+                    media_kind: post.media_kind,
+                  }) ?? ""
+                }
                 alt={post.title_bn}
                 className="photo-grade h-full w-full object-cover"
               />
@@ -71,7 +143,8 @@ export default function ArticleCard({ post, index, categories }: ArticleCardProp
           )}
         </div>
         <span className="absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full bg-ink/80 px-3 py-1.5 font-mono-x text-[9.5px] tracking-[0.16em] text-paper uppercase backdrop-blur-sm">
-          {Icons.Globe} {t("site.card.source", { name: post.source_name }).toUpperCase()}
+          {Icons.Globe}{" "}
+          {t("site.card.source", { name: post.source_name }).toUpperCase()}
         </span>
         {/* "FACT-CHECKED" was a claim no code path could back: nothing here is
             fact-checked, only rewritten from a cited source. Show that instead. */}
@@ -90,12 +163,21 @@ export default function ArticleCard({ post, index, categories }: ArticleCardProp
           className="font-meta-bn flex items-center gap-1.5 px-3 py-1 text-[11.5px] font-bold"
           style={{ background: tint, color: readableOn(tint) }}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="11"
+            height="11"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path d="M7 4.5l13 7.5-13 7.5z" />
+          </svg>
           {categoryLabel(post.category, categories, locale)}
         </span>
         <span className="flex items-center gap-1 text-[12px] text-ink-soft">
           {Icons.Pin} {post.source_name}
         </span>
+        <SourceTypeBadge type={inferSourceType(post)} compact />
         <VerificationBadge
           status={post.verification_status}
           note={post.verification_note}
@@ -135,7 +217,10 @@ export default function ArticleCard({ post, index, categories }: ArticleCardProp
         <span className="flex items-center gap-1.5 text-[11.5px] text-ink-soft">
           {Icons.Timer}{" "}
           {t("site.card.minutes", {
-            n: locale === "en" ? plainReadMinutes(post.body_bn) : readMinutesBn(post.body_bn),
+            n:
+              locale === "en"
+                ? plainReadMinutes(post.body_bn)
+                : readMinutesBn(post.body_bn),
           })}
         </span>
       </div>

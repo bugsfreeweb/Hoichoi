@@ -640,7 +640,7 @@ function GlanceAccordion({ post, density }: { post: PostRecord; density: "compac
   const [open, setOpen] = useState<number | null>(0);
   const qa = [
     ...post.keyPoints.map((k, i) => ({ q: `মূল পয়েন্ট ${bn(i + 1)}`, a: k })),
-    { q: "এই খবরটি কীভাবে যাচাই করা হয়েছে?", a: "ফিড থেকে সংগ্রহের পর SHA-256 ও SimHash দিয়ে ডুপ্লিকেট পরীক্ষা, তারপর LLM পুনর্লিখন ও ০.৯০ থ্রেশহোল্ডের ফ্যাক্ট-গেট, সবশেষে সম্পাদকীয় রিভিউ।" },
+    { q: "এই খবরটি কীভাবে যাচাই করা হয়েছে?", a: "ফিড থেকে সংগ্রহের পর SHA-256 ও SimHash দিয়ে ডুপ্লিকেট পরীক্ষা, তারপর LLM পুনর্লিখন ও ০.৯০ থ্রেশহোল্ডের কোয়ালিটি গেট, সবশেষে সম্পাদকীয় রিভিউ।" },
   ];
   return (
     <SectionShell density={density}>
@@ -878,7 +878,7 @@ function RelatedRail({ posts, density }: { posts: PostRecord[]; density: "compac
               <p className="mt-3 line-clamp-3 text-[13.5px] leading-relaxed text-mist-400">{p.dek}</p>
               <div className="mt-5 flex items-center gap-2 border-t border-white/8 pt-4">
                 <Sparkles className="h-3.5 w-3.5" style={{ color: "var(--accent)" }} />
-                <span className="mono-label text-mist-400">ফ্যাক্ট {bn(p.factScore)} · {bn(p.readMinutes)} মি</span>
+                <span className="mono-label text-mist-400">কোয়ালিটি {bn(p.factScore)} · {bn(p.readMinutes)} মি</span>
               </div>
             </article>
           </Link>

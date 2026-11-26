@@ -32,6 +32,8 @@ import { getLive } from "@/lib/mv/live";
 import { isMvMode } from "@/lib/mv/variant";
 import MvPost from "@/components/mv/MvPost";
 import VerificationBadge from "@/components/VerificationBadge";
+import SourceTypeBadge from "@/components/SourceTypeBadge";
+import { inferSourceType } from "@/lib/source-type";
 import { JsonLd, newsArticleJsonLd } from "@/components/JsonLd";
 import { getLocale } from "@/lib/locale";
 
@@ -585,12 +587,27 @@ function PostContent({
           <div className="mt-10 border-t border-ink/15 pt-6">
             <p className="flex flex-wrap items-center gap-2 font-mono-x text-[10px] tracking-[0.24em] text-ink-soft uppercase">
               ─── {b("সূত্র", "SOURCE")} ───
+              <SourceTypeBadge type={inferSourceType(post!)} />
               <VerificationBadge
                 status={post!.verification_status}
                 note={post!.verification_note}
                 verifier={post!.verified_by}
                 at={post!.verified_at}
               />
+              {post!.ai_rewrite_quality_score != null && (
+                <span
+                  className="rounded-full border border-ink/25 px-2.5 py-1 tracking-[0.1em] text-ink-soft"
+                  title={b(
+                    "এই স্কোর AI-পুনর্লিখনের গুণগত যাচাই নির্দেশ করে; এটি স্বতন্ত্র ফ্যাক্ট-চেক নয়।",
+                    "This score measures AI rewrite quality; it is not an independent fact-check.",
+                  )}
+                >
+                  {b("AI পুনর্লিখন গেট", "AI rewrite quality")}:{" "}
+                  {post!.ai_rewrite_quality_score
+                    .toFixed(2)
+                    .replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)] ?? d)}
+                </span>
+              )}
             </p>
             <p className="mt-3 text-[13px] text-ink">
               <span className="font-bold">{b("লেখক:", "Author:")}</span>{" "}
@@ -611,7 +628,11 @@ function PostContent({
               target="_blank"
               rel="noopener noreferrer nofollow"
             >
-              {b("মূল পোস্টের লিংক", "Original post")} →
+              {inferSourceType(post!) === "facebook" ||
+              inferSourceType(post!) === "user"
+                ? b("মূল পোস্ট দেখুন", "View original post")
+                : b("মূল সংবাদ পড়ুন", "Read original story")}{" "}
+              →
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="11"

@@ -1,0 +1,82 @@
+import assert from "node:assert/strict";
+import { guardCategory, needsHumanReview, rewriteQuality, sourceTypeFromUrl } from "../taxonomy";
+
+let passed = 0;
+function check(name: string, fn: () => void) {
+  fn();
+  passed++;
+  console.log(`  ok  ${name}`);
+}
+
+check("TechCrunch AI copy is never filed as corruption", () => {
+  const r = guardCategory(
+    "Trump said pressuring Jensen Huang is 'an option' as NVIDIA GPU exports dominate the AI market.",
+    "corruption",
+    "Techcrunch",
+  );
+  assert.equal(r?.slug, "ai");
+});
+
+check("startup funding goes to startup or business, not corruption", () => {
+  const r = guardCategory(
+    "The startup raised a $40M Series B funding round led by a venture capital firm.",
+    "corruption",
+    "Techcrunch",
+  );
+  assert.equal(r?.slug, "startup");
+});
+
+check("a real corruption investigation keeps its desk", () => {
+  assert.equal(
+    guardCategory(
+      "দুর্নীতির তদন্তে প্রমাণ পাওয়া গেছে, ঘুষ ও তহবিল আত্মসাতের অভিযোগে মামলা হয়েছে।",
+      "corruption",
+      "দৈনিক",
+    ),
+    null,
+  );
+});
+
+check("technology content misfiled elsewhere moves to a tech desk", () => {
+  assert.equal(guardCategory("Figma released a database feature for developers.", "viral", "Techcrunch")?.slug, "technology");
+});
+
+check("sensitive desks and political social posts require a human", () => {
+  assert.equal(
+    needsHumanReview({ category: "missing-children", text: "", sourceType: "facebook", flags: [] }).review,
+    true,
+  );
+  assert.equal(
+    needsHumanReview({ category: "politics", text: "মন্ত্রী অভিযুক্ত", sourceType: "facebook", flags: [] }).review,
+    true,
+  );
+  assert.equal(
+    needsHumanReview({ category: "sports", text: "A normal match report.", sourceType: "news", flags: [] }).review,
+    false,
+  );
+});
+
+check("source type is derived from the original URL", () => {
+  assert.equal(sourceTypeFromUrl("https://www.facebook.com/x/posts/1"), "facebook");
+  assert.equal(sourceTypeFromUrl("https://example.gov.bd/notice"), "government");
+  assert.equal(sourceTypeFromUrl("https://techcrunch.com/2026/01/01/story"), "news");
+});
+
+check("AI rewrite quality is bounded and damaged by missing Bengali", () => {
+  const good = rewriteQuality({
+    title_bn: "একটি সম্পূর্ণ বাংলা শিরোনাম যেখানে পর্যাপ্ত তথ্য আছে",
+    body_bn: "শব্দ ".repeat(240),
+    summary_bn: "সংক্ষিপ্ত সারাংশ যা পাঠককে মূল প্রতিবেদনের বিষয় বুঝিয়ে দেয়।",
+    flags: [],
+  });
+  assert.ok(good > 0.9 && good <= 0.99);
+  const bad = rewriteQuality({
+    title_bn: "Short",
+    body_bn: "few words",
+    summary_bn: "",
+    flags: ["bengali_script_missing"],
+  });
+  assert.ok(bad < 0.6);
+});
+
+console.log(`[scraper] taxonomy: ${passed} checks passed`);

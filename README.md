@@ -1,12 +1,24 @@
 # হৈচৈ · Hoichoi
 
 Bangla viral-content **ephemeral** news desk — an auto-curated feed that ingests
-public social pages *and* RSS/Atom news feeds, dedupes, redacts PII, classifies
+public social pages _and_ RSS/Atom news feeds, dedupes, redacts PII, classifies
 into operator-owned categories, rewrites neutrally via a multi-provider LLM
 resolver, double-approves sensitive content, and publishes on a rolling window.
 Every post is archived or purged by policy.
 
 Live site: <https://hoichoifeed.vercel.app> · Source: <https://github.com/bugsfreeweb/Hoichoi> (public)
+
+## Trust model
+
+Two scores are deliberately kept apart. `ai_rewrite_quality_score` measures the
+AI rewrite only and never creates a verification badge. `verification_status`
+is derived from source claims, attached evidence URLs and a named reviewer; an
+unverified story is labelled **যাচাই বাকি**, never FACT-CHECKED. Facebook posts
+start as `source_claimed`. Sensitive desks, political social posts and health
+claims are always held for human review, and `is_feature_eligible` is false for
+them, for every Facebook post and for politics. The collector reports its real
+interval and the last successful run; dedup counts come from pipeline stats.
+The full rules are in [docs/TRUST-AND-VERIFICATION.md](docs/TRUST-AND-VERIFICATION.md).
 
 ```
 Web (apps/web)        Next.js 15 public site (SSR feed, /sitemap, OG images, visitor
@@ -114,7 +126,7 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
 
 - **Classification is DB-driven.** The classifier has no hard-coded keyword
   table: it scores against each category's `config.keywords`, editable from the
-  web admin (`/admin` → categories) *and* the desktop desk (Settings → desk
+  web admin (`/admin` → categories) _and_ the desktop desk (Settings → desk
   categories), and kept in sync because both sides share the `settings` DB. New
   categories added in the apps get their keywords stored as data — no deploy
   needed to correct the term pool. For a source assigned to multiple categories,
@@ -123,7 +135,7 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
 - **Multi-platform sources.** `sources add --platform news|magazine` points a
   source's `page_url` at an RSS 2.0 / Atom / RDF feed; the adapter normalizes
   entries into the same shape as Facebook posts (stable id, permalink, text,
-  media enclosures/`media:`/`<img>`), so *every downstream step is shared*.
+  media enclosures/`media:`/`<img>`), so _every downstream step is shared_.
   The collector runs Facebook Page, public profile/group, and RSS/Atom
   (`news`/`magazine`) sources. It tries Facebook anonymously first; an optional
   `FB_SESSION_COOKIE` can retry a Page source that returns a login wall.
@@ -212,10 +224,10 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   and Settings → ভিজিবিলিটি (desktop) with a live preview.
 - **Multi-image posts + lightbox (v1.1.10).** A post keeps its single primary
   `posts.media_path`, and now also has a **gallery** (`post_images`,
-  `012_post_images.sql`). The collector mirrors *every* image it can fetch from the
+  `012_post_images.sql`). The collector mirrors _every_ image it can fetch from the
   source post (capped at 8, first = primary) with `source = "collector"`; operators
   add/remove/promote extras in the web post editor (`POST/PATCH/DELETE
-  /api/posts/[id]/images`) and the desktop content-row editor with `source = "admin"`.
+/api/posts/[id]/images`) and the desktop content-row editor with `source = "admin"`.
   `replaceCollectorImages` refreshes only the collector rows on re-collection, so
   admin additions survive. The public post page keeps its exact hero layout and adds
   a thumbnail strip beneath it; clicking any image opens a full-page **lightbox**
@@ -246,7 +258,7 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   are admin-tunable in the ভিজিবিলিটি tab (web + desktop) and honored by the home
   page, post page and `/api/comments`.
 - **One dashboard, two apps.** The web admin home (`/admin`) and the desktop
-  **মনিটর** now render the *same* five-tab dashboard (সারসংক্ষেপ · বিশ্লেষণ ·
+  **মনিটর** now render the _same_ five-tab dashboard (সারসংক্ষেপ · বিশ্লেষণ ·
   পাইপলাইন · ইনসাইট · কনটেন্ট ডেস্ক) from the shared `@hoichoi/dash` package. The
   web builds the `DashModel` server-side from `@hoichoi/db`; the desk builds it
   client-side from the runner. Every panel is bound to real rows — no panel shows
@@ -277,7 +289,7 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
   — the preview sets a short-lived `preview` cookie that `loadLive(previewVariant?)`
   overlays in memory, so trying a variant never writes to the DB. Saving persists
   the per-section rows; **⟲ ডিফল্টে ফিরুন** resets both `settings.default_variant`
-  *and* every per-section row back to `default` (the earlier bug left section rows
+  _and_ every per-section row back to `default` (the earlier bug left section rows
   non-default, so reverting appeared to do nothing). The admin shell itself is a
   grouped, collapsible sidebar with a persisted collapsed state and a mobile drawer.
 - **Light theme everywhere.** `html[data-theme="light"]` is honored across the
@@ -290,20 +302,20 @@ source ──▶ (facebook scrape | rss/atom fetch) ──▶ raw_posts ──�
 
 Copy `.env.example` → `.env`. Key ones:
 
-| Var | Purpose |
-| --- | --- |
-| `TURSO_DATABASE_URL` | `file:./data/hoichoi.db` locally; `libsql://…turso.io` in prod |
-| `TURSO_AUTH_TOKEN` | Turso read/write token (prod only) |
-| `ADMIN_AUTH_SECRET` | 32-byte hex for admin sessions (`openssl rand -hex 32`) |
-| `ADMIN_ALLOWED_EMAILS` | Comma-separated login allow-list |
-| `NEXT_PUBLIC_SITE_URL`, `SITE_URL` | Canonical site URL for SEO/sitemap/base metadata |
-| `MEDIA_GITHUB_TOKEN` | Optional GitHub media-repository write token; media targets are configured in Media Storage |
-| `IDRIVEE2_ACCESS_KEY` `IDRIVEE2_SECRET_KEY` `B2_ACCESS_KEY` `B2_SECRET_KEY` | Optional credentials for configured IDrive e2 / Backblaze media targets |
-| `GOOGLE_API_KEY` `GROQ_API_KEY` `OPENROUTER_API_KEY` `OLLAMA_BASE_URL` … | LLM resolver keys |
-| image-purpose provider credentials | Automatic and manual AI image generation; configure in AI Providers (Cloudflare Workers AI has a limited daily free allocation) |
-| `FB_SESSION_COOKIE` | Optional semicolon-separated Facebook session cookie; public scraping is attempted without it first |
-| `SCRAPE_REQUEST_DELAY_MS` | Optional per-post delay for Facebook details (default 1000 ms, clamped to 500–10000 ms) |
-| `ARCHIVE_VISIBLE_DAYS` `ARCHIVE_RETENTION_DAYS` | Rolling policy |
+| Var                                                                         | Purpose                                                                                                                         |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `TURSO_DATABASE_URL`                                                        | `file:./data/hoichoi.db` locally; `libsql://…turso.io` in prod                                                                  |
+| `TURSO_AUTH_TOKEN`                                                          | Turso read/write token (prod only)                                                                                              |
+| `ADMIN_AUTH_SECRET`                                                         | 32-byte hex for admin sessions (`openssl rand -hex 32`)                                                                         |
+| `ADMIN_ALLOWED_EMAILS`                                                      | Comma-separated login allow-list                                                                                                |
+| `NEXT_PUBLIC_SITE_URL`, `SITE_URL`                                          | Canonical site URL for SEO/sitemap/base metadata                                                                                |
+| `MEDIA_GITHUB_TOKEN`                                                        | Optional GitHub media-repository write token; media targets are configured in Media Storage                                     |
+| `IDRIVEE2_ACCESS_KEY` `IDRIVEE2_SECRET_KEY` `B2_ACCESS_KEY` `B2_SECRET_KEY` | Optional credentials for configured IDrive e2 / Backblaze media targets                                                         |
+| `GOOGLE_API_KEY` `GROQ_API_KEY` `OPENROUTER_API_KEY` `OLLAMA_BASE_URL` …    | LLM resolver keys                                                                                                               |
+| image-purpose provider credentials                                          | Automatic and manual AI image generation; configure in AI Providers (Cloudflare Workers AI has a limited daily free allocation) |
+| `FB_SESSION_COOKIE`                                                         | Optional semicolon-separated Facebook session cookie; public scraping is attempted without it first                             |
+| `SCRAPE_REQUEST_DELAY_MS`                                                   | Optional per-post delay for Facebook details (default 1000 ms, clamped to 500–10000 ms)                                         |
+| `ARCHIVE_VISIBLE_DAYS` `ARCHIVE_RETENTION_DAYS`                             | Rolling policy                                                                                                                  |
 
 > **GitHub Actions secrets নিয়ে বিস্তারিত, প্রতিটির কোথা থেকে পাবেন, খরচ ও
 > "না দিলে কী হবে" — সব [`docs/SECRETS.md`](docs/SECRETS.md)-তে। ওয়েব অ্যাডমিনের
@@ -331,26 +343,26 @@ rewrite is reported in the run summary instead of leaving collection stuck.
 
 Run from anywhere with `npx tsx --env-file=.env apps/scraper/src/cli.ts <cmd>`.
 
-| Command | What it does |
-| --- | --- |
-| `scrape [--mock] [--max-sources N] [--max-posts N]` | Run the full pipeline |
-| `archive` | Rolling archive/purge pass (what the daily workflow runs) |
-| `archive:list` | Archived posts + everything past the age line, as JSON (`--page`, `--older-than`) |
-| `archive:delete` | Permanently delete one archived post (`--id`), refused on a legal hold |
-| `archive:purge` | Delete everything older than N days (`--older-than`), guards kept |
-| `categories list` / `categories add --slug … --keywords "a,b"` | Category catalog (keywords stored as data) |
-| `sources add --page-url <url> --page-name <n> --category <slug> --platform <p>` | Add a source; `news`/`magazine` use RSS/Atom |
-| `media status` / `media backfill [--recover]` / `media cleanup` | Remote-media storage, redownload missing media |
-| `media ai-fill [--limit N] [--dry-run]` | Generate AI hero images for media-less posts |
-| `media repair [--limit N] [--dry-run]` | Rebuild posts whose `media_path` file is gone, rewrite the gallery copy, and mirror the new image |
-| `media generate <postId>` | Generate one hero image on demand for a specific post |
-| `traffic [--range 24h\|7d\|30d]` | First-party analytics snapshot as JSON (web admin + desk) |
-| `storage` | DB + media storage snapshot as JSON (web admin + desk) |
-| `queue images <list\|add\|remove\|primary> <postId> [url\|imageId]` | Manage a post's gallery images |
-| `settings set <key> <value>` / `settings show` | Read/update the shared settings row |
-| `sync push` / `sync pull` | Copy content tables between DBs (includes `llm_providers`) |
-| `export` / `import` | Encrypted vault backups |
-| `providers list` / `providers add --base-url … [--purpose text\|image]` | LLM provider registry |
+| Command                                                                         | What it does                                                                                      |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `scrape [--mock] [--max-sources N] [--max-posts N]`                             | Run the full pipeline                                                                             |
+| `archive`                                                                       | Rolling archive/purge pass (what the daily workflow runs)                                         |
+| `archive:list`                                                                  | Archived posts + everything past the age line, as JSON (`--page`, `--older-than`)                 |
+| `archive:delete`                                                                | Permanently delete one archived post (`--id`), refused on a legal hold                            |
+| `archive:purge`                                                                 | Delete everything older than N days (`--older-than`), guards kept                                 |
+| `categories list` / `categories add --slug … --keywords "a,b"`                  | Category catalog (keywords stored as data)                                                        |
+| `sources add --page-url <url> --page-name <n> --category <slug> --platform <p>` | Add a source; `news`/`magazine` use RSS/Atom                                                      |
+| `media status` / `media backfill [--recover]` / `media cleanup`                 | Remote-media storage, redownload missing media                                                    |
+| `media ai-fill [--limit N] [--dry-run]`                                         | Generate AI hero images for media-less posts                                                      |
+| `media repair [--limit N] [--dry-run]`                                          | Rebuild posts whose `media_path` file is gone, rewrite the gallery copy, and mirror the new image |
+| `media generate <postId>`                                                       | Generate one hero image on demand for a specific post                                             |
+| `traffic [--range 24h\|7d\|30d]`                                                | First-party analytics snapshot as JSON (web admin + desk)                                         |
+| `storage`                                                                       | DB + media storage snapshot as JSON (web admin + desk)                                            |
+| `queue images <list\|add\|remove\|primary> <postId> [url\|imageId]`             | Manage a post's gallery images                                                                    |
+| `settings set <key> <value>` / `settings show`                                  | Read/update the shared settings row                                                               |
+| `sync push` / `sync pull`                                                       | Copy content tables between DBs (includes `llm_providers`)                                        |
+| `export` / `import`                                                             | Encrypted vault backups                                                                           |
+| `providers list` / `providers add --base-url … [--purpose text\|image]`         | LLM provider registry                                                                             |
 
 ## Deployments
 
@@ -420,33 +432,33 @@ the two delete controls that make the retention rule usable from either console.
 **The bug was a type, not a policy.** SQLite's `strftime('%s', …)` returns
 **TEXT**; `strftime('%s','now') - 86400 * 7` is a **number**. SQLite compares by
 storage class before it compares by value, and every text sorts above every
-number, so the view's `>=` was true for *every* row and the rollover's `<` was
+number, so the view's `>=` was true for _every_ row and the rollover's `<` was
 false for every row. The daily `rolling-archive.yml` run therefore reported
 `success` with `rolledOver: 0` for a month while the live site served **1,454**
 posts, the oldest **58 days** old, and nothing had ever been archived.
 
 Measured on the live Turso database before the fix:
 
-| What was measured | Result |
-|---|---|
-| `posts` | 1,454 (all `published`, all `archived_at IS NULL`) |
-| posts in `posts_current_window` | **1,451** — the view matched everything |
-| posts actually younger than 7 days | 394 |
-| `ttl_ms` on a 58-day-old row | **−4,422,083,000** (negative, and served anyway) |
+| What was measured                  | Result                                             |
+| ---------------------------------- | -------------------------------------------------- |
+| `posts`                            | 1,454 (all `published`, all `archived_at IS NULL`) |
+| posts in `posts_current_window`    | **1,451** — the view matched everything            |
+| posts actually younger than 7 days | 394                                                |
+| `ttl_ms` on a 58-day-old row       | **−4,422,083,000** (negative, and served anyway)   |
 
 `039_window_numeric.sql` recreates the view with
-`CAST(strftime('%s', published_at) AS INTEGER)` on both sides *and* inside
+`CAST(strftime('%s', published_at) AS INTEGER)` on both sides _and_ inside
 `ttl_ms`, and backfills `published_at = created_at` for the three published rows
 that had none; `checkAndArchive()` casts too. After applying it to the live
 database:
 
-| What was measured | Result |
-|---|---|
-| `SELECT COUNT(*) FROM posts_current_window` | **394** |
-| oldest row in the window | **2026-11-13** — seven days |
-| posts archived | **781** |
-| posts purged (past retention) | **276** |
-| posts still older than 30 days | 65 — inside the second clock below |
+| What was measured                           | Result                             |
+| ------------------------------------------- | ---------------------------------- |
+| `SELECT COUNT(*) FROM posts_current_window` | **394**                            |
+| oldest row in the window                    | **2026-11-13** — seven days        |
+| posts archived                              | **781**                            |
+| posts purged (past retention)               | **276**                            |
+| posts still older than 30 days              | 65 — inside the second clock below |
 
 The public site now shows yesterday's stories and 404s the ones that left.
 
@@ -468,12 +480,12 @@ per action.
 
 On the surfaces:
 
-* **Web** — `/admin/archive` gains `ExpiredPanel`: the count is stated before the
+- **Web** — `/admin/archive` gains `ExpiredPanel`: the count is stated before the
   button (`341`, on the live database, before the pass), the confirmation repeats
   the number, and the result reports what the guards kept.
-* **Desktop** — a tenth tab, **আর্কাইভ**, reads three new runner verbs
+- **Desktop** — a tenth tab, **আর্কাইভ**, reads three new runner verbs
   (`archive:list`, `archive:delete`, `archive:purge`) through the existing
-  `desk_call` passthrough. It shows the expired block *and* the archived block,
+  `desk_call` passthrough. It shows the expired block _and_ the archived block,
   pages the archive, marks a held row `সুরক্ষিত`, and deletes with the same guards
   — there is no second implementation to drift.
 
@@ -488,7 +500,7 @@ ledger row, a held post is never purged, and a full pass reports what it did.
 reports the version that is deployed (`1.1.42`).
 
 **One more door.** C3 promised a "Security & devices" screen on the desk and
-delivered it only on the web, which left the desk able to drop *every* session of
+delivered it only on the web, which left the desk able to drop _every_ session of
 an email at once and none individually. `sessions:list` and `sessions:revoke` now
 run through the same runner passthrough, and Settings gains a **ডিভাইস ও সেশন**
 block — device, admin, last used, `সক্রিয়` or `বাতিল · <who>`, and one revoke per
@@ -562,10 +574,10 @@ when the model answers, when the model fails (`renderPoster({background: null})`
 branded backdrop), when collection found no media at all (`pipeline.ts` STEP 2.6), and when
 an editor presses generate. A provider being rate-limited changes the background; it does
 not change whether the story ships with a picture.
-Three faults were found by *running* it rather than reading it:
+Three faults were found by _running_ it rather than reading it:
 
 1. **Workers AI was sent fields its schema does not declare.** `400 AiError: Bad input:
-   Additional or unevaluated properties '/width, /height' at '/' not allowed` — flux-1-schnell
+Additional or unevaluated properties '/width, /height' at '/' not allowed` — flux-1-schnell
    takes `prompt`, `steps` and `seed`, not dimensions, so asking for a 16:9 frame at the source
    made the one provider known to work reject every request. The payload is `{prompt, steps}`
    again and the landscape frame is guaranteed where it belongs, in the plate's `fit: cover`.
@@ -579,7 +591,6 @@ Three faults were found by *running* it rather than reading it:
    paper…") and its topic chips came out as "illustration", "photograph". The generator now
    reads `title_bn` / `category` / `source_name` from the post itself, so a CLI render and a
    console render put the same Bangla headline and desk on the picture.
-
 
 **The console reads like the dashboard.** `reports`, `polls`, `live`, `backup` and `setup`
 moved to `PageHeading` + `Card` / `CardHead` / `StatTile`, so a queue, a poll and a live
@@ -609,12 +620,12 @@ The typography is HTML/CSS, drawn by Chromium.**
 **One frame, four shapes, two papers.** `planPoster` is a pure function of the desk, so a
 story's poster is reproducible and testable with no provider in the loop:
 
-| desk | layout | theme | accent |
-| --- | --- | --- | --- |
-| breaking, politics, crime, disaster | `breaking-banner` (red bar, full-bleed, bottom-left type) | dark | `#DC2626` |
-| economy, technology, science | `split-left` (type on the left 45 %, subject right) | dark | `#1D4ED8` / `#0D9488` |
-| sports | `split-right` (picture leads, type on the right 45 %) | dark | `#EA580C` |
-| culture, literature, opinion, local | `editorial-card` (warm paper, framed photograph, column rule) | light-paper | `#B45309` |
+| desk                                | layout                                                        | theme       | accent                |
+| ----------------------------------- | ------------------------------------------------------------- | ----------- | --------------------- |
+| breaking, politics, crime, disaster | `breaking-banner` (red bar, full-bleed, bottom-left type)     | dark        | `#DC2626`             |
+| economy, technology, science        | `split-left` (type on the left 45 %, subject right)           | dark        | `#1D4ED8` / `#0D9488` |
+| sports                              | `split-right` (picture leads, type on the right 45 %)         | dark        | `#EA580C`             |
+| culture, literature, opinion, local | `editorial-card` (warm paper, framed photograph, column rule) | light-paper | `#B45309`             |
 
 **The layout moves the picture, not just the CSS.** The same plan returns `subjectSide`,
 which is handed to the image brief, so a `breaking-banner` story asks for its subject away
@@ -623,7 +634,7 @@ collision after the render.
 
 **Dynamic, but not by asking a model.** The brief proposed an LLM art-director returning
 JSON (`layout`, `theme`, `accentColor`, `imagePrompt`). The image prompt does need
-understanding and is still written per story; the *frame* does not. A desk map cannot drift
+understanding and is still written per story; the _frame_ does not. A desk map cannot drift
 between two renders of one story, cannot return invalid JSON, costs no round trip and is
 unit-testable, and "invalid JSON → default to `split-left` + `dark`" is already what the
 map does. Headline size is the one dynamic number that genuinely depends on the words:
@@ -645,7 +656,7 @@ the browser.
 **The medium changed too.** The image brief used to open "Hand-drawn editorial
 illustration, ink and gouache on paper, not a photograph" so a render could never be
 mistaken for a record of an event. The art direction is now front-page photography, and
-the objection is answered differently: every subject is a *symbolic* scene (a shuttered
+the objection is answered differently: every subject is a _symbolic_ scene (a shuttered
 shopfront, a half-built span, two empty podiums), never an identifiable person or a
 reconstruction of a specific event, the negative bans `cartoon`, `illustration`, `comic`
 and `plastic 3d render` by name, and the finished poster carries a masthead and a barcode
@@ -658,7 +669,7 @@ branded wash (`1920×1080`, zero clipping, Bangla shaped correctly at every size
 ## The poster is art-directed now (five shapes, five moods)
 
 **A poster is a design decision, not a template fill.** `POST /api/generate-poster` takes
-one Bengali article and returns a 16:9 poster composed for *that* story. It is a separate
+one Bengali article and returns a 16:9 poster composed for _that_ story. It is a separate
 route from the manual image generator, because it is a separate promise: the image
 generator puts a picture on a page; the poster service decides what kind of page the story
 deserves.
@@ -666,7 +677,7 @@ deserves.
 **Step 1 — the art director.** A text model (Gemini structured output, with the free-first
 provider chain behind it) is asked for Bengali copy and design tokens in one JSON object:
 `headline` (≤ 48 characters, cut at a word boundary), `highlight_word`, exactly three
-bullets *or* one pull-quote, `badge_text`, `footer_text`, a `layout_variant`, a `palette_id`,
+bullets _or_ one pull-quote, `badge_text`, `footer_text`, a `layout_variant`, a `palette_id`,
 a `visual_style`, a procedural `texture`, and an English `image_prompt` that bans lettering.
 A model headline that is only a truncated prefix of the article title is rebuilt from the
 title, and a pull-quote that the story does not actually contain is replaced by its first
@@ -675,13 +686,13 @@ in `packages/llm/src/art-director.ts`. A model that answers badly is repaired, f
 field; a model that is down is replaced by a deterministic planner that still writes a
 complete, story-specific plan. The poster never depends on the model being awake.
 
-| layout_variant | shape |
-| --- | --- |
-| `split_left_media` | visual on the left 45 %, type column on the right 55 % |
-| `split_right_media` | type column on the left 55 %, framed visual on the right 45 % |
-| `hero_overlay_gradient` | full-bleed 16:9 visual, gradient veil, glassmorphic text card |
-| `editorial_magazine_grid` | Swiss grid, top accent bar, framed visual, pull-quote box |
-| `breaking_spotlight` | centred circular focal visual, crimson spotlight, bottom ticker |
+| layout_variant            | shape                                                           |
+| ------------------------- | --------------------------------------------------------------- |
+| `split_left_media`        | visual on the left 45 %, type column on the right 55 %          |
+| `split_right_media`       | type column on the left 55 %, framed visual on the right 45 %   |
+| `hero_overlay_gradient`   | full-bleed 16:9 visual, gradient veil, glassmorphic text card   |
+| `editorial_magazine_grid` | Swiss grid, top accent bar, framed visual, pull-quote box       |
+| `breaking_spotlight`      | centred circular focal visual, crimson spotlight, bottom ticker |
 
 **Step 2 — the visual has no words in it.** The image model draws only the focal picture,
 at `1:1` for the split/grid layouts and `16:9` for the hero and spotlight (a portrait
@@ -724,7 +735,7 @@ Chromium screenshots at `deviceScaleFactor: 2`: a `3840×2160` PNG or WebP from 
 
 **Step 4 — no two neighbours look alike.** Every render writes a `poster_designs` row. The
 next call reads the last five and passes them to the model as `recently_used_designs`; the
-renderer then *enforces* the rule, moving a repeated `(layout, palette)` pair to the first
+renderer then _enforces_ the rule, moving a repeated `(layout, palette)` pair to the first
 unused combination and barring the immediately previous palette. The CMS panel offers
 **🎲 রিজেনারেট স্টাইল** beside **⬇ পোস্টার ডাউনলোড**, so an editor can cycle the whole
 design in one click.
@@ -875,7 +886,7 @@ The hero picker was describing the same twelve scenes in its own words. `HERO_SC
 now maps the twelve existing renderers onto the prototype's twelve template identities, in
 the prototype's order, with the prototype's Bangla notes — `obsidian, pipeline, editorial,
 mosaic, radar, kinetic, tilt, terminal, spotlight, constellation, waveform, timeline`. The
-scene *keys* are untouched, so every saved `hero_scene_style` still resolves; only the
+scene _keys_ are untouched, so every saved `hero_scene_style` still resolves; only the
 names and the explanation the editor reads changed.
 
 Verified by rendering all twelve styles in a browser harness and reading the result (every
@@ -955,8 +966,8 @@ separate faults, all measured:
 
 1. **The brief was a style sentence with the Bangla headline stapled on.** Models that do
    not read Bengali rendered the style and nothing else, so every article got the same
-   illustration; models that do read Bengali sometimes drew the headline *as lettering inside
-   the drawing*. `packages/llm/src/image-prompt.ts` now builds the newspaper brief an
+   illustration; models that do read Bengali sometimes drew the headline _as lettering inside
+   the drawing_. `packages/llm/src/image-prompt.ts` now builds the newspaper brief an
    illustrator is given: Central idea → Visual metaphor → Subject → Setting → Style →
    Composition → Colour palette → Mood → Avoid, in English, with the Bangla used only as a
    source of meaning. A ~22-entry metaphor bank (bribery, price rises, flood, verdict, heat,
@@ -964,10 +975,10 @@ separate faults, all measured:
    a corruption story draws a hand and an envelope and a flood story draws a rooftop in
    brown water.
 2. **The medium was a word in the middle of the paragraph.** Image models weight early
-   tokens hardest: a render of a corruption brief came back as *"a softly lit vintage
-   still-life photograph"* of papers — the style word was read, the medium was not. The
+   tokens hardest: a render of a corruption brief came back as _"a softly lit vintage
+   still-life photograph"_ of papers — the style word was read, the medium was not. The
    prompt now **opens** with `Hand-drawn editorial illustration, ink and gouache on paper,
-   not a photograph`, and the empty-space instruction names what the space *is*
+not a photograph`, and the empty-space instruction names what the space _is_
    ("a plain uncluttered wash of background colour" on one third) because "generous empty
    space" was filled with props.
 3. **The only working provider stamped a logo on the render and ignored the brief.** Google
@@ -997,7 +1008,7 @@ empty chairs, a closed file and a sealed envelope, slippers at a threshold) and 
 **Honest ceiling.** The keyless host does not follow a brief closely: three different
 briefs came back as the same romantic "woman in a doorway / papers on a table" imagery, and
 it drifted to photorealism regardless of the medium being stated first. The prompt, the
-frame and the watermark are now right; matching the *content* reliably needs a provider
+frame and the watermark are now right; matching the _content_ reliably needs a provider
 that follows instructions — which is exactly what the Cloudflare row above is for. Until
 one is enabled, the desk logs and shows the provider it used (`toast`: "ছবি তৈরি হয়েছে ·
 Pollinations (keyless)") rather than implying the picture came from the best model.
@@ -1029,13 +1040,13 @@ an attacker learns nothing. 13 checks in `scripts/csrf.test.ts`.
 **Search engines are told what the page is.** `components/JsonLd.tsx` emits a `NewsArticle`
 for each post (`dateModified` from the row, falling back to `datePublished`; relative images
 made absolute) and one `WebSite` for the site. The payload is escaped before it enters the
-script tag, and the article block is only rendered *after* the 404 check — a taken-down story
+script tag, and the article block is only rendered _after_ the 404 check — a taken-down story
 carries no structured data. 7 checks in `scripts/json-ld.test.ts`.
 
 **An advert cannot go live without a recorded review.** Migration 037 adds `ad_policy_reviews`.
 "অনুমোদন ও চালু" now opens a five-point checklist (creative rights, landing page, claims,
 prohibited categories, disclosure); every box must be ticked, the reviewer and their notes are
-stored *before* the status flips, and a later rejection leaves the earlier approval in the
+stored _before_ the status flips, and a later rejection leaves the earlier approval in the
 history. `ad.booking.activate` / `ad.booking.reject` are audited. 11 checks in
 `packages/db/src/__tests__/ad-policy.test.ts`.
 
@@ -1081,7 +1092,7 @@ silently drop the factor.
 
 **Guessing is not possible at HTTP speed.** Five bad attempts in fifteen minutes
 lock that email for fifteen, answered with a 429 and `Retry-After`. The counter is
-keyed on the *email hash*, so the attempts table is not a list of who tried to
+keyed on the _email hash_, so the attempts table is not a list of who tried to
 sign in. The login route checks the lock **before** it spends the one-time code,
 verifies the factor **before** it creates a session, and a wiring test fails if
 that order ever changes.
@@ -1097,7 +1108,7 @@ collector runs locally and needs the database), so the guarantee is a bound,
 revocable, audited session — not magic.
 
 **An article takes its pictures with it.** `purgePostMedia` captures the paths
-*before* the row is deleted (the gallery cascades with it), skips remote URLs and
+_before_ the row is deleted (the gallery cascades with it), skips remote URLs and
 files another post still uses, unlinks every mirror, writes one `deletion_log`
 row per outcome, and `retryMediaDeletions` retries a file Windows had locked on
 the next reconcile pass. A taken-down article is a 404 on the public site
@@ -1121,10 +1132,10 @@ produced anything. The pulse only runs while some stations are done and others
 are not — an idle console stays still.
 
 **Readability was a bug, not a taste question.** The panel is deliberately
-obsidian in *both* themes, but the light-theme block used to remap `--hf-fg`
+obsidian in _both_ themes, but the light-theme block used to remap `--hf-fg`
 to dark ink while leaving the dark background — dark-on-dark. It now changes
 only the outer edge. Muted tokens were raised to 0.88/0.70 alpha (above 4.5:1
-against `#0b0e13`), the grain overlay was moved *under* the content, and the
+against `#0b0e13`), the grain overlay was moved _under_ the content, and the
 templates were re-shot at 1440px in both themes until the labels measured
 legible.
 
@@ -1135,8 +1146,8 @@ switches off under `prefers-reduced-motion`.
 
 **Admin queues actually opened.** `viewFromSearch()` lived in
 `ViewToggle.tsx`, a `"use client"` module, and the queue pages called it from a
-server component — Next throws *"Attempted to call … from the server but … is on
-the client"*, which took down posts, moderation, removals and reports. The
+server component — Next throws _"Attempted to call … from the server but … is on
+the client"_, which took down posts, moderation, removals and reports. The
 parser now lives in `lib/view.ts` (server-safe), the toggle imports it, and all
 five queues were verified with a real session (200, both views, plus the post
 editor).
@@ -1197,14 +1208,14 @@ edit/open/delete actions as the table.
 
 **The hero finally shows how content is collected.** The right column of the home
 hero is now `HeroPipelineScene`: three tilted "angled" cards on a dashed rail —
-① the *original source* (platform glyph derived from the real `source_url`, the
+① the _original source_ (platform glyph derived from the real `source_url`, the
 real featured photo, skeleton text lines of the captured post), ② the SIMHASH
 dedupe gate with a scanning beam and a `✓ NEW` / `dup%` verdict, ③ the published
 Hoichoi card with the real rewritten title, summary, photo and category. The
 footer counters are real collected/dups/published numbers, not decoration.
 
 **Hero headline motion no longer breaks the headline.** The old code nested a
-`brand-motion` span *inside* the `.headline-grad` `<h1>`, which destroyed
+`brand-motion` span _inside_ the `.headline-grad` `<h1>`, which destroyed
 `background-clip: text` — so changing the masthead animation blanked the hero
 headline. The motion class now lives on the `<h1>` itself (`hlfx hlfx--<motion>`)
 and there are **13** pickable styles (none, sheen, aurora, metal, liquid,
@@ -1234,8 +1245,8 @@ ambiguity discount.
 CLI and web editor all build their prompt from the same `buildImageBrief`; the
 brief's negative prompt is now always sent, and titles are clamped to 180 chars
 so the style/negative tail is never truncated. Admin → Provider rows for image
-providers gained a **টেস্ট** button (`/api/providers/test`) that runs *that row
-only* (`strict: true`, no fallback) and shows provider, model, mime, size, elapsed
+providers gained a **টেস্ট** button (`/api/providers/test`) that runs _that row
+only_ (`strict: true`, no fallback) and shows provider, model, mime, size, elapsed
 ms and a thumbnail — or the real error.
 
 **Why every image had a Pollinations watermark.** The keyless Pollinations host
@@ -1293,15 +1304,15 @@ seeds only when there is no database.
 carried `import type` and `satisfies` inside a plain `.js` file. Vite tolerates that;
 the JavaScript extractor does not, so the extractor failed and the scan with it. It
 is now a JSDoc `@type` annotation and a plain object. The second half of that
-failure was GitHub's *default* CodeQL setup being on at the same time, which makes
+failure was GitHub's _default_ CodeQL setup being on at the same time, which makes
 GitHub refuse SARIF from an advanced configuration; default setup is now off, so
 the workflow in `.github/workflows/codeql.yml` is the single source.
 
 ## Light where the picture is, and the rail at glyph scale (v1.1.39)
 
 **Every poster was the same dark breaking banner, and the cause was one field.**
-The platter handed the renderer the desk *label* - `সংস্কৃতি`, `অর্থনীতি` - into
-the slot `planPoster` matches on category *slugs*. Nothing matched, so every story
+The platter handed the renderer the desk _label_ - `সংস্কৃতি`, `অর্থনীতি` - into
+the slot `planPoster` matches on category _slugs_. Nothing matched, so every story
 fell through to the `breaking` desk: dark theme, breaking banner, same shape,
 whatever the article was about. `EditorialPosterOptions` now has both: `category`
 (the slug, which picks the frame) and `deskLabel` (the Bangla desk, which is
@@ -1310,7 +1321,7 @@ console's generate-image route, with a poster test that asserts a culture story 
 `editorial-card` + `light-paper` and that a Bangla label is not a slug.
 
 **The scrim protects the words, not the frame.** With a photograph, the dark
-theme held 0.96 opacity across the first 42% *and* 0.985 at the edge - a black
+theme held 0.96 opacity across the first 42% _and_ 0.985 at the edge - a black
 rectangle with a picture suggested behind it, which is what "too much dark on the
 poster" actually was. The stops now reach zero by 88-100%, and the breaking
 banner's dim is a horizontal fall-off only as wide as its 62% copy column, so the
@@ -1329,7 +1340,7 @@ hit area the expanded row has.
 ## The picture after the story, and eleven screens in four rows (v1.1.38)
 
 **The poster was written before the story existed.** In `apps/scraper/src/pipeline.ts`
-the picture steps ran *before* the rewrite, so the brief that chose the scene was
+the picture steps ran _before_ the rewrite, so the brief that chose the scene was
 built from the English source lede and the Facebook caption. A rewritten Bangla
 story therefore got a plate whose headline was English and whose picture had
 nothing to do with the article — exactly the report, and not a styling problem.
@@ -1341,7 +1352,7 @@ and the resolved category.
 `source`; the collector passes the post's own `summary_bn`, its desk and the page
 it came from, and the editor's manual path reads `summary_bn` from the row
 (`plateFacts`). A headline over a photograph says nothing about the article;
-headline + standfirst + desk + source is a picture *of* it.
+headline + standfirst + desk + source is a picture _of_ it.
 
 **A provider that states its limit is obeyed.** Workers AI answered
 `400 Bad input: Length of '/prompt' must be <= 2048` for the full editorial
@@ -1392,14 +1403,14 @@ proposal that cannot be re-run cannot be audited, and it would carry the story's
 names to a third party a second time. So extraction is deterministic: split the
 body the row already holds, keep sentences that carry something checkable (a
 figure, a sum, a date, a named party, a quotation), drop questions, appeals and
-speculation, rank by evidence surface, and say *why* each line was offered. The
+speculation, rank by evidence surface, and say _why_ each line was offered. The
 console shows them as proposals; keeping one fills the claim form, and only then
 does a row exist. `scripts/claim-candidates.test.ts` (14 checks) pins the ranking,
 the exclusions, the digit folding (`২ কোটি` and `2 কোটি` are one claim) and that a
 candidate carries no confidence score to mistake for evidence.
 
 **An approval is per image, and a rejection is a wall with a name on it.**
-Moderation approved a *post*; a post can carry a gallery, and nothing recorded
+Moderation approved a _post_; a post can carry a gallery, and nothing recorded
 which picture a human had actually looked at. Migration 038 adds `image_reviews`:
 one row per decision, the newest row for a path is the standing verdict, a
 rejection at the same instant beats an approval, and history is never deleted - a
@@ -1440,7 +1451,7 @@ page" row in the dark editorial theme inherited a light-theme value and hit
 1.11:1.
 
 **The dark-chips bug, and it was everywhere.** Inside the console, `bg-ink` is
-deliberately pinned to a dark chip in *both* themes, but the label on those
+deliberately pinned to a dark chip in _both_ themes, but the label on those
 chips was `text-paper` — which is #f3eee1 in light mode and #0a0c10 in dark
 mode. So the active tab ("আমার ডিভাইস"), the active filter ("সব"), and buttons
 like "টোকেন তৈরি করুন" and "পোল সংরক্ষণ করুন" all became dark text on a dark
@@ -1453,7 +1464,7 @@ its own contrast with the theme (`bg-lime text-ink`, 3.14:1 light / 1.03:1 dark
 — invisible); it now has a fixed two-end pair via `.badge-free`. Muted labels at
 30–40% white on dark cards measured 2.7:1 and were raised to 55–60%. And the
 **desktop** app mirrored the same mistake — its templates swapped hover and
-active colours but the words still used the *window's* text token, so every dark
+active colours but the words still used the _window's_ text token, so every dark
 panel showed near-black labels in the light theme. Each desktop template now
 declares `--side-fg` / `--side-mute` and the nav reads them.
 
@@ -1491,7 +1502,7 @@ and footer sharing the column beside it; the drawer opener and the rail toggle a
 the same three-line gesture. The masthead and the build stamp live in that top bar
 and the footer, and the "keys are encrypted" claim moved to `/admin/security`
 where it belongs. Two CSS facts had to be written down rather than remembered:
-`.admin-console` is a *column* (so the sticky footer works) and the shell is the
+`.admin-console` is a _column_ (so the sticky footer works) and the shell is the
 one element that is a row — a stale column put the rail above the page — and the
 sidebar's `max-height` still subtracted a header it is no longer under.
 
@@ -1509,7 +1520,7 @@ twice, and a motion layer that is a transform and switches fully off under
 **Provider status for the fleet, not the page.** The tiles and the health panel
 were computed from the twenty rows on screen, so the headline numbers moved when
 an operator turned the page, and a dead provider on page two was invisible.
-`listAiProviderStatus()` now reads every row once and reports what was *measured*:
+`listAiProviderStatus()` now reads every row once and reports what was _measured_:
 success rate, p50/p95 latency and a 24-hour bar chart from `ai_task_runs`, the
 resolver's own `last_ok_at / last_error_at / error_count`, and the declared
 `rate_limit_rpm` compared with the calls the ledger recorded in the last minute
@@ -1536,7 +1547,7 @@ from the public footer of every theme (`AdvertiserLoginLink`, plus a
 footer's social links are a single global setting (`footer_socials`) that
 overrides the legacy `maintenance.socials`, and both are threaded through
 `MvChrome`, every `mv/site/Footer` variant and `MaintenanceScreen` — so a change
-in admin Settings shows up on all themes *and* on the maintenance page.
+in admin Settings shows up on all themes _and_ on the maintenance page.
 
 **Password recovery and mail.** New `password_resets` table plus
 `apps/web/src/lib/mail.ts` (Resend, else SMTP, else "unconfigured" with a
@@ -1564,7 +1575,7 @@ Both paths are now in step.
 the candidate list to that row alone, so a 429 from Gemini (or an OpenAI
 `insufficient_quota`) failed the request even though the next row was healthy —
 and the desktop, which pins nothing, worked with the same accounts. A pinned
-provider is now a *preference*: it is tried first, then the rest of the chain. A
+provider is now a _preference_: it is tried first, then the rest of the chain. A
 rate-limit error gets one short retry before failover, and inside CI the
 repository secret wins over a stale `api_key` stored on the provider row (the
 reason the same key worked on the desktop but 429'd in Actions).
@@ -1745,13 +1756,13 @@ build, on a throwaway file database so the job cannot touch production data:
 
 Running the audit found real defects and they are fixed, not suppressed:
 
-| Was | Measured | Fixed by |
-| --- | --- | --- |
-| `text-ink-soft` on `paper-deep` | 4.07:1 | token darkened to `#625a49` (4.61:1) |
-| `text-alizarin` on `paper-deep` | 3.57:1 | light-theme token to `#b3141f` (4.68:1) |
-| `text-paper` on the `amberx` badge | 4.33:1 | `amberx` to `#9a4708` (5.53:1) |
-| `text-ink-soft/70`, `text-white/40`, `text-bandline/55` | 2.87–3.78:1 | stepped to the plain tokens |
-| `text-white` on `bg-alizarin` | 2.27:1 in dark | new `--color-on-accent` token that flips per theme |
+| Was                                                     | Measured       | Fixed by                                           |
+| ------------------------------------------------------- | -------------- | -------------------------------------------------- |
+| `text-ink-soft` on `paper-deep`                         | 4.07:1         | token darkened to `#625a49` (4.61:1)               |
+| `text-alizarin` on `paper-deep`                         | 3.57:1         | light-theme token to `#b3141f` (4.68:1)            |
+| `text-paper` on the `amberx` badge                      | 4.33:1         | `amberx` to `#9a4708` (5.53:1)                     |
+| `text-ink-soft/70`, `text-white/40`, `text-bandline/55` | 2.87–3.78:1    | stepped to the plain tokens                        |
+| `text-white` on `bg-alizarin`                           | 2.27:1 in dark | new `--color-on-accent` token that flips per theme |
 
 Result: **24 page-checks, 0 serious violations** (12 routes × light/dark). Six
 checks in `apps/web/scripts/quality-gate.test.ts` pin the gates themselves — that
@@ -1790,14 +1801,14 @@ the real provider: a `summarise` call returned Bangla prose in 14 s from Gemini,
 The policies ship as pages, not as files in a gitignored folder — a reader who
 wants to know how corrections or disclosure work lands on the website.
 
-| Page | Enforced by |
-| --- | --- |
-| `/about/editorial` | `apps/scraper/src/source-overlap.ts` (35-word verbatim ceiling) |
-| `/about/ai` | `packages/llm/src/build.ts` (provider, task, human approval) |
-| `/about/corrections` | `packages/db/src/verification.ts` (correction history) |
-| `/about/security` | `SECURITY.md`, `security-headers.mjs` |
-| `/privacy`, `/cookies` | `packages/db/src/guest.ts` (hashes, never raw) |
-| `/terms`, `/dmca` | `apps/web/src/app/api/report-content` |
+| Page                   | Enforced by                                                     |
+| ---------------------- | --------------------------------------------------------------- |
+| `/about/editorial`     | `apps/scraper/src/source-overlap.ts` (35-word verbatim ceiling) |
+| `/about/ai`            | `packages/llm/src/build.ts` (provider, task, human approval)    |
+| `/about/corrections`   | `packages/db/src/verification.ts` (correction history)          |
+| `/about/security`      | `SECURITY.md`, `security-headers.mjs`                           |
+| `/privacy`, `/cookies` | `packages/db/src/guest.ts` (hashes, never raw)                  |
+| `/terms`, `/dmca`      | `apps/web/src/app/api/report-content`                           |
 
 `/about` is the index: it lists each policy **and the file that implements it**,
 because a policy that describes behaviour the code does not perform is worse than
@@ -1812,12 +1823,12 @@ and honest about what enforces it. `docs/` stays gitignored.
 without a human reading logs. Public on purpose — the payload is booleans,
 counts, versions and durations only.
 
-| Probe | Critical | Meaning |
-| --- | --- | --- |
-| `db` | yes | `SELECT 1` succeeded |
-| `migrations` | yes | `_migrations` count ≥ embedded migrations |
-| `media` | no | how many image providers are *not* cooling down |
-| `mail` | no | a transport is configured |
+| Probe        | Critical | Meaning                                         |
+| ------------ | -------- | ----------------------------------------------- |
+| `db`         | yes      | `SELECT 1` succeeded                            |
+| `migrations` | yes      | `_migrations` count ≥ embedded migrations       |
+| `media`      | no       | how many image providers are _not_ cooling down |
+| `mail`       | no       | a transport is configured                       |
 
 `unhealthy` (503) only when a critical probe fails; a broken optional dependency
 is `degraded` (still 200, because readers are still served), and a probe slower
@@ -1828,7 +1839,7 @@ boundary — `password`/`secret`/`token`/`api_key`/`cookie`/`dsn` become
 `[redacted]`, an email becomes `***@domain`, and IPs never appear. Levels follow
 `LOG_LEVEL`. **`lib/observability.ts`** posts the same error to Sentry via its
 plain HTTP envelope when `SENTRY_DSN` is set — no SDK dependency, 2 s timeout,
-never throws. The health endpoint reports *unhealthy* and the alert cron reports a
+never throws. The health endpoint reports _unhealthy_ and the alert cron reports a
 failed digest, so both reach the error sink.
 
 `.github/workflows/uptime.yml` probes the production endpoint every 15 minutes
@@ -1836,14 +1847,14 @@ failed digest, so both reach the error sink.
 
 ### Supply chain and disclosure
 
-| File | What it does |
-| --- | --- |
-| `.github/dependabot.yml` | weekly npm (grouped minor/patch), cargo, actions; `next`/`react` majors are ignored so a framework migration stays a decision |
-| `.github/workflows/codeql.yml` | `security-extended` queries over `javascript-typescript`, on push, PR and weekly |
-| `.github/workflows/secret-scan.yml` | gitleaks with `fetch-depth: 0` — a shallow clone hides leaked history |
-| `SECURITY.md` | contact, scope, 72 h acknowledgement, what we already do, no paid bounty |
-| `.github/pull_request_template.md` | asks for the checks actually run, and flags migrations/CSP/desktop rebuilds |
-| `apps/web/scripts/supply-chain.test.ts` | 8 checks — the configs stay effective (permissions, full history, ecosystem coverage) and **no `.env` is tracked** |
+| File                                    | What it does                                                                                                                  |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `.github/dependabot.yml`                | weekly npm (grouped minor/patch), cargo, actions; `next`/`react` majors are ignored so a framework migration stays a decision |
+| `.github/workflows/codeql.yml`          | `security-extended` queries over `javascript-typescript`, on push, PR and weekly                                              |
+| `.github/workflows/secret-scan.yml`     | gitleaks with `fetch-depth: 0` — a shallow clone hides leaked history                                                         |
+| `SECURITY.md`                           | contact, scope, 72 h acknowledgement, what we already do, no paid bounty                                                      |
+| `.github/pull_request_template.md`      | asks for the checks actually run, and flags migrations/CSP/desktop rebuilds                                                   |
+| `apps/web/scripts/supply-chain.test.ts` | 8 checks — the configs stay effective (permissions, full history, ecosystem coverage) and **no `.env` is tracked**            |
 
 Report vulnerabilities to **security@hoichoi.io**; please do not open a public issue.
 
@@ -1888,19 +1899,19 @@ Public forms no longer keep whatever the reader typed as their only handle.
 Migration 031 adds four columns to `comments`, `reader_reports`,
 `submitted_pages` and `removal_requests`:
 
-| Column | What it is | What it is not |
-| --- | --- | --- |
-| `guest_id` | opaque 128-bit id in an httpOnly `hoichoi_guest` cookie | not a fingerprint, not an email |
-| `email_hash` | HMAC-SHA256 of the normalised address | not reversible without `GUEST_HASH_SECRET` |
-| `ip_hash` | HMAC of the IP truncated to /24 (v4) or /64 (v6) | not the raw address |
-| `trust_score` | 0–100 from that guest's real moderation outcomes | not an auto-ban verdict |
+| Column        | What it is                                              | What it is not                             |
+| ------------- | ------------------------------------------------------- | ------------------------------------------ |
+| `guest_id`    | opaque 128-bit id in an httpOnly `hoichoi_guest` cookie | not a fingerprint, not an email            |
+| `email_hash`  | HMAC-SHA256 of the normalised address                   | not reversible without `GUEST_HASH_SECRET` |
+| `ip_hash`     | HMAC of the IP truncated to /24 (v4) or /64 (v6)        | not the raw address                        |
+| `trust_score` | 0–100 from that guest's real moderation outcomes        | not an auto-ban verdict                    |
 
 `trustScoreFor()` returns **NULL** for a guest with no history rather than an
 invented middle number; `computeTrustScore()` is pure (approved +5, rejected −8,
 reports reviewed +3, dismissed −5, clamped 0…100).
 
 **Data-subject tooling**: `/api/admin/privacy/subject` (admin only, audited,
-rate-limited) exports every row belonging to a guest id *or* an email as JSON, or
+rate-limited) exports every row belonging to a guest id _or_ an email as JSON, or
 erases them. Erasure by guest id also follows every email hash that guest ever
 used, so it cannot leave hash-only rows behind; published posts, other people's
 comments and audit rows are untouched. `/admin/security` → "ডেটা-সাবজেক্ট"
@@ -1909,7 +1920,7 @@ drives it, with a typed `ERASE` confirmation. 10 checks in
 
 ### Desk notifications
 
-The bell used to show only queue *counts*, so events outside a queue — a provider
+The bell used to show only queue _counts_, so events outside a queue — a provider
 cooling down, a credential about to expire, a cron failing closed, a
 reconciliation that deleted files — lived in a log nobody read.
 
@@ -1918,12 +1929,12 @@ reconciliation that deleted files — lived in a log nobody read.
 often the job reports it, so the bell stays quiet instead of becoming noise.
 Writers are wired where the events actually happen:
 
-| Event | Writer | When |
-| --- | --- | --- |
+| Event             | Writer                  | When                                       |
+| ----------------- | ----------------------- | ------------------------------------------ |
 | provider cooldown | `recordProviderFailure` | 2nd consecutive failure, once per cooldown |
-| credential due | credential cron | every expiry, stamped per day |
-| media cleanup | `reconcileMedia` | after a run that deleted something |
-| failed cron | `/api/cron/alerts` | alerts that could not be mailed |
+| credential due    | credential cron         | every expiry, stamped per day              |
+| media cleanup     | `reconcileMedia`        | after a run that deleted something         |
+| failed cron       | `/api/cron/alerts`      | alerts that could not be mailed            |
 
 **Surfaces**: the header bell shows `warn`/`critical` events under the queue
 depths with one-tap "সব পড়া হয়েছে" (role-filtered — an admin-only alert is
@@ -1956,8 +1967,8 @@ registry on one screen — `/admin/media` (🗄️ মিডিয়া ও ক
 - **One card per provider**: measured bytes, quota bar (only when an operator set
   one — an unlimited provider shows no bar), success/failure counts, the live
   streak, last error and last fallback reason.
-- **14-day inline sparkline**, zero-filled so a quiet day reads as *nothing
-  uploaded* instead of collapsing the chart — a stalled pipeline cannot look
+- **14-day inline sparkline**, zero-filled so a quiet day reads as _nothing
+  uploaded_ instead of collapsing the chart — a stalled pipeline cannot look
   healthy by going blank.
 - **Headline** picks the hardest condition first (quota full beats a cooldown,
   which beats mere failures) so the most blocking problem is the one you read.
@@ -1975,12 +1986,12 @@ the retention job can never reach it.
 
 `reconcileMedia()` classifies all four in one scan (`media-reconcile.ts`):
 
-| Class | Meaning | What cleanup does |
-| --- | --- | --- |
-| `unreferenced_local` | file on disk that no post, `post_images` row or `raw_posts.screenshot_path` mentions | deleted **only** if older than the 6 h guard |
-| `missing_local` | a post points at a relative path that neither disk nor registry has | reported, never "fixed" by inventing a file |
-| `duplicate_remote_row` | two `media_objects` rows for one adapter+key | extras deleted, quota corrected |
-| `remote_row_without_post` | row whose post is gone and which no live post references | deleted, quota corrected |
+| Class                     | Meaning                                                                              | What cleanup does                            |
+| ------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------- |
+| `unreferenced_local`      | file on disk that no post, `post_images` row or `raw_posts.screenshot_path` mentions | deleted **only** if older than the 6 h guard |
+| `missing_local`           | a post points at a relative path that neither disk nor registry has                  | reported, never "fixed" by inventing a file  |
+| `duplicate_remote_row`    | two `media_objects` rows for one adapter+key                                         | extras deleted, quota corrected              |
+| `remote_row_without_post` | row whose post is gone and which no live post references                             | deleted, quota corrected                     |
 
 Two rules keep it safe: a path a post references is **never** touched, and files
 younger than 6 hours are assumed to belong to an in-flight upload. External URLs
@@ -1998,13 +2009,13 @@ Media uploads fail over between GitHub and S3 targets, so a dead target was
 invisible from the outside: every upload still succeeded — on the backup. One row
 per provider now carries the evidence (`media_provider_health`, migration 029).
 
-| Column | Meaning |
-| --- | --- |
-| `used_bytes` / `objects` | grown only by uploads that actually succeeded, and given back on delete |
-| `quota_bytes` | `NULL` until an operator sets one — never guessed from a plan |
-| `consecutive_failures` · `last_error` | the real error text, clamped to 500 chars |
-| `cooldown_until` | 2 min after the 2nd consecutive failure, doubling to a 1 h cap |
-| `last_fallback_reason` | e.g. "upload failed; fell back to GitHub media" |
+| Column                                | Meaning                                                                 |
+| ------------------------------------- | ----------------------------------------------------------------------- |
+| `used_bytes` / `objects`              | grown only by uploads that actually succeeded, and given back on delete |
+| `quota_bytes`                         | `NULL` until an operator sets one — never guessed from a plan           |
+| `consecutive_failures` · `last_error` | the real error text, clamped to 500 chars                               |
+| `cooldown_until`                      | 2 min after the 2nd consecutive failure, doubling to a 1 h cap          |
+| `last_fallback_reason`                | e.g. "upload failed; fell back to GitHub media"                         |
 
 `applyProviderHealth()` demotes a provider that is cooling down or over quota
 before the upload loop runs, and **never empties the chain**: if every target is
@@ -2027,12 +2038,12 @@ zeroes — 11 checks in `packages/db/src/__tests__/provider-health.test.ts`.
 `next.config.mjs` just calls it, so the policy can be unit-tested (10 checks)
 without booting Next.
 
-| Header | Value |
-| --- | --- |
-| `Strict-Transport-Security` | 2 years, `includeSubDomains; preload` — **production only** (sending it from `http://localhost` pins localhost to https for a year) |
-| `Content-Security-Policy` | report-only by default; `CSP_ENFORCE=true` promotes the identical policy to enforcing |
-| `Permissions-Policy` | camera/microphone/geolocation/payment/usb/sensors `=()` — deny, never wildcard |
-| `X-Content-Type-Options` · `X-Frame-Options` · `Referrer-Policy` | `nosniff` · `SAMEORIGIN` (the admin design studio frames the public site) · `strict-origin-when-cross-origin` |
+| Header                                                           | Value                                                                                                                               |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `Strict-Transport-Security`                                      | 2 years, `includeSubDomains; preload` — **production only** (sending it from `http://localhost` pins localhost to https for a year) |
+| `Content-Security-Policy`                                        | report-only by default; `CSP_ENFORCE=true` promotes the identical policy to enforcing                                               |
+| `Permissions-Policy`                                             | camera/microphone/geolocation/payment/usb/sensors `=()` — deny, never wildcard                                                      |
+| `X-Content-Type-Options` · `X-Frame-Options` · `Referrer-Policy` | `nosniff` · `SAMEORIGIN` (the admin design studio frames the public site) · `strict-origin-when-cross-origin`                       |
 
 The CSP allows only what the app actually uses: `self` scripts (no `unsafe-eval`
 in production — the test fails if it appears), `https:` images and media, and
@@ -2071,11 +2082,11 @@ only from a stored record.
 
 `migration 028` adds the record:
 
-| Surface | Meaning |
-| --- | --- |
-| `posts.verification_status` | `unverified` · `single_source` · `multi_source` · `human_verified` · `corrected` |
-| `claims` | individual checkable statements with an evidence link and a verdict (`supported` / `disputed` / `false`) |
-| `correction_history` | every corrected field, old text, new text, reason and editor |
+| Surface                     | Meaning                                                                                                  |
+| --------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `posts.verification_status` | `unverified` · `single_source` · `multi_source` · `human_verified` · `corrected`                         |
+| `claims`                    | individual checkable statements with an evidence link and a verdict (`supported` / `disputed` / `false`) |
+| `correction_history`        | every corrected field, old text, new text, reason and editor                                             |
 
 The grade is **derived, never typed**: `gradeFromEvidence()` refuses
 `multi_source` with one source, refuses `human_verified` without a named editor,
@@ -2109,15 +2120,15 @@ failed audit write must not fail the action the operator already took.
 Public write endpoints are throttled by a shared counter table
 (`025_rate_limits.sql`, `packages/db/src/rate-limit.ts`, `apps/web/src/lib/rate-limit.ts`):
 
-| Endpoint | Budget |
-| --- | --- |
-| `POST /api/auth/login` | 10 / 10 min per address, **and** 5 / 10 min per email |
-| `POST /api/comments` | 8 / 10 min |
-| `POST /api/report-content` | 5 / hour |
-| `POST /api/submit-page` | 3 / hour |
-| `POST /api/polls/[id]` (vote) | 12 / min |
-| `POST /api/track` | 120 / min |
-| `POST /api/platform-ads/event` | 120 / min |
+| Endpoint                       | Budget                                                |
+| ------------------------------ | ----------------------------------------------------- |
+| `POST /api/auth/login`         | 10 / 10 min per address, **and** 5 / 10 min per email |
+| `POST /api/comments`           | 8 / 10 min                                            |
+| `POST /api/report-content`     | 5 / hour                                              |
+| `POST /api/submit-page`        | 3 / hour                                              |
+| `POST /api/polls/[id]` (vote)  | 12 / min                                              |
+| `POST /api/track`              | 120 / min                                             |
+| `POST /api/platform-ads/event` | 120 / min                                             |
 
 Exceeding a budget returns `429` with `retry-after` and a bilingual message. The
 window is fixed, the increment and the read are one SQL statement

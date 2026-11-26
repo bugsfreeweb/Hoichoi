@@ -84,7 +84,7 @@ const SAMPLE_ALERTS: WireAlert[] = [
   {
     id: "alert-2",
     type: "fact",
-    title: "ফ্যাক্ট-গেট ০.৯২ অনুমোদিত",
+    title: "কোয়ালিটি গেট ০.৯২ অনুমোদিত",
     dek: "রংপুর নিখোঁজ শিশু সংক্রান্ত ভাইরাল ছবিটি ২০২৩ সালের পুরোনো ঘটনার বলে বাতিল করা হয়েছে।",
     slug: "missing-child-rangpur-8d2c41",
     time: "৩ মিনিট আগে",
@@ -107,7 +107,7 @@ const SAMPLE_ALERTS: WireAlert[] = [
 
 const KIND_META: Record<AlertKind, { label: string; color: string; Icon: typeof Zap }> = {
   breaking: { label: "ব্রেকিং", color: "var(--accent)", Icon: Zap },
-  fact: { label: "ফ্যাক্ট-গেট", color: "#4ade80", Icon: ShieldCheck },
+  fact: { label: "কোয়ালিটি গেট", color: "#4ade80", Icon: ShieldCheck },
   sync: { label: "লাইভ সিঙ্ক", color: "#56c8ff", Icon: Radio },
   security: { label: "সুরক্ষা", color: "#a78bfa", Icon: ShieldCheck },
 };
@@ -473,7 +473,7 @@ export default function NotificationHUD() {
                 {([
                   { id: "all", label: "সব আপডেট" },
                   { id: "breaking", label: "ব্রেকিং" },
-                  { id: "fact", label: "ফ্যাক্ট-গেট" },
+                  { id: "fact", label: "কোয়ালিটি গেট" },
                   { id: "sync", label: "লাইভ সিঙ্ক" },
                 ] as const).map((tab) => (
                   <button

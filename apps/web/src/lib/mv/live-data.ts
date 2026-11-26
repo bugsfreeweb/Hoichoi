@@ -122,7 +122,7 @@ export async function buildMvData(): Promise<MvData> {
   const factGate = pct(published, collected);
   const dedup = stats?.dedupRate ?? 0;
   const pipelineGauges: PipelineGaugeRow[] = [
-    { label: "ফ্যাক্ট-গেট পাস", value: factGate, color: "#4ade80", sub: "প্রকাশ / সংগ্রহ অনুপাত" },
+    { label: "কোয়ালিটি গেট পাস", value: factGate, color: "#4ade80", sub: "প্রকাশ / সংগ্রহ অনুপাত" },
     { label: "ডুপ্লিকেট ব্লক", value: dedup, color: "#f5a524", sub: "SimHash গেট" },
     { label: "কালেক্টর আপটাইম", value: uptime, color: "#56c8ff", sub: "শেষ ৩০ দিন" },
     { label: "ডিপ্লয় সফলতা", value: uptime, color: "#a78bfa", sub: "রান সফলতার হার" },

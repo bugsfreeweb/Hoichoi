@@ -1415,29 +1415,122 @@ export async function radarSnapshot(): Promise<RadarSnapshot> {
  * trend series, category distribution, activity and pipeline state — all
  * computed from real DB rows, nothing invented.
  */
+export interface CollectorSnapshot {
+  online: boolean;
+  intervalHours: number;
+  lastRunAt: string | null;
+  lastSuccessAt: string | null;
+  nextRunAt: string | null;
+  lastStatus: string | null;
+  lastStats: Record<string, unknown> | null;
+}
+
+/**
+ * Public-safe collector health. No internal host, token or error text leaves
+ * this function: the site only needs "connected" plus the last successful run.
+ */
+export async function collectorSnapshot(): Promise<CollectorSnapshot> {
+  const client = getClient();
+  const [settingsRes, runRes] = await Promise.all([
+    client.execute("SELECT pipeline_hours FROM settings WHERE id = 1"),
+    client.execute(
+      "SELECT started_at, finished_at, status, stats FROM pipeline_runs ORDER BY started_at DESC LIMIT 1",
+    ),
+  ]);
+  const intervalHours = Math.max(
+    1,
+    Number(settingsRes.rows[0]?.pipeline_hours ?? 8) || 8,
+  );
+  const row = runRes.rows[0] as Record<string, unknown> | undefined;
+  let stats: Record<string, unknown> | null = null;
+  if (row?.stats) {
+    try {
+      stats = JSON.parse(String(row.stats)) as Record<string, unknown>;
+    } catch {
+      stats = null;
+    }
+  }
+  const lastStarted = row ? String(row.started_at) : null;
+  const lastSuccessAt =
+    row && String(row.status) === "completed"
+      ? String(row.finished_at ?? row.started_at)
+      : null;
+  const lastMs = lastSuccessAt ? Date.parse(lastSuccessAt) : 0;
+  const online =
+    !!lastMs && Date.now() - lastMs <= (intervalHours * 60 + 30) * 60_000;
+  const startedMs = lastStarted ? Date.parse(lastStarted) : 0;
+  const nextRunAt = startedMs
+    ? new Date(startedMs + intervalHours * 3_600_000).toISOString()
+    : null;
+  return {
+    online,
+    intervalHours,
+    lastRunAt: lastStarted,
+    lastSuccessAt,
+    nextRunAt,
+    lastStatus: row ? String(row.status) : null,
+    lastStats: stats,
+  };
+}
+
+/** Total duplicates filtered by the pipeline, not inferred from raw pHashes. */
+export async function dedupSummary(): Promise<{
+  blocked: number;
+  runs: number;
+}> {
+  const client = getClient();
+  const res = await client.execute(
+    "SELECT stats FROM pipeline_runs ORDER BY started_at DESC LIMIT 200",
+  );
+  let blocked = 0;
+  let runs = 0;
+  for (const row of res.rows) {
+    try {
+      const parsed = JSON.parse(String(row.stats ?? "{}")) as Record<
+        string,
+        unknown
+      >;
+      if (typeof parsed.duplicatesBlocked === "number") {
+        blocked += parsed.duplicatesBlocked;
+        runs++;
+      }
+    } catch {
+      /* a malformed historical row must not hide the rest */
+    }
+  }
+  return { blocked, runs };
+}
+
 export async function analyticsSnapshot(
   range: AnalyticsRange = "all",
 ): Promise<AnalyticsSnapshot> {
   const start = performance.now();
   const client = getClient();
-  const [posts, rawPosts, commentRows, sourceRows, runRows, published, cats] =
-    await Promise.all([
-      client.execute(
-        "SELECT id, status, category, created_at, published_at FROM posts",
-      ),
-      client.execute("SELECT phash, scraped_at FROM raw_posts"),
-      client.execute(
-        "SELECT created_at FROM comments WHERE status = 'approved'",
-      ),
-      client.execute("SELECT is_active FROM sources"),
-      client.execute(
-        "SELECT started_at, finished_at, status FROM pipeline_runs ORDER BY started_at DESC LIMIT 500",
-      ),
-      client.execute(
-        "SELECT id, slug, title_bn, published_at FROM posts_current_window ORDER BY published_at DESC LIMIT 6",
-      ),
-      listCategories(),
-    ]);
+  const [
+    posts,
+    rawPosts,
+    commentRows,
+    sourceRows,
+    runRows,
+    published,
+    cats,
+    settingRows,
+  ] = await Promise.all([
+    client.execute(
+      "SELECT id, status, category, created_at, published_at FROM posts",
+    ),
+    client.execute("SELECT phash, scraped_at FROM raw_posts"),
+    client.execute("SELECT created_at FROM comments WHERE status = 'approved'"),
+    client.execute("SELECT is_active FROM sources"),
+    client.execute(
+      "SELECT started_at, finished_at, status, stats FROM pipeline_runs ORDER BY started_at DESC LIMIT 500",
+    ),
+    client.execute(
+      "SELECT id, slug, title_bn, published_at FROM posts_current_window ORDER BY published_at DESC LIMIT 6",
+    ),
+    listCategories(),
+    client.execute("SELECT pipeline_hours FROM settings WHERE id = 1"),
+  ]);
   const latencyMs = Math.max(1, Math.round(performance.now() - start));
 
   const pt = (v: unknown) => {
@@ -1460,6 +1553,10 @@ export async function analyticsSnapshot(
   const topPublished = published.rows as unknown as Array<
     Record<string, unknown>
   >;
+  const pipelineHours = Math.max(
+    1,
+    Number(settingRows.rows[0]?.pipeline_hours ?? 8) || 8,
+  );
 
   const collectedTimes = raws.map((r) => pt(r.scraped_at)).filter(Boolean);
   const publishedTimes = all
@@ -1495,18 +1592,9 @@ export async function analyticsSnapshot(
   const index = (t: number) =>
     Math.min(bins - 1, Math.max(0, Math.floor((t - from) / step)));
 
-  // duplicate detection across the whole intake (a phash seen twice is a dup)
-  const phashCount = new Map<string, number>();
-  for (const r of raws) {
-    if (r.phash)
-      phashCount.set(
-        String(r.phash),
-        (phashCount.get(String(r.phash)) ?? 0) + 1,
-      );
-  }
-  const isDup = (r: Record<string, unknown>) =>
-    !!r.phash && (phashCount.get(String(r.phash)) ?? 0) > 1;
-
+  // Dedup is counted from what the pipeline actually filtered, not from a
+  // re-scan of pHashes: the pipeline blocks a duplicate before insertion, so a
+  // raw-row heuristic always reported zero.
   const totals = {
     collected: 0,
     published: 0,
@@ -1523,7 +1611,20 @@ export async function analyticsSnapshot(
     totals.collected++;
     const bin = series[index(t)];
     if (bin) bin.collected++;
-    if (isDup(r)) totals.duplicates++;
+  }
+  for (const run of runs) {
+    if (!inside(pt(run.started_at))) continue;
+    try {
+      const stats = JSON.parse(String(run.stats ?? "{}")) as Record<
+        string,
+        unknown
+      >;
+      if (typeof stats.duplicatesBlocked === "number") {
+        totals.duplicates += stats.duplicatesBlocked;
+      }
+    } catch {
+      /* older/malformed stats do not erase newer counts */
+    }
   }
   for (const p of all) {
     const st = String(p.status);
@@ -1566,7 +1667,7 @@ export async function analyticsSnapshot(
     collectorStatus =
       st === "running"
         ? "working"
-        : now - finished < 90_000
+        : now - finished < (pipelineHours * 60 + 30) * 60_000
           ? "ready"
           : "offline";
   }
@@ -2325,9 +2426,7 @@ export interface PostUpdateFields {
  * are known-good (the collector fetched them once) and re-downloading one costs
  * a single request instead of a full browser re-visit of the permalink.
  */
-export async function listPostMediaCandidates(
-  postId: string,
-): Promise<{
+export async function listPostMediaCandidates(postId: string): Promise<{
   media_urls: string[];
   source_url: string | null;
   current: string | null;

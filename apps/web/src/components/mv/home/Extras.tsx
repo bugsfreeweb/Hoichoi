@@ -45,7 +45,7 @@ const WIRE_TEMPLATES: { kind: WireKind; label: string; detail: string; ok: boole
   { kind: "collect", label: "ওয়াচলিস্ট সংগ্রহ", detail: "ফেসবুক পেজ থেকে নতুন উন্মুক্ত পোস্ট গ্রহণ করা হয়েছে", ok: true },
   { kind: "hash", label: "হ্যাশ গেট পার", detail: "SHA-256 ও SimHash মিলিয়ে পুনরাবৃত্তি যাচাই সম্পন্ন", ok: true },
   { kind: "rewrite", label: "পুনর্লিখন সম্পন্ন", detail: "কাঁচা ক্যাপশন থেকে সংবাদ-শৈলীর প্রতিবেদন তৈরি", ok: true },
-  { kind: "gate", label: "ফ্যাক্ট-গেট ০.৯২", detail: "নির্ধারিত ০.৯০ থ্রেশহোল্ড অতিক্রম করে অনুমোদিত", ok: true },
+  { kind: "gate", label: "কোয়ালিটি গেট ০.৯২", detail: "নির্ধারিত ০.৯০ থ্রেশহোল্ড অতিক্রম করে অনুমোদিত", ok: true },
   { kind: "publish", label: "প্রকাশিত", detail: "ISR রিভ্যালিডেশনে পাবলিক সাইটে লাইভ", ok: true },
   { kind: "block", label: "পুনরাবৃত্তি আটকানো", detail: "একই ঘটনার পূর্ব-সংরক্ষিত রেকর্ড শনাক্ত — বাতিল", ok: false },
 ];
@@ -230,7 +230,7 @@ export function LiveWire({ density = "comfortable", variant = "stream" }: { dens
       <SectionHead
         kicker="▚ নিউজরুম ওয়্যার · প্রতি ১০ সেকেন্ডে"
         title={<>সংবাদকক্ষে এখন <span className="text-gradient">যা ঘটছে</span></>}
-        desc="সংগ্রহ, হ্যাশ-যাচাই, পুনর্লিখন, ফ্যাক্ট-গেট ও প্রকাশ — পাইপলাইনের প্রতিটি ধাপ সরাসরি এখানে প্রবাহিত হয়।"
+        desc="সংগ্রহ, হ্যাশ-যাচাই, পুনর্লিখন, কোয়ালিটি গেট ও প্রকাশ — পাইপলাইনের প্রতিটি ধাপ সরাসরি এখানে প্রবাহিত হয়।"
         right={toggle}
       />
 
@@ -391,7 +391,7 @@ export function Briefing({
                     <span className="mono-label" style={{ color: "var(--accent)" }}>{p.category} · {bn(p.readMinutes)} মিনিট</span>
                     <h3 className="font-display-bn mt-2 line-clamp-3 text-[18px] leading-snug text-mist-100">{p.title}</h3>
                     <p className="mt-2 line-clamp-2 flex-1 text-[13px] leading-relaxed text-mist-400">{p.dek}</p>
-                    <span className="mono-label mt-4 flex items-center gap-1.5 text-mint-400"><ShieldCheck className="h-3 w-3" /> ফ্যাক্ট {bn(p.factScore)}</span>
+                    <span className="mono-label mt-4 flex items-center gap-1.5 text-mint-400"><ShieldCheck className="h-3 w-3" /> কোয়ালিটি {bn(p.factScore)}</span>
                   </div>
                 </article>
               </Link>
@@ -547,7 +547,7 @@ export function Briefing({
           <div className="surface-hi flex flex-col justify-between rounded-2xl p-6">
             <div>
               <Badge tone="ok">
-                <ShieldCheck className="h-3 w-3" /> সব ফ্যাক্ট-গেট পাস
+                <ShieldCheck className="h-3 w-3" /> সব কোয়ালিটি গেট পাস
               </Badge>
               <h3 className="font-display-bn mt-5 text-2xl leading-snug text-mist-100">
                 আজ সবচেয়ে যাচাইকৃত ৫টি খবর

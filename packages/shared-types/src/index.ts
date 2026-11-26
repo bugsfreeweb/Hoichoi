@@ -177,7 +177,27 @@ export interface RawPost {
 /** Provenance of a post's primary image. */
 export type MediaOrigin = "collector" | "ai" | "admin" | "external" | "plate";
 
-export type VerificationStatus = "unverified" | "single_source" | "multi_source" | "human_verified" | "corrected";
+/**
+ * Human/source verification grade. Deliberately separate from
+ * `ai_rewrite_quality_score`: an AI score can never promote a story here.
+ *
+ * `single_source`, `multi_source`, `human_verified` and `corrected` are legacy
+ * values kept so old rows still map; new writes use the explicit vocabulary.
+ */
+export type VerificationStatus =
+  | "unverified"
+  | "source_claimed"
+  | "partially_verified"
+  | "verified"
+  | "disputed"
+  | "retracted"
+  | "single_source"
+  | "multi_source"
+  | "human_verified"
+  | "corrected";
+
+/** Where the story came from, derived from the original URL. */
+export type SourceType = "facebook" | "news" | "government" | "user" | "unknown";
 
 export interface Post {
   id: string;
@@ -214,6 +234,19 @@ export interface Post {
    */
   verification_status?: VerificationStatus | null;
   verification_note?: string | null;
+  /** Evidence URLs/notes an editor attached to the verification. */
+  verification_evidence?: string[] | null;
+  reviewer_id?: string | null;
+  review_notes?: string | null;
+  source_type?: SourceType | null;
+  source_reliability_score?: number | null;
+  /** Deterministic AI rewrite quality (0..1) — never a fact-check score. */
+  ai_rewrite_quality_score?: number | null;
+  is_human_reviewed?: boolean;
+  /** False for sensitive desks, allegations and unverified social posts. */
+  is_feature_eligible?: boolean;
+  feature_approved_by?: string | null;
+  feature_approved_at?: string | null;
   /**
    * Text provenance. True when an AI task wrote or rewrote a field on this post,
    * with the task name that did it. Recorded at save time by the editor that
