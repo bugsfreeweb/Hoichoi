@@ -69,7 +69,11 @@ export default async function AdminModerationPage({
   // active desks are writable; a legacy value stays visible on its own row.
   const categoryOptions: CategoryOption[] = categories
     .filter((c) => c.isActive)
-    .map((c) => ({ slug: c.slug, label: c.displayNameBn }));
+    .map((c) => ({
+      slug: c.slug,
+      label: c.displayNameBn,
+      labelEn: c.displayNameEn,
+    }));
   // Reader comments live on their own moderation page (/admin/comments) — the
   // comment queue was split out of this content page so a post editor looking
   // at article queues does not scroll past reader-submitted text to do their job.

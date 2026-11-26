@@ -9,6 +9,8 @@ import { useBi } from "@/components/i18n/LocaleProvider";
 export interface CategoryOption {
   slug: string;
   label: string;
+  /** English label for the console's EN mode; falls back to the Bangla one. */
+  labelEn?: string;
 }
 
 /**
@@ -76,7 +78,9 @@ export function CategoryPicker({
         )}
         {categories.map((c) => (
           <option key={c.slug} value={c.slug}>
-            {compact ? c.label : `${c.label} (${c.slug})`}
+            {compact
+              ? b(c.label, c.labelEn ?? c.label)
+              : `${b(c.label, c.labelEn ?? c.label)} (${c.slug})`}
           </option>
         ))}
       </select>
