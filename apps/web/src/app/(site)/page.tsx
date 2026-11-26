@@ -223,7 +223,7 @@ export default async function HomePage({
                 SYNCED {timeBn(featured.created_at ?? new Date().toISOString())}{" "}
                 ·{" "}
                 {featured.is_feature_eligible
-                  ? b("LEAD STORY", "LEAD STORY")
+                  ? b("প্রধান সংবাদ", "LEAD STORY")
                   : b("মানব যাচাই বাকি", "AWAITING HUMAN REVIEW")}
               </span>
             </div>
