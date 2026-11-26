@@ -680,11 +680,13 @@ provider chain behind it) is asked for Bengali copy and design tokens in one JSO
 bullets _or_ one pull-quote, `badge_text`, `footer_text`, a `layout_variant`, a `palette_id`,
 a `visual_style`, a procedural `texture`, and an English `image_prompt` that bans lettering.
 A model headline that is only a truncated prefix of the article title is rebuilt from the
-title, and a pull-quote that the story does not actually contain is replaced by its first
-sentence — a poster may not invent a quotation. The schema lives
-in `packages/llm/src/art-director.ts`. A model that answers badly is repaired, field by
-field; a model that is down is replaced by a deterministic planner that still writes a
-complete, story-specific plan. The poster never depends on the model being awake.
+title. The art director may still return bullets or a pull-quote, but the poster layout no
+longer prints either: a poster is the headline, the image, the badge and the factual
+source/date footer. Short explanatory paragraphs were the least readable element on the
+rendered page and are deliberately dropped. The schema lives in
+`packages/llm/src/art-director.ts`. A model that answers badly is repaired, field by field;
+a model that is down is replaced by a deterministic planner that still writes a complete,
+story-specific plan. The poster never depends on the model being awake.
 
 | layout_variant            | shape                                                           |
 | ------------------------- | --------------------------------------------------------------- |
@@ -769,10 +771,15 @@ are deliberately excluded — their byte mapping produces garbage when interpret
 Unicode.
 
 The web app, the admin console and the Tauri desk all import the same stylesheet. The
-Settings → ডিজাইন tab shows a **বাংলা ফন্ট লাইব্রেরি** gallery with live samples; its three
-selects write `app_config_json.typography.headline`, `.body` and `.meta`, and the root layout
-applies them by overriding `--font-serif-bn`, `--font-sans-bn` and `--font-meta-bn` for both
-the public site and the admin console. The Tauri desk reads the same three ids on boot and
+Settings → ডিজাইন tab shows a **বাংলা ফন্ট লাইব্রেরি** gallery with live samples. It writes
+`app_config_json.typography`: the original `.headline`, `.body` and `.meta` roles plus
+per-surface slots for `.pageTitle`, `.subtitle`, `.header`, `.footer`, `.sidebar`,
+`.comments`, `.reports`, `.admin` and `.desk`. Each new slot falls back to its old role, so
+an empty choice preserves the previous type exactly. The root layout emits dedicated CSS
+variables (`--font-page-title-bn`, `--font-header-bn`, …); surface wrappers such as
+`.bn-surface-header` remap the three legacy tokens locally, which means every existing
+`font-serif-bn` / `font-sans-bn` / `font-meta-bn` utility follows the chosen surface font
+without a component-by-component rewrite. The Tauri desk reads the same three ids on boot and
 applies them to its own headlines, body and tag/category labels. Its প্রেফারেন্স tab also has
 a local **ডেস্কের বাংলা ফন্ট** override (`localStorage`) for body copy; clearing it returns
 the desk to the shared body face, while the shared choice is edited under সাইট. Any family
@@ -910,6 +917,13 @@ is `2 → 3 → 4 → 5 → 6` columns, six up on a wide console, the same on bo
 **One detail moved because it could not be read.** The updated-at stamp used to sit on the
 photograph at 9 px, in whatever colour the photo happened to be. It lives in the card's
 footer next to the regenerate button now.
+
+**A wrong desk is fixed where it is seen.** Category is a filing decision, not a fact, and
+the classifier still gets it wrong. Every moderation card and list row now carries a compact
+desk select. Choosing a new desk PATCHes `/api/posts/:id` — the same validation and audit row
+as the full editor — and refreshes the server-rendered queue. The Tauri desk already had the
+same correction inside its post editor; its comment-moderation screen now links straight to
+that queue (`পোস্ট সম্পাদনা`).
 
 **A backlog clears in one decision, without becoming a bypass.** The review queue rendered
 one card, two buttons and one reload per draft, which is why a backlog stayed a backlog.

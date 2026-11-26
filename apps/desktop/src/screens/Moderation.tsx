@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ShieldCheck, Check, Ban, RefreshCw, MessageSquareText, Loader2, Database } from "lucide-react";
+import { ShieldCheck, Check, Ban, RefreshCw, MessageSquareText, Loader2, Database, FilePenLine } from "lucide-react";
 import { toBn, bnTime } from "../lib/format";
 import { deskModeration, deskModerationSet, type DeskComment } from "../lib/tauri";
 import { getRunEnv, isCloudSync } from "../lib/vault";
@@ -22,7 +22,7 @@ const STATUS_PILL: Record<string, string> = {
   blocked: "bg-rose-500/12 text-rose-300",
 };
 
-export default function Moderation() {
+export default function Moderation({ onOpenQueue }: { onOpenQueue?: () => void }) {
   const { b } = useDeskLocale();
   const [rows, setRows] = useState<DeskComment[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
@@ -234,6 +234,15 @@ export default function Moderation() {
               </span>
             </button>
           ))}
+          {onOpenQueue && (
+            <button
+              onClick={onOpenQueue}
+              className="flex items-center gap-1.5 rounded-lg border border-amberx/40 bg-amberx/10 px-3 py-1.5 text-[11px] font-semibold text-amberx hover:bg-amberx/20"
+              title={b("পোস্টের বিভাগ বা লেখা ঠিক করতে কিউ খুলুন", "Open the post queue to fix a desk or the copy")}
+            >
+              <FilePenLine size={12} /> {b("পোস্ট সম্পাদনা", "Edit posts")}
+            </button>
+          )}
           <button
             onClick={() => void load()}
             disabled={loading}

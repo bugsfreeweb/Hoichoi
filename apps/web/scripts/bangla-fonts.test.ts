@@ -99,18 +99,23 @@ check("web, admin and desktop import the library", () => {
 });
 
 check("the chosen families reach the site and the desk", () => {
-  assert.match(
-    rootLayout,
-    /--font-serif-bn": banglaFontStack\(cfg\.typography\?\.headline/,
-  );
-  assert.match(
-    rootLayout,
-    /--font-sans-bn": banglaFontStack\(cfg\.typography\?\.body/,
-  );
-  assert.match(
-    rootLayout,
-    /--font-meta-bn": banglaFontStack\(cfg\.typography\?\.meta/,
-  );
+  assert.match(rootLayout, /--font-serif-bn": serif\(\)/);
+  assert.match(rootLayout, /--font-sans-bn": sans\(\)/);
+  assert.match(rootLayout, /--font-meta-bn": banglaFontStack\(type\?\.meta/);
+  // Per-surface slots must be emitted, not merely stored.
+  for (const slot of [
+    "page-title",
+    "subtitle",
+    "header",
+    "footer",
+    "sidebar",
+    "comments",
+    "reports",
+    "admin",
+    "desk",
+  ]) {
+    assert.match(rootLayout, new RegExp(`--font-${slot}-bn`));
+  }
   assert.match(desktopSettings, /--desk-font/);
   assert.match(
     read("apps/desktop/src/main.tsx"),

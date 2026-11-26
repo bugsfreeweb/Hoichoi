@@ -4,6 +4,7 @@ import { MODERATION_SECTION } from "@/components/admin/ui/sections";
 import { listCategories, mapPost, pageRows } from "@hoichoi/db";
 import { ModerationGrid } from "@/components/admin/ModerationGrid";
 import { ModerationListRow } from "@/components/admin/ModerationListRow";
+import type { CategoryOption } from "@/components/admin/CategoryPicker";
 import { ViewToggle } from "@/components/admin/ui/ViewToggle";
 import { viewFromSearch } from "@/lib/view";
 import { biFor } from "@hoichoi/i18n";
@@ -63,6 +64,12 @@ export default async function AdminModerationPage({
   );
   const lockedIds = (rows: typeof pending.rows): string[] =>
     rows.filter((p) => doubleDesks.has(p.category)).map((p) => p.id);
+
+  // Quick desk correction uses the same categories the editor offers. Only
+  // active desks are writable; a legacy value stays visible on its own row.
+  const categoryOptions: CategoryOption[] = categories
+    .filter((c) => c.isActive)
+    .map((c) => ({ slug: c.slug, label: c.displayNameBn }));
   // Reader comments live on their own moderation page (/admin/comments) — the
   // comment queue was split out of this content page so a post editor looking
   // at article queues does not scroll past reader-submitted text to do their job.
@@ -109,11 +116,16 @@ export default async function AdminModerationPage({
           <div className="mt-3">
             {pending.rows.length === 0 && <Empty msg={b("অনুমোদনের অপেক্ষায় কোনো পোস্ট নেই। চমৎকার!", "Nothing is waiting for approval. Good.")} />}
             {view === "card" && pending.rows.length > 0 ? (
-              <ModerationGrid posts={pending.rows} queue="pending" lockedIds={lockedIds(pending.rows)} />
+              <ModerationGrid
+                posts={pending.rows}
+                queue="pending"
+                lockedIds={lockedIds(pending.rows)}
+                categories={categoryOptions}
+              />
             ) : view === "card" ? null : (
               <div className="divide-y divide-ink/10 border border-ink/20">
                 {pending.rows.map((p) => (
-                  <ModerationListRow key={p.id} post={p} queue="pending" />
+                  <ModerationListRow key={p.id} post={p} queue="pending" categories={categoryOptions} />
                 ))}
               </div>
             )}
@@ -141,11 +153,16 @@ export default async function AdminModerationPage({
           <div className="mt-3">
             {approved.rows.length === 0 && <Empty msg={b("কোনো পোস্ট নেই।", "No posts here.")} />}
             {view === "card" && approved.rows.length > 0 ? (
-              <ModerationGrid posts={approved.rows} queue="approved" lockedIds={lockedIds(approved.rows)} />
+              <ModerationGrid
+                posts={approved.rows}
+                queue="approved"
+                lockedIds={lockedIds(approved.rows)}
+                categories={categoryOptions}
+              />
             ) : view === "card" ? null : (
               <div className="divide-y divide-ink/10 border border-ink/20">
                 {approved.rows.map((p) => (
-                  <ModerationListRow key={p.id} post={p} queue="approved" />
+                  <ModerationListRow key={p.id} post={p} queue="approved" categories={categoryOptions} />
                 ))}
               </div>
             )}

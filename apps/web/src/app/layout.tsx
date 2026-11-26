@@ -47,10 +47,29 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const cfg = parseAppConfig(settings?.app_config_json);
   // Apply the type library at the root so the public site and the admin console
   // read the same choice. The admin gallery writes these exact ids.
+  const type = cfg.typography;
+  const serif = (id?: string) =>
+    banglaFontStack(id || type?.headline, "Noto Serif Bengali", "serif");
+  const sans = (id?: string) =>
+    banglaFontStack(id || type?.body, "Hind Siliguri", "sans-serif");
+  /**
+   * Three legacy slots plus the per-surface slots. Every new slot falls back to
+   * the old one, so an operator who chooses nothing sees exactly the typography
+   * they had before this model existed.
+   */
   const typeStyle = {
-    "--font-serif-bn": banglaFontStack(cfg.typography?.headline, "Noto Serif Bengali", "serif"),
-    "--font-sans-bn": banglaFontStack(cfg.typography?.body, "Hind Siliguri", "sans-serif"),
-    "--font-meta-bn": banglaFontStack(cfg.typography?.meta || cfg.typography?.body, "Hind Siliguri", "sans-serif"),
+    "--font-serif-bn": serif(),
+    "--font-sans-bn": sans(),
+    "--font-meta-bn": banglaFontStack(type?.meta || type?.body, "Hind Siliguri", "sans-serif"),
+    "--font-page-title-bn": serif(type?.pageTitle),
+    "--font-subtitle-bn": sans(type?.subtitle),
+    "--font-header-bn": sans(type?.header),
+    "--font-footer-bn": sans(type?.footer),
+    "--font-sidebar-bn": sans(type?.sidebar),
+    "--font-comments-bn": sans(type?.comments),
+    "--font-reports-bn": sans(type?.reports),
+    "--font-admin-bn": sans(type?.admin),
+    "--font-desk-bn": sans(type?.desk),
   } as React.CSSProperties;
   return (
     <html lang={locale} dir="ltr" suppressHydrationWarning style={typeStyle}>

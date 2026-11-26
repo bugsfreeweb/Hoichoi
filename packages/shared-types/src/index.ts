@@ -1371,6 +1371,24 @@ export interface SiteTypography {
   body: string;
   /** Tags and category labels. */
   meta: string;
+  /** Article/page title face. Falls back to `headline`. */
+  pageTitle?: string;
+  /** Standfirst and description face. Falls back to `body`. */
+  subtitle?: string;
+  /** Public top bar and masthead. */
+  header?: string;
+  /** Public footer. */
+  footer?: string;
+  /** Admin sidebar. */
+  sidebar?: string;
+  /** Reader comments. */
+  comments?: string;
+  /** Corrections and report forms. */
+  reports?: string;
+  /** Admin console chrome and panels. */
+  admin?: string;
+  /** Desktop editor chrome. */
+  desk?: string;
 }
 
 export type LiveThemeKey = "stage" | "broadsheet" | "scoreboard" | "timeline" | "compact" | "studio";
@@ -1612,7 +1630,20 @@ export const DEFAULT_APP_CONFIG: SiteAppConfig = {
   },
   hero_headline_motion: "sheen",
   hero_scene_style: "rail",
-  typography: { headline: "", body: "", meta: "" },
+  typography: {
+    headline: "",
+    body: "",
+    meta: "",
+    pageTitle: "",
+    subtitle: "",
+    header: "",
+    footer: "",
+    sidebar: "",
+    comments: "",
+    reports: "",
+    admin: "",
+    desk: "",
+  },
   admin_sidebar_style: DEFAULT_SIDEBAR_STYLE,
 };
 

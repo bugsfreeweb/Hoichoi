@@ -227,11 +227,21 @@ export function parseAppConfig(raw: string | null | undefined): SiteAppConfig {
       } else if (k === "typography") {
         if (v && typeof v === "object") {
           const t = v as Partial<SiteTypography>;
+          const pick = (key: keyof SiteTypography) =>
+            typeof t[key] === "string" ? (t[key] as string).slice(0, 64) : "";
           merged.typography = {
-            headline:
-              typeof t.headline === "string" ? t.headline.slice(0, 64) : "",
-            body: typeof t.body === "string" ? t.body.slice(0, 64) : "",
-            meta: typeof t.meta === "string" ? t.meta.slice(0, 64) : "",
+            headline: pick("headline"),
+            body: pick("body"),
+            meta: pick("meta"),
+            pageTitle: pick("pageTitle"),
+            subtitle: pick("subtitle"),
+            header: pick("header"),
+            footer: pick("footer"),
+            sidebar: pick("sidebar"),
+            comments: pick("comments"),
+            reports: pick("reports"),
+            admin: pick("admin"),
+            desk: pick("desk"),
           };
         }
       } else if (k === "footer_socials") {

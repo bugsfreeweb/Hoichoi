@@ -9,6 +9,7 @@ import { QuickImageButton } from "./QuickImageButton";
 import { OriginMark, PostCover } from "./PostCover";
 import { imageOrigin } from "@/lib/image-origin";
 import { useBi } from "@/components/i18n/LocaleProvider";
+import { CategoryPicker, type CategoryOption } from "./CategoryPicker";
 
 /**
  * One reviewable story, as a card.
@@ -31,6 +32,7 @@ export function ModerationCard({
   selected = false,
   onSelect,
   locked = false,
+  categories,
 }: {
   post: Post;
   queue: "pending" | "approved";
@@ -38,6 +40,7 @@ export function ModerationCard({
   onSelect?: (id: string, next: boolean) => void;
   /** A desk that needs a second signature: bulk approval is not offered. */
   locked?: boolean;
+  categories: CategoryOption[];
 }) {
   const b = useBi();
   const [busy, setBusy] = useState<null | string>(null);
@@ -132,6 +135,10 @@ export function ModerationCard({
           {post.title_bn}
         </Link>
         <p className="line-clamp-2 text-[10.5px] leading-relaxed text-ink-soft">{post.summary_bn ?? post.body_bn}</p>
+
+        {/* Filing is a correction editors make constantly; keep it one select
+            away instead of a trip to the full editor. */}
+        <CategoryPicker postId={post.id} value={post.category} categories={categories} compact />
 
         <div className="mt-auto flex items-center justify-between gap-1 pt-1">
           <QuickImageButton postId={post.id} hasImage={Boolean(post.media_path)} compact />

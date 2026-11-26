@@ -22,4 +22,8 @@ export function applyTypography(typography?: Partial<SiteTypography> | null): vo
     "--font-meta-bn",
     banglaFontStack(typography?.meta || typography?.body, "Hind Siliguri", "sans-serif"),
   );
+  root.setProperty(
+    "--font-desk-bn",
+    banglaFontStack(typography?.desk || typography?.body, "Hind Siliguri", "sans-serif"),
+  );
 }

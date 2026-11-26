@@ -57,7 +57,7 @@ export async function Footer() {
     { href: "/contact", label: tr("site.footer.contact") },
   ];
   return (
-    <footer className="page-chrome border-t-2 border-ink">
+    <footer className="bn-surface-footer page-chrome border-t-2 border-ink">
       <div className="mx-auto max-w-[1400px] px-4 py-12 md:px-8">
         <div className="grid gap-10 md:grid-cols-12">
           <div className="md:col-span-5">

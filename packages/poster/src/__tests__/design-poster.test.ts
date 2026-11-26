@@ -174,15 +174,17 @@ check("a light accent gets dark ink, a dark accent gets white", () => {
   );
 });
 
-check("a pull-quote replaces bullets in the markup", () => {
+check("posters carry the headline, not description paragraphs", () => {
   const html = designPosterHtml({
     ...base,
     pullQuote: "এটাই মূল কথা",
-    bullets: [],
+    bullets: ["প্রথম পয়েন্ট", "দ্বিতীয় পয়েন্ট"],
   });
-  assert.ok(html.includes("এটাই মূল কথা"));
+  assert.ok(html.includes(base.headline));
+  assert.ok(!html.includes("এটাই মূল কথা"));
+  assert.ok(!html.includes("প্রথম পয়েন্ট"));
   assert.ok(!html.includes('<ul class="bullets">'));
-  assert.ok(html.includes('class="quote quote-only"'));
+  assert.ok(!html.includes('class="quote'));
 });
 
 console.log(`\n[design-poster] ${passed} checks passed`);

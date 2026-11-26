@@ -304,6 +304,9 @@ html[data-theme="light"] .text-amberx {
 
 /* ---------- Tauri desk window chrome (Option A · mockup parity) ---------- */
 .desk-scene {
+  --font-serif-bn: var(--font-desk-bn, "Hind Siliguri", sans-serif);
+  --font-sans-bn: var(--font-desk-bn, "Hind Siliguri", sans-serif);
+  --font-meta-bn: var(--font-desk-bn, "Hind Siliguri", sans-serif);
   height: 100%;
   min-height: 100%;
   display: flex;

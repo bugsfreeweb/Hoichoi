@@ -5,6 +5,7 @@ import { useAdminAction } from "@/lib/admin-api";
 import { useBi } from "@/components/i18n/LocaleProvider";
 import type { Post } from "@hoichoi/shared-types";
 import { ModerationCard } from "./ModerationCard";
+import type { CategoryOption } from "./CategoryPicker";
 
 /**
  * A queue you can clear in one decision.
@@ -29,11 +30,14 @@ export function ModerationGrid({
   posts,
   queue,
   lockedIds,
+  categories,
 }: {
   posts: Post[];
   queue: "pending" | "approved";
   /** Post ids whose desk requires a second approval signature. */
   lockedIds: string[];
+  /** Active desks available for a one-click category correction. */
+  categories: CategoryOption[];
 }) {
   const b = useBi();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -176,6 +180,7 @@ export function ModerationGrid({
             locked={locked.has(p.id)}
             selected={selected.has(p.id)}
             onSelect={toggle}
+            categories={categories}
           />
         ))}
       </div>

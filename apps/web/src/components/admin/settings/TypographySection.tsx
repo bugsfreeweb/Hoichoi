@@ -7,6 +7,35 @@ import { useSettings } from "./state";
 
 const SAMPLE = "হৈচৈ — ভাইরাল বাংলা, সপ্তাহখানেক। ১২৩৪৫৬৭৮৯০";
 
+type FontSlot =
+  | "headline"
+  | "body"
+  | "meta"
+  | "pageTitle"
+  | "subtitle"
+  | "header"
+  | "footer"
+  | "sidebar"
+  | "comments"
+  | "reports"
+  | "admin"
+  | "desk";
+
+const SLOTS: Array<{ key: FontSlot; label: string; fallback: string }> = [
+  { key: "headline", label: "শিরোনাম / টাইটেল", fallback: "ডিফল্ট — Noto Serif Bengali" },
+  { key: "body", label: "বর্ণনা / বডি", fallback: "ডিফল্ট — Hind Siliguri" },
+  { key: "meta", label: "ট্যাগ ও বিভাগ", fallback: "বডির ফন্টই ব্যবহার হবে" },
+  { key: "pageTitle", label: "পাতার শিরোনাম", fallback: "বডির শিরোনাম ফন্ট" },
+  { key: "subtitle", label: "উপশিরোনাম / সারাংশ", fallback: "বডির ফন্ট" },
+  { key: "header", label: "হেডার / টপ বার", fallback: "বডির ফন্ট" },
+  { key: "footer", label: "ফুটার", fallback: "বডির ফন্ট" },
+  { key: "sidebar", label: "অ্যাডমিন সাইডবার", fallback: "বডির ফন্ট" },
+  { key: "comments", label: "পাঠকের মন্তব্য", fallback: "বডির ফন্ট" },
+  { key: "reports", label: "রিপোর্ট ও সংশোধন", fallback: "বডির ফন্ট" },
+  { key: "admin", label: "অ্যাডমিন প্যানেল", fallback: "বডির ফন্ট" },
+  { key: "desk", label: "ডেস্কটপ অ্যাপ", fallback: "বডির ফন্ট" },
+];
+
 /**
  * The bundled type library, made visible.
  *
@@ -24,7 +53,7 @@ export function TypographySection() {
   const body = banglaFontById(chosen.body);
   const meta = banglaFontById(chosen.meta);
 
-  const setFont = (key: "headline" | "body" | "meta", id: string) => {
+  const setFont = (key: FontSlot, id: string) => {
     setCfg((c) => ({
       ...c,
       typography: {
@@ -72,9 +101,9 @@ export function TypographySection() {
           <p className="mt-1 max-w-3xl text-[12px] leading-relaxed text-ink-soft">
             রিপোজিটরির <code className="font-mono-x">Bangla Fonts</code>{" "}
             ফোল্ডারের {BANGLA_FONTS.length}টি ইউনিকোড পরিবার এখানে বান্ডল করা আছে
-            — কোনো Google Fonts রিকোয়েস্ট নেই। টাইটেল, বর্ণনা এবং ট্যাগ/বিভাগের জন্য
-            এখনই আলাদা ফন্ট বেছে নিন। হেডার, সাইডবার, ফুটার, মন্তব্য, রিপোর্ট ও
-            অ্যাডমিন প্যানেলের নিজস্ব স্লট পরের ধাপে এই স্টুডিওতেই যোগ হবে।
+            — কোনো Google Fonts রিকোয়েস্ট নেই। এখন প্রতিটি সারফেসের জন্য আলাদা
+            ফন্ট বেছে নিন: শিরোনাম, সারাংশ, ট্যাগ, হেডার, ফুটার, সাইডবার, মন্তব্য,
+            রিপোর্ট, অ্যাডমিন এবং ডেস্কটপ অ্যাপ। ফাঁকা রাখলে আগের স্লটই ব্যবহার হবে।
           </p>
         </div>
         <span className="font-mono-x text-[10px] text-ink-soft">
@@ -84,51 +113,23 @@ export function TypographySection() {
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <label className="block text-[11px] font-bold text-ink">
-          শিরোনাম / টাইটেল
-          <select
-            value={chosen.headline}
-            onChange={(e) => setFont("headline", e.target.value)}
-            className="mt-1 w-full border border-ink/25 bg-white px-2 py-2 text-[12px] font-normal text-ink outline-none focus:border-ink"
-          >
-            <option value="">ডিফল্ট — Noto Serif Bengali</option>
-            {BANGLA_FONTS.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-[11px] font-bold text-ink">
-          বর্ণনা / বডি
-          <select
-            value={chosen.body}
-            onChange={(e) => setFont("body", e.target.value)}
-            className="mt-1 w-full border border-ink/25 bg-white px-2 py-2 text-[12px] font-normal text-ink outline-none focus:border-ink"
-          >
-            <option value="">ডিফল্ট — Hind Siliguri</option>
-            {BANGLA_FONTS.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-[11px] font-bold text-ink">
-          ট্যাগ ও বিভাগ
-          <select
-            value={chosen.meta}
-            onChange={(e) => setFont("meta", e.target.value)}
-            className="mt-1 w-full border border-ink/25 bg-white px-2 py-2 text-[12px] font-normal text-ink outline-none focus:border-ink"
-          >
-            <option value="">বডির ফন্টই ব্যবহার হবে</option>
-            {BANGLA_FONTS.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {SLOTS.map((slot) => (
+          <label key={slot.key} className="block text-[11px] font-bold text-ink">
+            {slot.label}
+            <select
+              value={(chosen[slot.key] as string | undefined) ?? ""}
+              onChange={(e) => setFont(slot.key, e.target.value)}
+              className="mt-1 w-full border border-ink/25 bg-white px-2 py-2 text-[12px] font-normal text-ink outline-none focus:border-ink"
+            >
+              <option value="">{slot.fallback}</option>
+              {BANGLA_FONTS.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
       </div>
 
       <div className="mt-3 border border-ink/15 bg-card p-3">

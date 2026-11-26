@@ -41,7 +41,7 @@ export function TopBar({ pipelineHours = 2 }: { pipelineHours?: number }) {
   if (pathname.startsWith("/desk")) return null;
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-[60] h-10 border-b border-white/10 bg-[#0a0c10] text-[#f3eee1]/85">
+      <header className="bn-surface-header fixed inset-x-0 top-0 z-[60] h-10 border-b border-white/10 bg-[#0a0c10] text-[#f3eee1]/85">
         <div className="mx-auto flex h-full max-w-site items-center justify-between px-4">
           <Link
             href="/"

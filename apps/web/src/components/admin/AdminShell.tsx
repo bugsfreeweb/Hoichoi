@@ -298,7 +298,7 @@ function AdminChrome({
   }, []);
 
   return (
-    <div className="admin-console admin-shell bg-night-grid min-h-dvh text-[#e9e6da]">
+    <div className="admin-console admin-shell bn-surface-admin bg-night-grid min-h-dvh text-[#e9e6da]">
       {/*
         ============ SIDEBAR (desktop) ============
         Full height, flush to the left edge: the console reads as a fixed rail
@@ -308,7 +308,7 @@ function AdminChrome({
       */}
       <aside
         data-sidebar-style={sidebarStyle}
-        className={`admin-sidebar ${collapsed ? "adm-collapsed" : ""} sticky top-0 hidden h-dvh shrink-0 flex-col lg:flex ${
+        className={`admin-sidebar bn-surface-sidebar ${collapsed ? "adm-collapsed" : ""} sticky top-0 hidden h-dvh shrink-0 flex-col lg:flex ${
           collapsed ? "w-[70px]" : "w-60 xl:w-[17rem]"
         }`}
       >
@@ -333,7 +333,7 @@ function AdminChrome({
           />
           <aside
             data-sidebar-style={sidebarStyle}
-            className="admin-sidebar absolute left-0 top-0 flex h-full w-72 max-w-[85vw] flex-col border-r border-white/10 bg-panel shadow-2xl"
+            className="admin-sidebar bn-surface-sidebar absolute left-0 top-0 flex h-full w-72 max-w-[85vw] flex-col border-r border-white/10 bg-panel shadow-2xl"
           >
             <SidebarNav
               variant="mobile"

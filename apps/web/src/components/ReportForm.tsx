@@ -88,7 +88,7 @@ export function ReportForm({ postId }: { postId: string }) {
   }
 
   return (
-    <div className="border border-ink/25 bg-paper-deep/40">
+    <div className="bn-surface-reports border border-ink/25 bg-paper-deep/40">
       <div className="flex flex-wrap items-center gap-3 px-4 py-3">
         <span className="shrink-0 text-alizarin">{Icons.Flag}</span>
         <p className="text-[12.5px] text-ink-soft">

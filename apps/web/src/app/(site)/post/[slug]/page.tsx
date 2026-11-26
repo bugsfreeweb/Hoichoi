@@ -355,11 +355,11 @@ function PostContent({
             <CaseStatusBadge status={post!.case_status} />
           )}
         </div>
-        <h1 className="mt-5 font-serif-bn text-[30px] leading-[1.32] font-black text-ink md:text-[46px]">
+        <h1 className="bnfont-page-title mt-5 font-serif-bn text-[30px] leading-[1.32] font-black text-ink md:text-[46px]">
           {post!.title_bn}
         </h1>
         {post!.summary_bn && (
-          <p className="mx-auto mt-5 max-w-2xl text-[15.5px] leading-relaxed text-ink-soft">
+          <p className="bnfont-subtitle mx-auto mt-5 max-w-2xl text-[15.5px] leading-relaxed text-ink-soft">
             {post!.summary_bn}
           </p>
         )}

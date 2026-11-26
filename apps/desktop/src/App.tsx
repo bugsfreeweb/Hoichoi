@@ -1021,7 +1021,7 @@ export default function App() {
                 hidden={view !== "moderation"}
               >
                 <PaneBoundary name="moderation">
-                  <Moderation />
+                  <Moderation onOpenQueue={() => jump("queue")} />
                 </PaneBoundary>
               </section>
 

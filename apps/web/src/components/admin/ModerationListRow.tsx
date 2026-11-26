@@ -8,6 +8,7 @@ import { useAdminAction } from "@/lib/admin-api";
 import { useBi } from "@/components/i18n/LocaleProvider";
 import { AdminThumb, OriginBadge } from "./AdminThumb";
 import { QuickImageButton } from "./QuickImageButton";
+import { CategoryPicker, type CategoryOption } from "./CategoryPicker";
 
 /**
  * Compact list counterpart of `ModerationCard`.
@@ -17,7 +18,15 @@ import { QuickImageButton } from "./QuickImageButton";
  * double-approval categories still require an approver signature server-side and
  * will answer with that reason, which is shown in the toast.
  */
-export function ModerationListRow({ post, queue }: { post: Post; queue: "pending" | "approved" }) {
+export function ModerationListRow({
+  post,
+  queue,
+  categories,
+}: {
+  post: Post;
+  queue: "pending" | "approved";
+  categories: CategoryOption[];
+}) {
   const b = useBi();
   const [busy, setBusy] = useState<null | string>(null);
   const run = useAdminAction();
@@ -56,9 +65,10 @@ export function ModerationListRow({ post, queue }: { post: Post; queue: "pending
           {post.title_bn}
         </Link>
         <p className="truncate text-[11px] text-ink-soft">{post.summary_bn ?? post.body_bn}</p>
-        <p className="truncate font-mono-x text-[9.5px] text-ink-soft">
-          {post.category} · {post.source_name}
-          {post.category === "child-sexual-abuse" ? " · 🔒 double" : ""}
+        <p className="flex flex-wrap items-center gap-1 font-mono-x text-[9.5px] text-ink-soft">
+          <CategoryPicker postId={post.id} value={post.category} categories={categories} compact />
+          <span>· {post.source_name}</span>
+          {post.category === "child-sexual-abuse" ? <span>· 🔒 double</span> : null}
         </p>
       </div>
       <OriginBadge post={post} />

@@ -66,7 +66,7 @@ export default async function CategoryPage({
         >
           ▚ CATEGORY · AUTO-CURATED
         </p>
-        <h1 className="mt-2 font-serif-bn text-[40px] font-black text-ink md:text-[56px]">
+        <h1 className="bnfont-page-title mt-2 font-serif-bn text-[40px] font-black text-ink md:text-[56px]">
           {locale === "en" ? cat.displayNameEn : cat.displayNameBn}
         </h1>
         <p className="mt-3 max-w-2xl text-[14.5px] leading-relaxed text-ink-soft">

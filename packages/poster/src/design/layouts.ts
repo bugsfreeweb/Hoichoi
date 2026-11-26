@@ -12,7 +12,6 @@
  */
 import type { DesignPosterContent } from "./tokens";
 import {
-  banglaNumber,
   escapeHtml,
   headlineHtml,
   headlineSizeFor,
@@ -37,22 +36,6 @@ function badge(content: DesignPosterContent): string {
   return content.badgeText
     ? `<div class="badge"><span class="dot"></span><span>${escapeHtml(content.badgeText)}</span></div>`
     : "";
-}
-
-/** Bullets when the story got bullets; a pull-quote when it got one. */
-function support(content: DesignPosterContent): string {
-  if (content.pullQuote) {
-    // `quote-only` lets the portrait recomposition give a short quote the space
-    // that would otherwise be an empty column between it and the footer.
-    return `<figure class="quote quote-only"><p>${escapeHtml(content.pullQuote)}</p></figure>`;
-  }
-  if (content.bullets.length === 0) return "";
-  return `<ul class="bullets">${content.bullets
-    .map(
-      (b, i) =>
-        `<li><span class="n">${banglaNumber(i + 1)}</span><span>${escapeHtml(b)}</span></li>`,
-    )
-    .join("")}</ul>`;
 }
 
 function footer(content: DesignPosterContent): string {
@@ -90,7 +73,6 @@ export function layoutBody(content: DesignPosterContent): string {
           <div class="masthead-rule"></div>
           ${badge(content)}
           ${headline(content)}
-          ${support(content)}
           <div class="spacer"></div>
           ${footer(content)}
         </section>
@@ -112,7 +94,6 @@ export function layoutBody(content: DesignPosterContent): string {
         <section class="glass">
           ${badge(content)}
           ${headline(content)}
-          ${support(content)}
           <div class="spacer"></div>
           ${footer(content)}
         </section>
@@ -130,7 +111,6 @@ export function layoutBody(content: DesignPosterContent): string {
             <div class="masthead-rule"></div>
             ${badge(content)}
             ${headline(content)}
-            ${content.pullQuote ? `<div class="pullbox">${support(content)}</div>` : support(content)}
             <div class="spacer"></div>
             ${footer(content)}
           </section>
@@ -155,19 +135,7 @@ export function layoutBody(content: DesignPosterContent): string {
         <section class="center">
           ${badge(content)}
           ${headline(content)}
-          ${content.pullQuote ? support(content) : ""}
         </section>
-        ${
-          content.pullQuote
-            ? ""
-            : `<div class="ticker-bottom">${content.bullets
-                .slice(0, 3)
-                .map(
-                  (b, i) =>
-                    `<div class="cell"><span class="n">${banglaNumber(i + 1)}</span><span>${escapeHtml(b)}</span></div>`,
-                )
-                .join("")}</div>`
-        }
         <div class="spot-footer">
           <span class="source">${escapeHtml(content.footerText)}</span>
           <span class="readmore">বিস্তারিত পড়ুন <b>·</b> ${escapeHtml(content.site)}</span>
@@ -186,7 +154,6 @@ export function layoutBody(content: DesignPosterContent): string {
           <div class="masthead-rule"></div>
           ${badge(content)}
           ${headline(content)}
-          ${support(content)}
           <div class="spacer"></div>
           ${footer(content)}
         </section>

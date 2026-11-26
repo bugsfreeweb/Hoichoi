@@ -171,4 +171,28 @@ check("the schema carries trust metadata and a legacy-desk remap", () => {
   assert.match(remap, /category = 'technology'.*'tech'/s);
 });
 
+check("moderation can correct a wrong desk without leaving the queue", () => {
+  const page = read(SRC, "app", "admin", "(console)", "moderation", "page.tsx");
+  assert.match(page, /categoryOptions/);
+  assert.match(page, /categories=\{categoryOptions\}/);
+  const picker = read(SRC, "components", "admin", "CategoryPicker.tsx");
+  assert.match(picker, /`\/api\/posts\/\$\{postId\}`/);
+  assert.match(picker, /body: JSON\.stringify\(\{ category: next \}\)/);
+  assert.match(picker, /router\.refresh\(\)/);
+  // The desk editor already supports the same correction; the moderation
+  // screen must at least offer a route to it.
+  const desk = read(ROOT, "apps", "desktop", "src", "screens", "Moderation.tsx");
+  assert.match(desk, /onOpenQueue/);
+  const queue = read(ROOT, "apps", "desktop", "src", "screens", "Queue.tsx");
+  assert.match(queue, /deskQueueUpdate\(env, row\.id, \{/);
+  assert.match(queue, /category,/);
+});
+
+check("posters render the headline without description prose", () => {
+  const layouts = read(ROOT, "packages", "poster", "src", "design", "layouts.ts");
+  assert.ok(!layouts.includes("bullets"), "no bullet paragraph block");
+  assert.ok(!layouts.includes("pullQuote"), "no pull-quote paragraph block");
+  assert.match(layouts, /headline\(content\)/);
+});
+
 console.log(`[web] trust-surfaces: ${passed} checks passed`);

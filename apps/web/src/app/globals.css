@@ -1363,3 +1363,44 @@ html[data-theme="light"] .mf-tint,
 /* Admin swatches for the headline-motion picker: the production rule adds
    padding for the hero's optical alignment, which is wrong inside a small card. */
 .hl-preview.headline-grad { padding: 0; }
+
+/* ---------- per-surface Bangla typography slots ----------
+   A surface sets the three legacy font tokens locally, so every child using
+   `font-serif-bn` / `font-sans-bn` / `font-meta-bn` inherits that surface's
+   choice without rewriting hundreds of utility classes. */
+.bn-surface-header {
+  --font-serif-bn: var(--font-header-bn);
+  --font-sans-bn: var(--font-header-bn);
+  --font-meta-bn: var(--font-header-bn);
+}
+.bn-surface-footer {
+  --font-serif-bn: var(--font-footer-bn);
+  --font-sans-bn: var(--font-footer-bn);
+  --font-meta-bn: var(--font-footer-bn);
+}
+.bn-surface-sidebar {
+  --font-serif-bn: var(--font-sidebar-bn);
+  --font-sans-bn: var(--font-sidebar-bn);
+  --font-meta-bn: var(--font-sidebar-bn);
+}
+.bn-surface-comments {
+  --font-serif-bn: var(--font-comments-bn);
+  --font-sans-bn: var(--font-comments-bn);
+  --font-meta-bn: var(--font-comments-bn);
+}
+.bn-surface-reports {
+  --font-serif-bn: var(--font-reports-bn);
+  --font-sans-bn: var(--font-reports-bn);
+  --font-meta-bn: var(--font-reports-bn);
+}
+.bn-surface-admin {
+  --font-serif-bn: var(--font-admin-bn);
+  --font-sans-bn: var(--font-admin-bn);
+  --font-meta-bn: var(--font-admin-bn);
+}
+.bnfont-page-title {
+  font-family: var(--font-page-title-bn);
+}
+.bnfont-subtitle {
+  font-family: var(--font-subtitle-bn);
+}

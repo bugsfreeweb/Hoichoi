@@ -158,7 +158,7 @@ export function CommentsSection({
   }
 
   return (
-    <section id="comments" className="mt-20 border-t-2 border-ink pt-10" aria-label="মন্তব্য">
+    <section id="comments" className="bn-surface-comments mt-20 border-t-2 border-ink pt-10" aria-label="মন্তব্য">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-3 font-serif-bn text-[26px] font-black text-ink">
           {Icons.MessageCircle}

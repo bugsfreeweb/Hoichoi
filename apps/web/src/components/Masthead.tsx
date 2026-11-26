@@ -11,7 +11,7 @@ export async function Masthead({ settings }: { settings: SiteSettings }) {
   const locale = await getLocale();
   const dateLine = locale === "en" ? formatDate(new Date(), "en", { weekday: true }) : longDateBn(new Date().toISOString());
   return (
-    <header className="mx-auto max-w-site px-4 pt-6 md:px-8">
+    <header className="bn-surface-header mx-auto max-w-site px-4 pt-6 md:px-8">
       <div className="flex items-center justify-between border-b border-ink/20 pb-3 text-[11.5px] font-medium text-ink-soft">
         <span>{dateLine} · {t("site.masthead.onlineEdition", undefined, locale)}</span>
         <span className="hidden font-mono-x tracking-[0.2em] uppercase sm:block">
