@@ -21,6 +21,11 @@ function check(name: string, fn: () => void) {
   console.log(`  ok  ${name}`);
 }
 
+check("the donut and the KPI share one dedup number", () => {
+  const db = read(ROOT, "packages", "db", "src", "index.ts");
+  assert.match(db, /allArticles\.duplicate \+= totals\.duplicates/);
+});
+
 check("the home page reads collector health and dedup counts from the DB", () => {
   const page = read(SRC, "app", "(site)", "page.tsx");
   assert.match(page, /collectorSnapshot\(\)/);

@@ -1642,6 +1642,9 @@ export async function analyticsSnapshot(
     if (st === "pending_review" && inside(pt(p.created_at)))
       totals.pendingArticles++;
   }
+  // The donut and the KPI must tell the same story: blocked duplicates are not
+  // status='duplicate' rows, they were never inserted at all.
+  allArticles.duplicate += totals.duplicates;
 
   for (const c of comments) {
     const at = pt(c.created_at);
