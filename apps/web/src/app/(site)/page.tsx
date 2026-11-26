@@ -281,9 +281,8 @@ export default async function HomePage({
                   <span>
                     {b("ছবি:", "Photo:")}{" "}
                     {featured.media_path
-                      ? b("সংগৃহীত", "collected")
-                      : b("কেবল টেক্সট", "text only")}{" "}
-                    ·{b("প্রতীকী", "illustrative")}
+                      ? b("সংগৃহীত ছবি", "collected photo")
+                      : b("কোনো ছবি নেই", "no image")}
                   </span>
                   <span className="font-mono-x tracking-wide">
                     SHOT_{shortId(featured.id).toUpperCase()} · PLAYWRIGHT

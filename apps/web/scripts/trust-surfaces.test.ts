@@ -62,6 +62,12 @@ check("no surface still advertises the old two-hour schedule", () => {
   assert.ok(!ticker.includes("সব তথ্য উৎস যাচাইকৃত"), "the ticker must not claim every item was verified");
 });
 
+check("the lead credit does not hide a real photo behind an illustrative label", () => {
+  const page = read(SRC, "app", "(site)", "page.tsx");
+  assert.ok(!page.includes('·{b("প্রতীকী", "illustrative")}'), "a collected photo must not be called illustrative");
+  assert.match(page, /সংগৃহীত ছবি/);
+});
+
 check("the footer no longer calls the newsroom a fictional mockup", () => {
   const dict = read(ROOT, "packages", "i18n", "src", "dictionary.ts");
   assert.ok(!/fictional|কাল্পনিক|mockup|মকআপ/.test(dict), "footer copy must not disown the published news");
