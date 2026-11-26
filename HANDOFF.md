@@ -192,6 +192,12 @@ Do not redo these unless a regression is proven.
   captions) were removed from the poster markup. A poster shows only the brand,
   badge, headline, photo, source/date footer and watermark.
 
+### Bilingual
+- `?lang=en` is written to the shared locale cookie by middleware and forwarded,
+  so a shared English link is English on the first paint. Public footer and the
+  admin rail/service strip are translated.
+- Untranslated admin page headings/descriptions are known and listed in section 9.
+
 ### Category / taxonomy
 - `canonicalDesk()` and `guardCategory()` enforce the fixed taxonomy.
 - A technology outlet's security incident does not land on `economy`.
@@ -275,19 +281,24 @@ These are product rules, not suggestions.
 
 ## 9. Current next steps (priority order)
 
-1. **Poster production sample.** After the next collector run, regenerate one
-   poster against production and inspect the actual 4:5 output. The art director
-   may choose any layout; verify the layout it chose.
-2. **Category quality sweep.** Re-run the category audit after a fresh run. Look
-   for clear misfiles, but remember `Hacker News` is a technology source and may
-   legitimately file general-interest stories there. Prefer manual correction
-   through `/admin/moderation` over broad new heuristics.
-3. **Bilingual sweep.** Some client components still contain one-language labels.
-   Fix labels/statuses only, not layout.
-4. **Facebook preview refresh.** Open the post URL in Facebook Sharing Debugger
+1. **Outbound Facebook auto-post.** Ingestion is already working (30 Facebook
+   sources + 6 news). Publishing our stories **to** a Facebook Page is the one
+   missing piece. It needs operator-supplied `FACEBOOK_PAGE_ID` and
+   `FACEBOOK_PAGE_TOKEN` (`pages_manage_posts`). Do not hard-code or commit
+   either; wire it as a deployment secret and make a failed post non-fatal.
+2. **Bilingual admin page copy.** The shell and public footer are fixed. Remaining
+   Bangla on English admin screens is page headings/descriptions (dashboard
+   section names, settings descriptions) and `LiveDeskMonitor`. Fix copy only,
+   never layout.
+3. **Poster regressions.** Newly generated posters are description-free. Saved
+   poster images are immutable: regenerate a post once if it still shows an old
+   poster with prose.
+4. **Category quality sweep.** Re-run the category audit after a fresh collector
+   run. Prefer manual correction through `/admin/moderation` over new heuristics.
+5. **Facebook preview refresh.** Open the post URL in Facebook Sharing Debugger
    and re-scrape to confirm the 4:5 `og:image` and 1080×1350 dimensions.
-5. **Security alerts.** In about a week, check open code-scanning alerts again:
-   `gh api repos/bugsfreeweb/Hoichoi/code-scanning/alerts?state=open`.
+6. **Security alerts.** Weekly: `gh api
+   repos/bugsfreeweb/Hoichoi/code-scanning/alerts?state=open`. Currently 0.
 
 Do not start by generating lots of posters. Each image costs allowance and the
 layout is deterministic enough to verify locally first with
@@ -298,6 +309,14 @@ layout is deterministic enough to verify locally first with
 ## 10. Handoff log
 
 Append a short entry after every completed task. Keep newest first.
+
+### 2026-11-26 — session stop / handoff
+- Production is live at `589f2b5`. Working tree clean.
+- Verified today: no description prose in posters; English `?lang=en` first
+  paint; English public footer and admin rail; 0 open CodeQL alerts; 30 Facebook
+  sources ingesting.
+- Left for the next agent: outbound Facebook Page posting (needs secrets) and
+  remaining admin page-copy translation. See section 9.
 
 ### 2026-11-26 — English admin chrome
 - The console rail's Menu/Search labels, its aria labels and the service-status
