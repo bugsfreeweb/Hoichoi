@@ -73,7 +73,6 @@ export function layoutBody(content: DesignPosterContent): string {
           <div class="masthead-rule"></div>
           ${badge(content)}
           ${headline(content)}
-          <div class="spacer"></div>
           ${footer(content)}
         </section>
         <figure class="media-frame">
@@ -94,7 +93,6 @@ export function layoutBody(content: DesignPosterContent): string {
         <section class="glass">
           ${badge(content)}
           ${headline(content)}
-          <div class="spacer"></div>
           ${footer(content)}
         </section>
         <div class="photo-credit">${content.visualStyle}</div>
@@ -111,8 +109,7 @@ export function layoutBody(content: DesignPosterContent): string {
             <div class="masthead-rule"></div>
             ${badge(content)}
             ${headline(content)}
-            <div class="spacer"></div>
-            ${footer(content)}
+              ${footer(content)}
           </section>
           <div class="col-right">
             <figure class="visual">${mediaLayer(content)}</figure>
@@ -154,7 +151,6 @@ export function layoutBody(content: DesignPosterContent): string {
           <div class="masthead-rule"></div>
           ${badge(content)}
           ${headline(content)}
-          <div class="spacer"></div>
           ${footer(content)}
         </section>
         <div class="photo-credit">${content.visualStyle}</div>

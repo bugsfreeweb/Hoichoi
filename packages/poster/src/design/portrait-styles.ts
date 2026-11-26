@@ -35,11 +35,11 @@ body[data-aspect="4:5"] .watermark span{font-size:20px;}
 body[data-aspect="4:5"] .photo-credit{font-size:10px;letter-spacing:1.4px;padding:4px 8px;}
 
 /* ---------- 1. split_left_media ---------- */
-body[data-aspect="4:5"][data-layout="split_left_media"] .media{left:0;top:0;width:100%;height:44%;background-position:center;}
+body[data-aspect="4:5"][data-layout="split_left_media"] .media{left:0;top:0;width:100%;height:50%;background-position:center;}
 body[data-aspect="4:5"][data-layout="split_left_media"] .media::after{left:0;right:0;top:auto;bottom:0;width:auto;height:8px;}
-body[data-aspect="4:5"][data-layout="split_left_media"] .copy{left:0;right:0;top:44%;bottom:0;padding:34px ${s}px;gap:14px;}
+body[data-aspect="4:5"][data-layout="split_left_media"] .copy{left:0;right:0;top:50%;bottom:0;padding:26px ${s}px 20px;gap:12px;}
 body[data-aspect="4:5"][data-layout="split_left_media"] .copy::before{background:linear-gradient(180deg,color-mix(in srgb,var(--bg-color) 70%,transparent) 0%,var(--bg-color) 12%);}
-body[data-aspect="4:5"][data-layout="split_left_media"] .footer{margin-bottom:30px;}
+body[data-aspect="4:5"][data-layout="split_left_media"] .footer{margin-bottom:22px;}
 
 /* A quote-only portrait has no bullets to fill the copy column. Without this,
    the flexible spacer left a third of the poster empty below one sentence. */

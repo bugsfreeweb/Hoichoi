@@ -147,9 +147,9 @@ check(
 );
 
 check("headline type steps down as the headline grows", () => {
-  assert.equal(designHeadlineSizeFor("split_left_media", "ছোট শিরোনাম"), 80);
+  assert.equal(designHeadlineSizeFor("split_left_media", "ছোট শিরোনাম"), 90);
   const medium = "এটি একটি মাঝারি দৈর্ঘ্যের বাংলা শিরোনাম";
-  assert.ok(designHeadlineSizeFor("split_left_media", medium) < 80);
+  assert.ok(designHeadlineSizeFor("split_left_media", medium) < 90);
   assert.ok(
     designHeadlineSizeFor(
       "split_left_media",

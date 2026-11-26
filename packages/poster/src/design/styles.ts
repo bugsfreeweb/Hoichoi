@@ -84,6 +84,12 @@ h1,h2,h3,p,ul,figure{margin:0;}
 .badge{display:inline-flex;align-items:center;gap:12px;padding:11px 24px;border-radius:999px;background:var(--accent-color);color:var(--accent-ink);font-size:22px;font-weight:700;letter-spacing:0.4px;align-self:flex-start;box-shadow:0 10px 34px color-mix(in srgb, var(--accent-color) 28%, transparent);}
 .badge .dot{width:9px;height:9px;border-radius:999px;background:currentColor;opacity:0.75;}
 
+/* With description blocks gone, the headline owns the copy column. Auto
+   block margins centre it in the space between the badge and the footer instead
+   of leaving one dead gap above the footer. */
+.copy .headline,
+.glass .headline{flex:0 0 auto;margin-top:auto;margin-bottom:auto;}
+
 .headline{
   font-family:"Hind Siliguri","Noto Sans Bengali",sans-serif;
   font-weight:700;
@@ -197,5 +203,9 @@ body[data-layout="breaking_spotlight"] .spot-footer .readmore b{color:var(--acce
 body[data-layout="breaking_spotlight"] .watermark--spot{bottom:176px;right:${SAFE}px;}
 
 ${content.aspect === "4:5" ? portraitStyles() : ""}
+/* Final rule: portrait layout blocks set their own top margin, so the
+   auto-margin centring must come after them. */
+body .copy .headline,
+body .glass .headline{margin-top:auto;margin-bottom:auto;}
 `;
 }

@@ -126,18 +126,18 @@ export function headlineSizeFor(
 ): number {
   const len = headline.replace(/\s+/g, " ").trim().length;
   const landscape: Record<PosterDesignLayout, [number, number, number]> = {
-    hero_overlay_gradient: [92, 76, 62],
-    breaking_spotlight: [80, 66, 54],
-    editorial_magazine_grid: [86, 70, 56],
-    split_left_media: [80, 64, 52],
-    split_right_media: [80, 64, 52],
+    hero_overlay_gradient: [98, 82, 66],
+    breaking_spotlight: [86, 72, 58],
+    editorial_magazine_grid: [92, 76, 60],
+    split_left_media: [90, 74, 60],
+    split_right_media: [90, 74, 60],
   };
   const portrait: Record<PosterDesignLayout, [number, number, number]> = {
-    hero_overlay_gradient: [78, 66, 54],
-    breaking_spotlight: [68, 58, 48],
-    editorial_magazine_grid: [70, 60, 50],
-    split_left_media: [64, 56, 46],
-    split_right_media: [64, 56, 46],
+    hero_overlay_gradient: [84, 72, 58],
+    breaking_spotlight: [74, 64, 52],
+    editorial_magazine_grid: [76, 66, 54],
+    split_left_media: [72, 62, 52],
+    split_right_media: [72, 62, 52],
   };
   const [short, medium, long] = (aspect === "4:5" ? portrait : landscape)[layout];
   if (len < 32) return short;
