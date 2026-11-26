@@ -293,6 +293,12 @@ layout is deterministic enough to verify locally first with
 
 Append a short entry after every completed task. Keep newest first.
 
+### 2026-11-26 — English admin chrome
+- The console rail's Menu/Search labels, its aria labels and the service-status
+  strip now read from the same locale. Remaining Bangla in an English admin
+  screen is page copy that has not been migrated yet, not the shell.
+- Web build passed; `desk-bilingual` 6 checks.
+
 ### 2026-11-26 — shared ?lang= links and English footer
 - `?lang=en` was documented but ignored: the root layout cannot read a query
   string. Middleware now turns `?lang=` into the same cookie as the toggle and

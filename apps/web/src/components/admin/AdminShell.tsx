@@ -492,10 +492,20 @@ function SidebarNav({
             type="button"
             onClick={onToggle}
             aria-label={
-              collapsed ? "সাইডবার প্রসারিত করুন" : "সাইডবার সংকুচিত করুন"
+              locale === "en"
+                ? collapsed
+                  ? "Expand the sidebar"
+                  : "Collapse the sidebar"
+                : collapsed
+                  ? "সাইডবার প্রসারিত করুন"
+                  : "সাইডবার সংকুচিত করুন"
             }
             aria-expanded={!collapsed}
-            title={`${collapsed ? "প্রসারিত করুন" : "সংকুচিত করুন"} (শর্টকাট: [ )`}
+            title={
+              locale === "en"
+                ? `${collapsed ? "Expand" : "Collapse"} (shortcut: [ )`
+                : `${collapsed ? "প্রসারিত করুন" : "সংকুচিত করুন"} (শর্টকাট: [ )`
+            }
             className="adm-nav-toggle grid h-8 w-8 shrink-0 place-items-center rounded-lg transition"
           >
             <svg
@@ -513,14 +523,14 @@ function SidebarNav({
         ) : null}
         {!collapsed && variant === "desktop" ? (
           <span className="adm-nav-kicker pr-1 font-mono-x text-[8px] tracking-[0.2em] uppercase">
-            মেনু
+            {locale === "en" ? "Menu" : "মেনু"}
           </span>
         ) : null}
         {variant === "mobile" ? (
           <button
             type="button"
             onClick={onClose}
-            aria-label="বন্ধ করুন"
+            aria-label={locale === "en" ? "Close" : "বন্ধ করুন"}
             className="adm-nav-toggle ml-auto grid h-8 w-8 place-items-center rounded-lg transition"
           >
             <svg
@@ -547,7 +557,7 @@ function SidebarNav({
       {!collapsed ? (
         <div className="px-2 pt-2.5">
           <label htmlFor="admin-nav-search" className="sr-only">
-            স্ক্রিন খুঁজুন
+            {locale === "en" ? "Search screens" : "স্ক্রিন খুঁজুন"}
           </label>
           <div className="relative">
             <svg
@@ -569,7 +579,9 @@ function SidebarNav({
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="স্ক্রিন খুঁজুন…"
+              placeholder={
+                locale === "en" ? "Search screens…" : "স্ক্রিন খুঁজুন…"
+              }
               className="adm-nav-search w-full rounded-lg border py-1.5 pl-7 pr-2 text-[11.5px] focus:outline-none"
             />
           </div>
@@ -584,7 +596,7 @@ function SidebarNav({
         looking tidy.
       */}
       <nav
-        aria-label="কনসোল মেনু"
+        aria-label={locale === "en" ? "Console menu" : "কনসোল মেনু"}
         className="adm-nav mt-2 min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-1.5 pb-2"
       >
         {nothingFound ? (

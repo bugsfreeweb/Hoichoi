@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/admin/ui/toast";
+import { useLocale } from "@/components/i18n/LocaleProvider";
 
 type State = "ok" | "warn" | "down";
 
@@ -28,12 +29,6 @@ const DOT: Record<State, string> = {
   down: "bg-alizarin",
 };
 
-const LABEL: Record<State, string> = {
-  ok: "সক্রিয়",
-  warn: "সতর্কতা",
-  down: "বন্ধ",
-};
-
 /**
  * Service health strip for the console.
  *
@@ -49,6 +44,10 @@ export function SystemStatusBar({ compact = false }: { compact?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const toast = useToast();
+  const { locale } = useLocale();
+  const b = (bn: string, en: string) => (locale === "en" ? en : bn);
+  const labelFor = (state: State) =>
+    state === "ok" ? b("সক্রিয়", "online") : state === "warn" ? b("সতর্কতা", "warning") : b("বন্ধ", "down");
   const previous = useRef<Map<string, State>>(new Map());
 
   const load = useCallback(
@@ -66,9 +65,14 @@ export function SystemStatusBar({ compact = false }: { compact?: boolean }) {
           for (const s of json.services) {
             const before = previous.current.get(s.key);
             if (before && before !== s.state && s.state !== "ok") {
-              toast.error(`⚠ ${s.label} — ${LABEL[s.state]}`, s.detail);
+              toast.error(`⚠ ${s.label} — ${labelFor(s.state)}`, s.detail);
             } else if (before && before !== "ok" && s.state === "ok") {
-              toast.success(`✓ ${s.label} আবার সক্রিয়`, s.detail);
+              toast.success(
+                locale === "en"
+                  ? `✓ ${s.label} is back online`
+                  : `✓ ${s.label} আবার সক্রিয়`,
+                s.detail,
+              );
             }
             previous.current.set(s.key, s.state);
           }
@@ -97,12 +101,12 @@ export function SystemStatusBar({ compact = false }: { compact?: boolean }) {
         : "ok";
 
   const summary = !data
-    ? "সার্ভিস যাচাই হচ্ছে…"
+    ? b("সার্ভিস যাচাই হচ্ছে…", "Checking services…")
     : worst === "ok"
-      ? "সব সার্ভিস সক্রিয়"
+      ? b("সব সার্ভিস সক্রিয়", "All services online")
       : worst === "warn"
-        ? "কিছু সার্ভিসে সতর্কতা"
-        : "একটি সার্ভিস বন্ধ";
+        ? b("কিছু সার্ভিসে সতর্কতা", "Some services need attention")
+        : b("একটি সার্ভিস বন্ধ", "One service is down");
 
   return (
     <div className={`border-b border-ink/10 bg-paper-deep/60 ${compact ? "" : "mt-0"}`}>
@@ -134,10 +138,14 @@ export function SystemStatusBar({ compact = false }: { compact?: boolean }) {
           ))}
           {!data && !error && (
             <span className="flex items-center gap-1.5 text-[10px] text-ink-soft">
-              <Loader2 size={10} className="animate-spin" /> যাচাই হচ্ছে…
+              <Loader2 size={10} className="animate-spin" /> {b("যাচাই হচ্ছে…", "Checking…")}
             </span>
           )}
-          {error && <span className="text-[10px] font-bold text-alizarin">✕ স্ট্যাটাস আনা যায়নি: {error}</span>}
+          {error && (
+            <span className="text-[10px] font-bold text-alizarin">
+              ✕ {b("স্ট্যাটাস আনা যায়নি", "Could not load status")}: {error}
+            </span>
+          )}
         </div>
 
         <button
@@ -145,9 +153,10 @@ export function SystemStatusBar({ compact = false }: { compact?: boolean }) {
           onClick={() => void load(true)}
           disabled={loading}
           className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold text-ink-soft transition-colors hover:text-ink disabled:opacity-50"
-          title="এখনই যাচাই করুন"
+          title={b("এখনই যাচাই করুন", "Check now")}
         >
-          <RefreshCw size={10} className={loading ? "animate-spin" : ""} /> যাচাই
+          <RefreshCw size={10} className={loading ? "animate-spin" : ""} />{" "}
+          {b("যাচাই", "Check")}
         </button>
       </div>
 
@@ -162,7 +171,7 @@ export function SystemStatusBar({ compact = false }: { compact?: boolean }) {
               <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${DOT[s.state]}`} />
               <span className="min-w-0">
                 <span className="block text-[11.5px] font-bold text-ink">
-                  {s.label} <span className="font-mono-x text-[9.5px] font-normal text-ink-soft">· {LABEL[s.state]}</span>
+                  {s.label} <span className="font-mono-x text-[9.5px] font-normal text-ink-soft">· {labelFor(s.state)}</span>
                 </span>
                 <span className="block truncate text-[10.5px] text-ink-soft" title={s.detail}>
                   {s.detail}
