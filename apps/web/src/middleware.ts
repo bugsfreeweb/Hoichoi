@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { LOCALE_COOKIE } from "@hoichoi/i18n";
 import { csrfVerdict } from "@/lib/csrf";
 
 /**
@@ -9,6 +10,13 @@ import { csrfVerdict } from "@/lib/csrf";
  * version of this check that stays true. See `lib/csrf.ts` for the rule.
  */
 export function middleware(req: NextRequest): NextResponse {
+  // A shared link carries its language. The root layout cannot see a query
+  // string, so `?lang=en` is turned into the same cookie the toggle writes;
+  // without this the parameter was documented but silently ignored.
+  const wanted = req.nextUrl.searchParams.get("lang");
+  const lang = wanted === "en" || wanted === "bn" ? wanted : null;
+  if (lang) req.cookies.set(LOCALE_COOKIE, lang);
+
   const cookie = req.headers.get("cookie") ?? "";
   const verdict = csrfVerdict({
     method: req.method,
@@ -23,7 +31,19 @@ export function middleware(req: NextRequest): NextResponse {
       .map((s) => s.trim().replace(/\/+$/, ""))
       .filter(Boolean),
   });
-  if (verdict.ok) return NextResponse.next();
+  if (verdict.ok) {
+    const res = NextResponse.next({ request: { headers: req.headers } });
+    if (lang) {
+      res.cookies.set({
+        name: LOCALE_COOKIE,
+        value: lang,
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
+        sameSite: "lax",
+      });
+    }
+    return res;
+  }
   return NextResponse.json(
     { error: "cross-site request refused", code: "csrf" },
     { status: 403, headers: { "x-csrf-reason": verdict.reason } },
@@ -31,9 +51,9 @@ export function middleware(req: NextRequest): NextResponse {
 }
 
 /**
- * API routes and the two consoles. The public site is left alone: it only
- * reads, and a caching layer in front of a GET should not be paying for this.
+ * Every page that can show chrome, plus the state-changing API. Static files are
+ * excluded: a font or image request has no language and no cookie to gate.
  */
 export const config = {
-  matcher: ["/api/:path*", "/admin/:path*", "/portal/:path*"],
+  matcher: ["/((?!_next/|fonts/|.*\\..*).*)"],
 };

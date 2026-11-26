@@ -164,4 +164,24 @@ check("pagination speaks the reader's language and digits", () => {
     throw new Error("the home page never passes its locale to pagination");
 });
 
+check("a shared link's ?lang= reaches the public site, not only an API", () => {
+  const mw = read("apps/web/src/middleware.ts");
+  if (!mw.includes('searchParams.get("lang")'))
+    throw new Error("the middleware ignores ?lang=");
+  if (!mw.includes("LOCALE_COOKIE"))
+    throw new Error("the middleware does not write the shared cookie");
+  if (!mw.includes("request: { headers: req.headers }"))
+    throw new Error("the forwarded request cannot see the cookie on the first paint");
+  if (!/matcher:\s*\[\s*"\/\(\(\?!_next/.test(mw))
+    throw new Error("the matcher still excludes the public pages");
+  const footer = read("apps/web/src/components/Footer.tsx");
+  if (!footer.includes('locale === "en" ? BRAND.en'))
+    throw new Error("the English footer can show the Bangla site name");
+  if (!footer.includes('? tr("site.footer.aboutFallback")'))
+    throw new Error("the English footer still prefixes the Bangla tagline");
+  const advertiser = read("apps/web/src/components/AdvertiserLoginLink.tsx");
+  if (!advertiser.includes('"Advertiser login"'))
+    throw new Error("the advertiser link is Bangla-only in English");
+});
+
 console.log(`[web] desk bilingual: ${passed} checks passed`);

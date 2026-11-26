@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useLocale } from "@/components/i18n/LocaleProvider";
 
 /**
  * Advertiser sign-in entry point.
@@ -19,6 +22,13 @@ export function AdvertiserLoginLink({
   tone?: "default" | "dark";
   className?: string;
 }) {
+  const { locale } = useLocale();
+  const label =
+    locale === "en" ? "Advertiser login" : "বিজ্ঞাপনদাতা লগইন";
+  const title =
+    locale === "en"
+      ? "Sign in to the advertiser portal"
+      : "বিজ্ঞাপনদাতা পোর্টালে লগইন করুন";
   const base =
     tone === "dark"
       ? "border-white/25 text-white/70 hover:border-white/60 hover:text-white"
@@ -27,7 +37,7 @@ export function AdvertiserLoginLink({
     <Link
       href="/portal/login"
       className={`group inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 font-mono-x text-[10px] tracking-[0.14em] uppercase transition-colors ${base} ${className}`}
-      title="বিজ্ঞাপনদাতা পোর্টালে লগইন করুন"
+      title={title}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -44,7 +54,7 @@ export function AdvertiserLoginLink({
         <path d="M3 11v3a1 1 0 0 0 1 1h2l3.5 3.5a1 1 0 0 0 1.7-.7V7.2a1 1 0 0 0-1.7-.7L6 10H4a1 1 0 0 0-1 1z" />
         <path d="M16 8a5 5 0 0 1 0 8" />
       </svg>
-      বিজ্ঞাপনদাতা লগইন
+      {label}
       <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
     </Link>
   );

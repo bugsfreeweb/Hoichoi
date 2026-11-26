@@ -21,13 +21,16 @@ export async function Footer() {
     t(key, params, locale);
   const footerLinks = categories.length > 0 ? categories : [];
   const appConfig = parseAppConfig(settings.app_config_json);
-  const siteName = settings.site_name || BRAND.en;
+  const siteName = locale === "en" ? BRAND.en : settings.site_name || BRAND.bn;
   /**
    * Bangla readers get the operator's own text when there is one. English
    * readers get the translated default: the stored field is Bangla-only, and
    * mixing the two languages in one paragraph reads worse than a clean default.
    */
-  const aboutDefault = `${BRAND.tagline} — ${tr("site.footer.aboutFallback")}`;
+  const aboutDefault =
+    locale === "en"
+      ? tr("site.footer.aboutFallback")
+      : `${BRAND.tagline} — ${tr("site.footer.aboutFallback")}`;
   const about = locale === "en" ? aboutDefault : settings.footer_about_bn || aboutDefault;
   // Lipighor's terms allow webfont use only with a footer backlink, so the
   // credit appears exactly when one of its families is actually selected.
@@ -122,7 +125,8 @@ export async function Footer() {
         </div>
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-ink/15 pt-6 font-mono-x text-[10px] tracking-[0.16em] text-ink-soft uppercase">
           <span>
-            © {toBn(2026)} {siteName} · BUILD {SITE_BUILD}
+            © {locale === "en" ? "2026" : toBn(2026)} {siteName} · BUILD{" "}
+            {SITE_BUILD}
           </span>
           <span className="flex flex-wrap items-center gap-4">
             {legalLinks.map((l) => (

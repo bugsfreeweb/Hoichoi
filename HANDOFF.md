@@ -293,6 +293,16 @@ layout is deterministic enough to verify locally first with
 
 Append a short entry after every completed task. Keep newest first.
 
+### 2026-11-26 — shared ?lang= links and English footer
+- `?lang=en` was documented but ignored: the root layout cannot read a query
+  string. Middleware now turns `?lang=` into the same cookie as the toggle and
+  forwards it, so the first paint is already English. The matcher now covers the
+  public pages, not only `/api`, `/admin` and `/portal`.
+- The English footer no longer prints the Bangla site name, Bangla tagline or
+  Bangla year; the advertiser login link is bilingual.
+- Tests: `desk-bilingual` 6 checks; local `?lang=en` verified with `html lang=en`
+  on home/category/about/contact/privacy and an English footer.
+
 ### 2026-11-26 — security alert actions + cleaner posters
 - Fixed four CodeQL `js/incomplete-url-substring-sanitization` alerts by parsing
   hostnames instead of substring-matching URLs.
