@@ -185,6 +185,12 @@ check("posters carry the headline, not description paragraphs", () => {
   assert.ok(!html.includes("প্রথম পয়েন্ট"));
   assert.ok(!html.includes('<ul class="bullets">'));
   assert.ok(!html.includes('class="quote'));
+  // Internal production labels are not poster copy. A style name or a duplicate
+  // badge/date caption reads as a stray line to a reader.
+  assert.ok(!html.includes(base.visualStyle));
+  assert.ok(!html.includes('class="photo-credit"'));
+  assert.ok(!html.includes('class="frame-caption"'));
+  assert.ok(!html.includes('class="visual-caption"'));
 });
 
 console.log(`\n[design-poster] ${passed} checks passed`);
