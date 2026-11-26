@@ -155,6 +155,12 @@ check("the chosen families reach the site and the desk", () => {
   // the select — otherwise two of the three roles are hidden behind a menu.
   assert.match(desktopSettings, /লাইভ প্রিভিউ/);
   assert.match(desktopSettings, /vis\.typography\?\.headline,/);
+  // A native select popup is painted outside the page theme. Its options must
+  // carry their own light surface and dark ink or the family names disappear in
+  // the dark console (and in an OS dark popup).
+  assert.match(adminGallery, /colorScheme: "light"/);
+  assert.match(adminGallery, /backgroundColor: "#ffffff"/);
+  assert.match(adminGallery, /color: "#141414"/);
   assert.match(adminGallery, /onClick=\{\(\) => setFont\("meta", f\.id\)\}/);
   assert.match(adminGallery, /aria-pressed=\{chosen\.meta === f\.id\}/);
   assert.match(

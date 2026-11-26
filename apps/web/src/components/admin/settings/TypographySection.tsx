@@ -116,14 +116,33 @@ export function TypographySection() {
         {SLOTS.map((slot) => (
           <label key={slot.key} className="block text-[11px] font-bold text-ink">
             {slot.label}
+            {/* Native dropdowns do not inherit a theme the way page text does:
+                on Windows the popup is painted by the OS. In the dark console
+                the inherited light ink landed on a white popup, so the family
+                names were invisible. Pin both the control and its options to a
+                readable light surface in either theme. */}
             <select
               value={(chosen[slot.key] as string | undefined) ?? ""}
               onChange={(e) => setFont(slot.key, e.target.value)}
-              className="mt-1 w-full border border-ink/25 bg-white px-2 py-2 text-[12px] font-normal text-ink outline-none focus:border-ink"
+              style={{
+                colorScheme: "light",
+                backgroundColor: "#ffffff",
+                color: "#141414",
+              }}
+              className="mt-1 w-full border border-ink/25 px-2 py-2 text-[12px] font-normal outline-none focus:border-ink"
             >
-              <option value="">{slot.fallback}</option>
+              <option
+                value=""
+                style={{ backgroundColor: "#ffffff", color: "#141414" }}
+              >
+                {slot.fallback}
+              </option>
               {BANGLA_FONTS.map((f) => (
-                <option key={f.id} value={f.id}>
+                <option
+                  key={f.id}
+                  value={f.id}
+                  style={{ backgroundColor: "#ffffff", color: "#141414" }}
+                >
                   {f.label}
                 </option>
               ))}
